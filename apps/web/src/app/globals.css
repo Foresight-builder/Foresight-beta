@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* 美化竖直列表滚动条（渐变、圆角、细宽） */
+.scrollbar-beauty {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(168,85,247,0.7) rgba(229,231,235,0.6);
+}
+.scrollbar-beauty::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-beauty::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, rgba(229,231,235,0.85), rgba(243,244,246,0.5));
+  border-radius: 9999px;
+}
+.scrollbar-beauty::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(168,85,247,0.95), rgba(244,114,182,0.95));
+  border-radius: 9999px;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+.scrollbar-beauty::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(126,34,206,1), rgba(219,39,119,1));
+}
+.scrollbar-beauty::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 日期时间输入的日历图标美化（WebKit） */
+input[type="datetime-local"].date-input-beauty::-webkit-calendar-picker-indicator {
+  filter: hue-rotate(280deg) saturate(120%) brightness(1.05);
+  opacity: 0.85;
+}
