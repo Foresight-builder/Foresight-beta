@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react'
+import Button from '@/components/ui/Button'
 import { useWallet } from '@/contexts/WalletContext'
 import { MessageSquare, Sparkles, Loader2, Smile } from 'lucide-react'
 
@@ -22,6 +23,12 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   const [error, setError] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const [showEmojis, setShowEmojis] = useState(false)
+  const [nameMap, setNameMap] = useState<Record<string, string>>({})
+
+  const displayName = (addr: string) => {
+    const key = String(addr || '').toLowerCase()
+    return nameMap[key] || formatAddress(addr)
+  }
 
   const quickPrompts = [
     '这条预测的依据是什么？',
@@ -64,6 +71,24 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     }
   }, [messages.length])
 
+  useEffect(() => {
+    try {
+      const addrs = new Set<string>()
+      messages.forEach(m => { if (m.user_id) addrs.add(String(m.user_id).toLowerCase()) })
+      if (account) addrs.add(String(account).toLowerCase())
+      const unknown = Array.from(addrs).filter(a => !nameMap[a])
+      if (unknown.length === 0) return
+      fetch(`/api/user-profiles?addresses=${encodeURIComponent(unknown.join(','))}`)
+        .then(r => r.json())
+        .then(data => {
+          const arr = Array.isArray(data?.profiles) ? data.profiles : []
+          const next: Record<string, string> = {}
+          arr.forEach((p: any) => { if (p?.wallet_address && p?.username) next[String(p.wallet_address).toLowerCase()] = String(p.username) })
+          if (Object.keys(next).length > 0) setNameMap(prev => ({ ...prev, ...next }))
+        }).catch(() => {})
+    } catch {}
+  }, [messages, account])
+
   const sendMessage = async () => {
     if (!input.trim()) return
     if (!account) {
@@ -101,7 +126,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           <Sparkles className="w-4 h-4 opacity-90" />
         </div>
         <div className="text-xs opacity-90">
-          {account ? `你：${formatAddress(account)}` : '未连接钱包'}
+          {account ? `你：${displayName(account)}` : '未连接钱包'}
         </div>
       </div>
 
@@ -126,7 +151,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
               <div className={`flex items-end gap-3 ${mine ? 'justify-end' : ''}`}>
                 {/* 头像 */}
                 <div className={`${mine ? 'order-2' : ''} w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold`}> 
-                  {formatAddress(m.user_id).slice(0,2)}
+                  {displayName(m.user_id).slice(0,2)}
                 </div>
                 {/* 气泡 */}
                 <div className={`${mine ? 'order-1' : ''} max-w-[80%]`}> 
@@ -134,7 +159,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
                     ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white' 
                     : 'bg-white text-gray-800 border border-gray-200'} rounded-2xl px-3 py-2 shadow-sm`}> 
                     <div className="text-xs opacity-80 mb-1">
-                      <span className="mr-2">{formatAddress(m.user_id)}</span>
+                      <span className="mr-2">{displayName(m.user_id)}</span>
                       <span>{new Date(m.created_at).toLocaleString()}</span>
                     </div>
                     <div className="leading-relaxed break-words">{m.content}</div>
@@ -151,7 +176,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
         {!account ? (
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">发送消息需连接钱包</div>
-            <Button size="sm" variant="primary" onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }}>连接并签名</Button>
+              <Button size="sm" variant="cta" onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }}>连接并签名</Button>
             </div>
         ) : (
           <>

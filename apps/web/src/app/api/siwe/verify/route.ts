@@ -35,12 +35,12 @@ export async function POST(req: NextRequest) {
     res.cookies.set('fs_session', JSON.stringify({ address }), {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 60 * 60 * 24,
     })
     // 清除一次性 nonce
-    res.cookies.set('siwe_nonce', '', { httpOnly: true, sameSite: 'lax', secure: false, path: '/', maxAge: 0 })
+    res.cookies.set('siwe_nonce', '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 })
     return res
   } catch (e: any) {
     return NextResponse.json({ success: false, message: '服务器错误', detail: String(e?.message || e) }, { status: 500 })

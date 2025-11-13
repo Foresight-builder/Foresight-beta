@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin, supabase } from '@/lib/supabase'
+import { getClient } from '@/lib/supabase'
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false
@@ -21,7 +21,10 @@ function isUserIdTypeIntegerError(error?: { message?: string }) {
 
 export async function GET(request: NextRequest) {
   try {
-    const client = supabaseAdmin || supabase
+    const client = getClient()
+    if (!client) {
+      return NextResponse.json({ follows: [], total: 0 })
+    }
     const { searchParams } = new URL(request.url)
     const address = searchParams.get('address')
 

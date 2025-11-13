@@ -78,3 +78,15 @@ export interface EventFollow {
   event_id: number
   created_at: string
 }
+
+export interface UserProfile {
+  wallet_address: string
+  username: string
+  email: string
+  created_at?: string
+  updated_at?: string
+}
+
+export function getClient(): SupabaseClient {
+  return (supabaseAdmin || supabase) as any
+}

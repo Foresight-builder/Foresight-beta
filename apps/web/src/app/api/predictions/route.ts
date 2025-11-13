@@ -1,6 +1,6 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, supabase, type Prediction } from '@/lib/supabase';
+import { getClient, supabaseAdmin, supabase, type Prediction } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit');
 
     // 在缺少服务密钥时使用匿名客户端降级读取
-    const client = supabaseAdmin || supabase;
+    const client = getClient();
+    if (!client) {
+      return NextResponse.json({ success: false, message: 'Supabase 未配置' }, { status: 500 })
+    }
 
     // 构建Supabase查询
     let query = client
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
       predictionsWithFollowersCount = await Promise.all(
         predictions.map(async (prediction) => {
           // 获取关注数量
-          const countClient = supabaseAdmin || supabase;
+          const countClient = getClient();
           const { count, error: countError } = await countClient
             .from('event_follows')
             .select('id', { count: 'exact', head: true })
@@ -131,7 +134,10 @@ export async function POST(request: NextRequest) {
     }
     
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS策略支持写入，否则会失败）
-    const client = supabaseAdmin || supabase
+    const client = getClient()
+    if (!client) {
+      return NextResponse.json({ success: false, message: 'Supabase 未配置' }, { status: 500 })
+    }
     // 检查是否已存在相同标题的预测事件
     const { data: existingPredictions, error: checkError } = await client
       .from('predictions')

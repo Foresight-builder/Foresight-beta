@@ -10,7 +10,7 @@ export async function GET() {
   res.cookies.set('siwe_nonce', nonce, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 60 * 10, // 10 分钟有效
   })

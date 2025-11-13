@@ -96,10 +96,13 @@ input[type="datetime-local"].date-input-beauty::-webkit-calendar-picker-indicato
 .btn-subtle { background: rgba(255,255,255,0.85); color: #1F2937; border: 1px solid rgba(229,231,235,1); }
 .btn-subtle:hover { filter: brightness(1.02); }
 
+.btn-cta { background-image: linear-gradient(to right, #A855F7, #EC4899); color: #fff; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); }
+.btn-cta:hover { filter: brightness(1.05); box-shadow: 0 12px 18px -4px rgba(0,0,0,0.12), 0 5px 7px -5px rgba(0,0,0,0.12); }
+
 .chip { color: #fff; border-radius: 0.75rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; }
 
 .panel-base { border-radius: 1.5rem; box-shadow: 0 8px 24px rgba(16,24,40,0.06); border: 1px solid rgba(255,255,255,0.4); }
-.panel-primary { background-image: linear-gradient(to right, var(--brand), var(--brandAccent)); color: #fff; }
+.panel-primary { background-image: linear-gradient(to right, #C084FC, #F472B6); color: #fff; }
 .panel-secondary { background-image: linear-gradient(to right, #93C5FD, #60A5FA); color: #fff; }
 .panel-success { background-image: linear-gradient(to right, #34D399, #10B981); color: #fff; }
 .panel-warning { background-image: linear-gradient(to right, #FDBA74, #F59E0B); color: #fff; }

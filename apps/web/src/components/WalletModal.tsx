@@ -12,7 +12,7 @@ interface WalletModalProps {
 }
 
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
-  const { connectWallet, availableWallets, isConnecting, siweLogin, requestWalletPermissions, multisigSign } = useWallet();
+  const { connectWallet, availableWallets, isConnecting, siweLogin, requestWalletPermissions, multisigSign, account } = useWallet();
   const auth = useAuthOptional();
   const user = auth?.user ?? null;
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
@@ -24,6 +24,11 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [siweLoading, setSiweLoading] = useState(false);
   const [permLoading, setPermLoading] = useState(false);
   const [multiLoading, setMultiLoading] = useState(false);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [username, setUsername] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -46,7 +51,25 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
-      onClose();
+      setShowProfileForm(true);
+      setProfileLoading(true);
+      setProfileError(null);
+      const addr = String(account || '').toLowerCase();
+      if (addr) {
+        fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`)
+          .then(r => r.json())
+          .then(data => {
+            const p = data?.profile;
+            if (p) {
+              setUsername(String(p.username || ''));
+              setEmail(String(p.email || ''));
+            }
+          })
+          .catch(() => {})
+          .finally(() => setProfileLoading(false));
+      } else {
+        setProfileLoading(false);
+      }
     }
   }, [user, isOpen, onClose]);
 
@@ -72,7 +95,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setMultiLoading(true);
       await multisigSign();
       setMultiLoading(false);
-      onClose();
+      setShowProfileForm(true);
     } catch (error) {
       console.error('连接钱包失败:', error);
     } finally {
@@ -157,6 +180,31 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     okx: 'OKX Wallet'
   };
 
+  const canSubmitProfile = username.length >= 3 && username.length <= 32 && /^[A-Za-z0-9_.-]+$/.test(username) && /.+@.+\..+/.test(email);
+
+  const submitProfile = async () => {
+    if (!canSubmitProfile) return;
+    setProfileError(null);
+    setProfileLoading(true);
+    try {
+      const addr = String(account || '').toLowerCase();
+      const resp = await fetch('/api/user-profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: addr, username, email, rememberMe })
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) {
+        setProfileError(String(json?.message || '提交失败'));
+      } else {
+        onClose();
+      }
+    } catch (e: any) {
+      setProfileError(String(e?.message || e));
+    }
+    setProfileLoading(false);
+  };
+
   return createPortal(
     <AnimatePresence>
       {isOpen && (
@@ -215,7 +263,55 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               </motion.button>
             </div>
 
-            {/* 邮箱登录 */}
+            {showProfileForm && (
+              <div className="relative p-6 space-y-4">
+                <h3 className="text-lg font-semibold">完善用户信息</h3>
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-gray-900">用户名</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="例如: alice_01"
+                    className="w-full rounded-xl border-2 border-purple-200 bg-white/95 px-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
+                  />
+                  <label className="block text-sm font-semibold text-gray-900">邮箱</label>
+                  <div className="relative">
+                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500" aria-hidden="true" />
+                    <input
+                      type="email"
+                      inputMode="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+                    <label htmlFor="remember-me" className="text-sm text-gray-700">记住我</label>
+                  </div>
+                  {profileError && <div className="text-sm text-red-600">{profileError}</div>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={submitProfile}
+                      disabled={!canSubmitProfile || profileLoading}
+                      className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+                    >
+                      {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      保存并继续
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
+                    >
+                      稍后再说
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!showProfileForm && (
             <div className="relative p-6 space-y-4">
               {!otpRequested ? (
                 <div className="space-y-3">
@@ -299,8 +395,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                 <div className="h-px flex-1 bg-gradient-to-r from-pink-200 to-purple-200" />
               </div>
             </div>
+            )}
 
-            {/* 钱包列表（竖直滑动） */}
+            {!showProfileForm && (
             <div className="relative px-6 pb-6">
               <div className="h-56 overflow-y-auto snap-y snap-mandatory pr-2 -mr-2 space-y-3 scrollbar-beauty">
               {availableWallets.map((wallet, index) => (
@@ -358,6 +455,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               ))}
               </div>
             </div>
+            )}
 
             {/* 底部说明 */}
             <div className="relative px-6 pb-6">

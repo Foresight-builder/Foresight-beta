@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin, supabase } from '@/lib/supabase'
+import { getClient } from '@/lib/supabase'
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false
@@ -53,7 +53,10 @@ export async function POST(req: Request) {
     }
     const limitedIds = ids.slice(0, 50) // 简单限制一次查询数量，避免过多并发
 
-    const client = supabaseAdmin || supabase
+    const client = getClient()
+    if (!client) {
+      return NextResponse.json({ message: 'Supabase 未配置' }, { status: 500 })
+    }
     const entries = await Promise.all(limitedIds.map(async (id) => {
       const { count, error } = await client
         .from('event_follows')

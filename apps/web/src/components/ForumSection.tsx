@@ -37,6 +37,11 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [posting, setPosting] = useState(false)
+  const [nameMap, setNameMap] = useState<Record<string, string>>({})
+  const displayName = (addr: string) => {
+    const key = String(addr || '').toLowerCase()
+    return nameMap[key] || formatAddress(addr)
+  }
 
   const load = async () => {
     setLoading(true)
@@ -53,6 +58,24 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   }
 
   useEffect(() => { load() }, [eventId])
+
+  useEffect(() => {
+    try {
+      const addrs = new Set<string>()
+      threads.forEach(t => { if (t.user_id) addrs.add(String(t.user_id).toLowerCase()); (t.comments || []).forEach(c => { if (c.user_id) addrs.add(String(c.user_id).toLowerCase()) }) })
+      if (account) addrs.add(String(account).toLowerCase())
+      const unknown = Array.from(addrs).filter(a => !nameMap[a])
+      if (unknown.length === 0) return
+      fetch(`/api/user-profiles?addresses=${encodeURIComponent(unknown.join(','))}`)
+        .then(r => r.json())
+        .then(data => {
+          const arr = Array.isArray(data?.profiles) ? data.profiles : []
+          const next: Record<string, string> = {}
+          arr.forEach((p: any) => { if (p?.wallet_address && p?.username) next[String(p.wallet_address).toLowerCase()] = String(p.username) })
+          if (Object.keys(next).length > 0) setNameMap(prev => ({ ...prev, ...next }))
+        }).catch(() => {})
+    } catch {}
+  }, [threads, account])
 
   const postThread = async () => {
     if (!account) { setError('请先连接钱包'); return }
@@ -105,7 +128,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
       return nodes.flatMap(node => [
         <div key={node.id} className="mt-3 pl-0" style={{ marginLeft: depth * 16 }}>
           <div className="text-sm text-gray-800">
-            <span className="font-medium mr-2">{formatAddress(node.user_id)}</span>
+            <span className="font-medium mr-2">{displayName(node.user_id)}</span>
             <span className="text-gray-400">{new Date(node.created_at).toLocaleString()}</span>
           </div>
           <div className="mt-1 text-gray-700 break-words">{node.content}</div>
@@ -132,7 +155,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           {!account ? (
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">发帖需连接钱包</div>
-              <Button size="sm" variant="primary" onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }}>连接并签名</Button>
+              <Button size="sm" variant="cta" onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }}>连接并签名</Button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -141,7 +164,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
               <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="详细内容"
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80 min-h-[80px]" />
               <div className="flex justify-end">
-                <Button onClick={postThread} disabled={posting} size="md" variant="primary">
+                <Button onClick={postThread} disabled={posting} size="md" variant="cta">
                   {posting ? '发布中…' : '发布主题'}
                 </Button>
               </div>
@@ -159,7 +182,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
                 <div>
                   <div className="text-lg font-semibold text-gray-800">{t.title}</div>
                   <div className="text-sm text-gray-600 mt-1">{t.content}</div>
-                  <div className="text-xs text-gray-400 mt-1">由 {formatAddress(t.user_id)} 在 {new Date(t.created_at).toLocaleString()} 发布</div>
+                  <div className="text-xs text-gray-400 mt-1">由 {displayName(t.user_id)} 在 {new Date(t.created_at).toLocaleString()} 发布</div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <Button size="sm" variant="success" onClick={() => vote('thread', t.id, 'up')}>▲ {t.upvotes}</Button>

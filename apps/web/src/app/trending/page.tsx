@@ -1568,7 +1568,7 @@ export default function TrendingPage() {
               productsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               createSmartClickEffect(e);
             }}
-            className="btn-base btn-sm btn-primary"
+            className="btn-base btn-sm btn-cta"
             aria-label="去探索"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -2218,11 +2218,11 @@ export default function TrendingPage() {
         {/* 快速操作 */}
         <div className="p-4 border-t border-gray-200/50 mt-auto">
           <div className="space-y-2">
-            <button className="btn-base btn-md btn-primary w-full flex items-center justify-center">
+            <button className="btn-base btn-md btn-cta w-full flex items-center justify-center">
               <Wallet className="w-4 h-4 mr-2" />
               {!sidebarCollapsed && "立即投保"}
             </button>
-            <button className="btn-base btn-md btn-secondary w-full flex items-center justify-center">
+            <button className="btn-base btn-md btn-cta w-full flex items-center justify-center">
               <Gift className="w-4 h-4 mr-2" />
               {!sidebarCollapsed && "领取奖励"}
             </button>

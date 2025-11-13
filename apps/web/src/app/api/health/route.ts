@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin, supabase } from '@/lib/supabase'
+import { getClient } from '@/lib/supabase'
 
 export async function GET(_req: NextRequest) {
   try {
@@ -14,7 +14,10 @@ export async function GET(_req: NextRequest) {
     }
 
     // 基础连通性与表存在检查（使用更高权限客户端优先，否则匿名）
-    const client = supabaseAdmin || supabase
+    const client = getClient()
+    if (!client) {
+      return NextResponse.json({ status: 'error', message: 'Supabase 未配置' }, { status: 500 })
+    }
 
     const checks: Record<string, { ok: boolean; message?: string }> = {}
 

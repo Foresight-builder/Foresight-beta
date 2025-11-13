@@ -73,8 +73,8 @@ function BetBinaryDemo() {
           <div className="col-span-1">
             <div className="text-sm text-gray-600 mb-2">选择方向</div>
             <div className="flex gap-3">
-              <Button variant={side==='YES' ? 'primary' : 'subtle'} onClick={() => setSide('YES')}>YES</Button>
-              <Button variant={side==='NO' ? 'primary' : 'subtle'} onClick={() => setSide('NO')}>NO</Button>
+              <Button variant={side==='YES' ? 'cta' : 'subtle'} onClick={() => setSide('YES')}>YES</Button>
+              <Button variant={side==='NO' ? 'cta' : 'subtle'} onClick={() => setSide('NO')}>NO</Button>
             </div>
           </div>
           <div className="col-span-1">
@@ -105,7 +105,7 @@ function BetBinaryDemo() {
           </div>
         </div>
         <div className="mt-6 flex justify-center">
-          <Button variant="primary" size="md">模拟下单</Button>
+          <Button variant="cta" size="md">模拟下单</Button>
         </div>
       </div>
     </div>
@@ -127,12 +127,12 @@ function BetMultiDemo() {
           <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">多元预测</h3>
           <div className="flex gap-2">
             {(['A','B','C'] as const).map(k => (
-              <Button key={k} size="sm" variant={active===k ? 'primary' : 'subtle'} onClick={() => setActive(k)}>{k}</Button>
+              <Button key={k} size="sm" variant={active===k ? 'cta' : 'subtle'} onClick={() => setActive(k)}>{k}</Button>
             ))}
           </div>
         </div>
         <div className="mb-4"><ChartLine values={series} width={520} height={90} color="#6B21A8" /></div>
-        <div className="flex justify-end"><Button variant="primary">模拟下单</Button></div>
+        <div className="flex justify-end"><Button variant="cta">模拟下单</Button></div>
       </div>
     </div>
   );
@@ -164,7 +164,7 @@ function BetRangeDemo() {
             <input type="range" min={minV+1} max={99} value={maxV} onChange={e => setMaxV(Number(e.target.value))} className="w-full" />
           </div>
         </div>
-        <div className="mt-4 flex justify-end"><Button variant="primary">模拟下单</Button></div>
+        <div className="mt-4 flex justify-end"><Button variant="cta">模拟下单</Button></div>
       </div>
     </div>
   );
@@ -636,8 +636,8 @@ export default function App() {
               让预测更透明，让决策更聪明。基于区块链的去中心化预测市场平台
             </p>
             <div className="relative z-20 flex items-center justify-center gap-3">
-              <Link href="/trending"><Button variant="primary" size="lg">去下注</Button></Link>
-              <Link href="/forum"><Button variant="secondary" size="lg">进入论坛</Button></Link>
+              <Link href="/trending"><Button variant="cta" size="lg">去下注</Button></Link>
+              <Link href="/forum"><Button variant="cta" size="lg">进入论坛</Button></Link>
             </div>
           </motion.div>
 
@@ -649,30 +649,7 @@ export default function App() {
           >
             <BetBinaryDemo />
             <div className="max-w-2xl mx-auto">
-              <div className="bg-white/85 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">论坛预览</h3>
-                  <Link href="/forum"><Button variant="subtle" size="sm">更多</Button></Link>
-                </div>
-                <div className="space-y-3">
-                  {forumPreview.length === 0 && (
-                    <div className="text-sm text-gray-600">暂无热门主题</div>
-                  )}
-                  {forumPreview.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between rounded-xl bg-white/80 p-3 border border-gray-100">
-                      <div className="mr-3">
-                        <div className="text-sm font-medium text-gray-800 truncate max-w-[18rem]">{t.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">由 {String(t.user_id).slice(0,6)}… 在 {new Date(t.created_at).toLocaleDateString()}</div>
-                      </div>
-                      <div className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">👍 {t.upvotes}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 flex justify-end gap-3">
-                  <Link href="/forum"><Button variant="secondary" size="md">发帖</Button></Link>
-                  <Link href="/forum"><Button variant="primary" size="md">进入论坛</Button></Link>
-                </div>
-              </div>
+              <BetMultiDemo />
             </div>
           </motion.div>
 

@@ -136,6 +136,20 @@ export default function TopNavBar() {
     updateNetworkInfo();
   }, [account]);
 
+  const [profile, setProfile] = useState<{ username?: string; email?: string } | null>(null);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const addr = String(account || '').toLowerCase();
+        if (!addr) { setProfile(null); return; }
+        const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`);
+        const data = await res.json();
+        setProfile(data?.profile || null);
+      } catch { setProfile(null); }
+    };
+    load();
+  }, [account]);
+
   const openOnExplorer = () => {
     if (!account) return;
     const url = `${explorerBase(chainId)}/address/${account}`;
@@ -410,7 +424,7 @@ export default function TopNavBar() {
                   >
                     <div className="px-3 py-2 mb-2 rounded-lg bg-white/60 flex items-center justify-between">
                       <div className="text-xs text-black/80">
-                        {formatAddress(account)}
+                        {profile?.username || formatAddress(account)}
                         <span className="ml-2 inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-black">
                           {networkName(chainId)}
                         </span>
@@ -480,7 +494,7 @@ export default function TopNavBar() {
           <div className="relative">
             <button
               onClick={() => setWalletModalOpen(true)}
-              className="btn-base btn-md btn-primary"
+              className="btn-base btn-md btn-cta"
               title="登录"
             >
               登录

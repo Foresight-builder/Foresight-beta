@@ -64,7 +64,7 @@ export default function ForumPage() {
         <div className="panel-base panel-lilac px-4 py-3 rounded-3xl mb-6">
           <div className="flex items-center justify-between">
             <div className="font-semibold">社区频道与提案导航</div>
-            <a href="#proposals" className="btn-base btn-sm btn-primary">快速发帖</a>
+            <a href="#proposals" className="btn-base btn-sm btn-cta">快速发帖</a>
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_320px] gap-6">
@@ -103,7 +103,7 @@ export default function ForumPage() {
               ))}
             </div>
             <div className="mt-6">
-              <a href="#proposals" className="w-full inline-flex items-center justify-center px-3 py-2 btn-base btn-md btn-primary">发起事件提案</a>
+              <a href="#proposals" className="w-full inline-flex items-center justify-center px-3 py-2 btn-base btn-md btn-cta">发起事件提案</a>
             </div>
           </aside>
 
