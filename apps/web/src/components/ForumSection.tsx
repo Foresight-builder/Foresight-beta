@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from 'react'
 import { useWallet } from '@/contexts/WalletContext'
+import Button from '@/components/ui/Button'
 
 interface ForumSectionProps { eventId: number }
 
@@ -110,7 +111,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           <div className="mt-1 text-gray-700 break-words">{node.content}</div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
             <button onClick={() => vote('comment', node.id, 'up')} className="hover:text-purple-600">▲ {node.upvotes}</button>
-            <button onClick={() => vote('comment', node.id, 'down')} className="hover:text-pink-600">▼ {node.downvotes}</button>
             {account && <ReplyBox onSubmit={(text) => postComment(node.thread_id, text, node.id)} />}
           </div>
         </div>,
@@ -122,7 +122,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur overflow-hidden">
-      <div className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-between">
+      <div className="px-4 py-3 panel-base panel-primary flex items-center justify-between">
         <div className="font-semibold">社区讨论</div>
       </div>
 
@@ -132,7 +132,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           {!account ? (
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">发帖需连接钱包</div>
-            <button onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }} className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl text-sm">连接并签名</button>
+              <Button size="sm" variant="primary" onClick={async () => { await connectWallet(); await requestWalletPermissions(); await siweLogin(); await multisigSign(); }}>连接并签名</Button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -141,9 +141,9 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
               <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="详细内容"
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80 min-h-[80px]" />
               <div className="flex justify-end">
-                <button onClick={postThread} disabled={posting} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl text-sm font-medium disabled:opacity-50">
+                <Button onClick={postThread} disabled={posting} size="md" variant="primary">
                   {posting ? '发布中…' : '发布主题'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -162,8 +162,8 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
                   <div className="text-xs text-gray-400 mt-1">由 {formatAddress(t.user_id)} 在 {new Date(t.created_at).toLocaleString()} 发布</div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <button onClick={() => vote('thread', t.id, 'up')} className="px-2 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-600">▲ {t.upvotes}</button>
-                  <button onClick={() => vote('thread', t.id, 'down')} className="px-2 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-600">▼ {t.downvotes}</button>
+                  <Button size="sm" variant="success" onClick={() => vote('thread', t.id, 'up')}>▲ {t.upvotes}</Button>
+                  <Button size="sm" variant="danger" onClick={() => vote('thread', t.id, 'down')}>▼ {t.downvotes}</Button>
                 </div>
               </div>
 

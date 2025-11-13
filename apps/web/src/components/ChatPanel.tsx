@@ -85,8 +85,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
 
   return (
     <div className="rounded-3xl border border-purple-200/50 bg-white/60 backdrop-blur-xl shadow-lg overflow-hidden">
-      {/* 顶部：渐变与状态 */}
-      <div className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-between">
+      <div className="px-4 py-3 panel-base panel-primary flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center justify-center w-7 h-7 bg-white/20 rounded-xl">
             <MessageSquare className="w-4 h-4" />

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { message: '服务端未配置 SUPABASE_SERVICE_KEY，请在 .env.local 中设置后重启开发服务器' },
+        { message: '服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器' },
         { status: 500 }
       )
     }
@@ -256,7 +256,7 @@ export async function DELETE(req: Request) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { message: '服务端未配置 SUPABASE_SERVICE_KEY，请在 .env.local 中设置后重启开发服务器' },
+        { message: '服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器' },
         { status: 500 }
       )
     }
@@ -323,7 +323,7 @@ export async function GET(req: Request) {
   try {
     if (!supabaseAdmin) {
       return NextResponse.json(
-        { message: '服务端未配置 SUPABASE_SERVICE_KEY，请在 .env.local 中设置后重启开发服务器' },
+        { message: '服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器' },
         { status: 500 }
       )
     }

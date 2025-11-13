@@ -2,18 +2,20 @@ import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // 从环境变量获取Supabase配置
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ''
 const isServer = typeof window === 'undefined'
 
 // 创建客户端
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null as any
 
 // 创建服务端客户端（用于需要更高权限的操作）
 // 仅在服务端创建 supabaseAdmin，避免在浏览器端因缺少服务密钥导致报错
-export const supabaseAdmin: SupabaseClient | null = (isServer && !!supabaseServiceKey)
-  ? createClient(supabaseUrl, supabaseServiceKey as string)
+export const supabaseAdmin: SupabaseClient | null = (isServer && !!supabaseServiceRoleKey && !!supabaseUrl)
+  ? createClient(supabaseUrl, supabaseServiceRoleKey as string)
   : null
 
 // 数据库表类型定义

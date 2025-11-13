@@ -26,7 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     // 初始化会话
-    supabase.auth.getSession().then(({ data, error }) => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    (supabase as any).auth.getSession().then(({ data, error }: any) => {
       if (!mounted) return;
       if (error) {
         setError(error.message);
@@ -37,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // 监听会话变化
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = (supabase as any).auth.onAuthStateChange((_event: any, session: any) => {
       const sessUser = session?.user || null;
       setUser(sessUser ? { id: sessUser.id, email: sessUser.email ?? null } : null);
       setLoading(false);
@@ -45,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      sub?.subscription.unsubscribe();
+      sub?.subscription?.unsubscribe?.();
     };
   }, []);
 
@@ -54,7 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-      const { error } = await supabase.auth.signInWithOtp({
+      if (!supabase) throw new Error("Supabase 未配置");
+      const { error } = await (supabase as any).auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -72,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyEmailOtp = async (email: string, token: string) => {
     setError(null);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      if (!supabase) throw new Error("Supabase 未配置");
+      const { data, error } = await (supabase as any).auth.verifyOtp({
         type: "email",
         email,
         token,
@@ -91,7 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-      const { error } = await supabase.auth.signInWithOtp({
+      if (!supabase) throw new Error("Supabase 未配置");
+      const { error } = await (supabase as any).auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -108,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setError(null);
-    await supabase.auth.signOut();
+    if (!supabase) return;
+    await (supabase as any).auth.signOut();
   };
 
   const value: AuthContextValue = {

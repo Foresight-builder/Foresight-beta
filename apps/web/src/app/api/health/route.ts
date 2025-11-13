@@ -7,6 +7,7 @@ export async function GET(_req: NextRequest) {
       NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       NEXT_PUBLIC_RELAYER_URL: !!process.env.NEXT_PUBLIC_RELAYER_URL,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
       SUPABASE_DB_URL: !!process.env.SUPABASE_DB_URL,
       SUPABASE_CONNECTION_STRING: !!process.env.SUPABASE_CONNECTION_STRING
@@ -67,7 +68,7 @@ export async function GET(_req: NextRequest) {
     }
 
     // RLS 提示：在无 service key 情况下读取 event_follows 的计数可能失败
-    const rlsHint = !process.env.SUPABASE_SERVICE_KEY
+    const rlsHint = !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)
       ? 'Missing service key; event_follows reads may be limited by RLS.'
       : 'Service key present.'
 

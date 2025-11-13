@@ -187,9 +187,10 @@ export default function PredictionDetailPage() {
   useEffect(() => {
     const eid = Number(params.id);
     if (!Number.isFinite(eid)) return;
+    if (!supabase || typeof (supabase as any).channel !== 'function') return;
 
     const filterEq = `event_id=eq.${eid}`;
-    const channel = supabase.channel(`event_follows_detail_${eid}`);
+    const channel = (supabase as any).channel(`event_follows_detail_${eid}`);
 
     channel
       .on(
@@ -232,7 +233,7 @@ export default function PredictionDetailPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      (supabase as any).removeChannel(channel);
     };
   }, [params.id, account]);
 

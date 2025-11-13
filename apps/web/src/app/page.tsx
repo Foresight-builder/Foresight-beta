@@ -29,8 +29,22 @@ import {
 import Link from "next/link";
 import ChatPanel from "@/components/ChatPanel";
 import ForumSection from "@/components/ForumSection";
+import Button from "@/components/ui/Button";
 
-function BetDemo() {
+function ChartLine({ values, width = 260, height = 80, color = "#6B21A8" }: { values: number[]; width?: number; height?: number; color?: string }) {
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const norm = values.map(v => (v - min) / Math.max(1e-6, (max - min)));
+  const step = width / Math.max(1, values.length - 1);
+  const d = norm.map((v, i) => `${i === 0 ? 'M' : 'L'} ${i * step} ${height - v * height}`).join(' ');
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BetBinaryDemo() {
   const [side, setSide] = useState<'YES'|'NO'>('YES');
   const [prob, setProb] = useState(0.62);
   const [amount, setAmount] = useState(100);
@@ -38,16 +52,23 @@ function BetDemo() {
   const priceNo = 1 - prob;
   const price = side === 'YES' ? priceYes : priceNo;
   const shares = amount > 0 && price > 0 ? amount / price : 0;
-  const payoutIfWin = shares; // pays 1 per share
+  const payoutIfWin = shares;
   const profitIfWin = payoutIfWin - amount;
   const format = (n:number) => n.toFixed(2);
+  const series = Array.from({ length: 24 }, (_, i) => {
+    const base = side === 'YES' ? priceYes : priceNo;
+    const jitter = (Math.sin(i * 0.7) + Math.cos(i * 0.3)) * 0.02;
+    const v = Math.min(0.98, Math.max(0.02, base + jitter));
+    return v;
+  });
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">下注演示</h3>
-          <div className="text-sm text-gray-500">CPMM 简化演示</div>
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">二元预测</h3>
+          <div className="text-sm text-gray-500">价格走势</div>
         </div>
+        <div className="mb-4"><ChartLine values={series} width={520} height={90} color="#DB2777" /></div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="col-span-1">
             <div className="text-sm text-gray-600 mb-2">选择方向</div>
@@ -91,6 +112,64 @@ function BetDemo() {
   );
 }
 
+function BetMultiDemo() {
+  const [active, setActive] = useState<'A'|'B'|'C'>('A');
+  const base = { A: 0.42, B: 0.36, C: 0.22 }[active];
+  const series = Array.from({ length: 24 }, (_, i) => {
+    const jitter = (Math.sin(i * 0.5) + Math.cos(i * 0.25)) * 0.02;
+    const v = Math.min(0.98, Math.max(0.02, base + jitter));
+    return v;
+  });
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">多元预测</h3>
+          <div className="flex gap-2">
+            {(['A','B','C'] as const).map(k => (
+              <button key={k} onClick={() => setActive(k)} className={`px-3 py-1.5 rounded-xl ${active===k ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>{k}</button>
+            ))}
+          </div>
+        </div>
+        <div className="mb-4"><ChartLine values={series} width={520} height={90} color="#6B21A8" /></div>
+        <div className="flex justify-end"><Button variant="primary">模拟下单</Button></div>
+      </div>
+    </div>
+  );
+}
+
+function BetRangeDemo() {
+  const [minV, setMinV] = useState(20);
+  const [maxV, setMaxV] = useState(60);
+  const series = Array.from({ length: 24 }, (_, i) => {
+    const center = (minV + maxV) / 200;
+    const jitter = (Math.sin(i * 0.6) + Math.cos(i * 0.4)) * 0.02;
+    const v = Math.min(0.98, Math.max(0.02, center + jitter));
+    return v;
+  });
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">区间预测</h3>
+        </div>
+        <div className="mb-4"><ChartLine values={series} width={520} height={90} color="#F472B6" /></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm text-gray-600 mb-1">最小区间</div>
+            <input type="range" min={1} max={99} value={minV} onChange={e => setMinV(Number(e.target.value))} className="w-full" />
+          </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-1">最大区间</div>
+            <input type="range" min={minV+1} max={99} value={maxV} onChange={e => setMaxV(Number(e.target.value))} className="w-full" />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end"><Button variant="primary">模拟下单</Button></div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const featuresRef = useRef<HTMLElement | null>(null);
@@ -98,6 +177,8 @@ export default function App() {
   const { account } = useWallet();
   const isConnected = !!account;
   const [recentViewed, setRecentViewed] = useState<Array<{ id: number; title: string; category: string; seen_at: string }>>([]);
+  const [forumPreview, setForumPreview] = useState<Array<{ id: number; title: string; user_id: string; upvotes: number; created_at: string }>>([]);
+  const [chatPreview, setChatPreview] = useState<Array<{ id: string; user_id: string; content: string; created_at: string }>>([]);
   useEffect(() => {
     try {
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem('recent_events') : null;
@@ -114,6 +195,29 @@ export default function App() {
         setRecentViewed(norm);
       }
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/forum?eventId=1");
+        const data = await res.json();
+        const threads = Array.isArray(data?.threads) ? data.threads : [];
+        const ranked = threads.sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0));
+        setForumPreview(ranked.slice(0, 3));
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/chat?eventId=1&limit=3");
+        const data = await res.json();
+        const list = Array.isArray(data?.messages) ? data.messages : [];
+        setChatPreview(list.slice(-3));
+      } catch {}
+    })();
   }, []);
 
   useEffect(() => {
@@ -531,15 +635,45 @@ export default function App() {
             <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8 relative z-20">
               让预测更透明，让决策更聪明。基于区块链的去中心化预测市场平台
             </p>
+            <div className="relative z-20 flex items-center justify-center gap-3">
+              <Link href="/trending"><Button variant="primary" size="lg">去下注</Button></Link>
+              <Link href="/forum"><Button variant="secondary" size="lg">进入论坛</Button></Link>
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-4 mb-6"
+            className="mt-6 mb-6 grid grid-cols-1 xl:grid-cols-2 gap-6"
           >
-            <BetDemo />
+            <BetBinaryDemo />
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white/85 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">论坛预览</h3>
+                  <Link href="/forum"><Button variant="subtle" size="sm">更多</Button></Link>
+                </div>
+                <div className="space-y-3">
+                  {forumPreview.length === 0 && (
+                    <div className="text-sm text-gray-600">暂无热门主题</div>
+                  )}
+                  {forumPreview.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between rounded-xl bg-white/80 p-3 border border-gray-100">
+                      <div className="mr-3">
+                        <div className="text-sm font-medium text-gray-800 truncate max-w-[18rem]">{t.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">由 {String(t.user_id).slice(0,6)}… 在 {new Date(t.created_at).toLocaleDateString()}</div>
+                      </div>
+                      <div className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">👍 {t.upvotes}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Link href="/forum"><Button variant="secondary" size="md">发帖</Button></Link>
+                  <Link href="/forum"><Button variant="primary" size="md">进入论坛</Button></Link>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
         </div>
@@ -563,7 +697,26 @@ export default function App() {
           </motion.div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <ChatPanel eventId={1} />
+            <div className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="inline-flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-indigo-600" />
+                  <span className="text-lg font-semibold">最近聊天</span>
+                </div>
+                <Link href="/forum#global-chat"><Button variant="subtle" size="sm">进入聊天</Button></Link>
+              </div>
+              <div className="space-y-3">
+                {chatPreview.length === 0 && <div className="text-sm text-gray-600">暂无消息</div>}
+                {chatPreview.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-xl bg-white/80 p-3 border border-gray-100">
+                    <div className="mr-3">
+                      <div className="text-sm font-medium text-gray-800 truncate max-w-[18rem]">{m.content}</div>
+                      <div className="text-xs text-gray-500 mt-1">{String(m.user_id).slice(0,6)}… · {new Date(m.created_at).toLocaleTimeString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <ForumSection eventId={1} />
           </div>
         </div>
@@ -607,29 +760,9 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: '以太坊是否突破 $4,000', tag: '即将截止', prob: 0.62, vol: '3.2k' },
-              { title: '美股年内创新高', tag: '新上架', prob: 0.55, vol: '1.9k' },
-              { title: '世界杯冠军归属', tag: '讨论上升', prob: 0.31, vol: '2.4k' },
-            ].map((ev, i) => (
-              <div key={i} className="group bg-white/90 backdrop-blur-xl rounded-3xl border border-white/40 p-6 shadow-xl hover:shadow-2xl transition-all">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="truncate text-gray-800 text-base">
-                    {ev.title}
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-white ring-1 ring-black/10 text-gray-600 text-xs">{ev.tag}</span>
-                  </div>
-                  <div className="text-gray-900 text-lg font-semibold">{Math.round(ev.prob*100)}%</div>
-                </div>
-                <div className="mt-2 h-2 rounded-full bg-gray-200">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${Math.round(ev.prob*100)}%` }}></div>
-                </div>
-                <div className="mt-3 text-sm text-gray-600">成交 {ev.vol}</div>
-                <div className="mt-4 flex justify-between">
-                  <Link href="/trending" className="rounded-full bg-white px-4 py-2 ring-1 ring-black/10 text-gray-800">查看详情</Link>
-                  <Link href="/prediction/1" className="rounded-full bg-white px-4 py-2 ring-1 ring-black/10 text-gray-800">参与</Link>
-                </div>
-              </div>
-            ))}
+            <BetMultiDemo />
+            <BetRangeDemo />
+            <BetBinaryDemo />
           </div>
         </div>
       </section>
@@ -662,8 +795,8 @@ export default function App() {
                 <span className="text-gray-800 font-semibold">快速创建</span>
               </div>
               <p className="text-gray-600 mb-6">填写标题、描述、分类与截止时间，支持多结果/区间玩法。</p>
-              <Link href="/creating" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl">
-                开始创建 <ArrowRight className="w-4 h-4" />
+              <Link href="/forum" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl">
+                发起事件提案 <ArrowRight className="w-4 h-4" />
               </Link>
               <div className="mt-6 grid grid-cols-1 gap-4">
                 <div className="rounded-xl bg-white/80 p-4">

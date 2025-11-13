@@ -333,15 +333,15 @@ export default function TopNavBar() {
         </Link>
         <Link
           className="text-black hover:text-black"
-          href="/creating"
-          aria-current={pathname === "/creating" ? "page" : undefined}
+          href="/forum"
+          aria-current={pathname === "/forum" ? "page" : undefined}
           style={
-            pathname === "/creating"
+            pathname === "/forum"
               ? { color: "rgba(107, 33, 168, 1)" }
               : undefined
           }
         >
-          Creating
+          论坛/提案
         </Link>
         {/* 替换 Free/VIP 为“我的关注”入口 */}
         <Link

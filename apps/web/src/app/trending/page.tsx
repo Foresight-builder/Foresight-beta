@@ -1364,9 +1364,13 @@ export default function TrendingPage() {
   useEffect(() => {
     const ids = Array.from(new Set((predictions || []).map(p => Number(p?.id)).filter(n => Number.isFinite(n))));
     if (ids.length === 0) return;
+    if (!supabase || typeof (supabase as any).channel !== 'function') {
+      setRtStatus('DISABLED');
+      return;
+    }
 
     const filterIn = `event_id=in.(${ids.join(',')})`;
-    const channel = supabase.channel('event_follows_trending');
+    const channel = (supabase as any).channel('event_follows_trending');
     setRtStatus('CONNECTING');
     setRtFilter(filterIn);
 
@@ -1404,7 +1408,7 @@ export default function TrendingPage() {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      (supabase as any).removeChannel(channel);
       setRtStatus('CLOSED');
     };
   }, [predictions, accountNorm]);
