@@ -397,13 +397,7 @@ export default function TopNavBar() {
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full ring-2 ring-white dark:ring-[#0a0a0a]" />
             {/* 显示当前连接的钱包类型 */}
-            {currentWalletType && (
-              <span className="absolute -top-1 -right-1 text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
-                {currentWalletType === 'metamask' ? 'MM' : 
-                 currentWalletType === 'coinbase' ? 'CB' : 
-                 currentWalletType === 'okx' ? 'OKX' : 'BN'}
-              </span>
-            )}
+            {/* 钱包类型标识移动至下拉菜单 */}
             {/* 菜单通过 Portal 渲染为最高优先级 */}
             {menuOpen &&
               mounted &&
@@ -422,40 +416,50 @@ export default function TopNavBar() {
                     style={{ top: menuPos.top, left: menuPos.left }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="px-3 py-2 mb-2 rounded-lg bg-white/60 flex items-center justify-between">
-                      <div className="text-xs text-black/80">
-                        {profile?.username || formatAddress(account)}
-                        <span className="ml-2 inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-black">
-                          {networkName(chainId)}
-                        </span>
+                    <div className="px-3 py-3 mb-2 rounded-lg bg-white/70 flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                          {profile?.username || formatAddress(account)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-600 flex items-center gap-2">
+                          {profile?.username ? (
+                            <span>{formatAddress(account)}</span>
+                          ) : null}
+                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-gray-800">
+                            {networkName(chainId)}
+                          </span>
+                          {currentWalletType && (
+                            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-gray-800">
+                              {currentWalletType === 'metamask' ? 'MetaMask' :
+                               currentWalletType === 'coinbase' ? 'Coinbase' :
+                               currentWalletType === 'okx' ? 'OKX' : 'Binance'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs font-semibold text-black">
-                        {balanceLoading
-                          ? "..."
-                          : balanceEth
-                          ? `${balanceEth} ETH`
-                          : "--"}
+                        {balanceLoading ? "..." : balanceEth ? `${balanceEth} ETH` : "--"}
                       </div>
                     </div>
                     <button
                       onClick={updateNetworkInfo}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <Wallet className="w-4 h-4 text-black" />
+                      <Wallet className="w-4 h-4 text-purple-600" />
                       <span>刷新余额</span>
                     </button>
                     <button
                       onClick={copyAddress}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <Copy className="w-4 h-4 text-black" />
+                      <Copy className="w-4 h-4 text-purple-600" />
                       <span>{copied ? "已复制 ✓" : "复制地址"}</span>
                     </button>
                     <button
                       onClick={openOnExplorer}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <ExternalLink className="w-4 h-4 text-black" />
+                      <ExternalLink className="w-4 h-4 text-purple-600" />
                       <span>在区块浏览器查看</span>
                     </button>
                     <div className="my-1 border-t border-purple-100/60" />
@@ -463,14 +467,14 @@ export default function TopNavBar() {
                       onClick={switchToSepolia}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <Wallet className="w-4 h-4 text-black" />
+                      <Wallet className="w-4 h-4 text-purple-600" />
                       <span>切换到 Sepolia 网络</span>
                     </button>
                     <button
                       onClick={handleDisconnectWallet}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <LogOut className="w-4 h-4 text-black" />
+                      <LogOut className="w-4 h-4 text-purple-600" />
                       <span>断开连接</span>
                     </button>
                   </div>

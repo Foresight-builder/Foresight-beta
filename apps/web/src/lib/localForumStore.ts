@@ -137,3 +137,13 @@ export async function voteComment(commentId: number, dir: 'up' | 'down'): Promis
   await saveComments(comments)
   return c
 }
+
+export async function getThreadById(threadId: number): Promise<Thread | null> {
+  const threads = await loadThreads()
+  return threads.find(x => x.id === threadId) || null
+}
+
+export async function getCommentById(commentId: number): Promise<Comment | null> {
+  const comments = await loadComments()
+  return comments.find(x => x.id === commentId) || null
+}

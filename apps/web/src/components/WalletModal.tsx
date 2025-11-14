@@ -73,8 +73,26 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     }
   }, [user, isOpen, onClose]);
 
-  // 仅在未挂载时返回 null，避免 SSR/水合阶段的 Portal 问题，同时不影响 Hook 顺序
-  if (!mounted) return null;
+  // 当展示资料表单且钱包地址可用时，预填已有资料
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!showProfileForm) return;
+    const addr = String(account || '').toLowerCase();
+    if (!addr) return;
+    setProfileLoading(true);
+    setProfileError(null);
+    fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`)
+      .then(r => r.json())
+      .then(data => {
+        const p = data?.profile;
+        if (p) {
+          setUsername(String(p.username || ''));
+          setEmail(String(p.email || ''));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setProfileLoading(false));
+  }, [isOpen, showProfileForm, account]);
 
   const handleWalletConnect = async (walletType: string) => {
     setSelectedWallet(walletType);
@@ -183,11 +201,26 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const canSubmitProfile = username.length >= 3 && username.length <= 32 && /^[A-Za-z0-9_.-]+$/.test(username) && /.+@.+\..+/.test(email);
 
   const submitProfile = async () => {
-    if (!canSubmitProfile) return;
     setProfileError(null);
     setProfileLoading(true);
     try {
       const addr = String(account || '').toLowerCase();
+
+      const errors: string[] = [];
+      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+        errors.push('钱包地址无效：需 0x 开头且 40 位十六进制');
+      }
+      if (!(username.length >= 3 && username.length <= 32 && /^[A-Za-z0-9_.-]+$/.test(username))) {
+        errors.push('用户名不合规：3–32 位，仅允许 A–Z、a–z、0–9、_、.、-');
+      }
+      if (!/.+@.+\..+/.test(email)) {
+        errors.push('邮箱格式不正确：需标准邮箱格式，例如 name@example.com');
+      }
+      if (errors.length > 0) {
+        setProfileError(errors.join('；'));
+        return;
+      }
+
       const resp = await fetch('/api/user-profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,9 +234,12 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       }
     } catch (e: any) {
       setProfileError(String(e?.message || e));
+    } finally {
+      setProfileLoading(false);
     }
-    setProfileLoading(false);
   };
+
+  if (!mounted) return null;
 
   return createPortal(
     <AnimatePresence>
@@ -295,7 +331,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={submitProfile}
-                      disabled={!canSubmitProfile || profileLoading}
+                      disabled={profileLoading}
                       className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
                     >
                       {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

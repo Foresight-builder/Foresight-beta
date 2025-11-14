@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame,
@@ -1414,7 +1414,7 @@ export default function TrendingPage() {
   }, [predictions, accountNorm]);
 
   // 将预测事件转换为页面显示格式（包含事件ID以便关注映射）
-  const allEvents = predictions.map(prediction => ({
+  const allEvents = useMemo(() => predictions.map(prediction => ({
     id: prediction.id,
     title: prediction.title,
     description: prediction.description,
@@ -1425,7 +1425,7 @@ export default function TrendingPage() {
     deadline: prediction.deadline,
     criteria: prediction.criteria,
     followers_count: Number(prediction?.followers_count || 0)
-  }));
+  })), [predictions]);
 
   // 当分类计数接口不可用时，基于已加载的预测数据进行本地回退计算
   // 本地回退逻辑已移除，分类计数仅依赖后端 /api/categories/counts
@@ -1442,17 +1442,17 @@ export default function TrendingPage() {
         e.category.toLowerCase().includes(q)) &&
       (!hasCategory || e.category === selectedCategory)
   );
-  const filteredAllEvents = allEvents.filter(
+  const filteredAllEvents = useMemo(() => allEvents.filter(
     (p) =>
       (!hasQuery ||
         p.title.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
         (p.tag || "").toLowerCase().includes(q)) &&
       (!hasCategory || (p.tag || "") === selectedCategory)
-  );
-  const displayEvents = hasQuery || hasCategory ? filteredAllEvents : allEvents;
+  ), [allEvents, hasQuery, q, hasCategory, selectedCategory]);
+  const displayEvents = useMemo(() => (hasQuery || hasCategory ? filteredAllEvents : allEvents), [filteredAllEvents, allEvents, hasQuery, hasCategory]);
   const parseEth = (s: string) => parseFloat(String(s ?? '').replace(/[^0-9.]/g, '')) || 0;
-  const sortedEvents = [...displayEvents].sort((a, b) => {
+  const sortedEvents = useMemo(() => [...displayEvents].sort((a, b) => {
     if (sortOption === 'minInvestment-asc') {
       return parseEth(a.minInvestment) - parseEth(b.minInvestment);
     }
@@ -1460,7 +1460,7 @@ export default function TrendingPage() {
       return parseEth(b.insured) - parseEth(a.insured);
     }
     return 0;
-  });
+  }), [displayEvents, sortOption]);
 
   const rtBadgeClass = rtStatus === 'SUBSCRIBED'
     ? 'bg-green-100 text-green-700 border-green-300'
@@ -2529,6 +2529,10 @@ export default function TrendingPage() {
                         <img
                           src={product.image}
                           alt={product.title}
+                          loading="lazy"
+                          decoding="async"
+                          width={800}
+                          height={384}
                           className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
                           onError={(e) => {
                             const img = e.currentTarget as HTMLImageElement;
@@ -2546,6 +2550,10 @@ export default function TrendingPage() {
                       <img
                         src={product.image}
                         alt={product.title}
+                        loading="lazy"
+                        decoding="async"
+                        width={800}
+                        height={384}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const img = e.currentTarget as HTMLImageElement;

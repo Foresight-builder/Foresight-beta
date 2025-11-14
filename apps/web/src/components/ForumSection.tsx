@@ -42,6 +42,8 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     const key = String(addr || '').toLowerCase()
     return nameMap[key] || formatAddress(addr)
   }
+  const [userVotes, setUserVotes] = useState<Set<string>>(new Set())
+  const [userVoteTypes, setUserVoteTypes] = useState<Record<string, 'up'|'down'>>({})
 
   const load = async () => {
     setLoading(true)
@@ -58,6 +60,27 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   }
 
   useEffect(() => { load() }, [eventId])
+
+  useEffect(() => {
+    const fetchVotes = async () => {
+      try {
+        if (!account) { setUserVotes(new Set()); return }
+        const res = await fetch(`/api/forum/user-votes?eventId=${eventId}`)
+        const j = await res.json()
+        const set = new Set<string>()
+        const types: Record<string, 'up'|'down'> = {}
+        ;(Array.isArray(j?.votes) ? j.votes : []).forEach((v: any) => {
+          const key = `${String(v.content_type)}:${String(v.content_id)}`
+          set.add(key)
+          const vt = String(v.vote_type) === 'down' ? 'down' : 'up'
+          types[key] = vt
+        })
+        setUserVotes(set)
+        setUserVoteTypes(types)
+      } catch {}
+    }
+    fetchVotes()
+  }, [eventId, account])
 
   useEffect(() => {
     try {
@@ -108,8 +131,16 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
 
   const vote = async (type: 'thread'|'comment', id: number, dir: 'up'|'down') => {
     try {
+      if (!account) { setError('请先连接钱包再投票'); return }
+      const key = `${type}:${id}`
+      if (userVotes.has(key)) { setError('您已经投过票了'); return }
       const res = await fetch('/api/forum/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, id, dir }) })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(t || '投票失败')
+      }
+      setUserVotes(prev => new Set([...prev, key]))
+      setUserVoteTypes(prev => ({ ...prev, [key]: dir }))
       await load()
     } catch (e: any) { setError(e?.message || '投票失败') }
   }
@@ -128,12 +159,12 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
       return nodes.flatMap(node => [
         <div key={node.id} className="mt-3 pl-0" style={{ marginLeft: depth * 16 }}>
           <div className="text-sm text-gray-800">
-            <span className="font-medium mr-2">{displayName(node.user_id)}</span>
+            <span className="text-purple-700 font-medium mr-2">{displayName(node.user_id)}</span>
             <span className="text-gray-400">{new Date(node.created_at).toLocaleString()}</span>
           </div>
           <div className="mt-1 text-gray-700 break-words">{node.content}</div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-            <button onClick={() => vote('comment', node.id, 'up')} className="hover:text-purple-600">▲ {node.upvotes}</button>
+            <button onClick={() => vote('comment', node.id, 'up')} disabled={userVotes.has(`comment:${node.id}`)} className="inline-flex items-center px-2 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white disabled:opacity-50">▲ {node.upvotes}</button>
             {account && <ReplyBox onSubmit={(text) => postComment(node.thread_id, text, node.id)} />}
           </div>
         </div>,
@@ -144,14 +175,14 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur overflow-hidden">
-      <div className="px-4 py-3 panel-base panel-primary flex items-center justify-between">
-        <div className="font-semibold">社区讨论</div>
+    <div className="rounded-2xl border border-pink-200/60 bg-white/70 backdrop-blur overflow-hidden">
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">社区讨论</div>
       </div>
 
       <div className="p-4 space-y-6">
         {/* 新建主题 */}
-        <div className="bg-white/80 rounded-xl border border-gray-100 p-4">
+        <div className="bg-white/80 rounded-xl border border-pink-200/60 p-4">
           {!account ? (
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">发帖需连接钱包</div>
@@ -160,9 +191,9 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           ) : (
             <div className="space-y-2">
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="主题标题"
-                     className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80" />
+                     className="w-full px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white/80 text-gray-800" />
               <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="详细内容"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80 min-h-[80px]" />
+                        className="w-full px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white/80 min-h-[80px] text-gray-800" />
               <div className="flex justify-end">
                 <Button onClick={postThread} disabled={posting} size="md" variant="cta">
                   {posting ? '发布中…' : '发布主题'}
@@ -177,22 +208,27 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           {loading && <div className="text-sm text-gray-500">加载中…</div>}
           {!loading && threads.length === 0 && <div className="text-sm text-gray-500">暂无主题</div>}
           {threads.map(t => (
-            <div key={t.id} className="bg-white/80 rounded-xl border border-gray-100 p-4">
+            <div key={t.id} className="bg-white/80 rounded-xl border border-purple-200/60 p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-gray-800">{t.title}</div>
+                  <div className="text-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{t.title}</div>
                   <div className="text-sm text-gray-600 mt-1">{t.content}</div>
-                  <div className="text-xs text-gray-400 mt-1">由 {displayName(t.user_id)} 在 {new Date(t.created_at).toLocaleString()} 发布</div>
+                  <div className="text-xs text-gray-400 mt-1">由 <span className="text-purple-700 font-medium">{displayName(t.user_id)}</span> 在 {new Date(t.created_at).toLocaleString()} 发布</div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <Button size="sm" variant="success" onClick={() => vote('thread', t.id, 'up')}>▲ {t.upvotes}</Button>
-                  <Button size="sm" variant="danger" onClick={() => vote('thread', t.id, 'down')}>▼ {t.downvotes}</Button>
+                  <Button size="sm" variant="cta" className="bg-gradient-to-r from-pink-500 to-purple-600 text-white" onClick={() => vote('thread', t.id, 'up')} disabled={userVotes.has(`thread:${t.id}`)}>▲ {t.upvotes}</Button>
+                  <Button size="sm" variant="cta" className="bg-gradient-to-r from-rose-500 to-pink-600 text-white" onClick={() => vote('thread', t.id, 'down')} disabled={userVotes.has(`thread:${t.id}`)}>▼ {t.downvotes}</Button>
+                  {userVotes.has(`thread:${t.id}`) && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${userVoteTypes[`thread:${t.id}`] === 'down' ? 'bg-rose-100 text-rose-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {userVoteTypes[`thread:${t.id}`] === 'down' ? '已踩' : '已赞'}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* 评论区 */}
               <div className="mt-3">
-                <div className="text-sm font-medium text-gray-700">评论</div>
+                <div className="text-sm font-medium text-purple-700">评论</div>
                 <div className="mt-2">
                   {buildTree(t.comments || [])}
                 </div>
@@ -223,7 +259,7 @@ function ReplyBox({ onSubmit }: { onSubmit: (text: string) => void }) {
   return (
     <div className="flex items-center gap-2">
       <input value={text} onChange={e => setText(e.target.value)} placeholder="写下评论…"
-             className="flex-1 px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80" />
+             className="flex-1 px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white/80 text-gray-800" />
       <Button onClick={submit} disabled={sending} size="sm" variant="primary">{sending ? '发送中…' : '评论'}</Button>
     </div>
   )
