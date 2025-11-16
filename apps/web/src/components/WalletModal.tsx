@@ -29,6 +29,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [username, setUsername] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [resendLeft, setResendLeft] = useState(0);
+  const resendTimerRef = React.useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -198,7 +201,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     okx: 'OKX Wallet'
   };
 
-  const canSubmitProfile = username.length >= 3 && username.length <= 32 && /^[A-Za-z0-9_.-]+$/.test(username) && /.+@.+\..+/.test(email);
+  const canSubmitProfile = username.length >= 3 && username.length <= 20 && /^\w+$/.test(username) && /.+@.+\..+/.test(email) && emailVerified;
 
   const submitProfile = async () => {
     setProfileError(null);
@@ -210,11 +213,14 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
         errors.push('钱包地址无效：需 0x 开头且 40 位十六进制');
       }
-      if (!(username.length >= 3 && username.length <= 32 && /^[A-Za-z0-9_.-]+$/.test(username))) {
-        errors.push('用户名不合规：3–32 位，仅允许 A–Z、a–z、0–9、_、.、-');
+      if (!(username.length >= 3 && username.length <= 20 && /^\w+$/.test(username))) {
+        errors.push('用户名不合规：3–20 位，仅允许字母、数字与下划线');
       }
       if (!/.+@.+\..+/.test(email)) {
         errors.push('邮箱格式不正确：需标准邮箱格式，例如 name@example.com');
+      }
+      if (!emailVerified) {
+        errors.push('请先完成邮箱验证码验证');
       }
       if (errors.length > 0) {
         setProfileError(errors.join('；'));
@@ -236,6 +242,67 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setProfileError(String(e?.message || e));
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const requestRegisterOtp = async () => {
+    if (!account || !/.+@.+\..+/.test(email)) return;
+    setEmailLoading(true);
+    try {
+      const addr = String(account || '').toLowerCase();
+      const resp = await fetch('/api/email-otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: addr, email })
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) {
+        setProfileError(String(json?.message || '发送验证码失败'));
+      } else {
+        setOtpRequested(true);
+        setEmailVerified(false);
+        setResendLeft(60);
+        if (resendTimerRef.current) {
+          window.clearInterval(resendTimerRef.current);
+        }
+        resendTimerRef.current = window.setInterval(() => {
+          setResendLeft((x) => {
+            if (x <= 1) {
+              if (resendTimerRef.current) window.clearInterval(resendTimerRef.current);
+              resendTimerRef.current = null;
+              return 0;
+            }
+            return x - 1;
+          });
+        }, 1000);
+      }
+    } catch (e: any) {
+      setProfileError(String(e?.message || e));
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const verifyRegisterOtp = async () => {
+    if (!account || !email || otp.length !== 6) return;
+    setEmailLoading(true);
+    try {
+      const addr = String(account || '').toLowerCase();
+      const resp = await fetch('/api/email-otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: addr, email, code: otp })
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) {
+        setProfileError(String(json?.message || '验证失败'));
+      } else {
+        setEmailVerified(true);
+      }
+    } catch (e: any) {
+      setProfileError(String(e?.message || e));
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -323,6 +390,41 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
                     />
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={requestRegisterOtp}
+                      disabled={!/.+@.+\..+/.test(email) || emailLoading || resendLeft > 0}
+                      className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+                    >
+                      {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {resendLeft > 0 ? `重新发送 (${resendLeft}s)` : '发送验证码（15分钟有效）'}
+                    </button>
+                    {emailVerified && <span className="text-sm text-green-600">已验证</span>}
+                  </div>
+                  {otpRequested && (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
+                        placeholder="••••••"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={verifyRegisterOtp}
+                          disabled={otp.length !== 6 || emailLoading}
+                          className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+                        >
+                          验证邮箱
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-500">验证码有效期 15 分钟，失败 3 次将锁定 1 小时。</div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                     <label htmlFor="remember-me" className="text-sm text-gray-700">记住我</label>
