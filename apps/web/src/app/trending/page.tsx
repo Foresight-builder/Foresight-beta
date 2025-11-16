@@ -1462,6 +1462,23 @@ export default function TrendingPage() {
     return 0;
   }), [displayEvents, sortOption]);
 
+  const bestEvent = useMemo(() => {
+    const pool = displayEvents.filter(e => !selectedCategory || (String(e.tag || '') === String(selectedCategory)));
+    if (pool.length === 0) return null as any;
+    const now = Date.now();
+    const pick = [...pool].sort((a, b) => {
+      const fa = Number(a?.followers_count || 0);
+      const fb = Number(b?.followers_count || 0);
+      if (fb !== fa) return fb - fa;
+      const da = new Date(String(a?.deadline || 0)).getTime() - now;
+      const db = new Date(String(b?.deadline || 0)).getTime() - now;
+      const ta = da <= 0 ? Number.POSITIVE_INFINITY : da;
+      const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
+      return ta - tb;
+    })[0];
+    return pick;
+  }, [displayEvents, selectedCategory]);
+
   const rtBadgeClass = rtStatus === 'SUBSCRIBED'
     ? 'bg-green-100 text-green-700 border-green-300'
     : (rtStatus === 'CHANNEL_ERROR' || rtStatus === 'CLOSED')
@@ -2052,7 +2069,7 @@ export default function TrendingPage() {
           )}
           <div className={`grid ${sidebarCollapsed ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
             <motion.button
-              onClick={(e) => { setSelectedCategory(""); productsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); createSmartClickEffect(e); }}
+              onClick={(e) => { setSelectedCategory(""); createSmartClickEffect(e); }}
               className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-2 rounded-xl border transition-all duration-300 ${selectedCategory === "" ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white/40' : 'bg-white/50 text-black border-gray-200 hover:bg-white/70'}`}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -2070,7 +2087,7 @@ export default function TrendingPage() {
             {categories.map((cat) => (
               <motion.button
                 key={cat.name}
-                onClick={(e) => { setSelectedCategory(cat.name); productsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); createSmartClickEffect(e); }}
+                onClick={(e) => { setSelectedCategory(cat.name); createSmartClickEffect(e); }}
                 className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-2 rounded-xl border transition-all duration-300 ${selectedCategory === cat.name ? 'bg-gradient-to-r ' + cat.color + ' text-white border-white/40' : 'bg-white/50 text-black border-gray-200 hover:bg-white/70'}`}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -2237,62 +2254,30 @@ export default function TrendingPage() {
         } mt-20`}
       >
         <div className="w-full md:w-1/2 mb-10 md:mb-0 relative">
-          {/* 轮播图片 */}
+          {/* 英雄图片（从市场卡片中选取最佳事件） */}
           <div className="relative h-80 rounded-2xl shadow-xl overflow-hidden">
-            {heroEvents.map((event, index) => (
+            {bestEvent ? (
               <motion.img
-                key={index}
-                src={event.image}
-                alt={event.title}
+                key={String(bestEvent?.id || bestEvent?.title || 'best')}
+                src={String(bestEvent?.image || '')}
+                alt={String(bestEvent?.title || '')}
                 className="absolute inset-0 w-full h-full object-cover"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: index === currentHeroIndex ? 1 : 0 }}
-                transition={{ duration: 0.8 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6 }}
               />
-            ))}
-          </div>
-
-          {/* 轮播指示器 */}
-          <div className="flex justify-center mt-4 space-x-2">
-            {heroEvents.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  setCurrentHeroIndex(index);
-                  createSmartClickEffect(e);
-                }}
-                className={`w-3 h-3 rounded-full transition-all duration-300 relative overflow-hidden ${
-                  index === currentHeroIndex
-                    ? "bg-purple-600 w-8"
-                    : "bg-purple-300 hover:bg-purple-400"
-                }`}
+            ) : (
+              <motion.img
+                key={String(currentHeroIndex)}
+                src={String(heroEvents[currentHeroIndex]?.image || '')}
+                alt={String(heroEvents[currentHeroIndex]?.title || '')}
+                className="absolute inset-0 w-full h-full object-cover"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6 }}
               />
-            ))}
+            )}
           </div>
-
-          {/* 轮播控制按钮 */}
-          <motion.button
-            onClick={(e) => {
-              prevHero();
-              createSmartClickEffect(e);
-            }}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all duration-300 z-20 backdrop-blur-sm border border-white/20"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-800" />
-          </motion.button>
-          <motion.button
-            onClick={(e) => {
-              nextHero();
-              createSmartClickEffect(e);
-            }}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all duration-300 z-20 backdrop-blur-sm border border-white/20"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ChevronRight className="w-5 h-5 text-gray-800" />
-          </motion.button>
         </div>
 
         {/* 右侧专题板块 */}
@@ -2302,8 +2287,7 @@ export default function TrendingPage() {
           </h2>
           <div className="grid grid-cols-2 gap-4">
             {categories.map((category, index) => {
-              const isActive =
-                heroEvents[currentHeroIndex]?.category === category.name;
+              const isActive = (String(bestEvent?.tag || '') === category.name);
               const categoryEvents = allEvents.filter(
                 (event) => event.tag === category.name
               );
@@ -2321,7 +2305,8 @@ export default function TrendingPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={(e) => {
-                    // 点击专题时，切换到该专题的第一个事件，并同步类型筛选
+                    e.preventDefault();
+                    e.stopPropagation();
                     setSelectedCategory(category.name);
                     const firstEventIndex = heroEvents.findIndex(
                       (event) => event.category === category.name
@@ -2374,14 +2359,14 @@ export default function TrendingPage() {
             className="mt-6 p-4 bg-white/50 rounded-xl backdrop-blur-sm"
           >
             <h3 className="font-bold text-black text-lg mb-2">
-              {heroEvents[currentHeroIndex]?.title}
+              {bestEvent?.title || heroEvents[currentHeroIndex]?.title}
             </h3>
             <p className="text-black text-sm mb-3">
-              {heroEvents[currentHeroIndex]?.description}
+              {bestEvent?.description || heroEvents[currentHeroIndex]?.description}
             </p>
             <div className="flex justify-between items-center">
               <span className="text-black font-bold">
-                {heroEvents[currentHeroIndex]?.followers.toLocaleString()} {""}
+                {(bestEvent?.followers_count || heroEvents[currentHeroIndex]?.followers || 0).toLocaleString()} {""}
                 人关注
               </span>
               <button className="px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-full text-sm font-medium">
