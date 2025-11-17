@@ -22,11 +22,13 @@ import {
 } from "lucide-react";
 import TopNavBar from "@/components/TopNavBar";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { followPrediction, unfollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 
 export default function TrendingPage() {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWorkerRef = useRef<Worker | null>(null);
   const offscreenActiveRef = useRef<boolean>(false);
@@ -737,7 +739,7 @@ export default function TrendingPage() {
   // 自动轮播效果
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentHeroIndex((prevIndex) => (prevIndex + 1) % heroEvents.length);
+      setCurrentHeroIndex((prevIndex) => prevIndex + 1);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -793,20 +795,13 @@ export default function TrendingPage() {
   useEffect(() => {
     const q = debouncedQuery;
     if (!q) return;
-    const idx = heroEvents.findIndex(
-      (e) =>
-        e.title.toLowerCase().includes(q) ||
-        e.description.toLowerCase().includes(q) ||
-        e.category.toLowerCase().includes(q)
-    );
-    if (idx >= 0) setCurrentHeroIndex(idx);
+    setCurrentHeroIndex(0);
   }, [debouncedQuery]);
 
   // 选择类型时，自动定位到该类型的第一个热点事件
   useEffect(() => {
     if (!selectedCategory) return;
-    const idx = heroEvents.findIndex((e) => e.category === selectedCategory);
-    if (idx >= 0) setCurrentHeroIndex(idx);
+    setCurrentHeroIndex(0);
   }, [selectedCategory]);
 
   // 点击外部时关闭排序菜单
@@ -1479,6 +1474,39 @@ export default function TrendingPage() {
     return pick;
   }, [displayEvents, selectedCategory]);
 
+  const heroSlideEvents = useMemo(() => {
+    const pool = displayEvents.filter(e => !selectedCategory || (String(e.tag || '') === String(selectedCategory)));
+    if (pool.length === 0) return [] as any[];
+    const now = Date.now();
+    const sorter = (a: any, b: any) => {
+      const fa = Number(a?.followers_count || 0);
+      const fb = Number(b?.followers_count || 0);
+      if (fb !== fa) return fb - fa;
+      const da = new Date(String(a?.deadline || 0)).getTime() - now;
+      const db = new Date(String(b?.deadline || 0)).getTime() - now;
+      const ta = da <= 0 ? Number.POSITIVE_INFINITY : da;
+      const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
+      return ta - tb;
+    };
+    const tags = selectedCategory
+      ? [String(selectedCategory)]
+      : Array.from(new Set(pool.map(e => String(e.tag || '')).filter(Boolean)));
+    const picks = tags.map(tag => {
+      const group = pool.filter(e => String(e.tag || '') === tag);
+      if (group.length === 0) return null as any;
+      return [...group].sort(sorter)[0];
+    }).filter(Boolean);
+    return [...picks].sort(sorter);
+  }, [displayEvents, selectedCategory]);
+
+  const activeSlide = heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
+  const fallbackIndex = heroEvents.length > 0 ? (currentHeroIndex % heroEvents.length) : 0;
+  const activeTitle = activeSlide ? String(activeSlide?.title || '') : String(heroEvents[fallbackIndex]?.title || '');
+  const activeDescription = activeSlide ? String(activeSlide?.description || '') : String(heroEvents[fallbackIndex]?.description || '');
+  const activeImage = activeSlide ? String(activeSlide?.image || '') : String(heroEvents[fallbackIndex]?.image || '');
+  const activeCategory = activeSlide ? String(activeSlide?.tag || '') : String(heroEvents[fallbackIndex]?.category || '');
+  const activeFollowers = activeSlide ? Number(activeSlide?.followers_count || 0) : Number(heroEvents[fallbackIndex]?.followers || 0);
+
   const rtBadgeClass = rtStatus === 'SUBSCRIBED'
     ? 'bg-green-100 text-green-700 border-green-300'
     : (rtStatus === 'CHANNEL_ERROR' || rtStatus === 'CLOSED')
@@ -1602,11 +1630,7 @@ export default function TrendingPage() {
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-sm font-semibold text-gray-800">分类筛选：</span>
                 <div className="flex flex-wrap gap-2">
-                  <motion.button
-                    onClick={(e) => {
-                      setSelectedCategory("");
-                      createSmartClickEffect(e);
-                    }}
+                  <motion.div
                     className={`text-sm px-4 py-2 rounded-full border-2 transition-all duration-200 font-medium relative overflow-hidden ${
                       selectedCategory === "" ? "btn-primary" : "btn-subtle"
                     }`}
@@ -1614,7 +1638,7 @@ export default function TrendingPage() {
                     whileTap={{ scale: 0.95 }}
                   >
                     全部
-                  </motion.button>
+                  </motion.div>
                   {Array.from(
                     new Set([
                       ...heroEvents.map((e) => e.category),
@@ -1655,12 +1679,8 @@ export default function TrendingPage() {
                     }
                     
                     return (
-                      <motion.button
+                      <motion.div
                         key={cat as string}
-                        onClick={(e) => {
-                          setSelectedCategory(cat as string);
-                          createSmartClickEffect(e);
-                        }}
                         className={`text-sm px-4 py-2 rounded-full border-2 transition-all duration-200 font-medium relative overflow-hidden ${
                           selectedCategory === cat
                             ? `bg-gradient-to-r ${activeGradient} text-white border-transparent shadow-lg transform scale-105`
@@ -1670,7 +1690,7 @@ export default function TrendingPage() {
                         whileTap={{ scale: 0.95 }}
                       >
                         {cat as string}
-                      </motion.button>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -1783,19 +1803,14 @@ export default function TrendingPage() {
         {searchQuery && filteredHeroEvents.length > 0 && (
           <div className="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {filteredHeroEvents.slice(0, 8).map((ev) => (
-              <motion.button
+              <motion.div
                 key={ev.title}
-                onClick={(e) => {
-                  const idx = heroEvents.findIndex((e) => e.title === ev.title);
-                  if (idx !== -1) setCurrentHeroIndex(idx);
-                  createSmartClickEffect(e);
-                }}
                 className="px-3 py-2 text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl transition-colors relative overflow-hidden"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 {ev.title}
-              </motion.button>
+              </motion.div>
             ))}
           </div>
         )}
@@ -2254,29 +2269,25 @@ export default function TrendingPage() {
         } mt-20`}
       >
         <div className="w-full md:w-1/2 mb-10 md:mb-0 relative">
-          {/* 英雄图片（从市场卡片中选取最佳事件） */}
-          <div className="relative h-80 rounded-2xl shadow-xl overflow-hidden">
-            {bestEvent ? (
-              <motion.img
-                key={String(bestEvent?.id || bestEvent?.title || 'best')}
-                src={String(bestEvent?.image || '')}
-                alt={String(bestEvent?.title || '')}
-                className="absolute inset-0 w-full h-full object-cover"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6 }}
-              />
-            ) : (
-              <motion.img
-                key={String(currentHeroIndex)}
-                src={String(heroEvents[currentHeroIndex]?.image || '')}
-                alt={String(heroEvents[currentHeroIndex]?.title || '')}
-                className="absolute inset-0 w-full h-full object-cover"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6 }}
-              />
-            )}
+          <div className={`relative h-80 rounded-2xl shadow-xl overflow-hidden ${activeSlide?.id ? 'cursor-pointer' : ''}`} onClick={() => { if (activeSlide?.id) router.push(`/prediction/${activeSlide.id}`); }}>
+            <motion.img
+              key={String((activeSlide && (activeSlide?.id || activeSlide?.title)) || currentHeroIndex)}
+              src={activeImage}
+              alt={activeTitle}
+              className="absolute inset-0 w-full h-full object-cover"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/20 to-transparent" onClick={() => { if (activeSlide?.id) router.push(`/prediction/${activeSlide.id}`); }} />
+            <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+              <div className="max-w-md">
+                <h3 className="font-bold text-white text-lg mb-1">{activeTitle}</h3>
+                <p className="text-white/85 text-sm mb-2 line-clamp-2">{activeDescription}</p>
+                <span className="text-white font-bold">{activeFollowers.toLocaleString()} 人关注</span>
+              </div>
+              <button className="px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-full text-sm font-medium">立即关注</button>
+            </div>
           </div>
         </div>
 
@@ -2285,9 +2296,9 @@ export default function TrendingPage() {
           <h2 className="text-3xl font-bold text-black mb-6 text-center md:text-left">
             热门专题
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4" style={{ ['overflowAnchor' as any]: 'none' }}>
             {categories.map((category, index) => {
-              const isActive = (String(bestEvent?.tag || '') === category.name);
+              const isActive = (String(activeCategory || '') === category.name);
               const categoryEvents = allEvents.filter(
                 (event) => event.tag === category.name
               );
@@ -2304,17 +2315,26 @@ export default function TrendingPage() {
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  tabIndex={-1}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setSelectedCategory(category.name);
-                    const firstEventIndex = heroEvents.findIndex(
-                      (event) => event.category === category.name
-                    );
-                    if (firstEventIndex !== -1) {
-                      setCurrentHeroIndex(firstEventIndex);
+                    const y = typeof window !== 'undefined' ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
+                    const idx = heroSlideEvents.findIndex((ev: any) => String(ev?.tag || '') === category.name);
+                    if (idx >= 0) {
+                      setCurrentHeroIndex(idx);
+                    } else {
+                      const fallbackIdx = heroEvents.findIndex((ev) => ev.category === category.name);
+                      if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
                     }
-                    createSmartClickEffect(e);
+                    if (typeof window !== 'undefined') {
+                      requestAnimationFrame(() => {
+                        window.scrollTo({ top: y, behavior: 'auto' });
+                      });
+                    }
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -2343,7 +2363,7 @@ export default function TrendingPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="mt-2 text-sm font-medium"
                     >
-                      {heroEvents[currentHeroIndex]?.title}
+                      {activeTitle}
                     </motion.div>
                   )}
                 </motion.div>
@@ -2351,29 +2371,7 @@ export default function TrendingPage() {
             })}
           </div>
 
-          {/* 当前事件详情 */}
-          <motion.div
-            key={currentHeroIndex}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-6 p-4 bg-white/50 rounded-xl backdrop-blur-sm"
-          >
-            <h3 className="font-bold text-black text-lg mb-2">
-              {bestEvent?.title || heroEvents[currentHeroIndex]?.title}
-            </h3>
-            <p className="text-black text-sm mb-3">
-              {bestEvent?.description || heroEvents[currentHeroIndex]?.description}
-            </p>
-            <div className="flex justify-between items-center">
-              <span className="text-black font-bold">
-                {(bestEvent?.followers_count || heroEvents[currentHeroIndex]?.followers || 0).toLocaleString()} {""}
-                人关注
-              </span>
-              <button className="px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-full text-sm font-medium">
-                立即关注
-              </button>
-            </div>
-          </motion.div>
+          
         </div>
       </section>
 
