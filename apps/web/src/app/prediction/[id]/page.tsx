@@ -64,7 +64,7 @@ export default function PredictionDetailPage() {
     const fetchPredictionDetail = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/predictions/${params.id}`);
+        const response = await fetch(`/api/predictions/${params.id}?includeStats=0`);
         const contentType = response.headers.get("content-type") || "";
         let result: any = null;
         try {
@@ -81,6 +81,20 @@ export default function PredictionDetailPage() {
 
         if (result.success) {
           setPrediction(result.data);
+          (async () => {
+            try {
+              const resp2 = await fetch(`/api/predictions/${params.id}?includeStats=1`);
+              if (!resp2.ok) return;
+              const res2 = await resp2.json();
+              if (res2?.success && res2?.data?.stats) {
+                setPrediction(prev => prev ? {
+                  ...prev,
+                  stats: res2.data.stats,
+                  timeInfo: res2.data.timeInfo || prev.timeInfo
+                } : prev);
+              }
+            } catch {}
+          })();
         } else {
           setError(result.message || "获取预测事件详情失败");
         }
