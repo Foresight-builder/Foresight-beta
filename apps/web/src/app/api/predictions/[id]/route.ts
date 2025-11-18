@@ -8,6 +8,9 @@ export async function GET(
 ) {
   try {
     const { id } = await Promise.resolve(params);
+    const url = new URL(request.url);
+    const includeStatsParam = url.searchParams.get("includeStats");
+    const includeStats = includeStatsParam !== "0";
 
     // 验证ID参数
     if (!id || isNaN(parseInt(id))) {
@@ -25,7 +28,7 @@ export async function GET(
       return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
 
-    // 查询预测事件详情
+    // 查询预测详情
     const { data: prediction, error } = await client
       .from("predictions")
       .select("*")
@@ -46,35 +49,29 @@ export async function GET(
       );
     }
 
-    // 查询押注统计信息
-    const { data: betsStats, error: betsError } = await client
-      .from("bets")
-      .select("outcome, amount")
-      .eq("prediction_id", predictionId);
-
     let yesAmount = 0;
     let noAmount = 0;
     let totalAmount = 0;
     let participantCount = 0;
+    let betCount = 0;
 
-    if (!betsError && betsStats) {
-      // 计算押注统计
-      const uniqueParticipants = new Set();
-
-      betsStats.forEach((bet) => {
-        if (bet.outcome === "yes") {
-          yesAmount += bet.amount;
-        } else if (bet.outcome === "no") {
-          noAmount += bet.amount;
+    if (includeStats) {
+      const { data: betsStats, error: betsError } = await client
+        .from("bets")
+        .select("outcome, amount, user_id")
+        .eq("prediction_id", predictionId);
+      if (!betsError && betsStats) {
+        const uniqueParticipants = new Set<string>();
+        for (const bet of betsStats as any[]) {
+          const amt = Number((bet as any)?.amount || 0);
+          if ((bet as any)?.outcome === "yes") yesAmount += amt; else if ((bet as any)?.outcome === "no") noAmount += amt;
+          totalAmount += amt;
+          const uid = String((bet as any)?.user_id || "");
+          if (uid) uniqueParticipants.add(uid);
         }
-        totalAmount += bet.amount;
-        // 这里假设bet对象有user_id字段
-        if ((bet as any).user_id) {
-          uniqueParticipants.add((bet as any).user_id);
-        }
-      });
-
-      participantCount = uniqueParticipants.size;
+        participantCount = uniqueParticipants.size;
+        betCount = (betsStats as any[]).length;
+      }
     }
 
     // 计算当前概率（基于CPMM恒定乘积做市商模型）
@@ -111,7 +108,7 @@ export async function GET(
         participantCount,
         yesProbability: parseFloat(yesProbability.toFixed(4)),
         noProbability: parseFloat(noProbability.toFixed(4)),
-        betCount: betsStats?.length || 0,
+        betCount,
       },
       // 添加时间信息
       timeInfo: {
@@ -130,6 +127,7 @@ export async function GET(
       {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=5, stale-while-revalidate=20"
         },
       }
     );

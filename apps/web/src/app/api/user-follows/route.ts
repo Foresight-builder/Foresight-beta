@@ -72,20 +72,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ follows: [], total: 0 })
     }
 
-    // 获取每个事件的关注数（仅 Supabase；出现错误时该事件计数置为 0）
-    const eventsWithFollowersCount = await Promise.all(
-      (eventsData || []).map(async (event) => {
-        const { count, error: countError } = await client
-          .from('event_follows')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_id', event.id)
-        const followers = countError ? 0 : (count || 0)
-        return {
-          ...event,
-          followers_count: followers
-        }
-      })
-    )
+    const { data: followRows, error: followRowsError } = await client
+      .from('event_follows')
+      .select('event_id')
+      .in('event_id', eventIds)
+
+    const counts: Record<number, number> = {}
+    if (!followRowsError && Array.isArray(followRows)) {
+      for (const r of followRows as any[]) {
+        const eid = Number((r as any)?.event_id)
+        if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1
+      }
+    }
+
+    const eventsWithFollowersCount = (eventsData || []).map((event) => ({
+      ...event,
+      followers_count: counts[Number(event.id)] || 0
+    }))
 
     return NextResponse.json({
       follows: eventsWithFollowersCount,

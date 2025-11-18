@@ -57,24 +57,23 @@ export async function POST(req: Request) {
     if (!client) {
       return NextResponse.json({ message: 'Supabase 未配置' }, { status: 500 })
     }
-    const entries = await Promise.all(limitedIds.map(async (id) => {
-      const { count, error } = await client
-        .from('event_follows')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', id)
+    const { data: rows, error } = await client
+      .from('event_follows')
+      .select('event_id')
+      .in('event_id', limitedIds)
 
-      if (error) {
-        if (isMissingRelation(error) || isUserIdForeignKeyViolation(error) || isUserIdTypeIntegerError(error)) {
-          throw { type: 'setup', error }
-        }
-        throw { type: 'query', error }
+    if (error) {
+      if (isMissingRelation(error) || isUserIdForeignKeyViolation(error) || isUserIdTypeIntegerError(error)) {
+        throw { type: 'setup', error }
       }
-      return [id, count || 0] as const
-    }))
+      throw { type: 'query', error }
+    }
 
     const counts: Record<number, number> = {}
-    for (const [id, c] of entries) counts[Number(id)] = c
-
+    for (const r of rows || []) {
+      const eid = Number((r as any).event_id)
+      if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1
+    }
     return NextResponse.json({ counts }, { status: 200 })
   } catch (e: any) {
     if (e?.type === 'setup') {

@@ -1355,58 +1355,7 @@ export default function TrendingPage() {
     })();
   }, [accountNorm]);
 
-  // 订阅 Supabase Realtime：event_follows 的插入/删除，实时更新关注数与按钮状态
-  useEffect(() => {
-    const ids = Array.from(new Set((predictions || []).map(p => Number(p?.id)).filter(n => Number.isFinite(n))));
-    if (ids.length === 0) return;
-    if (!supabase || typeof (supabase as any).channel !== 'function') {
-      setRtStatus('DISABLED');
-      return;
-    }
-
-    const filterIn = `event_id=in.(${ids.join(',')})`;
-    const channel = (supabase as any).channel('event_follows_trending');
-    setRtStatus('CONNECTING');
-    setRtFilter(filterIn);
-
-    channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_follows', filter: filterIn }, (payload: any) => {
-        const row = payload?.new || {};
-        const eid = Number(row?.event_id);
-        const uid = String(row?.user_id || '');
-        if (!Number.isFinite(eid)) return;
-
-        // 更新关注计数（跳过当前账户以避免与乐观更新重复计算）
-        if (!accountNorm || (uid || '').toLowerCase() !== accountNorm) {
-          setPredictions(prev => prev.map(p => p?.id === eid ? { ...p, followers_count: Number(p?.followers_count || 0) + 1 } : p));
-        }
-        // 如果是当前用户的行为，同步心形按钮状态（集合操作幂等）
-        if (accountNorm && (uid || '').toLowerCase() === accountNorm) {
-          setFollowedEvents(prev => { const s = new Set(prev); s.add(eid); return s; });
-        }
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'event_follows', filter: filterIn }, (payload: any) => {
-        const row = payload?.old || {};
-        const eid = Number(row?.event_id);
-        const uid = String(row?.user_id || '');
-        if (!Number.isFinite(eid)) return;
-
-        if (!accountNorm || (uid || '').toLowerCase() !== accountNorm) {
-          setPredictions(prev => prev.map(p => p?.id === eid ? { ...p, followers_count: Math.max(0, Number(p?.followers_count || 0) - 1) } : p));
-        }
-        if (accountNorm && (uid || '').toLowerCase() === accountNorm) {
-          setFollowedEvents(prev => { const s = new Set(prev); s.delete(eid); return s; });
-        }
-      })
-      .subscribe((status: string) => {
-        setRtStatus(status || 'UNKNOWN');
-      });
-
-    return () => {
-      (supabase as any).removeChannel(channel);
-      setRtStatus('CLOSED');
-    };
-  }, [predictions, accountNorm]);
+  
 
   // 将预测事件转换为页面显示格式（包含事件ID以便关注映射）
   const allEvents = useMemo(() => predictions.map(prediction => ({
@@ -1529,6 +1478,62 @@ export default function TrendingPage() {
   const totalPages = Math.max(1, Math.ceil(sortedEvents.length / pageSize));
   const goPrevPage = () => setPage((p) => Math.max(0, p - 1));
   const goNextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
+
+  useEffect(() => {
+    let windowIds: number[] = [];
+    if (viewMode === 'paginate') {
+      const start = page * pageSize;
+      const end = Math.min(sortedEvents.length, (page + 1) * pageSize);
+      windowIds = sortedEvents.slice(start, end).map(e => Number(e?.id)).filter(Number.isFinite) as number[];
+    } else {
+      windowIds = sortedEvents.slice(0, Math.max(0, displayCount)).map(e => Number(e?.id)).filter(Number.isFinite) as number[];
+    }
+    const ids = Array.from(new Set(windowIds));
+    if (ids.length === 0) return;
+    if (!supabase || typeof (supabase as any).channel !== 'function') {
+      setRtStatus('DISABLED');
+      return;
+    }
+
+    const filterIn = `event_id=in.(${ids.join(',')})`;
+    const channel = (supabase as any).channel('event_follows_trending');
+    setRtStatus('CONNECTING');
+    setRtFilter(filterIn);
+
+    channel
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_follows', filter: filterIn }, (payload: any) => {
+        const row = payload?.new || {};
+        const eid = Number(row?.event_id);
+        const uid = String(row?.user_id || '');
+        if (!Number.isFinite(eid)) return;
+        if (!accountNorm || (uid || '').toLowerCase() !== accountNorm) {
+          setPredictions(prev => prev.map(p => p?.id === eid ? { ...p, followers_count: Number(p?.followers_count || 0) + 1 } : p));
+        }
+        if (accountNorm && (uid || '').toLowerCase() === accountNorm) {
+          setFollowedEvents(prev => { const s = new Set(prev); s.add(eid); return s; });
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'event_follows', filter: filterIn }, (payload: any) => {
+        const row = payload?.old || {};
+        const eid = Number(row?.event_id);
+        const uid = String(row?.user_id || '');
+        if (!Number.isFinite(eid)) return;
+        if (!accountNorm || (uid || '').toLowerCase() !== accountNorm) {
+          setPredictions(prev => prev.map(p => p?.id === eid ? { ...p, followers_count: Math.max(0, Number(p?.followers_count || 0) - 1) } : p));
+        }
+        if (accountNorm && (uid || '').toLowerCase() === accountNorm) {
+          setFollowedEvents(prev => { const s = new Set(prev); s.delete(eid); return s; });
+        }
+      })
+      .subscribe((status: string) => {
+        setRtStatus(status || 'UNKNOWN');
+      });
+
+    return () => {
+      (supabase as any).removeChannel(channel);
+      setRtStatus('CLOSED');
+    };
+  }, [sortedEvents, viewMode, page, pageSize, displayCount, accountNorm]);
 
   // 近期浏览事件：从 localStorage 读取，展示最近在详情页浏览的事件
   const [recentViewed, setRecentViewed] = useState<Array<{ id: number; title: string; category: string; seen_at: string }>>([]);

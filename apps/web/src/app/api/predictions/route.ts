@@ -40,24 +40,35 @@ export async function GET(request: NextRequest) {
     
     const { data: predictions, error } = await query;
     
-    // 获取每个预测的关注数量（在缺少服务密钥时尝试匿名读取，失败则将计数置为0）
     let predictionsWithFollowersCount = [];
     if (!error && predictions) {
-      predictionsWithFollowersCount = await Promise.all(
-        predictions.map(async (prediction) => {
-          // 获取关注数量
-          const countClient = getClient();
-          const { count, error: countError } = await countClient
-            .from('event_follows')
-            .select('id', { count: 'exact', head: true })
-            .eq('event_id', prediction.id);
-          
-          return {
-            ...prediction,
-            followers_count: countError ? 0 : (count || 0)
-          };
-        })
-      );
+      const ids = (predictions || []).map((p: any) => Number(p?.id)).filter((n: number) => Number.isFinite(n));
+      let counts: Record<number, number> = {};
+      if (ids.length > 0) {
+        const { data: rows, error: rowsError } = await client
+          .from('event_follows')
+          .select('event_id')
+          .in('event_id', ids);
+        if (!rowsError && Array.isArray(rows)) {
+          for (const r of rows as any[]) {
+            const eid = Number((r as any)?.event_id);
+            if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1;
+          }
+        } else {
+          const list = await Promise.all(ids.map(async (eid) => {
+            const { count, error: e } = await client
+              .from('event_follows')
+              .select('id', { count: 'exact', head: true })
+              .eq('event_id', eid);
+            return [eid, e ? 0 : (count || 0)] as const;
+          }));
+          counts = Object.fromEntries(list.map(([k, v]) => [Number(k), Number(v)]));
+        }
+      }
+      predictionsWithFollowersCount = (predictions || []).map((p: any) => ({
+        ...p,
+        followers_count: counts[Number(p?.id)] || 0
+      }));
     }
 
     if (error) {
