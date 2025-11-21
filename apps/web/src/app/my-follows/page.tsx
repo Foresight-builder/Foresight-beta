@@ -346,19 +346,21 @@ export default function MyFollowsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  {/* 事件图片 */}
-                  <div className="relative h-48 bg-gradient-to-br from-purple-400 to-pink-400">
-                    {event.image_url ? (
-                      <img
-                        src={event.image_url}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <TrendingUp className="w-16 h-16 text-white/80" />
-                      </div>
-                    )}
+                  <div className="relative h-48 overflow-hidden bg-white">
+                    <img
+                      src={event.image_url && event.image_url.trim() ? event.image_url : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(event.title)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`}
+                      alt={event.title}
+                      loading="lazy"
+                      decoding="async"
+                      width={800}
+                      height={384}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement
+                        img.onerror = null
+                        img.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(event.title)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`
+                      }}
+                    />
                     
                     {/* 状态标签 */}
                     <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>

@@ -205,9 +205,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           </div>
           <div className="font-semibold flex items-center gap-2">
             <span>{roomLabel}</span>
-            {roomCategory ? (
-              <span className={`text-xs px-2 py-0.5 rounded-full ${catCls(roomCategory)}`}>{roomCategory}</span>
-            ) : null}
           </div>
           <Sparkles className="w-4 h-4 opacity-90" />
         </div>
@@ -228,13 +225,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
 
       {isProposalRoom ? (
         <div className="mx-4 mt-3 mb-4 rounded-3xl border-2 border-pink-400 bg-pink-50/80 shadow-sm">
-          <div className="flex items-center justify-between px-4 py-2">
-            <div className="inline-flex items-center gap-2 text-pink-700">
-              <Pin className="w-4 h-4" />
-              <span className="font-semibold">事件提案置顶聊天室</span>
-            </div>
-            <span className="text-xs text-pink-700">仅展示事件提案板块</span>
-          </div>
           <div className="px-4 pb-4">
             <ForumSection eventId={eventId} />
           </div>
@@ -344,12 +334,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           </>
         )}
         {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
-        <div className="mt-3 text-xs text-gray-700">
-          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-white/80 border border-gray-200">
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">文件共享</span>
-            <span>暂无文件</span>
-          </div>
-        </div>
       </div>
     </div>
   )

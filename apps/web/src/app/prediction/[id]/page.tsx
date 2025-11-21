@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, ArrowUp } from "lucide-react";
+import { ChevronLeft, Loader2, ArrowUp, MessageSquare, ArrowRightCircle } from "lucide-react";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
@@ -52,6 +52,9 @@ export default function PredictionDetailPage() {
   const [staking, setStaking] = useState(false);
   const [stakeError, setStakeError] = useState<string | null>(null);
   const [stakeSuccess, setStakeSuccess] = useState<string | null>(null);
+  const [guideLoading, setGuideLoading] = useState(false);
+  const [guideError, setGuideError] = useState<string | null>(null);
+  const [guideVariant, setGuideVariant] = useState<'A' | 'B'>('A');
 
   // 关注功能相关状态
   const { account, connectWallet, siweLogin } = useWallet();
@@ -151,6 +154,43 @@ export default function PredictionDetailPage() {
   useEffect(() => {
     router.prefetch("/trending");
   }, [router]);
+
+  useEffect(() => {
+    try {
+      const key = 'guide_variant';
+      const cached = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+      if (cached === 'A' || cached === 'B') {
+        setGuideVariant(cached as 'A' | 'B');
+      } else {
+        const v = Math.random() < 0.5 ? 'A' : 'B';
+        setGuideVariant(v);
+        if (typeof window !== 'undefined') window.localStorage.setItem(key, v);
+      }
+    } catch {}
+  }, []);
+
+  const handleGuideClick = async () => {
+    try {
+      setGuideLoading(true);
+      setGuideError(null);
+      const eventId = Number(params.id);
+      const url = `/forum?id=${eventId}`;
+      try {
+        const payload = JSON.stringify({ eventId, variant: guideVariant, ts: Date.now() });
+        if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon('/api/analytics/guide-click', blob);
+        } else {
+          await fetch('/api/analytics/guide-click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+        }
+      } catch {}
+      router.push(url);
+    } catch (e: any) {
+      setGuideError(String(e?.message || e || '跳转失败'));
+    } finally {
+      setGuideLoading(false);
+    }
+  };
 
   // 获取关注状态和数量
   useEffect(() => {
@@ -807,7 +847,28 @@ export default function PredictionDetailPage() {
 
           {/* 交流与社区 */}
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChatPanel eventId={Number(params.id)} />
+            <div>
+              <ChatPanel eventId={Number(params.id)} />
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleGuideClick}
+                  className={`inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-medium text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/40 transition-all duration-300 ${guideVariant === 'A' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600' : 'bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:from-sky-600 hover:to-emerald-600'} ${guideLoading ? 'opacity-80 cursor-wait' : ''}`}
+                  aria-label="前往论坛聊天室"
+                  title="前往论坛聊天室"
+                  style={{ minWidth: 176 }}
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span className="text-[14px]">前往论坛聊天室</span>
+                  <ArrowRightCircle className="w-5 h-5" />
+                </button>
+              </div>
+              {guideError && (
+                <div className="mt-2 text-center text-xs text-red-600">
+                  {guideError}
+                </div>
+              )}
+            </div>
             <ForumSection eventId={Number(params.id)} />
           </div>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ChatPanel from "@/components/ChatPanel";
 interface ThreadView {
   id: number;
@@ -62,9 +63,41 @@ export default function ForumPage() {
     return undefined;
   }, [events.length, q, selectedId]);
 
+  const searchParams = useSearchParams();
   const activeEventId = selectedId ?? (events[0]?.id ?? 1);
   const activeTitle = events.find(e => e.id === activeEventId)?.title || '';
   const activeCategory = events.find(e => e.id === activeEventId)?.category || '';
+
+  useEffect(() => {
+    const idStr = searchParams?.get('id');
+    const idNum = Number(idStr);
+    if (Number.isFinite(idNum) && idNum > 0) {
+      setSelectedId(idNum);
+    }
+  }, [searchParams, events.length]);
+
+  const catEmoji = (cat?: string) => {
+    const c = String(cat || '').toLowerCase();
+    if (c.includes('娱乐')) return '🍿';
+    if (c.includes('科技')) return '🚀';
+    if (c.includes('体育')) return '⚽';
+    if (c.includes('时政') || c.includes('政治')) return '🏛️';
+    if (c.includes('天气')) return '☀️';
+    if (c.includes('加密') || c.includes('crypto')) return '🪙';
+    if (c.includes('生活')) return '🌸';
+    return '📌';
+  };
+  const catPastelCls = (cat?: string) => {
+    const c = String(cat || '').toLowerCase();
+    if (c.includes('娱乐')) return 'bg-pink-100 text-pink-600';
+    if (c.includes('科技')) return 'bg-sky-100 text-sky-700';
+    if (c.includes('体育')) return 'bg-emerald-100 text-emerald-700';
+    if (c.includes('时政') || c.includes('政治')) return 'bg-violet-100 text-violet-700';
+    if (c.includes('天气')) return 'bg-amber-100 text-amber-700';
+    if (c.includes('加密') || c.includes('crypto')) return 'bg-indigo-100 text-indigo-700';
+    if (c.includes('生活')) return 'bg-rose-100 text-rose-700';
+    return 'bg-gray-100 text-gray-700';
+  };
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-cyan-50 overflow-hidden text-black">
@@ -99,14 +132,14 @@ export default function ForumPage() {
                 <button
                   key={cat}
                   onClick={() => setQ(cat)}
-                  className={`text-xs px-2 py-1 rounded-full border ${q.trim() === cat ? 'border-purple-400 bg-purple-50 text-purple-700' : 'border-gray-200 bg-white text-gray-700'}`}
+                  className={`inline-flex items-center whitespace-nowrap text-xs px-2.5 py-1 rounded-full border ${q.trim() === cat ? 'border-purple-400 bg-purple-50 text-purple-700' : 'border-gray-200 bg-white text-gray-700'}`}
                 >{cat}</button>
               ))}
               {events.length > 0 && (
-                <button onClick={() => setQ('')} className={`text-xs px-2 py-1 rounded-full border ${q ? 'border-gray-200 bg-white text-gray-700' : 'border-purple-400 bg-purple-50 text-purple-700'}`}>全部</button>
+                <button onClick={() => setQ('')} className={`inline-flex items-center whitespace-nowrap text-xs px-2.5 py-1 rounded-full border ${q ? 'border-gray-200 bg-white text-gray-700' : 'border-purple-400 bg-purple-50 text-purple-700'}`}>全部</button>
               )}
             </div>
-            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 -mr-1">
+            <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1 -mr-1">
               {events
                 .filter((e) => {
                   const qq = q.trim().toLowerCase();
@@ -114,17 +147,23 @@ export default function ForumPage() {
                   if (selectedId && e.id === selectedId) return false;
                   return e.title.toLowerCase().includes(qq) || String(e.category || "").toLowerCase().includes(qq);
                 })
+                .slice(0, 12)
                 .map((ev) => (
                   <button
                     key={ev.id}
                     onClick={() => { setSelectedId(ev.id); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl border transition-all duration-200 ${selectedId === ev.id ? "border-purple-400 bg-purple-50" : "border-gray-200 bg-white hover:bg-gray-50"}`}
+                    className={`group relative w-full text-left rounded-3xl p-[1px] transition-all duration-300 hover:scale-[1.02] ${selectedId === ev.id ? "bg-gradient-to-r from-purple-400 to-pink-400 shadow-lg shadow-purple-300/50" : "bg-gradient-to-r from-purple-200/20 to-pink-200/20"}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${String(ev.category || '').includes('科技') ? 'bg-sky-100 text-sky-700' : String(ev.category || '').includes('体育') ? 'bg-emerald-100 text-emerald-700' : String(ev.category || '').includes('娱乐') ? 'bg-pink-100 text-pink-700' : String(ev.category || '').includes('时政') ? 'bg-violet-100 text-violet-700' : String(ev.category || '').includes('天气') ? 'bg-amber-100 text-amber-700' : String(ev.category || '').includes('加密') ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>{ev.category || '未分类'}</span>
-                      <div className="text-sm font-semibold text-gray-800 line-clamp-1">{ev.title}</div>
+                    <div className={`${selectedId === ev.id ? "text-white ring-1 ring-white/30" : "bg-white/60 backdrop-blur-md text-gray-800 shadow-sm hover:shadow-md"} rounded-3xl px-4 py-3`}> 
+                      <div className="flex items-center gap-3">
+                        <span className={`${selectedId === ev.id ? "bg-white/20 text-white" : catPastelCls(ev.category)} inline-flex items-center whitespace-nowrap text-xs px-2.5 py-1 rounded-full`}> 
+                          <span className="mr-1">{catEmoji(ev.category)}</span>{ev.category || '未分类'}
+                        </span>
+                        <div className={`${selectedId === ev.id ? "text-white" : "text-gray-800"} text-base font-medium line-clamp-2 flex-1`}>{ev.title}</div>
+                      </div>
+                      <span className={`${String(ev.status || '').toLowerCase().includes('active') ? (selectedId === ev.id ? 'bg-emerald-300' : 'bg-emerald-400') : (selectedId === ev.id ? 'bg-gray-300' : 'bg-gray-400')} absolute right-3 top-3 w-2 h-2 rounded-full animate-pulse`}></span>
+                      <div className={`${selectedId === ev.id ? "text-white/80" : "text-gray-500"} text-xs mt-1`}>{ev.status ? ev.status : ''}</div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">{ev.status ? ev.status : ''}</div>
                   </button>
                 ))}
             </div>
