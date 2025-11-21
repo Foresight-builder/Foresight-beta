@@ -1,40 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-
-type OtpRecord = {
-  email: string
-  address: string
-  code: string
-  expiresAt: number
-  sentAtList: number[]
-  failCount: number
-  lockUntil: number
-  createdIp: string
-  createdAt: number
-}
-
-type LogItem = { email: string; address: string; status: 'queued'|'sent'|'error'|'verified'; messageId?: string; error?: string; sentAt: number }
-
-function getShared() {
-  const g = globalThis as any
-  if (!g.__emailOtpStore) g.__emailOtpStore = new Map<string, OtpRecord>()
-  if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[]
-  return { store: g.__emailOtpStore as Map<string, OtpRecord>, logs: g.__emailOtpLogs as LogItem[] }
-}
-
-function normalizeAddress(addr: string) {
-  const a = String(addr || '')
-  return a.startsWith('0x') ? a.toLowerCase() : a
-}
-
-function getSessionAddress(req: NextRequest) {
-  const raw = req.cookies.get('fs_session')?.value || ''
-  try { const obj = JSON.parse(raw); return normalizeAddress(String(obj?.address || '')) } catch { return '' }
-}
+import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem } from '@/lib/serverUtils'
 
 export async function POST(req: NextRequest) {
   try {
-    const { store, logs } = getShared()
+    const { store, logs } = getEmailOtpShared()
     const bodyText = await req.text()
     let payload: any = {}
     try { payload = JSON.parse(bodyText) } catch {}
@@ -93,7 +63,7 @@ export async function POST(req: NextRequest) {
     // 审计记录（内存）：时间戳与 IP
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
     console.log(`[email-otp] verified email=${email} addr=${walletAddress} ip=${ip} at=${new Date().toISOString()}`)
-    try { logs.push({ email, address: walletAddress, status: 'verified', sentAt: Date.now() }) } catch {}
+    try { logs.push({ email, address: walletAddress, status: 'verified', sentAt: Date.now() } as LogItem) } catch {}
 
     // 清理使用过的记录
     store.delete(email)

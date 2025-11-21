@@ -1,35 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-type OtpRecord = {
-  email: string
-  address: string
-  code: string
-  expiresAt: number
-  sentAtList: number[]
-  failCount: number
-  lockUntil: number
-  createdIp: string
-  createdAt: number
-}
-
-type LogItem = { email: string; address: string; status: 'queued'|'sent'|'error'; messageId?: string; error?: string; sentAt: number }
-
-function getShared() {
-  const g = globalThis as any
-  if (!g.__emailOtpStore) g.__emailOtpStore = new Map<string, OtpRecord>()
-  if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[]
-  return { store: g.__emailOtpStore as Map<string, OtpRecord>, logs: g.__emailOtpLogs as LogItem[] }
-}
-
-function normalizeAddress(addr: string) {
-  const a = String(addr || '')
-  return a.startsWith('0x') ? a.toLowerCase() : a
-}
-
-function getSessionAddress(req: NextRequest) {
-  const raw = req.cookies.get('fs_session')?.value || ''
-  try { const obj = JSON.parse(raw); return normalizeAddress(String(obj?.address || '')) } catch { return '' }
-}
+import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem, OtpRecord } from '@/lib/serverUtils'
 
 function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email)
@@ -56,7 +26,7 @@ async function sendMailSMTP(email: string, code: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { store, logs } = getShared()
+    const { store, logs } = getEmailOtpShared()
     const bodyText = await req.text()
     let payload: any = {}
     try { payload = JSON.parse(bodyText) } catch {}
@@ -94,10 +64,10 @@ export async function POST(req: NextRequest) {
     rec.createdIp = ip || rec.createdIp
     store.set(email, rec)
 
-    logs.push({ email, address: walletAddress, status: 'queued', sentAt: now })
+    logs.push({ email, address: walletAddress, status: 'queued', sentAt: now } as LogItem)
     try {
       const messageId = await sendMailSMTP(email, code)
-      logs.push({ email, address: walletAddress, status: 'sent', messageId, sentAt: Date.now() })
+      logs.push({ email, address: walletAddress, status: 'sent', messageId, sentAt: Date.now() } as LogItem)
       return NextResponse.json({ success: true, message: '验证码已发送', expiresInSec: 300 })
     } catch (err: any) {
       try {
@@ -116,7 +86,7 @@ export async function POST(req: NextRequest) {
           error: String(err?.message || err)
         })
       } catch {}
-      logs.push({ email, address: walletAddress, status: 'error', error: String(err?.message || err), sentAt: Date.now() })
+      logs.push({ email, address: walletAddress, status: 'error', error: String(err?.message || err), sentAt: Date.now() } as LogItem)
       if (process.env.NODE_ENV !== 'production') {
         return NextResponse.json({ success: true, message: '开发环境：邮件发送失败，已直接返回验证码', codePreview: code, expiresInSec: 300 })
       }

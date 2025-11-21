@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, supabase } from '@/lib/supabase'
-
-function normalizeAddress(addr: string) {
-  const a = String(addr || '')
-  return a.startsWith('0x') ? a.toLowerCase() : a
-}
+import { normalizeAddress, getSessionAddress } from '@/lib/serverUtils'
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr)
@@ -20,10 +16,6 @@ function isValidUsername(name: string) {
   return /^\w+$/.test(name)
 }
 
-function getSessionAddress(req: NextRequest) {
-  const raw = req.cookies.get('fs_session')?.value || ''
-  try { const obj = JSON.parse(raw); return normalizeAddress(String(obj?.address || '')) } catch { return '' }
-}
 
 export async function GET(req: NextRequest) {
   try {

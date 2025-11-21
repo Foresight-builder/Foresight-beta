@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-// 由于工作区包可能未安装导致解析失败，这里内联地址归一化函数
-type Address = string
-function normalizeAddress(addr?: string): Address | null {
-  const s = String(addr || '').trim()
-  if (!s) return null
-  if (/^0x[a-fA-F0-9]{40}$/.test(s)) return s.toLowerCase()
-  return null
-}
+import { normalizeAddress } from '@/lib/serverUtils'
 
 // Helper: detect missing relation error for graceful setup message
 function isMissingRelation(error?: { message?: string }) {
@@ -98,7 +91,8 @@ export async function POST(req: Request) {
     const rawPredictionId = body?.predictionId
     const rawWallet = body?.walletAddress
     const predictionId = Number(rawPredictionId)
-    const walletAddress = normalizeAddress(String(rawWallet || ''))
+    const wa = normalizeAddress(String(rawWallet || ''))
+    const walletAddress = /^0x[a-f0-9]{40}$/.test(wa) ? wa : ''
 
     if (!predictionId) {
       return NextResponse.json({ message: 'predictionId 必填且需为数字', received: String(rawPredictionId ?? '') }, { status: 400 })
@@ -329,7 +323,8 @@ export async function GET(req: Request) {
     }
     const { searchParams } = new URL(req.url)
     const predictionId = Number(searchParams.get('predictionId'))
-    const walletAddress = normalizeAddress(String(searchParams.get('walletAddress') || ''))
+    const wa = normalizeAddress(String(searchParams.get('walletAddress') || ''))
+    const walletAddress = /^0x[a-f0-9]{40}$/.test(wa) ? wa : ''
 
     if (!predictionId) {
       return NextResponse.json({ message: 'predictionId 必填' }, { status: 400 })
