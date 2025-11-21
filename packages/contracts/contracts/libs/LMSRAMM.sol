@@ -44,6 +44,36 @@ library LMSRAMM {
         cost = ABDKMathQuad.toUInt(ABDKMathQuad.sub(newCost_quad, initialCost_quad));
     }
 
+    function calcProceedsOfSelling(
+        uint256[] memory netOutcomeTokensSold,
+        uint256 b,
+        uint8 outcomeIndex,
+        uint256 amount
+    ) internal pure returns (uint256 proceeds) {
+        require(netOutcomeTokensSold.length == 2, "LMSRAMM: BINARY_MARKET_ONLY");
+        require(outcomeIndex < 2, "LMSRAMM: INVALID_OUTCOME_INDEX");
+
+        bytes16 b_quad = ABDKMathQuad.fromUInt(b);
+
+        bytes16 exp_0 = ABDKMathQuad.exp(ABDKMathQuad.div(ABDKMathQuad.fromUInt(netOutcomeTokensSold[0]), b_quad));
+        bytes16 exp_1 = ABDKMathQuad.exp(ABDKMathQuad.div(ABDKMathQuad.fromUInt(netOutcomeTokensSold[1]), b_quad));
+
+        bytes16 initialCost_quad = ABDKMathQuad.mul(b_quad, ABDKMathQuad.ln(ABDKMathQuad.add(exp_0, exp_1)));
+
+        uint256[] memory newNetOutcomeTokensSold = new uint256[](2);
+        newNetOutcomeTokensSold[0] = netOutcomeTokensSold[0];
+        newNetOutcomeTokensSold[1] = netOutcomeTokensSold[1];
+        require(newNetOutcomeTokensSold[outcomeIndex] >= amount, "LMSRAMM: INSUFFICIENT_AMOUNT");
+        newNetOutcomeTokensSold[outcomeIndex] -= amount;
+
+        bytes16 new_exp_0 = ABDKMathQuad.exp(ABDKMathQuad.div(ABDKMathQuad.fromUInt(newNetOutcomeTokensSold[0]), b_quad));
+        bytes16 new_exp_1 = ABDKMathQuad.exp(ABDKMathQuad.div(ABDKMathQuad.fromUInt(newNetOutcomeTokensSold[1]), b_quad));
+
+        bytes16 newCost_quad = ABDKMathQuad.mul(b_quad, ABDKMathQuad.ln(ABDKMathQuad.add(new_exp_0, new_exp_1)));
+
+        proceeds = ABDKMathQuad.toUInt(ABDKMathQuad.sub(initialCost_quad, newCost_quad));
+    }
+
     /// @notice Calculates the net cost for a set of trades.
     /// @param netOutcomeTokensSold An array containing the number of tokens sold for each outcome.
     /// @param b The liquidity parameter.

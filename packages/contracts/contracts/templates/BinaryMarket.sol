@@ -44,6 +44,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
 
     /// @notice The total liquidity shares issued for the AMM pool.
     uint256 public liquidityShares;
+    mapping(address => uint256) public lpShares;
 
     /// @notice The current stage of the market lifecycle.
     IMarket.Stages public stage;
@@ -124,15 +125,29 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         oracle = _oracle;
         feeBps = _feeBps;
         resolutionTime = _resolutionTime;
-        (AMM.AMMType _ammType, uint256 initialLiquidity) = abi.decode(data, (AMM.AMMType, uint256));
         stage = IMarket.Stages.TRADING;
 
-        if (_ammType == AMM.AMMType.CPMM) {
-            _initializeCPMM(initialLiquidity);
-        } else if (_ammType == AMM.AMMType.LMSR) {
-            _initializeLMSR(initialLiquidity);
+        if (data.length == 64) {
+            (AMM.AMMType _ammType, uint256 initialLiquidity) = abi.decode(data, (AMM.AMMType, uint256));
+            ammType = _ammType;
+            if (_ammType == AMM.AMMType.CPMM) {
+                _initializeCPMM(initialLiquidity);
+            } else if (_ammType == AMM.AMMType.LMSR) {
+                _initializeLMSR(initialLiquidity);
+            } else {
+                revert InvalidAMMType();
+            }
         } else {
-            revert InvalidAMMType();
+            (address outcome1155, uint8 _ammTypeU8, uint256 param) = abi.decode(data, (address, uint8, uint256));
+            outcomeToken = OutcomeToken1155(outcome1155);
+            ammType = AMM.AMMType(_ammTypeU8);
+            if (ammType == AMM.AMMType.CPMM) {
+                _initializeCPMM(param);
+            } else if (ammType == AMM.AMMType.LMSR) {
+                _initializeLMSR(param);
+            } else {
+                revert InvalidAMMType();
+            }
         }
 
         emit Initialized();
@@ -150,6 +165,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         }
         require(shares > 0, "no shares issued");
         liquidityShares += shares;
+        lpShares[msg.sender] += shares;
         emit LiquidityAdded(msg.sender, amount, shares);
     }
 
@@ -159,11 +175,9 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @return amount The amount of collateral returned to the provider.
     function removeLiquidity(uint256 shares) external nonReentrant atStage(IMarket.Stages.TRADING) returns (uint256 amount) {
         require(shares > 0, "shares must be positive");
-        // More logic here to transfer collateral and outcome tokens back to the provider
-        // based on the share of the pool they owned.
-        // This is a simplified version.
-        
+        require(lpShares[msg.sender] >= shares, "insufficient shares");
         liquidityShares -= shares;
+        lpShares[msg.sender] -= shares;
 
         if (ammType == AMM.AMMType.CPMM) {
             amount = _removeLiquidityCPMM(shares);
@@ -260,6 +274,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         outcomeTokenAmounts[0] = amount;
         outcomeTokenAmounts[1] = amount;
         uint256 cost = LMSRAMM.calcNetCost(lmsr.netOutcomeTokensSold, lmsr.b, outcomeTokenAmounts);
+        IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), cost);
         shares = cost;
         lmsr.netOutcomeTokensSold[0] += amount;
         lmsr.netOutcomeTokensSold[1] += amount;
@@ -272,6 +287,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
         outcomeToken.mint(address(this), idNo, amount0);
         outcomeToken.mint(address(this), idYes, amount1);
+        IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
         uint256 liquidity = Math.sqrt(amount0 * amount1);
         shares = liquidity;
         cpmm.k = (cpmm.reserve0 + amount0) * (cpmm.reserve1 + amount1);
@@ -280,23 +296,91 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     }
 
     /// @dev Handles removing liquidity for the CPMM.
-    function _removeLiquidityCPMM(uint256) internal returns (uint256 collateral) {
-        revert NotImplemented();
+    function _removeLiquidityCPMM(uint256 shares) internal returns (uint256 collateral) {
+        require(liquidityShares > 0, "no liquidity");
+        uint256 amount0 = (cpmm.reserve0 * shares) / liquidityShares;
+        uint256 amount1 = (cpmm.reserve1 * shares) / liquidityShares;
+        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
+        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
+        outcomeToken.burn(address(this), idNo, amount0);
+        outcomeToken.burn(address(this), idYes, amount1);
+        cpmm.reserve0 -= amount0;
+        cpmm.reserve1 -= amount1;
+        cpmm.k = cpmm.reserve0 * cpmm.reserve1;
+        collateral = shares;
+        IERC20(collateralToken).safeTransfer(msg.sender, collateral);
     }
 
     /// @dev Handles removing liquidity for the LMSR.
-    function _removeLiquidityLMSR(uint256) internal returns (uint256 collateral) {
-        revert NotImplemented();
+    function _removeLiquidityLMSR(uint256 shares) internal returns (uint256 collateral) {
+        collateral = shares;
+        IERC20(collateralToken).safeTransfer(msg.sender, collateral);
     }
 
     /// @dev Handles the swap logic for the CPMM.
-    function _swapCPMM(uint256, uint256, bool) internal returns (uint256 outputAmount) {
-        revert NotImplemented();
+    function _swapCPMM(uint256 inputAmount, uint256 outcomeIndex, bool isBuy) internal returns (uint256 outputAmount) {
+        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
+        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
+        if (isBuy) {
+            IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+            if (outcomeIndex == 0) {
+                uint256 amountOut = AMM.cpmmGetAmountOut(cpmm.reserve1, cpmm.reserve0, inputAmount, feeBps);
+                require(amountOut > 0, "insufficient output");
+                cpmm.reserve1 += inputAmount;
+                cpmm.reserve0 -= amountOut;
+                cpmm.k = cpmm.reserve0 * cpmm.reserve1;
+                outcomeToken.safeTransferFrom(address(this), msg.sender, idNo, amountOut, "");
+                outputAmount = amountOut;
+            } else {
+                uint256 amountOut = AMM.cpmmGetAmountOut(cpmm.reserve0, cpmm.reserve1, inputAmount, feeBps);
+                require(amountOut > 0, "insufficient output");
+                cpmm.reserve0 += inputAmount;
+                cpmm.reserve1 -= amountOut;
+                cpmm.k = cpmm.reserve0 * cpmm.reserve1;
+                outcomeToken.safeTransferFrom(address(this), msg.sender, idYes, amountOut, "");
+                outputAmount = amountOut;
+            }
+        } else {
+            if (outcomeIndex == 0) {
+                outcomeToken.safeTransferFrom(msg.sender, address(this), idNo, inputAmount, "");
+                uint256 amountOut = AMM.cpmmGetAmountOut(cpmm.reserve0, cpmm.reserve1, inputAmount, feeBps);
+                require(amountOut > 0, "insufficient output");
+                cpmm.reserve0 += inputAmount;
+                cpmm.reserve1 -= amountOut;
+                cpmm.k = cpmm.reserve0 * cpmm.reserve1;
+                IERC20(collateralToken).safeTransfer(msg.sender, amountOut);
+                outputAmount = amountOut;
+            } else {
+                outcomeToken.safeTransferFrom(msg.sender, address(this), idYes, inputAmount, "");
+                uint256 amountOut = AMM.cpmmGetAmountOut(cpmm.reserve1, cpmm.reserve0, inputAmount, feeBps);
+                require(amountOut > 0, "insufficient output");
+                cpmm.reserve1 += inputAmount;
+                cpmm.reserve0 -= amountOut;
+                cpmm.k = cpmm.reserve0 * cpmm.reserve1;
+                IERC20(collateralToken).safeTransfer(msg.sender, amountOut);
+                outputAmount = amountOut;
+            }
+        }
     }
 
     /// @dev Handles the swap logic for the LMSR.
-    function _swapLMSR(uint256, uint256, bool) internal returns (uint256 outputAmount) {
-        revert NotImplemented();
+    function _swapLMSR(uint256 inputAmount, uint256 outcomeIndex, bool isBuy) internal returns (uint256 outputAmount) {
+        uint256 id = outcomeToken.computeTokenId(address(this), outcomeIndex);
+        if (isBuy) {
+            uint256 amount = _lmsrAmountForBudget(inputAmount, uint8(outcomeIndex));
+            uint256 cost = LMSRAMM.calcCostOfBuying(lmsr.netOutcomeTokensSold, lmsr.b, uint8(outcomeIndex), amount);
+            require(cost <= inputAmount, "over budget");
+            IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), cost);
+            lmsr.netOutcomeTokensSold[outcomeIndex] += amount;
+            outcomeToken.mint(msg.sender, id, amount);
+            outputAmount = amount;
+        } else {
+            uint256 proceeds = LMSRAMM.calcProceedsOfSelling(lmsr.netOutcomeTokensSold, lmsr.b, uint8(outcomeIndex), inputAmount);
+            outcomeToken.burn(msg.sender, id, inputAmount);
+            lmsr.netOutcomeTokensSold[outcomeIndex] -= inputAmount;
+            IERC20(collateralToken).safeTransfer(msg.sender, proceeds);
+            outputAmount = proceeds;
+        }
     }
 
     // --- View Functions ---
@@ -307,13 +391,30 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         if (ammType == AMM.AMMType.LMSR) {
             return _lmsrAmountForBudget(investmentAmount, uint8(outcomeIndex));
         }
-        revert NotImplemented();
+        if (ammType == AMM.AMMType.CPMM) {
+            if (outcomeIndex == 0) {
+                return AMM.cpmmGetAmountOut(cpmm.reserve1, cpmm.reserve0, investmentAmount, feeBps);
+            } else {
+                return AMM.cpmmGetAmountOut(cpmm.reserve0, cpmm.reserve1, investmentAmount, feeBps);
+            }
+        }
+        revert InvalidAMMType();
     }
 
     /// @notice Calculates the proceeds from selling a given amount of outcome tokens.
     /// @return The amount of collateral that will be received.
-    function calcSellAmount(uint256, uint256) public view returns (uint256) {
-        revert NotImplemented();
+    function calcSellAmount(uint256 amount, uint256 outcomeIndex) public view returns (uint256) {
+        if (ammType == AMM.AMMType.LMSR) {
+            return LMSRAMM.calcProceedsOfSelling(lmsr.netOutcomeTokensSold, lmsr.b, uint8(outcomeIndex), amount);
+        }
+        if (ammType == AMM.AMMType.CPMM) {
+            if (outcomeIndex == 0) {
+                return AMM.cpmmGetAmountOut(cpmm.reserve0, cpmm.reserve1, amount, feeBps);
+            } else {
+                return AMM.cpmmGetAmountOut(cpmm.reserve1, cpmm.reserve0, amount, feeBps);
+            }
+        }
+        revert InvalidAMMType();
     }
 
     function _lmsrAmountForBudget(uint256 budget, uint8 outcomeIndex) internal view returns (uint256) {
