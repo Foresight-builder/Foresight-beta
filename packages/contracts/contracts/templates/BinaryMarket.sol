@@ -303,7 +303,10 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
 
     /// @notice Calculates the amount of outcome tokens that can be purchased for a given amount of collateral.
     /// @return The number of outcome tokens that can be bought.
-    function calcBuyAmount(uint256, uint256) public view returns (uint256) {
+    function calcBuyAmount(uint256 investmentAmount, uint256 outcomeIndex) public view returns (uint256) {
+        if (ammType == AMM.AMMType.LMSR) {
+            return _lmsrAmountForBudget(investmentAmount, uint8(outcomeIndex));
+        }
         revert NotImplemented();
     }
 
@@ -311,6 +314,21 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @return The amount of collateral that will be received.
     function calcSellAmount(uint256, uint256) public view returns (uint256) {
         revert NotImplemented();
+    }
+
+    function _lmsrAmountForBudget(uint256 budget, uint8 outcomeIndex) internal view returns (uint256) {
+        uint256 lo = 0;
+        uint256 hi = budget;
+        for (uint256 i = 0; i < 32; i++) {
+            uint256 mid = (lo + hi) / 2;
+            uint256 cost = LMSRAMM.calcCostOfBuying(lmsr.netOutcomeTokensSold, lmsr.b, outcomeIndex, mid);
+            if (cost > budget) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        return hi;
     }
 
     /// @notice Returns the balance of a specific outcome token for a given account.
