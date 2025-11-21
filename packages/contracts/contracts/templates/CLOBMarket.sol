@@ -5,11 +5,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IOracle.sol";
 import "../tokens/OutcomeToken1155.sol";
 
-contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
+contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder {
     using SafeERC20 for IERC20;
 
     bytes32 public marketId;
@@ -51,6 +52,10 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
     event Resolved(uint256 outcome);
     event Redeemed(address indexed user, uint256 amount, uint256 outcomeIndex);
     event CompleteSetDeposited(address indexed user, uint256 amount);
+    event FeeUpdated(uint256 feeBps, address recipient);
+    event FeesWithdrawn(address recipient, uint256 amount);
+    event TradingPaused(bool paused);
+    event Finalized(uint256 refundedBuys, uint256 refundedSells);
 
     error InvalidOutcomeIndex();
     error InvalidStage();
@@ -145,8 +150,8 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         o.active = false;
         uint256 tokenId = outcomeToken.computeTokenId(address(this), o.outcomeIndex);
         if (o.isBuy) {
-            uint256 refund = o.price * o.remaining;
-            o.escrow -= refund;
+            uint256 refund = o.escrow;
+            o.escrow = 0;
             IERC20(collateralToken).safeTransfer(msg.sender, refund);
         } else {
             uint256 refundAmount = o.remaining;
@@ -182,6 +187,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         b.remaining -= qty;
         s.remaining -= qty;
         b.escrow -= collateral;
+        s.escrow -= qty;
         IERC20(collateralToken).safeTransfer(s.trader, pay);
         accruedFees += fee;
         outcomeToken.safeTransferFrom(address(this), b.trader, tokenId, qty, "");
@@ -191,11 +197,12 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         return true;
     }
 
-    function withdrawFees(uint256 amount) external {
+    function withdrawFees(uint256 amount) external nonReentrant {
         require(msg.sender == feeRecipient);
         require(amount > 0 && amount <= accruedFees);
         accruedFees -= amount;
         IERC20(collateralToken).safeTransfer(feeRecipient, amount);
+        emit FeesWithdrawn(feeRecipient, amount);
     }
 
     function depositCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
@@ -266,8 +273,10 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
     function setFee(uint256 newFeeBps, address newRecipient) external {
         require(msg.sender == factory);
         require(newFeeBps <= 10000);
+        require(newRecipient != address(0));
         feeBps = newFeeBps;
         feeRecipient = newRecipient;
+        emit FeeUpdated(newFeeBps, newRecipient);
     }
 
     function getBestBid(uint256 outcomeIndex) external view returns (uint256 price, uint256 qty) {
@@ -320,8 +329,8 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
             o.active = false;
             uint256 tokenId = outcomeToken.computeTokenId(address(this), o.outcomeIndex);
             if (isBuy) {
-                uint256 refund = o.price * o.remaining;
-                o.escrow -= refund;
+                uint256 refund = o.escrow;
+                o.escrow = 0;
                 IERC20(collateralToken).safeTransfer(msg.sender, refund);
             } else {
                 uint256 refundAmount = o.remaining;
@@ -341,8 +350,8 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
             o.active = false;
             uint256 tokenId = outcomeToken.computeTokenId(address(this), o.outcomeIndex);
             if (isBuy) {
-                uint256 refund = o.price * o.remaining;
-                o.escrow -= refund;
+                uint256 refund = o.escrow;
+                o.escrow = 0;
                 IERC20(collateralToken).safeTransfer(o.trader, refund);
             } else {
                 uint256 refundAmount = o.remaining;
@@ -374,11 +383,44 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
     function pauseTrading() external {
         if (!_isAdmin(msg.sender)) revert NotAdmin();
         paused = true;
+        emit TradingPaused(true);
     }
 
     function resumeTrading() external {
         if (!_isAdmin(msg.sender)) revert NotAdmin();
         paused = false;
+        emit TradingPaused(false);
+    }
+
+    function finalize(uint256 max) external nonReentrant atStage(IMarket.Stages.RESOLVED) {
+        uint256 refundedBuys = 0;
+        uint256 refundedSells = 0;
+        for (uint256 outcomeIndex = 0; outcomeIndex < 2 && refundedBuys < max; outcomeIndex++) {
+            uint256[] storage bids = buyBook[outcomeIndex];
+            for (uint256 i = 0; i < bids.length && refundedBuys < max; i++) {
+                Order storage o = orders[bids[i]];
+                if (!o.active || !o.isBuy || o.remaining == 0) continue;
+                o.active = false;
+                uint256 refund = o.escrow;
+                o.escrow = 0;
+                IERC20(collateralToken).safeTransfer(o.trader, refund);
+                refundedBuys++;
+            }
+        }
+        for (uint256 outcomeIndex = 0; outcomeIndex < 2 && refundedSells < max; outcomeIndex++) {
+            uint256[] storage asks = sellBook[outcomeIndex];
+            uint256 tokenId = outcomeToken.computeTokenId(address(this), outcomeIndex);
+            for (uint256 i = 0; i < asks.length && refundedSells < max; i++) {
+                Order storage o = orders[asks[i]];
+                if (!o.active || o.isBuy || o.remaining == 0) continue;
+                o.active = false;
+                uint256 qty = o.remaining;
+                o.escrow -= qty;
+                outcomeToken.safeTransferFrom(address(this), o.trader, tokenId, qty, "");
+                refundedSells++;
+            }
+        }
+        emit Finalized(refundedBuys, refundedSells);
     }
 
 }
