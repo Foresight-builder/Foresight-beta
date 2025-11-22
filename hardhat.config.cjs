@@ -30,7 +30,7 @@ module.exports = {
     sources: "packages/contracts/contracts"
   },
   networks: {
-    hardhat: { chainId: 1337 },
+    hardhat: { chainId: 1337, allowUnlimitedContractSize: true },
     localhost: { url: "http://127.0.0.1:8545", chainId: 1337 },
     sepolia: {
       url: SEPOLIA_RPC_URL || "",
