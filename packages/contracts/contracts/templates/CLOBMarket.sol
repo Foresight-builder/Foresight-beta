@@ -56,14 +56,21 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         uint256 id;
         uint256 salt;
     }
+    struct CancelSaltRequest {
+        address maker;
+        uint256 salt;
+    }
 
     uint256 public nextOrderId;
     mapping(uint256 => Order) public orders;
     mapping(uint256 => uint256[]) public buyBook;
     mapping(uint256 => uint256[]) public sellBook;
     mapping(address => mapping(uint256 => bool)) public usedSalt;
+    mapping(address => mapping(uint256 => uint256)) public filledBySalt;
+    mapping(address => mapping(uint256 => bool)) public canceledSalt;
     bytes32 public constant ORDER_TYPEHASH = keccak256("OrderRequest(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 expiry,uint256 salt)");
     bytes32 public constant CANCEL_TYPEHASH = keccak256("CancelRequest(address maker,uint256 id,uint256 salt)");
+    bytes32 public constant CANCEL_SALT_TYPEHASH = keccak256("CancelSaltRequest(address maker,uint256 salt)");
 
     event Initialized();
     event OrderPlaced(uint256 id, address trader, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount);
@@ -79,6 +86,8 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     event Finalized(uint256 refundedBuys, uint256 refundedSells);
     event OrderPlacedSigned(address maker, uint256 id);
     event OrderCanceledSigned(address maker, uint256 id);
+    event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt);
+    event OrderSaltCanceled(address maker, uint256 salt);
 
     error InvalidOutcomeIndex();
     error InvalidStage();
@@ -93,6 +102,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     error InvalidAmountOrPrice();
     error InvalidTick();
     error InvalidSignedRequest();
+    error OrderAlreadyCanceled();
 
     modifier atStage(IMarket.Stages _stage) {
         if (stage != _stage) revert InvalidStage();
@@ -141,6 +151,10 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
 
     function isSaltUsed(address maker, uint256 salt) external view returns (bool) {
         return usedSalt[maker][salt];
+    }
+
+    function getFilledBySalt(address maker, uint256 salt) external view returns (uint256) {
+        return filledBySalt[maker][salt];
     }
 
     function placeOrder(uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused returns (uint256 id) {
@@ -266,6 +280,16 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         emit OrderCanceledSigned(req.maker, req.id);
     }
 
+    function cancelOrderSaltSigned(CancelSaltRequest calldata req, bytes calldata signature) external nonReentrant atStage(IMarket.Stages.TRADING) {
+        if (canceledSalt[req.maker][req.salt]) revert OrderAlreadyCanceled();
+        bytes32 structHash = keccak256(abi.encode(CANCEL_SALT_TYPEHASH, req.maker, req.salt));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address recovered = ECDSA.recover(digest, signature);
+        if (recovered != req.maker) revert InvalidSignedRequest();
+        canceledSalt[req.maker][req.salt] = true;
+        emit OrderSaltCanceled(req.maker, req.salt);
+    }
+
     function mintCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
         if (amount == 0) revert InvalidAmount();
         if (!outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this))) revert NoMinterRole();
@@ -294,6 +318,40 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         outcomeToken.burn(msg.sender, idWin, amount);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
         emit Redeemed(msg.sender, amount, resolvedOutcome);
+    }
+
+    function fillOrderSigned(OrderRequest calldata req, bytes calldata signature, uint256 fillAmount) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
+        if (canceledSalt[req.maker][req.salt]) revert InvalidSignedRequest();
+        if (req.outcomeIndex > 1) revert InvalidOutcomeIndex();
+        if (req.price == 0 || req.amount == 0 || fillAmount == 0) revert InvalidAmountOrPrice();
+        if (tickSize > 0 && req.price % tickSize != 0) revert InvalidTick();
+        bytes32 structHash = keccak256(abi.encode(ORDER_TYPEHASH, req.maker, req.outcomeIndex, req.isBuy, req.price, req.amount, req.expiry, req.salt));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address recovered = ECDSA.recover(digest, signature);
+        if (recovered != req.maker) revert InvalidSignedRequest();
+        uint256 normalizedExpiry = req.expiry == 0 ? type(uint256).max : req.expiry;
+        if (normalizedExpiry <= block.timestamp) revert InvalidExpiry();
+        uint256 already = filledBySalt[req.maker][req.salt];
+        if (already + fillAmount > req.amount) revert InvalidAmount();
+        filledBySalt[req.maker][req.salt] = already + fillAmount;
+        uint256 tokenId = outcomeToken.computeTokenId(address(this), req.outcomeIndex);
+        uint256 collateral = fillAmount * req.price;
+        uint256 fee = feeBps > 0 ? (collateral * feeBps) / 10000 : 0;
+        uint256 pay = collateral - fee;
+        if (req.isBuy) {
+            IERC20(collateralToken).safeTransferFrom(req.maker, address(this), collateral);
+            IERC20(collateralToken).safeTransfer(msg.sender, pay);
+            unchecked { accruedFees += fee; }
+            if (!outcomeToken.isApprovedForAll(msg.sender, address(this))) revert NotApproved1155();
+            outcomeToken.safeTransferFrom(msg.sender, req.maker, tokenId, fillAmount, "");
+        } else {
+            if (!outcomeToken.isApprovedForAll(req.maker, address(this))) revert NotApproved1155();
+            outcomeToken.safeTransferFrom(req.maker, msg.sender, tokenId, fillAmount, "");
+            IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), collateral);
+            IERC20(collateralToken).safeTransfer(req.maker, pay);
+            unchecked { accruedFees += fee; }
+        }
+        emit OrderFilledSigned(req.maker, msg.sender, req.outcomeIndex, req.isBuy, req.price, fillAmount, fee, req.salt);
     }
 
     function resolve() external atStage(IMarket.Stages.TRADING) {

@@ -354,4 +354,108 @@ describe("CLOBMarket end-to-end (CJS)", function () {
     const m2 = await market.matchOrders(0, 1);
     await m2.wait();
   });
+
+  it("off-chain style: fill signed BUY and SELL orders with partial fills and cancellation", async function () {
+    const [deployer, buyer, seller] = await ethers.getSigners();
+
+    const ERC20Factory = await ethers.getContractFactory("MockERC20");
+    const collateral = await ERC20Factory.deploy("MockUSD", "mUSD");
+    await collateral.waitForDeployment();
+
+    const OutcomeFactory = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeFactory.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const MarketFactory = await ethers.getContractFactory("CLOBMarket");
+    const market = await MarketFactory.deploy();
+    await market.waitForDeployment();
+
+    const now = Math.floor(Date.now() / 1000);
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+    await market.initialize(
+      ethers.ZeroHash,
+      await deployer.getAddress(),
+      await deployer.getAddress(),
+      await collateral.getAddress(),
+      await deployer.getAddress(),
+      30,
+      now + 3600,
+      data
+    );
+
+    await market.startTrading();
+
+    await outcome1155.grantMinter(await market.getAddress());
+    await outcome1155.grantMinter(await deployer.getAddress());
+
+    const tokenId = await outcome1155.computeTokenId(await market.getAddress(), 0);
+    await outcome1155.mint(await seller.getAddress(), tokenId, 100);
+    await outcome1155.connect(seller).setApprovalForAll(await market.getAddress(), true);
+
+    await collateral.mint(await buyer.getAddress(), 1000000);
+    await collateral.connect(buyer).approve(await market.getAddress(), 1000000);
+
+    const buyOrder = {
+      maker: await buyer.getAddress(),
+      outcomeIndex: 0,
+      isBuy: true,
+      price: 10,
+      amount: 30,
+      expiry: 0,
+      salt: 111
+    };
+    const domain = {
+      name: "CLOBMarket",
+      version: "1",
+      chainId: (await ethers.provider.getNetwork()).chainId,
+      verifyingContract: await market.getAddress()
+    };
+    const types = {
+      OrderRequest: [
+        { name: "maker", type: "address" },
+        { name: "outcomeIndex", type: "uint256" },
+        { name: "isBuy", type: "bool" },
+        { name: "price", type: "uint256" },
+        { name: "amount", type: "uint256" },
+        { name: "expiry", type: "uint256" },
+        { name: "salt", type: "uint256" }
+      ]
+    };
+    const sigBuy = await buyer.signTypedData(domain, types, buyOrder);
+
+    await market.connect(seller).fillOrderSigned(buyOrder, sigBuy, 10);
+    const f1 = await market.getFilledBySalt(await buyer.getAddress(), 111);
+    expect(Number(f1)).to.equal(10);
+
+    await market.connect(seller).fillOrderSigned(buyOrder, sigBuy, 10);
+    const f2 = await market.getFilledBySalt(await buyer.getAddress(), 111);
+    expect(Number(f2)).to.equal(20);
+
+    const sellOrder = {
+      maker: await seller.getAddress(),
+      outcomeIndex: 0,
+      isBuy: false,
+      price: 12,
+      amount: 10,
+      expiry: 0,
+      salt: 222
+    };
+    const sigSell = await seller.signTypedData(domain, types, sellOrder);
+
+    await market.connect(buyer).fillOrderSigned(sellOrder, sigSell, 5);
+    const f3 = await market.getFilledBySalt(await seller.getAddress(), 222);
+    expect(Number(f3)).to.equal(5);
+
+    const typesCancelSalt = {
+      CancelSaltRequest: [
+        { name: "maker", type: "address" },
+        { name: "salt", type: "uint256" }
+      ]
+    };
+    const cancelReq = { maker: await buyer.getAddress(), salt: 111 };
+    const sigCancel = await buyer.signTypedData(domain, typesCancelSalt, cancelReq);
+    await market.cancelOrderSaltSigned(cancelReq, sigCancel);
+    await expect(market.connect(seller).fillOrderSigned(buyOrder, sigBuy, 5)).to.be.reverted;
+  });
 });

@@ -37,6 +37,8 @@ export const RELAYER_PORT = parsed.data.PORT ?? 3001;
 import express from "express";
 import { ethers, Contract } from "ethers";
 import EntryPointAbi from './abi/EntryPoint.json' with { type: 'json' };
+import { supabaseAdmin } from './supabase'
+import { placeSignedOrder, cancelSalt, getDepth, getQueue, getOrderTypes } from './orderbook'
 
 const app = express();
 app.use(express.json());
@@ -103,6 +105,65 @@ app.post("/", async (req, res) => {
     });
   }
 });
+
+// Off-chain orderbook API
+app.post("/orderbook/orders", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const body = req.body || {}
+    const data = await placeSignedOrder(body)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    res.status(400).json({ message: 'place order failed', detail: String(e?.message || e) })
+  }
+})
+
+app.post("/orderbook/cancel-salt", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const body = req.body || {}
+    const data = await cancelSalt(body)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    res.status(400).json({ message: 'cancel salt failed', detail: String(e?.message || e) })
+  }
+})
+
+app.get("/orderbook/depth", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const vc = String(req.query.contract || '')
+    const chainId = Number(req.query.chainId || 0)
+    const outcome = Number(req.query.outcome || 0)
+    const side = String(req.query.side || 'buy').toLowerCase() === 'buy'
+    const levels = Math.max(1, Math.min(50, Number(req.query.levels || 10)))
+    const data = await getDepth(vc, chainId, outcome, side, levels)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    res.status(400).json({ message: 'depth query failed', detail: String(e?.message || e) })
+  }
+})
+
+app.get("/orderbook/queue", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const vc = String(req.query.contract || '')
+    const chainId = Number(req.query.chainId || 0)
+    const outcome = Number(req.query.outcome || 0)
+    const side = String(req.query.side || 'buy').toLowerCase() === 'buy'
+    const price = BigInt(String(req.query.price || '0'))
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit || 50)))
+    const offset = Math.max(0, Number(req.query.offset || 0))
+    const data = await getQueue(vc, chainId, outcome, side, price, limit, offset)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    res.status(400).json({ message: 'queue query failed', detail: String(e?.message || e) })
+  }
+})
+
+app.get('/orderbook/types', (req, res) => {
+  res.json({ types: getOrderTypes() })
+})
 
 app.listen(PORT, () => {
   console.log(`Relayer server listening on port ${PORT}`);
