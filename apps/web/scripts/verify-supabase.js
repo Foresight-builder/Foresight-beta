@@ -1,6 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
+import fs from 'node:fs'
+import path from 'node:path'
+
+function loadEnvLocal() {
+  const candidates = [
+    path.resolve(process.cwd(), '.env.local'),
+    path.resolve(process.cwd(), '../../.env.local'),
+    path.resolve(process.cwd(), '../../../.env.local')
+  ]
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        const content = fs.readFileSync(p, 'utf8')
+        for (const rawLine of content.split(/\r?\n/)) {
+          const line = rawLine.trim()
+          if (!line || line.startsWith('#')) continue
+          const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
+          if (!m) continue
+          const key = m[1]
+          let val = m[2]
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith('\'') && val.endsWith('\''))) {
+            val = val.slice(1, -1)
+          }
+          if (!process.env[key]) process.env[key] = val
+        }
+        break
+      }
+    } catch {}
+  }
+}
 
 async function main() {
+  loadEnvLocal()
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   if (!url || !anon) {

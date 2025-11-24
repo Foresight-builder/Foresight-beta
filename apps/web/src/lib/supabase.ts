@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+const isServer = typeof window === 'undefined'
+
 // 从环境变量获取Supabase配置
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ''
-const isServer = typeof window === 'undefined'
 
 // 创建客户端
 export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
