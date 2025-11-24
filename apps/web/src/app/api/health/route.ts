@@ -4,13 +4,13 @@ import { getClient } from '@/lib/supabase'
 export async function GET(_req: NextRequest) {
   try {
     const env = {
-      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      NEXT_PUBLIC_RELAYER_URL: !!process.env.NEXT_PUBLIC_RELAYER_URL,
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
-      SUPABASE_DB_URL: !!process.env.SUPABASE_DB_URL,
-      SUPABASE_CONNECTION_STRING: !!process.env.SUPABASE_CONNECTION_STRING
+      NEXT_PUBLIC_SUPABASE_URL: (process.env.NEXT_PUBLIC_SUPABASE_URL || '').length > 0,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').length > 0,
+      NEXT_PUBLIC_RELAYER_URL: (process.env.NEXT_PUBLIC_RELAYER_URL || '').length > 0,
+      SUPABASE_SERVICE_ROLE_KEY: (process.env.SUPABASE_SERVICE_ROLE_KEY || '').length > 0,
+      SUPABASE_SERVICE_KEY: (process.env.SUPABASE_SERVICE_KEY || '').length > 0,
+      SUPABASE_DB_URL: (process.env.SUPABASE_DB_URL || '').length > 0,
+      SUPABASE_CONNECTION_STRING: (process.env.SUPABASE_CONNECTION_STRING || '').length > 0
     }
 
     // 基础连通性与表存在检查（使用更高权限客户端优先，否则匿名）
@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
       checks.db_ping = { ok: !pingError }
       if (pingError) checks.db_ping.message = pingError.message
     } catch (e: any) {
-      checks.db_ping = { ok: false, message: e?.message || String(e) }
+      checks.db_ping = { ok: false, message: JSON.stringify(e, Object.getOwnPropertyNames(e)) }
     }
 
     // relayer ping（可选）
@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest) {
       checks.table_predictions = { ok: !error }
       if (error) checks.table_predictions.message = error.message
     } catch (e: any) {
-      checks.table_predictions = { ok: false, message: e?.message || String(e) }
+      checks.table_predictions = { ok: false, message: JSON.stringify(e, Object.getOwnPropertyNames(e)) }
     }
 
     // 表存在：event_follows
@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest) {
       checks.table_event_follows = { ok: !error }
       if (error) checks.table_event_follows.message = error.message
     } catch (e: any) {
-      checks.table_event_follows = { ok: false, message: e?.message || String(e) }
+      checks.table_event_follows = { ok: false, message: JSON.stringify(e, Object.getOwnPropertyNames(e)) }
     }
 
     // RLS 提示：在无 service key 情况下读取 event_follows 的计数可能失败

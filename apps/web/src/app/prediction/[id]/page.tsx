@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import ChatPanel from "@/components/ChatPanel";
 import ForumSection from "@/components/ForumSection";
 
+
 interface PredictionDetail {
   id: number;
   title: string;
@@ -55,6 +56,25 @@ export default function PredictionDetailPage() {
   const [guideLoading, setGuideLoading] = useState(false);
   const [guideError, setGuideError] = useState<string | null>(null);
   const [guideVariant, setGuideVariant] = useState<'A' | 'B'>('A');
+  const [market, setMarket] = useState<{ market: string; chain_id: number; collateral_token?: string; tick_size?: number } | null>(null);
+  const [manualMarket, setManualMarket] = useState<string>('');
+  const [manualChainId, setManualChainId] = useState<string>('');
+  const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
+  const [tradeOutcome, setTradeOutcome] = useState<0 | 1>(1);
+  const [priceInput, setPriceInput] = useState<string>('');
+  const [amountInput, setAmountInput] = useState<string>('');
+  const [expiryInput, setExpiryInput] = useState<string>('');
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [orderMsg, setOrderMsg] = useState<string | null>(null);
+  const [depthBuy, setDepthBuy] = useState<Array<{ price: string; qty: string }>>([]);
+  const [depthSell, setDepthSell] = useState<Array<{ price: string; qty: string }>>([]);
+  const [selectedPrice, setSelectedPrice] = useState<string | null>(null);
+  const [queueRows, setQueueRows] = useState<any[]>([]);
+  const [orderMode, setOrderMode] = useState<'limit' | 'best'>('limit');
+  const [bestBid, setBestBid] = useState<string>('');
+  const [bestAsk, setBestAsk] = useState<string>('');
+  const [midPrice, setMidPrice] = useState<string>('');
+  const [openOrders, setOpenOrders] = useState<any[]>([]);
 
   // 关注功能相关状态
   const { account, connectWallet, siweLogin } = useWallet();
@@ -113,6 +133,84 @@ export default function PredictionDetailPage() {
       fetchPredictionDetail();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    const loadMarket = async () => {
+      try {
+        const resp = await fetch(`/api/markets/map?id=${params.id}`)
+        if (!resp.ok) return
+        const j = await resp.json()
+        if (j?.success && j?.data) setMarket(j.data)
+      } catch {}
+    }
+    loadMarket()
+  }, [params.id])
+
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+        if (!m) return
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+        if (!base) return
+        const u1 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${1}&side=${true}&levels=10`
+        const u2 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${1}&side=${false}&levels=10`
+        const r1 = await fetch(u1)
+        const r2 = await fetch(u2)
+        const j1 = await r1.json().catch(() => ({}))
+        const j2 = await r2.json().catch(() => ({}))
+        if (j1?.data) setDepthBuy(j1.data)
+        if (j2?.data) setDepthSell(j2.data)
+        const bb = (j1?.data && j1.data.length) ? j1.data[0].price : ''
+        const ba = (j2?.data && j2.data.length) ? j2.data[0].price : ''
+        setBestBid(bb || '')
+        setBestAsk(ba || '')
+        if (bb && ba) {
+          const mid = (BigInt(bb) + BigInt(ba)) / BigInt(2)
+          setMidPrice(mid.toString())
+        } else {
+          setMidPrice('')
+        }
+      } catch {}
+    }, 2000)
+    return () => clearInterval(t)
+  }, [market?.market, market?.chain_id, manualMarket, manualChainId])
+
+  useEffect(() => {
+    const loadQueue = async () => {
+      try {
+        const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+        if (!m || !selectedPrice) return
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+        if (!base) return
+        const u = `${base}/orderbook/queue?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${tradeSide === 'buy'}&price=${selectedPrice}&limit=50&offset=0`
+        const r = await fetch(u)
+        const j = await r.json().catch(() => ({}))
+        if (j?.data) setQueueRows(j.data)
+      } catch {}
+    }
+    loadQueue()
+  }, [market?.market, market?.chain_id, manualMarket, manualChainId, selectedPrice, tradeOutcome, tradeSide])
+
+  useEffect(() => {
+    const loadOpenOrders = async () => {
+      try {
+        const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+        if (!m || !account) return
+        if (!supabase) return
+        const { data, error } = await (supabase as any)
+          .from('orders')
+          .select('id, maker_salt, price, remaining, outcome_index, is_buy, status, created_at')
+          .eq('verifying_contract', String(m.market).toLowerCase())
+          .eq('chain_id', Number(m.chain_id))
+          .eq('maker_address', String(account).toLowerCase())
+          .in('status', ['open', 'filled_partial'])
+          .order('created_at', { ascending: false })
+        if (!error && Array.isArray(data)) setOpenOrders(data)
+      } catch {}
+    }
+    loadOpenOrders()
+  }, [market?.market, market?.chain_id, manualMarket, manualChainId, account])
 
   // 将当前查看的事件写入最近浏览（供热门页侧边栏展示）
   useEffect(() => {
@@ -397,6 +495,153 @@ export default function PredictionDetailPage() {
         BigInt(intPart || "0") * BigInt(10) ** BigInt(decimals) +
         BigInt(frac || "0")
       );
+    }
+  }
+
+  async function submitOrder() {
+    try {
+      setOrderMsg(null)
+      setOrderSubmitting(true)
+      const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+      if (!m) throw new Error('未配置市场')
+      if (!prediction) throw new Error('预测事件未加载')
+      if (typeof window === 'undefined' || !(window as any).ethereum) throw new Error('请先连接钱包')
+      const provider = new ethers.BrowserProvider((window as any).ethereum)
+      const signer = await provider.getSigner()
+      const accountAddr = await signer.getAddress()
+      const net = await provider.getNetwork()
+      const chainIdNum = Number(net.chainId)
+      const outcomeIndex = tradeOutcome
+      const isBuy = tradeSide === 'buy'
+      let priceDec = Number(priceInput || '0')
+      if (orderMode === 'best') {
+        const target = tradeSide === 'buy' ? bestAsk : bestBid
+        if (!target) throw new Error('缺少盘口数据')
+        priceDec = Number(ethers.formatUnits(BigInt(target), 6))
+      }
+      const amountDec = Number(amountInput || '0')
+      if (!Number.isFinite(priceDec) || priceDec <= 0) throw new Error('价格不合法')
+      if (!Number.isFinite(amountDec) || amountDec <= 0) throw new Error('数量不合法')
+      const { usdt } = resolveAddresses(chainIdNum)
+      if (!usdt) throw new Error('未配置USDT地址')
+      const token = new ethers.Contract(usdt, erc20Abi, signer)
+      let decimals = 6
+      try { decimals = await token.decimals() } catch {}
+      const price = parseUnitsByDecimals(priceDec, Number(decimals))
+      const amount = BigInt(Math.floor(amountDec))
+      const expirySec = expiryInput ? BigInt(Math.floor(Number(expiryInput))) : BigInt(0)
+      const salt = BigInt(String(Date.now()))
+      const domain = { name: 'CLOBMarket', version: '1', chainId: chainIdNum, verifyingContract: m.market }
+      const types = { OrderRequest: [
+        { name: 'maker', type: 'address' },
+        { name: 'outcomeIndex', type: 'uint256' },
+        { name: 'isBuy', type: 'bool' },
+        { name: 'price', type: 'uint256' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+        { name: 'salt', type: 'uint256' },
+      ] } as const
+      const message = { maker: accountAddr, outcomeIndex, isBuy, price, amount, expiry: expirySec, salt }
+      const signature = await signer.signTypedData(domain as any, types as any, message as any)
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      if (!base) throw new Error('未配置撮合服务')
+      const body = { chainId: chainIdNum, verifyingContract: m.market, order: { maker: accountAddr, outcomeIndex, isBuy, price: price.toString(), amount: amount.toString(), expiry: expirySec.toString(), salt: salt.toString() }, signature }
+      const resp = await fetch(`${base}/orderbook/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const j = await resp.json().catch(() => ({}))
+      if (!resp.ok) throw new Error(j?.detail || j?.message || '下单失败')
+      setOrderMsg('下单成功')
+    } catch (e: any) {
+      setOrderMsg(e?.message || '下单失败')
+    } finally {
+      setOrderSubmitting(false)
+    }
+  }
+
+  async function fillOrder(row: any) {
+    try {
+      setOrderMsg(null)
+      const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+      if (!m) throw new Error('未配置市场')
+      if (typeof window === 'undefined' || !(window as any).ethereum) throw new Error('请先连接钱包')
+      const provider = new ethers.BrowserProvider((window as any).ethereum)
+      const signer = await provider.getSigner()
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      const d = await fetch(`/api/orderbook/order?id=${row.id}`)
+      const j = await d.json()
+      const ord = j?.data
+      if (!ord) throw new Error('订单不存在')
+      const types = { OrderRequest: [
+        { name: 'maker', type: 'address' },
+        { name: 'outcomeIndex', type: 'uint256' },
+        { name: 'isBuy', type: 'bool' },
+        { name: 'price', type: 'uint256' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+        { name: 'salt', type: 'uint256' },
+      ] } as const
+      const marketContract = new ethers.Contract(m.market, [
+        'function fillOrderSigned((address,uint256,bool,uint256,uint256,uint256,uint256),bytes,uint256)'
+      ], signer)
+      const req = [
+        ord.maker_address,
+        Number(ord.outcome_index),
+        Boolean(ord.is_buy),
+        BigInt(ord.price),
+        BigInt(ord.amount),
+        ord.expiry ? BigInt(Math.floor(new Date(String(ord.expiry)).getTime() / 1000)) : BigInt(0),
+        BigInt(ord.maker_salt)
+      ]
+      const desired = amountInput ? BigInt(Math.floor(Number(amountInput))) : BigInt(0)
+      const remaining = BigInt(ord.remaining)
+      const fillAmount = desired > BigInt(0) ? (desired > remaining ? remaining : desired) : remaining
+      if (!Boolean(ord.is_buy)) {
+        const { usdt } = resolveAddresses(Number(ord.chain_id))
+        if (!usdt) throw new Error('未配置USDT地址')
+        const token = new ethers.Contract(usdt, erc20Abi, signer)
+        const accountAddr = await signer.getAddress()
+        const price = BigInt(ord.price)
+        const need = fillAmount * price
+        const allowance: bigint = await token.allowance(accountAddr, m.market)
+        if (allowance < need) {
+          const tx = await token.approve(m.market, need)
+          await tx.wait()
+        }
+      }
+      const tx = await marketContract.fillOrderSigned(req as any, ord.signature, fillAmount)
+      await tx.wait()
+      setOrderMsg('成交成功')
+    } catch (e: any) {
+      setOrderMsg(e?.message || '成交失败')
+    }
+  }
+
+  async function cancelOrderSalt(row: any) {
+    try {
+      setOrderMsg(null)
+      const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+      if (!m) throw new Error('未配置市场')
+      if (typeof window === 'undefined' || !(window as any).ethereum) throw new Error('请先连接钱包')
+      const provider = new ethers.BrowserProvider((window as any).ethereum)
+      const signer = await provider.getSigner()
+      const addr = await signer.getAddress()
+      const chain = await provider.getNetwork()
+      const chainIdNum = Number(chain.chainId)
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      const typesResp = await fetch(`${base}/orderbook/types`)
+      const typesJson = await typesResp.json().catch(()=>({}))
+      const types = typesJson?.types || { CancelSaltRequest: [ { name: 'maker', type: 'address' }, { name: 'salt', type: 'uint256' } ] }
+      const domain = { name: 'CLOBMarket', version: '1', chainId: chainIdNum, verifyingContract: m.market }
+      const message = { maker: addr, salt: BigInt(row.maker_salt) }
+      const signature = await signer.signTypedData(domain as any, { CancelSaltRequest: types.CancelSaltRequest } as any, message as any)
+      const payload = { chainId: chainIdNum, verifyingContract: m.market, maker: addr, salt: BigInt(row.maker_salt).toString(), signature }
+      const resp = await fetch(`${base}/orderbook/cancel-salt`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const j = await resp.json().catch(()=>({}))
+      if (!resp.ok) throw new Error(j?.detail || j?.message || '取消失败')
+      setOrderMsg('取消成功')
+      const fresh = openOrders.filter((x)=> String(x.maker_salt) !== String(row.maker_salt))
+      setOpenOrders(fresh)
+    } catch (e: any) {
+      setOrderMsg(e?.message || '取消失败')
     }
   }
 
@@ -842,6 +1087,107 @@ export default function PredictionDetailPage() {
               {stakeSuccess && (
                 <p className="text-sm text-green-600 mt-2">{stakeSuccess}</p>
               )}
+            </div>
+          )}
+
+          {(market || (manualMarket && manualChainId)) && (
+            <div className="mt-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">交易</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  {!market && (
+                    <div className="mb-3 p-2 border rounded text-sm">
+                      <div className="mb-2">手动配置市场地址与链ID</div>
+                      <input value={manualMarket} onChange={(e)=>setManualMarket(e.target.value)} placeholder="市场合约地址" className="px-2 py-1 border rounded w-full mb-2" />
+                      <input value={manualChainId} onChange={(e)=>setManualChainId(e.target.value)} placeholder="链ID" className="px-2 py-1 border rounded w-full" />
+                    </div>
+                  )}
+                  <div className="flex gap-2 mb-2">
+                    <button onClick={() => setTradeSide('buy')} className={`px-3 py-1 rounded ${tradeSide==='buy'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-700'}`}>买入</button>
+                    <button onClick={() => setTradeSide('sell')} className={`px-3 py-1 rounded ${tradeSide==='sell'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-700'}`}>卖出</button>
+                    <button onClick={() => setTradeOutcome(1)} className={`px-3 py-1 rounded ${tradeOutcome===1?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-700'}`}>是</button>
+                    <button onClick={() => setTradeOutcome(0)} className={`px-3 py-1 rounded ${tradeOutcome===0?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-700'}`}>否</button>
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    <button onClick={()=>setOrderMode('limit')} className={`px-3 py-1 rounded ${orderMode==='limit'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-700'}`}>限价</button>
+                    <button onClick={()=>setOrderMode('best')} className={`px-3 py-1 rounded ${orderMode==='best'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-700'}`}>按最佳价</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input value={priceInput} onChange={(e)=>setPriceInput(e.target.value)} placeholder="价格(USDT)" className="px-3 py-2 border rounded" />
+                    <input value={amountInput} onChange={(e)=>setAmountInput(e.target.value)} placeholder="数量" className="px-3 py-2 border rounded" />
+                    <input value={expiryInput} onChange={(e)=>setExpiryInput(e.target.value)} placeholder="过期时间(秒,可选)" className="px-3 py-2 border rounded col-span-2" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <button onClick={()=>setAmountInput('1')} className="px-2 py-1 rounded border">+1</button>
+                    <button onClick={()=>setAmountInput('5')} className="px-2 py-1 rounded border">+5</button>
+                    <button onClick={()=>setAmountInput('10')} className="px-2 py-1 rounded border">+10</button>
+                  </div>
+                  <div className="mt-3 text-sm text-gray-700">
+                    <div>最佳买价: {bestBid? Number(ethers.formatUnits(BigInt(bestBid), 6)).toFixed(4): '-'}</div>
+                    <div>最佳卖价: {bestAsk? Number(ethers.formatUnits(BigInt(bestAsk), 6)).toFixed(4): '-'}</div>
+                    <div>中间价: {midPrice? Number(ethers.formatUnits(BigInt(midPrice), 6)).toFixed(4): '-'}</div>
+                    <div>概率: {priceInput? (Number(priceInput)*100).toFixed(2): midPrice? (Number(ethers.formatUnits(BigInt(midPrice), 6))*100).toFixed(2): '-'}%</div>
+                    <div>预计资金: {priceInput && amountInput? (Number(priceInput)*Number(amountInput)).toFixed(4): '-'}</div>
+                  </div>
+                  <div className="mt-3">
+                    <button onClick={submitOrder} disabled={orderSubmitting} className="px-4 py-2 rounded bg-purple-600 text-white disabled:opacity-50">{orderSubmitting?'提交中…':'提交订单'}</button>
+                  </div>
+                  {orderMsg && <div className="mt-2 text-sm text-gray-700">{orderMsg}</div>}
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-2">盘口(是)</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      {depthBuy.map((d,i)=> (
+                        <div key={i} className="flex justify-between text-sm">
+                          <button onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} className="text-green-700">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</button>
+                          <span className="text-gray-600">{d.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      {depthSell.map((d,i)=> (
+                        <div key={i} className="flex justify-between text-sm">
+                          <button onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} className="text-red-700">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</button>
+                          <span className="text-gray-600">{d.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-sm">队列(价格: {selectedPrice ? Number(ethers.formatUnits(BigInt(selectedPrice), 6)).toFixed(4) : '-'})</div>
+                    <div className="space-y-2 mt-2">
+                      {queueRows.map((r)=> (
+                        <div key={r.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <span className="mr-3">剩余 {String(r.remaining)}</span>
+                            <span className="mr-3">盐 {String(r.maker_salt)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={()=>fillOrder(r)} className="px-2 py-1 rounded bg-blue-600 text-white">填单</button>
+                            <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded bg-gray-200 text-gray-800">取消</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-sm font-medium mb-2">我的挂单</div>
+                    <div className="space-y-2">
+                      {openOrders.map((r)=> (
+                        <div key={r.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <span className="mr-3">{r.is_buy? '买': '卖'}/{r.outcome_index===1?'是':'否'}</span>
+                            <span className="mr-3">价格 {Number(ethers.formatUnits(BigInt(r.price), 6)).toFixed(4)}</span>
+                            <span className="mr-3">剩余 {String(r.remaining)}</span>
+                          </div>
+                          <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded bg-gray-200 text-gray-800">取消</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

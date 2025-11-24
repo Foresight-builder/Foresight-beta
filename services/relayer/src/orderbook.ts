@@ -1,15 +1,18 @@
 import { z } from 'zod'
 import { ethers } from 'ethers'
-import { supabaseAdmin } from './supabase'
+import { supabaseAdmin } from './supabase.js'
+
+const asBigInt = (pos: 'price' | 'amount' | 'expiry' | 'salt') =>
+  z.preprocess((v) => (typeof v === 'string' ? BigInt(v) : v), z.bigint().refine((x) => x >= 0n))
 
 export const OrderSchema = z.object({
   maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-  outcomeIndex: z.number().int().min(0).max(1),
+  outcomeIndex: z.number().int().min(0).max(255),
   isBuy: z.boolean(),
-  price: z.bigint().refine((v) => v > 0n),
-  amount: z.bigint().refine((v) => v > 0n),
-  expiry: z.bigint().optional(),
-  salt: z.bigint().refine((v) => v > 0n),
+  price: asBigInt('price').refine((v) => v > 0n),
+  amount: asBigInt('amount').refine((v) => v > 0n),
+  expiry: asBigInt('expiry').optional(),
+  salt: asBigInt('salt').refine((v) => v > 0n),
 })
 
 export const InputSchemaPlace = z.object({
@@ -23,7 +26,7 @@ export const InputSchemaCancelSalt = z.object({
   chainId: z.number().int().positive(),
   verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-  salt: z.bigint(),
+  salt: asBigInt('salt'),
   signature: z.string(),
 })
 

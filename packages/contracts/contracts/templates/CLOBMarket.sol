@@ -23,6 +23,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     uint256 public feeBps;
     uint256 public resolutionTime;
     OutcomeToken1155 public outcomeToken;
+    uint256 public outcomeCount;
     IMarket.Stages public stage;
     uint256 public resolvedOutcome;
     address public feeRecipient;
@@ -136,8 +137,17 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         oracle = _oracle;
         feeBps = _feeBps;
         resolutionTime = _resolutionTime;
-        (address outcome1155) = abi.decode(data, (address));
+        address outcome1155;
+        uint256 oc = 2;
+        if (data.length == 32) {
+            outcome1155 = abi.decode(data, (address));
+        } else if (data.length == 64) {
+            (outcome1155, oc) = abi.decode(data, (address, uint256));
+        } else {
+            revert();
+        }
         outcomeToken = OutcomeToken1155(outcome1155);
+        outcomeCount = oc;
         feeRecipient = _factory;
         stage = IMarket.Stages.TRADING;
         tickSize = 1;
@@ -167,7 +177,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     }
 
     function _placeOrder(address maker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 expiry) internal returns (uint256 id) {
-        if (outcomeIndex > 1) revert InvalidOutcomeIndex();
+        if (outcomeIndex >= outcomeCount) revert InvalidOutcomeIndex();
         if (price == 0 || amount == 0) revert InvalidAmountOrPrice();
         if (tickSize > 0 && price % tickSize != 0) revert InvalidTick();
         id = ++nextOrderId;
@@ -209,7 +219,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     }
 
     function matchOrders(uint256 outcomeIndex, uint256 maxMatches) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
-        if (outcomeIndex > 1) revert InvalidOutcomeIndex();
+        if (outcomeIndex >= outcomeCount) revert InvalidOutcomeIndex();
         require(maxMatches > 0);
         uint256 matched = 0;
         while (matched < maxMatches) {
@@ -294,19 +304,25 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         if (amount == 0) revert InvalidAmount();
         if (!outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this))) revert NoMinterRole();
         IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
-        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
-        OutcomeToken1155(address(outcomeToken)).mint(msg.sender, idNo, amount);
-        OutcomeToken1155(address(outcomeToken)).mint(msg.sender, idYes, amount);
+        uint256[] memory ids = new uint256[](outcomeCount);
+        uint256[] memory amounts = new uint256[](outcomeCount);
+        for (uint256 i = 0; i < outcomeCount; i++) {
+            ids[i] = outcomeToken.computeTokenId(address(this), i);
+            amounts[i] = amount;
+        }
+        OutcomeToken1155(address(outcomeToken)).mintBatch(msg.sender, ids, amounts);
     }
 
     function depositCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
         if (amount == 0) revert InvalidAmount();
         if (!outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this))) revert NoMinterRole();
-        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
-        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
-        outcomeToken.burn(msg.sender, idNo, amount);
-        outcomeToken.burn(msg.sender, idYes, amount);
+        uint256[] memory ids = new uint256[](outcomeCount);
+        uint256[] memory amounts = new uint256[](outcomeCount);
+        for (uint256 i = 0; i < outcomeCount; i++) {
+            ids[i] = outcomeToken.computeTokenId(address(this), i);
+            amounts[i] = amount;
+        }
+        outcomeToken.burnBatch(msg.sender, ids, amounts);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
         emit CompleteSetDeposited(msg.sender, amount);
     }
@@ -322,7 +338,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
 
     function fillOrderSigned(OrderRequest calldata req, bytes calldata signature, uint256 fillAmount) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
         if (canceledSalt[req.maker][req.salt]) revert InvalidSignedRequest();
-        if (req.outcomeIndex > 1) revert InvalidOutcomeIndex();
+        if (req.outcomeIndex >= outcomeCount) revert InvalidOutcomeIndex();
         if (req.price == 0 || req.amount == 0 || fillAmount == 0) revert InvalidAmountOrPrice();
         if (tickSize > 0 && req.price % tickSize != 0) revert InvalidTick();
         bytes32 structHash = keccak256(abi.encode(ORDER_TYPEHASH, req.maker, req.outcomeIndex, req.isBuy, req.price, req.amount, req.expiry, req.salt));
@@ -662,7 +678,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     function finalize(uint256 max) external nonReentrant atStage(IMarket.Stages.RESOLVED) {
         uint256 refundedBuys = 0;
         uint256 refundedSells = 0;
-        for (uint256 outcomeIndex = 0; outcomeIndex < 2 && refundedBuys < max; outcomeIndex++) {
+        for (uint256 outcomeIndex = 0; outcomeIndex < outcomeCount && refundedBuys < max; outcomeIndex++) {
             uint256[] storage bids = buyBook[outcomeIndex];
             for (uint256 i = 0; i < bids.length && refundedBuys < max; i++) {
                 Order storage o = orders[bids[i]];
@@ -674,7 +690,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
                 refundedBuys++;
             }
         }
-        for (uint256 outcomeIndex = 0; outcomeIndex < 2 && refundedSells < max; outcomeIndex++) {
+        for (uint256 outcomeIndex = 0; outcomeIndex < outcomeCount && refundedSells < max; outcomeIndex++) {
             uint256[] storage asks = sellBook[outcomeIndex];
             uint256 tokenId = outcomeToken.computeTokenId(address(this), outcomeIndex);
             for (uint256 i = 0; i < asks.length && refundedSells < max; i++) {

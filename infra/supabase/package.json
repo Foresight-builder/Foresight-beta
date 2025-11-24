@@ -11,8 +11,10 @@
     "db:enable-rls": "node ./scripts/enable-event-follows-rls.cjs",
     "db:realtime:test": "node ./scripts/check-realtime.cjs",
     "db:follows:clean": "node ./scripts/test-follow-clean.cjs",
-    "db:follows:insert": "node ./scripts/test-follow-insert.cjs"
-  ,
+    "db:follows:insert": "node ./scripts/test-follow-insert.cjs",
     "db:conn:test": "node ./scripts/check-connection.cjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
   }
 }
