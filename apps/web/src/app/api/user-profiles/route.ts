@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, supabase } from '@/lib/supabase'
-import { normalizeAddress, getSessionAddress } from '@/lib/serverUtils'
+import { normalizeAddress, getSessionAddress, isAdminAddress } from '@/lib/serverUtils'
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr)
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const client = supabaseAdmin || supabase
     if (!client) return NextResponse.json({ profile: null, profiles: [] })
     const { searchParams } = new URL(req.url)
-    const address = normalizeAddress(String(searchParams.get('address') || ''))
+    let address = normalizeAddress(String(searchParams.get('address') || ''))
     const addressesStr = String(searchParams.get('addresses') || '')
     const list = addressesStr
       .split(',')
@@ -32,20 +32,32 @@ export async function GET(req: NextRequest) {
     if (list.length > 0) {
       const { data, error } = await client
         .from('user_profiles')
-        .select('wallet_address, username, email')
+        .select('wallet_address, username, email, is_admin')
         .in('wallet_address', list)
       if (error) return NextResponse.json({ profiles: [], error: error.message }, { status: 200 })
-      return NextResponse.json({ profiles: data || [] }, { status: 200 })
+      const rows = (data || []).map((p: any) => ({
+        ...p,
+        is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || '')
+      }))
+      return NextResponse.json({ profiles: rows }, { status: 200 })
     }
 
-    if (!address) return NextResponse.json({ profile: null }, { status: 200 })
+    if (!address) {
+      const sess = getSessionAddress(req)
+      address = normalizeAddress(String(sess || ''))
+    }
+    if (!address) return NextResponse.json({ profile: { wallet_address: '', username: '', email: '', is_admin: false } }, { status: 200 })
     const { data, error } = await client
       .from('user_profiles')
-      .select('wallet_address, username, email')
+      .select('wallet_address, username, email, is_admin')
       .eq('wallet_address', address)
       .maybeSingle()
-    if (error) return NextResponse.json({ profile: null }, { status: 200 })
-    return NextResponse.json({ profile: data || null }, { status: 200 })
+    if (error) {
+      const fallback = { wallet_address: address, username: '', email: '', is_admin: isAdminAddress(address) }
+      return NextResponse.json({ profile: fallback }, { status: 200 })
+    }
+    const profile = data ? { ...data, is_admin: !!data?.is_admin || isAdminAddress(address) } : { wallet_address: address, username: '', email: '', is_admin: isAdminAddress(address) }
+    return NextResponse.json({ profile }, { status: 200 })
   } catch (e: any) {
     return NextResponse.json({ profile: null, error: String(e?.message || e) }, { status: 200 })
   }

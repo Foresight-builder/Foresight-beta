@@ -29,6 +29,7 @@ export default function Sidebar() {
   const router = useRouter();
   const { account } = useWallet();
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     markets: true,
@@ -48,10 +49,11 @@ export default function Sidebar() {
           { label: "论坛", href: "/forum", icon: <MessageSquare className="w-4 h-4" /> },
           { label: "提案频道", href: "/proposals", icon: <Pin className="w-4 h-4" /> },
           { label: "我的关注", href: "/my-follows", icon: <Heart className="w-4 h-4" />, requireWallet: true },
+          ...(isAdmin ? [{ label: "管理员中心", href: "/admin/predictions/new", icon: <Users className="w-4 h-4" />, requireWallet: true }] : []),
         ],
       },
     ],
-    []
+    [isAdmin]
   );
 
   const isActive = (href?: string) => !!href && pathname === href;
@@ -81,6 +83,18 @@ export default function Sidebar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        if (!account) { setIsAdmin(false); return }
+        const res = await fetch(`/api/user-profiles?address=${String(account).toLowerCase()}`, { cache: 'no-store' })
+        const j = await res.json().catch(() => ({}))
+        setIsAdmin(!!j?.profile?.is_admin)
+      } catch { setIsAdmin(false) }
+    }
+    run()
+  }, [account])
 
   return (
     <>

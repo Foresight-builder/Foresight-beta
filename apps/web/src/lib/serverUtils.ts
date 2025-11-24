@@ -42,3 +42,10 @@ export function getEmailOtpShared() {
   if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[]
   return { store: g.__emailOtpStore as Map<string, OtpRecord>, logs: g.__emailOtpLogs as LogItem[] }
 }
+
+export function isAdminAddress(addr: string) {
+  const raw = (process.env.ADMIN_ADDRESSES || '').toLowerCase()
+  const list = raw.split(',').map(s => s.trim()).filter(Boolean)
+  const a = normalizeAddress(String(addr || '').toLowerCase())
+  return list.includes(a)
+}

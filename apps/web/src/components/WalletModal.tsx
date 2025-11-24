@@ -51,6 +51,29 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     };
   }, [isOpen]);
 
+  // 当弹窗重新打开且没有用户时，重置所有本地状态到初始值
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!user) {
+      setSelectedWallet(null);
+      setEmail("");
+      setOtpRequested(false);
+      setOtp("");
+      setEmailLoading(false);
+      setSiweLoading(false);
+      setPermLoading(false);
+      setMultiLoading(false);
+      setShowProfileForm(false);
+      setProfileLoading(false);
+      setUsername("");
+      setProfileError(null);
+      setRememberMe(false);
+      setEmailVerified(false);
+      setResendLeft(0);
+      setCodePreview(null);
+    }
+  }, [isOpen, user]);
+
   // 登录成功后自动关闭（需在任何条件返回之前声明，保证 Hook 顺序稳定）
   useEffect(() => {
     if (!isOpen) return;

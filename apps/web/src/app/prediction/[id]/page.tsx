@@ -60,7 +60,7 @@ export default function PredictionDetailPage() {
   const [manualMarket, setManualMarket] = useState<string>('');
   const [manualChainId, setManualChainId] = useState<string>('');
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
-  const [tradeOutcome, setTradeOutcome] = useState<0 | 1>(1);
+  const [tradeOutcome, setTradeOutcome] = useState<number>(0);
   const [priceInput, setPriceInput] = useState<string>('');
   const [amountInput, setAmountInput] = useState<string>('');
   const [expiryInput, setExpiryInput] = useState<string>('');
@@ -153,8 +153,8 @@ export default function PredictionDetailPage() {
         if (!m) return
         const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
         if (!base) return
-        const u1 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${1}&side=${true}&levels=10`
-        const u2 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${1}&side=${false}&levels=10`
+        const u1 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${true}&levels=10`
+        const u2 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${false}&levels=10`
         const r1 = await fetch(u1)
         const r2 = await fetch(u2)
         const j1 = await r1.json().catch(() => ({}))
@@ -175,6 +175,14 @@ export default function PredictionDetailPage() {
     }, 2000)
     return () => clearInterval(t)
   }, [market?.market, market?.chain_id, manualMarket, manualChainId])
+  
+  // 渲染选项切换（根据详情接口 includeOutcomes 返回）
+  useEffect(() => {
+    // 初始 outcome 兜底：若存在 outcomes，则设为 0
+    if (prediction && (prediction as any)?.outcomes && Array.isArray((prediction as any).outcomes)) {
+      setTradeOutcome(0)
+    }
+  }, [prediction?.id])
 
   useEffect(() => {
     const loadQueue = async () => {

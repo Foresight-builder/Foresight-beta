@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, CheckCircle, Wallet } from "lucide-react";
+import { Heart, CheckCircle, Wallet, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
@@ -94,7 +94,7 @@ export default function TrendingPage() {
 
   // 关注功能状态管理
   const [followedEvents, setFollowedEvents] = useState<Set<number>>(new Set());
-  const { account } = useWallet();
+  const { account, siweLogin } = useWallet();
   const accountNorm = account?.toLowerCase();
   const [followError, setFollowError] = useState<string | null>(null);
   // Realtime 订阅状态与过滤信息（用于可视化诊断）
@@ -1093,7 +1093,7 @@ export default function TrendingPage() {
         // 移除limit参数，获取所有事件数据；增加轻量重试与中断忽略
         const controller = new AbortController();
         const response = await fetchWithRetry(
-          "/api/predictions",
+          "/api/predictions?includeOutcomes=1",
           { signal: controller.signal },
           2,
           300
@@ -1162,6 +1162,8 @@ export default function TrendingPage() {
         deadline: prediction.deadline,
         criteria: prediction.criteria,
         followers_count: Number(prediction?.followers_count || 0),
+        type: prediction.type || 'binary',
+        outcomes: Array.isArray(prediction?.outcomes) ? prediction.outcomes : [],
       })),
     [predictions]
   );
@@ -1188,6 +1190,67 @@ export default function TrendingPage() {
     })[0];
     return pick;
   }, [displayEvents]);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<any>({ title: '', category: '', status: 'active', deadline: '', minStake: 0 });
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        if (!accountNorm) { setIsAdmin(false); return }
+        const r = await fetch(`/api/user-profiles?address=${accountNorm}`, { cache: 'no-store' })
+        const j = await r.json().catch(() => ({}))
+        setIsAdmin(!!j?.profile?.is_admin)
+      } catch {}
+    }
+    loadProfile()
+  }, [accountNorm])
+
+  const openEdit = (p: any) => {
+    setEditTargetId(Number(p?.id));
+    setEditForm({ title: String(p?.title || ''), category: String(p?.tag || p?.category || ''), status: String(p?.status || 'active'), deadline: String(p?.deadline || ''), minStake: Number(p?.min_stake || 0) });
+    setEditOpen(true);
+  };
+  const closeEdit = () => { setEditOpen(false); setEditTargetId(null); };
+  const setEditField = (k: string, v: any) => setEditForm((prev: any) => ({ ...prev, [k]: v }));
+  const submitEdit = async () => {
+    try {
+      setSavingEdit(true);
+      if (!accountNorm) return;
+      try { await siweLogin() } catch {}
+      const id = Number(editTargetId);
+      const payload: any = { title: editForm.title, category: editForm.category, status: editForm.status, deadline: editForm.deadline, minStake: Number(editForm.minStake), walletAddress: accountNorm };
+      const res = await fetch(`/api/predictions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) { throw new Error(String(j?.message || '更新失败')) }
+      setPredictions((prev) => prev.map((p: any) => p?.id === id ? { ...p, title: payload.title, category: payload.category, status: payload.status, deadline: payload.deadline, min_stake: payload.minStake } : p));
+      setEditOpen(false);
+    } catch (e: any) {
+      alert(String(e?.message || e || '更新失败'))
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+  const deleteEvent = async (id: number) => {
+    try {
+      if (!confirm('确定删除该事件？')) return;
+      setDeleteBusyId(id);
+      if (!accountNorm) return;
+      try { await siweLogin() } catch {}
+      const res = await fetch(`/api/predictions/${id}`, { method: 'DELETE' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) { throw new Error(String(j?.message || '删除失败')) }
+      setPredictions((prev) => prev.filter((p: any) => p?.id !== id));
+    } catch (e: any) {
+      alert(String(e?.message || e || '删除失败'))
+    } finally {
+      setDeleteBusyId(null);
+    }
+  };
 
   const heroSlideEvents = useMemo(() => {
     const pool = displayEvents;
@@ -1585,12 +1648,12 @@ export default function TrendingPage() {
                         ) && (
                           <motion.button
                             data-event-index={globalIndex}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              toggleFollow(globalIndex, e);
-                            }}
-                            className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFollow(globalIndex, e);
+                        }}
+                        className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             animate={
@@ -1644,6 +1707,26 @@ export default function TrendingPage() {
                               />
                             </motion.div>
                           </motion.button>
+                        )}
+
+                        {isAdmin && Number.isFinite(Number(sortedEvents[globalIndex]?.id)) && (
+                          <div className="absolute top-3 right-3 z-10 flex gap-2">
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(sortedEvents[globalIndex]); }}
+                              className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
+                              aria-label="编辑"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteEvent(Number(sortedEvents[globalIndex]?.id)); }}
+                              className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+                              disabled={deleteBusyId === Number(sortedEvents[globalIndex]?.id)}
+                              aria-label="删除"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
 
                         {/* 产品图片：仅在存在有效 id 时可点击跳转 */}
@@ -1711,6 +1794,19 @@ export default function TrendingPage() {
                               人关注
                             </span>
                           </div>
+                          {/* 多元选项 chip 展示（最多 6 个） */}
+                          {Array.isArray(sortedEvents[globalIndex]?.outcomes) && sortedEvents[globalIndex]?.outcomes.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {sortedEvents[globalIndex]?.outcomes.slice(0, 6).map((o: any, oi: number) => (
+                                <span key={oi} className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                  {String(o?.label || `选项${oi}`)}
+                                </span>
+                              ))}
+                              {sortedEvents[globalIndex]?.outcomes.length > 6 && (
+                                <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">…</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -1723,6 +1819,46 @@ export default function TrendingPage() {
           </>
         )}
       </section>
+
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-[92vw] max-w-md bg-white rounded-2xl shadow-xl p-6">
+            <div className="text-lg font-semibold mb-4">编辑事件</div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs text-gray-600 mb-1">标题</div>
+                <input value={editForm.title} onChange={(e)=>setEditField('title', e.target.value)} className="w-full rounded-lg border px-3 py-2" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">分类</div>
+                <input value={editForm.category} onChange={(e)=>setEditField('category', e.target.value)} className="w-full rounded-lg border px-3 py-2" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">状态</div>
+                  <select value={editForm.status} onChange={(e)=>setEditField('status', e.target.value)} className="w-full rounded-lg border px-3 py-2">
+                    <option value="active">active</option>
+                    <option value="ended">ended</option>
+                    <option value="settled">settled</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">截止</div>
+                  <input type="datetime-local" value={editForm.deadline} onChange={(e)=>setEditField('deadline', e.target.value)} className="w-full rounded-lg border px-3 py-2" />
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 mb-1">最小押注</div>
+                <input type="number" value={editForm.minStake} onChange={(e)=>setEditField('minStake', e.target.value)} className="w-full rounded-lg border px-3 py-2" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button onClick={closeEdit} className="px-4 py-2 rounded-lg border">取消</button>
+              <button onClick={submitEdit} disabled={savingEdit} className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50">{savingEdit?'保存中…':'保存'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 登录提示弹窗 */}
       <AnimatePresence>

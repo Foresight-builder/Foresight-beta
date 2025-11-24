@@ -1,6 +1,7 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, supabaseAdmin, supabase, type Prediction } from '@/lib/supabase';
+import { getSessionAddress, normalizeAddress, isAdminAddress } from '@/lib/serverUtils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const status = searchParams.get('status');
     const limit = searchParams.get('limit');
+    const includeOutcomes = (searchParams.get('includeOutcomes') || '0') !== '0';
 
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
@@ -19,9 +21,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 构建Supabase查询
+    let selectExpr = '*';
+    if (includeOutcomes) selectExpr = '*, outcomes:prediction_outcomes(*)';
     let query = client
       .from('predictions')
-      .select('*')
+      .select(selectExpr)
       .order('created_at', { ascending: false });
     
     // 添加过滤条件
@@ -67,7 +71,7 @@ export async function GET(request: NextRequest) {
       }
       predictionsWithFollowersCount = (predictions || []).map((p: any) => ({
         ...p,
-        followers_count: counts[Number(p?.id)] || 0
+        followers_count: counts[Number(p?.id)] || 0,
       }));
     }
 
@@ -97,17 +101,9 @@ export async function POST(request: NextRequest) {
     // 解析请求体中的JSON数据
     const body = await request.json();
     
-    // 验证用户是否已登录（钱包地址）
-    const walletAddress = body.walletAddress;
-    if (!walletAddress) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: '请先连接钱包登录' 
-        },
-        { status: 401 }
-      );
-    }
+    const sessAddr = getSessionAddress(request);
+    let walletAddress: string = normalizeAddress(String(body.walletAddress || ''));
+    if (!walletAddress && sessAddr) walletAddress = normalizeAddress(sessAddr);
     
     // 验证钱包地址格式
     const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
@@ -119,6 +115,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    if (sessAddr && normalizeAddress(sessAddr) !== walletAddress) {
+      return NextResponse.json({ success: false, message: '未认证或会话地址不匹配' }, { status: 401 })
     }
     
     // 验证必填字段
@@ -148,6 +148,16 @@ export async function POST(request: NextRequest) {
     const client = getClient()
     if (!client) {
       return NextResponse.json({ success: false, message: 'Supabase 未配置' }, { status: 500 })
+    }
+
+    const { data: prof, error: profErr } = await (client as any)
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('wallet_address', walletAddress)
+      .maybeSingle()
+    const isAdmin = (!!prof?.is_admin) || isAdminAddress(walletAddress)
+    if (profErr || !isAdmin) {
+      return NextResponse.json({ success: false, message: '需要管理员权限' }, { status: 403 })
     }
     // 检查是否已存在相同标题的预测事件
     const { data: existingPredictions, error: checkError } = await client
@@ -226,6 +236,24 @@ export async function POST(request: NextRequest) {
     
     const nextId = maxIdData.length > 0 ? maxIdData[0].id + 1 : 1;
     
+    // 事件类型与选项校验
+    const type = String(body.type || 'binary');
+    const outcomes = Array.isArray(body.outcomes) ? body.outcomes : [];
+    if (type === 'multi') {
+      if (outcomes.length < 3 || outcomes.length > 8) {
+        return NextResponse.json(
+          { success: false, message: '多元事件的选项数量需在 3 到 8 之间' },
+          { status: 400 }
+        );
+      }
+      if (outcomes.some((o: any) => !String(o?.label || '').trim())) {
+        return NextResponse.json(
+          { success: false, message: '每个选项都需要非空的 label' },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data: newPrediction, error } = await client
       .from('predictions')
       .insert({
@@ -238,7 +266,9 @@ export async function POST(request: NextRequest) {
         criteria: body.criteria,
         reference_url: body.reference_url || '',
         image_url: imageUrl,
-        status: 'active'
+        status: 'active',
+        type: type === 'multi' ? 'multi' : 'binary',
+        outcome_count: type === 'multi' ? outcomes.length : 2,
       })
       .select()
       .single();
@@ -251,6 +281,31 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // 根据类型插入选项（binary 默认 Yes/No；multi 按用户输入）
+    try {
+      const items = (type === 'multi')
+        ? outcomes.map((o: any, i: number) => ({
+            prediction_id: newPrediction.id,
+            outcome_index: i,
+            label: String(o?.label || '').trim(),
+            description: o?.description || null,
+            color: o?.color || null,
+            image_url: o?.image_url || null,
+          }))
+        : [
+            { prediction_id: newPrediction.id, outcome_index: 0, label: 'Yes' },
+            { prediction_id: newPrediction.id, outcome_index: 1, label: 'No' },
+          ];
+      const { error: outcomesErr } = await client
+        .from('prediction_outcomes')
+        .insert(items);
+      if (outcomesErr) {
+        console.warn('插入选项失败：', outcomesErr);
+      }
+    } catch (e) {
+      console.warn('插入选项异常：', e);
+    }
+
     // 返回成功响应
     return NextResponse.json({
       success: true,
