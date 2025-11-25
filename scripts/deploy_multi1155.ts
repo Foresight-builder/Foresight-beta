@@ -15,12 +15,15 @@ async function main() {
 
   // Deploy MarketFactory (or reuse existing via env)
   const env = process.env;
+  const oracle = env.ORACLE_ADDRESS || deployerAddress;
+  const userAddr = (env.MINT_TO || "0xC14eE1A093c5B715d5aC2E7F9bAEf1a50dB86148").toLowerCase();
   let mfAddress = env.MARKET_FACTORY_ADDRESS;
   let mf;
   if (!mfAddress) {
     const MarketFactoryFactory = await hre.ethers.getContractFactory("MarketFactory");
-    mf = await MarketFactoryFactory.deploy(deployerAddress);
+    mf = await MarketFactoryFactory.deploy();
     await mf.waitForDeployment();
+    await mf.initialize(deployerAddress, oracle);
     mfAddress = await mf.getAddress();
     console.log("MarketFactory:", mfAddress);
   } else {
@@ -48,6 +51,7 @@ async function main() {
     const Outcome1155Factory = await hre.ethers.getContractFactory("OutcomeToken1155");
     outcome1155 = await Outcome1155Factory.deploy();
     await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
     outcome1155Address = await outcome1155.getAddress();
     console.log("OutcomeToken1155:", outcome1155Address);
   } else {
@@ -80,11 +84,15 @@ async function main() {
   }
 
   if (!collateral) {
-    console.error("Missing USDT collateral address env. Set COLLATERAL_TOKEN_ADDRESS or USDT_ADDRESS_*. ");
-    return;
+    const MockERC20Factory = await hre.ethers.getContractFactory("MockERC20");
+    const usdt = await MockERC20Factory.deploy("USDT", "USDT");
+    await usdt.waitForDeployment();
+    collateral = await usdt.getAddress();
+    const amt = hre.ethers.parseUnits("1000000", 6);
+    await usdt.mint(userAddr, amt);
+    console.log("Mock USDT deployed:", collateral, "minted to", userAddr);
   }
 
-  const oracle = env.ORACLE_ADDRESS || deployerAddress;
   const feeBps = env.MARKET_FEE_BPS ? Number(env.MARKET_FEE_BPS) : 30; // 0.30%
   const now = Math.floor(Date.now() / 1000);
   const resolutionTime = env.MARKET_RESOLUTION_TS ? Number(env.MARKET_RESOLUTION_TS) : (now + 7 * 24 * 3600);

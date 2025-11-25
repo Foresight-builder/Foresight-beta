@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("dotenv").config({ path: ".env.local", override: true });
 require("@nomicfoundation/hardhat-toolbox");
 
 const {
@@ -12,10 +13,14 @@ const {
   REPORT_GAS
 } = process.env;
 
-function validPK(pk) {
-  return typeof pk === "string" && /^0x[0-9a-fA-F]{64}$/.test(pk);
+function normalizePK(pk) {
+  if (typeof pk !== "string" || !pk) return undefined;
+  if (/^0x[0-9a-fA-F]{64}$/.test(pk)) return pk;
+  if (/^[0-9a-fA-F]{64}$/.test(pk)) return "0x" + pk;
+  return undefined;
 }
-const accounts = validPK(PRIVATE_KEY) ? [PRIVATE_KEY] : undefined;
+
+const accounts = normalizePK(PRIVATE_KEY) ? [normalizePK(PRIVATE_KEY)] : undefined;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

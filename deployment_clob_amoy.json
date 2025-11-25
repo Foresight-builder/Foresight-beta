@@ -1,0 +1,13 @@
+{
+  "network": 80002,
+  "deployer": "0xC14eE1A093c5B715d5aC2E7F9bAEf1a50dB86148",
+  "manualOracle": "0x520804C58E16945B513a8f79558Abf15e46D8AcC",
+  "marketFactory": "0xcdF019B602eE15a56184EB8d431B36b1B2ca1C00",
+  "clobImpl": "0xED8a7d904d4f8d7FEdd7007a267EA88eA20417e2",
+  "outcome1155": "0xaAFcb10C0DdF7b49378Ba9fBa8c027F512576FE1",
+  "collateral": "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+  "market": "0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02",
+  "feeBps": 30,
+  "resolutionTime": 1764668950,
+  "timestamp": "2025-11-25T09:49:33.718Z"
+}

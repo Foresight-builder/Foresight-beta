@@ -4,10 +4,11 @@ import 'dotenv/config'
 
 // 环境变量校验与读取
 const EnvSchema = z.object({
-  BUNDLER_PRIVATE_KEY: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{64}$/)
-    .optional(),
+  BUNDLER_PRIVATE_KEY: z.preprocess((v) => {
+    const s = typeof v === 'string' ? v : ''
+    if (/^[0-9a-fA-F]{64}$/.test(s)) return '0x' + s
+    return s
+  }, z.string().regex(/^0x[0-9a-fA-F]{64}$/)).optional(),
   RPC_URL: z
     .string()
     .url()

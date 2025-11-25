@@ -1,0 +1,13 @@
+{
+  "network": 80002,
+  "deployer": "0xC14eE1A093c5B715d5aC2E7F9bAEf1a50dB86148",
+  "marketFactory": "0x8cbe8f12abF0b82EddE262812c34B2554E615d4f",
+  "multiImpl": "0x7218d4a173Afb97F3EcEC22b2eDc26Be32eB1034",
+  "outcome1155": "0xaAFcb10C0DdF7b49378Ba9fBa8c027F512576FE1",
+  "collateral": "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+  "market": "0xc366ff8279D23991c630F92b457AA845eCEDD112",
+  "oracle": "0xC14eE1A093c5B715d5aC2E7F9bAEf1a50dB86148",
+  "feeBps": 30,
+  "resolutionTime": 1764665323,
+  "timestamp": "2025-11-25T08:48:55.446Z"
+}
