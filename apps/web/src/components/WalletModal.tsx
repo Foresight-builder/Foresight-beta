@@ -580,13 +580,10 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                   key={wallet.type}
                   onClick={() => handleWalletConnect(wallet.type, wallet.isAvailable)}
                   disabled={isConnecting}
-                  onClick={() => handleWalletConnect(wallet.type, wallet.isAvailable)}
-                  disabled={isConnecting}
                   className={`
                     snap-center w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group relative overflow-hidden
                     ${wallet.isAvailable 
                       ? 'border-purple-200/50 hover:border-purple-300 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 cursor-pointer hover:shadow-lg' 
-                      : 'border-gray-200/50 bg-gray-50/50 opacity-60'
                       : 'border-gray-200/50 bg-gray-50/50 opacity-60'
                     }
                     ${selectedWallet === wallet.type ? 'border-purple-400 bg-gradient-to-r from-purple-100/50 to-pink-100/50 shadow-lg' : ''}
