@@ -121,7 +121,7 @@ export async function GET(
       },
       type: prediction.type,
       outcome_count: prediction.outcome_count,
-      outcomes: includeOutcomes ? (prediction as any)?.outcomes || [] : undefined,
+      outcomes: includeOutcomes ? ((prediction as any)?.outcomes || []).sort((a: any, b: any) => (a.outcome_index || 0) - (b.outcome_index || 0)) : undefined,
     };
 
     return NextResponse.json(

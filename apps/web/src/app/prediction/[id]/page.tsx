@@ -3,13 +3,12 @@
 import { useState, useEffect, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, ArrowUp, MessageSquare, ArrowRightCircle } from "lucide-react";
+import { ChevronLeft, Loader2, ArrowUp, MessageSquare, ArrowRightCircle, AlertTriangle, TrendingUp, TrendingDown, Clock, Wallet } from "lucide-react";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 import ChatPanel from "@/components/ChatPanel";
-import ForumSection from "@/components/ForumSection";
 
 
 interface PredictionDetail {
@@ -38,6 +37,9 @@ interface PredictionDetail {
     deadlineIn: string;
     isExpired: boolean;
   };
+  type?: string;
+  outcome_count?: number;
+  outcomes?: Array<any>;
 }
 
 export default function PredictionDetailPage() {
@@ -75,6 +77,8 @@ export default function PredictionDetailPage() {
   const [bestAsk, setBestAsk] = useState<string>('');
   const [midPrice, setMidPrice] = useState<string>('');
   const [openOrders, setOpenOrders] = useState<any[]>([]);
+  const [midByOutcome, setMidByOutcome] = useState<Record<number, bigint>>({});
+  const [midDistByOutcome, setMidDistByOutcome] = useState<Record<number, number>>({});
 
   // 关注功能相关状态
   const { account, connectWallet, siweLogin } = useWallet();
@@ -87,7 +91,7 @@ export default function PredictionDetailPage() {
     const fetchPredictionDetail = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/predictions/${params.id}?includeStats=0`);
+        const response = await fetch(`/api/predictions/${params.id}?includeStats=0&includeOutcomes=1`);
         const contentType = response.headers.get("content-type") || "";
         let result: any = null;
         try {
@@ -151,7 +155,7 @@ export default function PredictionDetailPage() {
       try {
         const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
         if (!m) return
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
         if (!base) return
         const u1 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${true}&levels=10`
         const u2 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${false}&levels=10`
@@ -175,6 +179,52 @@ export default function PredictionDetailPage() {
     }, 2000)
     return () => clearInterval(t)
   }, [market?.market, market?.chain_id, manualMarket, manualChainId])
+
+  // 多元选项的中间价分布（相对）
+  useEffect(() => {
+    const refreshMultiMids = async () => {
+      try {
+        const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
+        const outs: any[] = (prediction as any)?.outcomes || []
+        if (!m || !Array.isArray(outs) || outs.length === 0) return
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
+        if (!base) return
+        const indices = outs.map((_, i) => i)
+        const results = await Promise.all(indices.map(async (idx) => {
+          try {
+            const u1 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${idx}&side=${true}&levels=1`
+            const u2 = `${base}/orderbook/depth?contract=${m.market}&chainId=${m.chain_id}&outcome=${idx}&side=${false}&levels=1`
+            const r1 = await fetch(u1); const r2 = await fetch(u2)
+            const j1 = await r1.json().catch(() => ({})); const j2 = await r2.json().catch(() => ({}))
+            const bb = (j1?.data && j1.data.length) ? j1.data[0].price : ''
+            const ba = (j2?.data && j2.data.length) ? j2.data[0].price : ''
+            if (bb && ba) {
+              const mid = (BigInt(bb) + BigInt(ba)) / BigInt(2)
+              return { idx, mid }
+            }
+            return { idx, mid: BigInt(0) }
+          } catch { return { idx, mid: BigInt(0) } }
+        }))
+        const map: Record<number, bigint> = {}
+        let sum: bigint = BigInt(0)
+        for (const r of results) { map[r.idx] = r.mid; sum += r.mid }
+        setMidByOutcome(map)
+        if (sum > BigInt(0)) {
+          const dist: Record<number, number> = {}
+          for (const r of results) {
+            const pctTimes100 = Number((r.mid * BigInt(10000)) / sum) // 百分比*100
+            dist[r.idx] = pctTimes100 / 100
+          }
+          setMidDistByOutcome(dist)
+        } else {
+          setMidDistByOutcome({})
+        }
+      } catch {}
+    }
+    const t = setInterval(refreshMultiMids, 4000)
+    refreshMultiMids()
+    return () => clearInterval(t)
+  }, [market?.market, market?.chain_id, manualMarket, manualChainId, prediction?.id])
   
   // 渲染选项切换（根据详情接口 includeOutcomes 返回）
   useEffect(() => {
@@ -189,7 +239,7 @@ export default function PredictionDetailPage() {
       try {
         const m = market || (manualMarket && manualChainId ? { market: manualMarket, chain_id: Number(manualChainId) } as any : null)
         if (!m || !selectedPrice) return
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
         if (!base) return
         const u = `${base}/orderbook/queue?contract=${m.market}&chainId=${m.chain_id}&outcome=${tradeOutcome}&side=${tradeSide === 'buy'}&price=${selectedPrice}&limit=50&offset=0`
         const r = await fetch(u)
@@ -214,8 +264,16 @@ export default function PredictionDetailPage() {
           .eq('maker_address', String(account).toLowerCase())
           .in('status', ['open', 'filled_partial'])
           .order('created_at', { ascending: false })
+        console.log('[loadOpenOrders] fetching with:', { market: m.market, chain: m.chain_id, account })
+        if (error) {
+          console.error('[loadOpenOrders] Supabase error:', error)
+        } else {
+          console.log('[loadOpenOrders] Data:', data)
+        }
         if (!error && Array.isArray(data)) setOpenOrders(data)
-      } catch {}
+      } catch (e) {
+        console.error('[loadOpenOrders] Exception:', e)
+      }
     }
     loadOpenOrders()
   }, [market?.market, market?.chain_id, manualMarket, manualChainId, account])
@@ -296,6 +354,15 @@ export default function PredictionDetailPage() {
     } finally {
       setGuideLoading(false);
     }
+  };
+
+  const outcomeLabel = (idx: number) => {
+    const arr = (prediction as any)?.outcomes;
+    if (Array.isArray(arr) && arr[idx]) {
+      const o = arr[idx] as any;
+      return String(o?.label || `选项${idx}`);
+    }
+    return idx === 1 ? '是' : '否';
   };
 
   // 获取关注状态和数量
@@ -452,33 +519,40 @@ export default function PredictionDetailPage() {
     foresight: string;
     usdt: string;
   } {
-    const env = process.env as Record<string, string | undefined>;
-
-    const defaultForesight = (env.NEXT_PUBLIC_FORESIGHT_ADDRESS || "").trim();
-    const defaultUsdt = (env.NEXT_PUBLIC_USDT_ADDRESS || "").trim();
+    const defaultForesight = (process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS || "").trim();
+    const defaultUsdt = (process.env.NEXT_PUBLIC_USDT_ADDRESS || "").trim();
 
     const map: Record<number, { foresight?: string; usdt?: string }> = {
       137: {
-        foresight: env.NEXT_PUBLIC_FORESIGHT_ADDRESS_POLYGON,
-        usdt: env.NEXT_PUBLIC_USDT_ADDRESS_POLYGON,
+        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_POLYGON,
+        usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS_POLYGON,
       },
       80002: {
-        foresight: env.NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY,
-        usdt: env.NEXT_PUBLIC_USDT_ADDRESS_AMOY,
+        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY || "0xc366ff8279D23991c630F92b457AA845eCEDD112",
+        usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS_AMOY || "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
       },
       11155111: {
-        foresight: env.NEXT_PUBLIC_FORESIGHT_ADDRESS_SEPOLIA,
-        usdt: env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA,
+        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_SEPOLIA,
+        usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA,
       },
       31337: {
-        foresight: env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
-        usdt: env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST,
+        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
+        usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST,
+      },
+      1337: {
+        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
+        usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST,
       },
     };
 
     const fromMap = map[chainId] || {};
     const foresight = (fromMap.foresight || defaultForesight || "").trim();
     const usdt = (fromMap.usdt || defaultUsdt || "").trim();
+
+    // Debug log
+    console.log(`[resolveAddresses] chainId: ${chainId}`);
+    console.log(`[resolveAddresses] Env Check - Amoy USDT: ${process.env.NEXT_PUBLIC_USDT_ADDRESS_AMOY}`);
+    console.log(`[resolveAddresses] Result - usdt: ${usdt}, foresight: ${foresight}`);
 
     return { foresight, usdt };
   }
@@ -531,13 +605,18 @@ export default function PredictionDetailPage() {
       if (!Number.isFinite(priceDec) || priceDec <= 0) throw new Error('价格不合法')
       if (!Number.isFinite(amountDec) || amountDec <= 0) throw new Error('数量不合法')
       const { usdt } = resolveAddresses(chainIdNum)
-      if (!usdt) throw new Error('未配置USDT地址')
+      if (!usdt) {
+        console.error(`[submitOrder] Missing USDT address for chainId: ${chainIdNum}`)
+        throw new Error(`未配置USDT地址 (Chain ID: ${chainIdNum})。请切换到 Amoy 测试网 (80002)`)
+      }
       const token = new ethers.Contract(usdt, erc20Abi, signer)
       let decimals = 6
       try { decimals = await token.decimals() } catch {}
       const price = parseUnitsByDecimals(priceDec, Number(decimals))
       const amount = BigInt(Math.floor(amountDec))
-      const expirySec = expiryInput ? BigInt(Math.floor(Number(expiryInput))) : BigInt(0)
+      const inputVal = Number(expiryInput || '0')
+      const duration = inputVal > 0 ? inputVal : 31536000
+      const expirySec = BigInt(Math.floor(Date.now() / 1000) + duration)
       const salt = BigInt(String(Date.now()))
       const domain = { name: 'CLOBMarket', version: '1', chainId: chainIdNum, verifyingContract: m.market }
       const types = { OrderRequest: [
@@ -551,7 +630,7 @@ export default function PredictionDetailPage() {
       ] } as const
       const message = { maker: accountAddr, outcomeIndex, isBuy, price, amount, expiry: expirySec, salt }
       const signature = await signer.signTypedData(domain as any, types as any, message as any)
-      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
       if (!base) throw new Error('未配置撮合服务')
       const body = { chainId: chainIdNum, verifyingContract: m.market, order: { maker: accountAddr, outcomeIndex, isBuy, price: price.toString(), amount: amount.toString(), expiry: expirySec.toString(), salt: salt.toString() }, signature }
       const resp = await fetch(`${base}/orderbook/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -573,7 +652,7 @@ export default function PredictionDetailPage() {
       if (typeof window === 'undefined' || !(window as any).ethereum) throw new Error('请先连接钱包')
       const provider = new ethers.BrowserProvider((window as any).ethereum)
       const signer = await provider.getSigner()
-      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
       const d = await fetch(`/api/orderbook/order?id=${row.id}`)
       const j = await d.json()
       const ord = j?.data
@@ -634,7 +713,7 @@ export default function PredictionDetailPage() {
       const addr = await signer.getAddress()
       const chain = await provider.getNetwork()
       const chainIdNum = Number(chain.chainId)
-      const base = process.env.NEXT_PUBLIC_RELAYER_URL || ''
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005'
       const typesResp = await fetch(`${base}/orderbook/types`)
       const typesJson = await typesResp.json().catch(()=>({}))
       const types = typesJson?.types || { CancelSaltRequest: [ { name: 'maker', type: 'address' }, { name: 'salt', type: 'uint256' } ] }
@@ -990,240 +1069,491 @@ export default function PredictionDetailPage() {
 
               {/* 押注统计 */}
               <div className="bg-white rounded-xl p-6 border border-gray-100">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                  押注统计
-                </h3>
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">押注统计</h3>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {prediction.stats.participantCount}
-                    </div>
+                    <div className="text-2xl font-bold text-blue-600">{prediction.stats.participantCount}</div>
                     <div className="text-sm text-gray-600">参与人数</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {prediction.stats.betCount}
-                    </div>
+                    <div className="text-2xl font-bold text-green-600">{prediction.stats.betCount}</div>
                     <div className="text-sm text-gray-600">押注次数</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {prediction.stats.totalAmount.toFixed(2)} USDT
-                    </div>
+                    <div className="text-2xl font-bold text-purple-600">{prediction.stats.totalAmount.toFixed(2)} USDT</div>
                     <div className="text-sm text-gray-600">总押注金额</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {prediction.minStake} USDT
-                    </div>
+                    <div className="text-2xl font-bold text-orange-600">{prediction.minStake} USDT</div>
                     <div className="text-sm text-gray-600">最小押注</div>
                   </div>
                 </div>
 
-                {/* 概率分布 */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>是 ({prediction.stats.yesProbability * 100}%)</span>
-                    <span>否 ({prediction.stats.noProbability * 100}%)</span>
+                {Array.isArray((prediction as any)?.outcomes) && (prediction as any).outcomes.length > 0 ? (
+                  <div className="space-y-3">
+                    {(prediction as any).outcomes.map((o: any, idx: number) => (
+                      <div key={idx}>
+                        <div className="flex justify-between text-sm text-gray-600 mb-1">
+                          <span>{String(o?.label || `选项${idx}`)}</span>
+                          <span>{typeof midDistByOutcome[idx] === 'number' ? `${midDistByOutcome[idx].toFixed(1)}%` : '—'}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-500" style={{ width: `${typeof midDistByOutcome[idx] === 'number' ? midDistByOutcome[idx] : 0}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="text-xs text-gray-600">基于各选项盘口中间价的相对分布，仅作参考。</div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${prediction.stats.yesProbability * 100}%`,
-                      }}
-                    ></div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>是 ({prediction.stats.yesProbability * 100}%)</span>
+                        <span>否 ({prediction.stats.noProbability * 100}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500" style={{ width: `${prediction.stats.yesProbability * 100}%` }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>是: {prediction.stats.yesAmount.toFixed(2)} USDT</span>
+                        <span>否: {prediction.stats.noAmount.toFixed(2)} USDT</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-500" style={{ width: `${prediction.stats.totalAmount > 0 ? (prediction.stats.yesAmount / prediction.stats.totalAmount) * 100 : 50}%` }}></div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 押注/选项区域 */}
+          {prediction.status === 'active' && !prediction.timeInfo.isExpired && (
+            <div className="mt-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">参与押注</h3>
+              {Array.isArray((prediction as any)?.outcomes) && (prediction as any).outcomes.length > 0 ? (
+                <>
+                  <div className="text-sm text-gray-700 mb-2">请选择一个选项，然后在下方“交易”区域下单</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(prediction as any).outcomes.map((o: any, idx: number) => (
+                      <button key={idx} onClick={() => setTradeOutcome(idx)} className={`px-3 py-1 rounded ${tradeOutcome===idx? 'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-700'}`}>{String(o?.label || `选项${idx}`)}</button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-3">最小押注金额: {prediction.minStake} USDT</p>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-3">
+                    <button onClick={() => handleStake('yes')} disabled={staking} className="flex-1 py-3 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors disabled:opacity-50">{staking ? '处理中…' : '支持 (预测达成)'}</button>
+                    <button onClick={() => handleStake('no')} disabled={staking} className="flex-1 py-3 px-4 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors disabled:opacity-50">{staking ? '处理中…' : '反对 (预测不达成)'}</button>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-3">最小押注金额: {prediction.minStake} USDT</p>
+                  {stakeError && (<p className="text-sm text-red-600 mt-2">{stakeError}</p>)}
+                  {stakeSuccess && (<p className="text-sm text-green-600 mt-2">{stakeSuccess}</p>)}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Transaction Module */}
+          <div className="mt-8 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+            <div className="p-6 border-b border-gray-100/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">交易市场</h3>
+                </div>
+                {market && (
+                  <div className="flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    {market.market.slice(0,6)}...{market.market.slice(-4)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6">
+              {!market && (
+                <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-yellow-800 mb-1">未检测到自动配置的市场</h4>
+                      <p className="text-sm text-yellow-600 mb-3">您可以手动输入市场合约地址与链ID来进行交易。</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input 
+                          value={manualMarket} 
+                          onChange={(e)=>setManualMarket(e.target.value)} 
+                          placeholder="市场合约地址 (0x...) "
+                          className="px-3 py-2 rounded-lg border border-yellow-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+                        />
+                        <input 
+                          value={manualChainId} 
+                          onChange={(e)=>setManualChainId(e.target.value)} 
+                          placeholder="链ID (例如 137)" 
+                          className="px-3 py-2 rounded-lg border border-yellow-200 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* 金额分布 */}
-                <div>
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>
-                      是: {prediction.stats.yesAmount.toFixed(2)} USDT
-                    </span>
-                    <span>否: {prediction.stats.noAmount.toFixed(2)} USDT</span>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* 左侧：下单表单 */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* 买卖方向 */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">交易方向</label>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                      <button 
+                        onClick={() => setTradeSide('buy')} 
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          tradeSide === 'buy' 
+                            ? 'bg-white text-green-600 shadow-sm ring-1 ring-gray-200' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        买入 (Buy)
+                      </button>
+                      <button 
+                        onClick={() => setTradeSide('sell')} 
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          tradeSide === 'sell' 
+                            ? 'bg-white text-red-600 shadow-sm ring-1 ring-gray-200' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        卖出 (Sell)
+                      </button>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${
-                          prediction.stats.totalAmount > 0
-                            ? (prediction.stats.yesAmount /
-                                prediction.stats.totalAmount) *
-                              100
-                            : 50
-                        }%`,
-                      }}
-                    ></div>
+
+                  {/* 选项选择 */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">选择选项</label>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray((prediction as any)?.outcomes) && (prediction as any).outcomes.length > 0 ? (
+                        (prediction as any).outcomes.map((o: any, idx: number) => (
+                          <button 
+                            key={idx} 
+                            onClick={() => setTradeOutcome(idx)} 
+                            className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                              tradeOutcome === idx
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm'
+                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {String(o?.label || `选项${idx}`)}
+                          </button>
+                        ))
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => setTradeOutcome(1)} 
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                              tradeOutcome === 1
+                                ? 'bg-green-50 border-green-200 text-green-700 shadow-sm'
+                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            是 (Yes)
+                          </button>
+                          <button 
+                            onClick={() => setTradeOutcome(0)} 
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                              tradeOutcome === 0
+                                ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-sm'
+                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            否 (No)
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 订单类型 */}
+                   <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">订单类型</label>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={()=>setOrderMode('limit')} 
+                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                          orderMode==='limit'
+                            ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        限价单
+                      </button>
+                      <button 
+                        onClick={()=>setOrderMode('best')} 
+                        className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200 ${
+                          orderMode==='best'
+                            ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        市价单 (最优价)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 价格与数量输入 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-500 ml-1">价格 (USDT)</label>
+                      <div className="relative">
+                        <input 
+                          value={priceInput} 
+                          onChange={(e)=>setPriceInput(e.target.value)} 
+                          placeholder="0.00" 
+                          className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none" 
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">USDT</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-500 ml-1">数量</label>
+                       <div className="relative">
+                        <input 
+                          value={amountInput} 
+                          onChange={(e)=>setAmountInput(e.target.value)} 
+                          placeholder="0" 
+                          className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none" 
+                        />
+                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">份</div>
+                      </div>
+                    </div>
+                     <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs text-gray-500 ml-1">订单有效期 (秒)</label>
+                      <div className="relative">
+                         <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input 
+                          value={expiryInput} 
+                          onChange={(e)=>setExpiryInput(e.target.value)} 
+                          placeholder="默认不过期 (可选)" 
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                   {/* 快捷数量 */}
+                  <div className="flex gap-2">
+                    {['1', '5', '10', '50', '100'].map(amt => (
+                      <button 
+                        key={amt}
+                        onClick={()=>setAmountInput(amt)} 
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                      >
+                        +{amt}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 交易概览 */}
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">当前最佳买价</span>
+                      <span className="font-mono text-gray-800">{bestBid? Number(ethers.formatUnits(BigInt(bestBid), 6)).toFixed(4): '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">当前最佳卖价</span>
+                       <span className="font-mono text-gray-800">{bestAsk? Number(ethers.formatUnits(BigInt(bestAsk), 6)).toFixed(4): '-'}</span>
+                    </div>
+                    <div className="h-px bg-gray-200 my-2"></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">预估总额</span>
+                      <span className="font-bold text-gray-900">{priceInput && amountInput? (Number(priceInput)*Number(amountInput)).toFixed(4): '0.00'} USDT</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                      <span className="text-gray-500">获胜概率</span>
+                      <span className="font-medium text-purple-600">{priceInput? (Number(priceInput)*100).toFixed(2): midPrice? (Number(ethers.formatUnits(BigInt(midPrice), 6))*100).toFixed(2): '-'}%</span>
+                    </div>
+                  </div>
+
+                  {/* 提交按钮 */}
+                  <button 
+                    onClick={submitOrder} 
+                    disabled={orderSubmitting} 
+                    className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg shadow-purple-200 hover:shadow-purple-300 transform active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 ${
+                      orderSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                    }`}
+                  >
+                    {orderSubmitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>处理中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-5 h-5" />
+                        <span>提交订单</span>
+                      </>
+                    )}
+                  </button>
+
+                  {orderMsg && (
+                    <div className={`mt-3 p-3 rounded-xl text-sm ${
+                      orderMsg.includes('成功') || orderMsg.includes('Success') 
+                        ? 'bg-green-50 text-green-700 border border-green-100' 
+                        : 'bg-red-50 text-red-700 border border-red-100'
+                    }`}>
+                      {orderMsg}
+                    </div>
+                  )}
+                </div>
+
+                {/* 右侧：盘口与订单 */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* 深度图 */}
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center justify-between">
+                      <span>盘口深度 ({outcomeLabel(tradeOutcome)})</span>
+                      <span className="text-xs font-normal text-gray-500">点击价格快速填单</span>
+                    </h4>
+                    
+                    <div className="space-y-1">
+                      {/* 卖单 (Sell Orders) - 红色 - 倒序显示，价格高的在上面 */}
+                      <div className="space-y-1 mb-2">
+                        {depthSell.length === 0 && (
+                          <div className="text-center py-4 text-xs text-gray-400">暂无卖单</div>
+                        )}
+                        {depthSell.slice().reverse().map((d,i)=> (
+                           <button 
+                            key={i} 
+                            onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} 
+                            className="w-full flex justify-between items-center text-xs p-1.5 rounded hover:bg-red-100 transition-colors group"
+                          >
+                            <span className="text-red-600 font-mono font-medium">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</span>
+                            <div className="flex items-center gap-2">
+                               <span className="text-gray-500 font-mono">{d.qty}</span>
+                               <div className="w-12 h-1 bg-red-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-400" style={{width: `${Math.min(100, (Number(d.qty)/10)*100)}%`}}></div>
+                               </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="h-px bg-gray-200 my-2"></div>
+
+                       {/* 买单 (Buy Orders) - 绿色 */}
+                      <div className="space-y-1">
+                         {depthBuy.length === 0 && (
+                          <div className="text-center py-4 text-xs text-gray-400">暂无买单</div>
+                        )}
+                        {depthBuy.map((d,i)=> (
+                          <button 
+                            key={i} 
+                            onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} 
+                            className="w-full flex justify-between items-center text-xs p-1.5 rounded hover:bg-green-100 transition-colors group"
+                          >
+                            <span className="text-green-600 font-mono font-medium">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</span>
+                            <div className="flex items-center gap-2">
+                               <span className="text-gray-500 font-mono">{d.qty}</span>
+                               <div className="w-12 h-1 bg-green-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-green-400" style={{width: `${Math.min(100, (Number(d.qty)/10)*100)}%`}}></div>
+                               </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 订单队列 */}
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                      可成交队列 
+                      <span className="text-xs font-normal text-gray-500 ml-2">
+                        {selectedPrice ? `(价格: ${Number(ethers.formatUnits(BigInt(selectedPrice), 6)).toFixed(4)})` : '(请先选择价格)'}
+                      </span>
+                    </h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                       {queueRows.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-gray-400">暂无匹配队列</div>
+                      ) : (
+                        queueRows.map((r)=> (
+                          <div key={r.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-gray-50 border border-gray-100 hover:border-blue-200 transition-colors">
+                            <div className="font-mono text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-white px-1.5 py-0.5 rounded border border-gray-200">ID: {String(r.maker_salt).slice(0,6)}...</span>
+                                <span>剩: {String(r.remaining)}</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button onClick={()=>fillOrder(r)} className="px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium transition-colors">吃单</button>
+                              <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">取消</button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 我的挂单 */}
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                     <h4 className="text-sm font-semibold text-gray-700 mb-3">我的当前挂单</h4>
+                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                      {openOrders.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-gray-400">暂无挂单</div>
+                      ) : (
+                        openOrders.map((r)=> (
+                          <div key={r.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-gray-50 border border-gray-100">
+                            <div className="text-gray-900">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${r.is_buy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {r.is_buy ? '买' : '卖'}
+                                </span>
+                                <span className="font-medium text-gray-700">{outcomeLabel(Number(r.outcome_index))}</span>
+                              </div>
+                              <div className="font-mono text-gray-500">
+                                $ {Number(ethers.formatUnits(BigInt(r.price), 6)).toFixed(4)} · 剩 {String(r.remaining)}
+                              </div>
+                            </div>
+                            <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded-md bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 transition-colors">撤单</button>
+                          </div>
+                        ))
+                      )}
+                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 押注操作区域 */}
-          {prediction.status === "active" && !prediction.timeInfo.isExpired && (
-            <div className="mt-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">
-                参与押注
-              </h3>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleStake("yes")}
-                  disabled={staking}
-                  className="flex-1 py-3 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors disabled:opacity-50"
-                >
-                  {staking ? "处理中…" : "支持 (预测达成)"}
-                </button>
-                <button
-                  onClick={() => handleStake("no")}
-                  disabled={staking}
-                  className="flex-1 py-3 px-4 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors disabled:opacity-50"
-                >
-                  {staking ? "处理中…" : "反对 (预测不达成)"}
-                </button>
-              </div>
-              <p className="text-sm text-gray-600 mt-3">
-                最小押注金额: {prediction.minStake} USDT
-              </p>
-              {stakeError && (
-                <p className="text-sm text-red-600 mt-2">{stakeError}</p>
-              )}
-              {stakeSuccess && (
-                <p className="text-sm text-green-600 mt-2">{stakeSuccess}</p>
-              )}
-            </div>
-          )}
 
-          {(market || (manualMarket && manualChainId)) && (
-            <div className="mt-6 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">交易</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  {!market && (
-                    <div className="mb-3 p-2 border rounded text-sm">
-                      <div className="mb-2">手动配置市场地址与链ID</div>
-                      <input value={manualMarket} onChange={(e)=>setManualMarket(e.target.value)} placeholder="市场合约地址" className="px-2 py-1 border rounded w-full mb-2" />
-                      <input value={manualChainId} onChange={(e)=>setManualChainId(e.target.value)} placeholder="链ID" className="px-2 py-1 border rounded w-full" />
-                    </div>
-                  )}
-                  <div className="flex gap-2 mb-2">
-                    <button onClick={() => setTradeSide('buy')} className={`px-3 py-1 rounded ${tradeSide==='buy'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-700'}`}>买入</button>
-                    <button onClick={() => setTradeSide('sell')} className={`px-3 py-1 rounded ${tradeSide==='sell'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-700'}`}>卖出</button>
-                    <button onClick={() => setTradeOutcome(1)} className={`px-3 py-1 rounded ${tradeOutcome===1?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-700'}`}>是</button>
-                    <button onClick={() => setTradeOutcome(0)} className={`px-3 py-1 rounded ${tradeOutcome===0?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-700'}`}>否</button>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <button onClick={()=>setOrderMode('limit')} className={`px-3 py-1 rounded ${orderMode==='limit'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-700'}`}>限价</button>
-                    <button onClick={()=>setOrderMode('best')} className={`px-3 py-1 rounded ${orderMode==='best'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-700'}`}>按最佳价</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input value={priceInput} onChange={(e)=>setPriceInput(e.target.value)} placeholder="价格(USDT)" className="px-3 py-2 border rounded" />
-                    <input value={amountInput} onChange={(e)=>setAmountInput(e.target.value)} placeholder="数量" className="px-3 py-2 border rounded" />
-                    <input value={expiryInput} onChange={(e)=>setExpiryInput(e.target.value)} placeholder="过期时间(秒,可选)" className="px-3 py-2 border rounded col-span-2" />
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                    <button onClick={()=>setAmountInput('1')} className="px-2 py-1 rounded border">+1</button>
-                    <button onClick={()=>setAmountInput('5')} className="px-2 py-1 rounded border">+5</button>
-                    <button onClick={()=>setAmountInput('10')} className="px-2 py-1 rounded border">+10</button>
-                  </div>
-                  <div className="mt-3 text-sm text-gray-700">
-                    <div>最佳买价: {bestBid? Number(ethers.formatUnits(BigInt(bestBid), 6)).toFixed(4): '-'}</div>
-                    <div>最佳卖价: {bestAsk? Number(ethers.formatUnits(BigInt(bestAsk), 6)).toFixed(4): '-'}</div>
-                    <div>中间价: {midPrice? Number(ethers.formatUnits(BigInt(midPrice), 6)).toFixed(4): '-'}</div>
-                    <div>概率: {priceInput? (Number(priceInput)*100).toFixed(2): midPrice? (Number(ethers.formatUnits(BigInt(midPrice), 6))*100).toFixed(2): '-'}%</div>
-                    <div>预计资金: {priceInput && amountInput? (Number(priceInput)*Number(amountInput)).toFixed(4): '-'}</div>
-                  </div>
-                  <div className="mt-3">
-                    <button onClick={submitOrder} disabled={orderSubmitting} className="px-4 py-2 rounded bg-purple-600 text-white disabled:opacity-50">{orderSubmitting?'提交中…':'提交订单'}</button>
-                  </div>
-                  {orderMsg && <div className="mt-2 text-sm text-gray-700">{orderMsg}</div>}
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">盘口(是)</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      {depthBuy.map((d,i)=> (
-                        <div key={i} className="flex justify-between text-sm">
-                          <button onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} className="text-green-700">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</button>
-                          <span className="text-gray-600">{d.qty}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      {depthSell.map((d,i)=> (
-                        <div key={i} className="flex justify-between text-sm">
-                          <button onClick={()=>{setSelectedPrice(d.price); setPriceInput(Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(6))}} className="text-red-700">{Number(ethers.formatUnits(BigInt(d.price), 6)).toFixed(4)}</button>
-                          <span className="text-gray-600">{d.qty}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <div className="text-sm">队列(价格: {selectedPrice ? Number(ethers.formatUnits(BigInt(selectedPrice), 6)).toFixed(4) : '-'})</div>
-                    <div className="space-y-2 mt-2">
-                      {queueRows.map((r)=> (
-                        <div key={r.id} className="flex items-center justify-between text-sm">
-                          <div>
-                            <span className="mr-3">剩余 {String(r.remaining)}</span>
-                            <span className="mr-3">盐 {String(r.maker_salt)}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={()=>fillOrder(r)} className="px-2 py-1 rounded bg-blue-600 text-white">填单</button>
-                            <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded bg-gray-200 text-gray-800">取消</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-medium mb-2">我的挂单</div>
-                    <div className="space-y-2">
-                      {openOrders.map((r)=> (
-                        <div key={r.id} className="flex items-center justify-between text-sm">
-                          <div>
-                            <span className="mr-3">{r.is_buy? '买': '卖'}/{r.outcome_index===1?'是':'否'}</span>
-                            <span className="mr-3">价格 {Number(ethers.formatUnits(BigInt(r.price), 6)).toFixed(4)}</span>
-                            <span className="mr-3">剩余 {String(r.remaining)}</span>
-                          </div>
-                          <button onClick={()=>cancelOrderSalt(r)} className="px-2 py-1 rounded bg-gray-200 text-gray-800">取消</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="mt-8">
+            <ChatPanel eventId={Number(params.id)} />
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={handleGuideClick}
+                className={`inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-medium text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/40 transition-all duration-300 ${guideVariant === 'A' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600' : 'bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:from-sky-600 hover:to-emerald-600'} ${guideLoading ? 'opacity-80 cursor-wait' : ''}`}
+                aria-label="前往论坛聊天室"
+                title="前往论坛聊天室"
+                style={{ minWidth: 176 }}
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="text-[14px]">前往论坛聊天室</span>
+                <ArrowRightCircle className="w-5 h-5" />
+              </button>
             </div>
-          )}
-
-          {/* 交流与社区 */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <ChatPanel eventId={Number(params.id)} />
-              <div className="mt-3 flex justify-center">
-                <button
-                  type="button"
-                  onClick={handleGuideClick}
-                  className={`inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-medium text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/40 transition-all duration-300 ${guideVariant === 'A' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600' : 'bg-gradient-to-r from-sky-500 to-emerald-500 text-white hover:from-sky-600 hover:to-emerald-600'} ${guideLoading ? 'opacity-80 cursor-wait' : ''}`}
-                  aria-label="前往论坛聊天室"
-                  title="前往论坛聊天室"
-                  style={{ minWidth: 176 }}
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  <span className="text-[14px]">前往论坛聊天室</span>
-                  <ArrowRightCircle className="w-5 h-5" />
-                </button>
+            {guideError && (
+              <div className="mt-2 text-center text-xs text-red-600">
+                {guideError}
               </div>
-              {guideError && (
-                <div className="mt-2 text-center text-xs text-red-600">
-                  {guideError}
-                </div>
-              )}
-            </div>
-            <ForumSection eventId={Number(params.id)} />
+            )}
           </div>
         </div>
         {/* 悬浮回到顶部按钮 */}

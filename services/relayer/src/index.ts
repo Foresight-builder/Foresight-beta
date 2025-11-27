@@ -34,12 +34,14 @@ export const BUNDLER_PRIVATE_KEY = parsed.data.BUNDLER_PRIVATE_KEY;
 export const RPC_URL = parsed.data.RPC_URL || "http://127.0.0.1:8545";
 export const RELAYER_PORT = parsed.data.PORT ?? 3000;
 import express from "express";
+import cors from "cors";
 import { ethers, Contract } from "ethers";
 import EntryPointAbi from './abi/EntryPoint.json' with { type: 'json' };
 import { supabaseAdmin } from './supabase.js'
 import { placeSignedOrder, cancelSalt, getDepth, getQueue, getOrderTypes } from './orderbook.js'
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || RELAYER_PORT;

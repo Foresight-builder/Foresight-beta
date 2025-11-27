@@ -95,7 +95,11 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
     .select()
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[placeSignedOrder] Supabase Error:', error)
+    throw new Error(error.message)
+  }
+  console.log('[placeSignedOrder] Saved order:', data)
   return data
 }
 
