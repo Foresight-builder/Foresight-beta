@@ -62,6 +62,58 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "不存在的 Flag" }, { status: 404 });
     if (String(flag.user_id || "") !== userId)
       return NextResponse.json({ message: "仅创建者可打卡" }, { status: 403 });
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const next = new Date(start.getTime() + 86400000);
+    const startIso = start.toISOString();
+    const nextIso = next.toISOString();
+    let todayCount = 0;
+    const cnt = await client
+      .from("flag_checkins")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", startIso)
+      .lt("created_at", nextIso);
+    if (!cnt.error) {
+      todayCount = Number(cnt.count || 0);
+    } else {
+      const fb = await client
+        .from("discussions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", startIso)
+        .lt("created_at", nextIso)
+        .ilike("content", "%checkin%");
+      if (!fb.error) todayCount = Number(fb.count || 0);
+    }
+    if (todayCount >= 3)
+      return NextResponse.json(
+        { message: "今日打卡次数已达上限（3）" },
+        { status: 429 }
+      );
+
+    const historyPayload = {
+      proposal_id: flagId,
+      user_id: userId,
+      content: JSON.stringify({
+        type: "checkin",
+        note,
+        image_url: imageUrl,
+        ts: new Date().toISOString(),
+      }),
+    };
+    try {
+      await client.from("discussions").insert(historyPayload);
+    } catch {}
+
+    try {
+      await client.from("flag_checkins").insert({
+        flag_id: flagId,
+        user_id: userId,
+        note,
+        image_url: imageUrl || null,
+      });
+    } catch {}
 
     let { data, error } = await client
       .from("flags")

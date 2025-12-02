@@ -41,6 +41,7 @@ export default function FlagsPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newDeadline, setNewDeadline] = useState("");
   const [verifType, setVerifType] = useState<"self" | "witness">("self");
+  const [witnessId, setWitnessId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [filterMine, setFilterMine] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
@@ -51,22 +52,111 @@ export default function FlagsPage() {
   const [checkinNote, setCheckinNote] = useState("");
   const [checkinImage, setCheckinImage] = useState("");
   const [checkinSubmitting, setCheckinSubmitting] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyFlag, setHistoryFlag] = useState<FlagItem | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyItems, setHistoryItems] = useState<
+    Array<{
+      id: string;
+      note: string;
+      image_url?: string;
+      created_at: string;
+      review_status?: string;
+      reviewer_id?: string;
+      review_reason?: string;
+    }>
+  >([]);
+  const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(
+    null
+  );
+  const [settlingId, setSettlingId] = useState<number | null>(null);
+  const [officialCreate, setOfficialCreate] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState<{
+    flag_id: number;
+    owner_id: string;
+    title: string;
+    ts: string;
+  } | null>(null);
+  const [invitesCount, setInvitesCount] = useState(0);
 
   const supabase = getClient();
+
+  const officialTemplates: Array<{
+    id: string;
+    title: string;
+    description: string;
+  }> = [
+    {
+      id: "weather_rain_tomorrow",
+      title: "明天要不要带小伞？",
+      description: "看天公作美，和小雨来不来打个赌～",
+    },
+    {
+      id: "weather_snow_tomorrow",
+      title: "明天会下小雪吗？",
+      description: "想看雪花跳舞，交给天气小精灵判定～",
+    },
+    {
+      id: "temp_max_over",
+      title: "明天热到融化吗？",
+      description: "最高温挑战阈值，太阳别太粘人～",
+    },
+    {
+      id: "temp_min_under",
+      title: "明天冷到哆嗦吗？",
+      description: "最低温降到线，毛绒外套准备好～",
+    },
+    {
+      id: "wind_over",
+      title: "明天风会呼呼啦？",
+      description: "风速拉满就算赢，吹走小烦恼～",
+    },
+    {
+      id: "aqi_good",
+      title: "明天空气会很乖吗？",
+      description: "AQI 乖乖在阈值内，呼吸自由～",
+    },
+    {
+      id: "pm25_under",
+      title: "明天 PM2.5 低低的？",
+      description: "灰尘不捣乱，清透一整天～",
+    },
+    {
+      id: "uvi_over",
+      title: "明天阳光要撒娇吗？",
+      description: "UVI 超线就算准，防晒别偷懒～",
+    },
+    {
+      id: "feels_like_comfort",
+      title: "明天天气体感刚刚好？",
+      description: "舒适区间打卡，心情软绵绵～",
+    },
+    {
+      id: "early_morning",
+      title: "日出前把被子打败！",
+      description: "窗口前起床打卡，和瞌睡虫说拜拜～",
+    },
+  ];
 
   const loadFlags = async () => {
     try {
       setLoading(true);
-      if (!supabase) return;
-      // For now, just load all flags. In future, filter by user_id if needed for privacy
-      const { data, error } = await supabase
-        .from("flags")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setFlags(data as FlagItem[]);
+      const me = account || user?.id || "";
+      if (!me) {
+        setFlags([]);
+        return;
       }
+      const res = await fetch(
+        `/api/flags?viewer_id=${encodeURIComponent(me)}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) {
+        setFlags([]);
+        return;
+      }
+      const payload = await res.json().catch(() => ({ flags: [] }));
+      const list = Array.isArray(payload?.flags) ? payload.flags : [];
+      setFlags(list as FlagItem[]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -74,9 +164,53 @@ export default function FlagsPage() {
     }
   };
 
+  const loadInvites = async () => {
+    try {
+      const me = account || user?.id || "";
+      if (!me || !supabase) {
+        setInvitesCount(0);
+        setInviteNotice(null);
+        return;
+      }
+      const { data, error } = await (supabase as any)
+        .from("discussions")
+        .select("content,created_at")
+        .eq("user_id", me)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) {
+        setInvitesCount(0);
+        setInviteNotice(null);
+        return;
+      }
+      const items = (data || [])
+        .map((r: any) => {
+          try {
+            const obj = JSON.parse(String(r.content || "{}"));
+            if (obj && obj.type === "witness_invite") {
+              return {
+                flag_id: Number(obj.flag_id || 0),
+                owner_id: String(obj.owner_id || ""),
+                title: String(obj.title || ""),
+                ts: String(obj.ts || r.created_at || ""),
+              };
+            }
+          } catch {}
+          return null;
+        })
+        .filter(Boolean) as any[];
+      setInvitesCount(items.length);
+      setInviteNotice(items[0] || null);
+    } catch {
+      setInvitesCount(0);
+      setInviteNotice(null);
+    }
+  };
+
   useEffect(() => {
     if (!supabase) return;
     loadFlags();
+    loadInvites();
 
     const ch = supabase
       .channel("flags-realtime")
@@ -89,8 +223,20 @@ export default function FlagsPage() {
       )
       .subscribe();
 
+    const ch2 = supabase
+      .channel("discussions-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "discussions" },
+        () => {
+          loadInvites();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ch);
+      supabase.removeChannel(ch2);
     };
   }, []);
 
@@ -99,6 +245,7 @@ export default function FlagsPage() {
       setWalletModalOpen(true);
       return;
     }
+    setOfficialCreate(false);
     setCreateOpen(true);
   };
 
@@ -108,14 +255,16 @@ export default function FlagsPage() {
 
     try {
       setSubmitting(true);
-      const payload = {
+      const payload: any = {
         user_id: account || user?.id || "anonymous",
         title: newTitle,
         description: newDesc,
         deadline: newDeadline,
-        verification_type: verifType,
+        verification_type: officialCreate ? "self" : verifType,
         status: "active",
       };
+      if (!officialCreate && verifType === "witness" && witnessId.trim())
+        payload.witness_id = witnessId.trim();
 
       const res = await fetch("/api/flags", {
         method: "POST",
@@ -131,6 +280,7 @@ export default function FlagsPage() {
       setNewTitle("");
       setNewDesc("");
       setNewDeadline("");
+      setOfficialCreate(false);
     } catch (e) {
       alert("创建失败，请重试");
     } finally {
@@ -187,6 +337,80 @@ export default function FlagsPage() {
     }
   };
 
+  const openHistory = async (flag: FlagItem) => {
+    setHistoryFlag(flag);
+    setHistoryItems([]);
+    setHistoryLoading(true);
+    setHistoryOpen(true);
+    try {
+      const me = account || user?.id || "";
+      const res = await fetch(
+        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(
+          me
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+      const data = await res.json().catch(() => ({} as any));
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setHistoryItems(items);
+    } catch {
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const reviewCheckin = async (
+    checkinId: string,
+    action: "approve" | "reject"
+  ) => {
+    const me = account || user?.id || "";
+    if (!me) return alert("请先连接钱包或登录");
+    try {
+      setReviewSubmittingId(checkinId);
+      const res = await fetch(`/api/checkins/${checkinId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reviewer_id: me }),
+      });
+      const ret = await res.json().catch(() => ({} as any));
+      if (!res.ok)
+        throw new Error(String(ret?.detail || ret?.message || "操作失败"));
+      if (historyFlag) await openHistory(historyFlag);
+    } catch (e) {
+      alert(String((e as any)?.message || "操作失败"));
+    } finally {
+      setReviewSubmittingId(null);
+    }
+  };
+
+  const settleFlag = async (flag: FlagItem) => {
+    const me = account || user?.id || "";
+    if (!me) return alert("请先连接钱包或登录");
+    try {
+      setSettlingId(flag.id as any);
+      const res = await fetch(`/api/flags/${flag.id}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settler_id: me }),
+      });
+      const ret = await res.json().catch(() => ({} as any));
+      if (!res.ok)
+        throw new Error(String(ret?.detail || ret?.message || "结算失败"));
+      await loadFlags();
+      alert(
+        `结算完成：${String(ret?.status || "")}，通过天数 ${
+          ret?.metrics?.approvedDays || 0
+        }/${ret?.metrics?.totalDays || 0}`
+      );
+    } catch (e) {
+      alert(String((e as any)?.message || "结算失败"));
+    } finally {
+      setSettlingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 pb-20">
       <div className="max-w-5xl mx-auto px-4 pt-8">
@@ -206,6 +430,73 @@ export default function FlagsPage() {
             <Plus className="w-5 h-5" />
             立个 Flag
           </button>
+        </div>
+
+        {inviteNotice && (
+          <div className="mb-6 p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 flex items-center justify-between">
+            <div>
+              收到监督邀请：
+              <span className="font-medium text-yellow-900">
+                {inviteNotice.title}
+              </span>
+              <span className="ml-2 text-xs text-yellow-700">
+                {new Date(inviteNotice.ts).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs">总计 {invitesCount} 条</span>
+              <button
+                onClick={() => setInviteNotice(null)}
+                className="px-3 py-1 rounded-full bg-white text-yellow-800 border border-yellow-300 hover:bg-yellow-100 text-xs"
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 官方推荐 */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">官方可爱推荐</h2>
+            <span className="text-xs text-gray-500">
+              今天也来打个小趣味卡吧
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+            {officialTemplates.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-sm text-gray-500">模板</div>
+                    <div className="text-base font-semibold text-gray-900 mt-0.5">
+                      {tpl.title}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 mt-2">
+                  {tpl.description}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setNewTitle(tpl.title);
+                      setNewDesc(tpl.description);
+                      setVerifType("self");
+                      setOfficialCreate(true);
+                      setCreateOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-purple-600 text-white text-sm hover:bg-purple-700"
+                  >
+                    一键使用
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center justify-between mb-6">
@@ -320,6 +611,8 @@ export default function FlagsPage() {
                       String(account || user?.id || "").toLowerCase()
                   }
                   onCheckin={() => openCheckin(flag)}
+                  onViewHistory={() => openHistory(flag)}
+                  onSettle={() => settleFlag(flag)}
                 />
               ))}
           </div>
@@ -388,33 +681,62 @@ export default function FlagsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    监督方式
+                    监督方式{officialCreate ? "（官方模板仅系统判定）" : ""}
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setVerifType("self")}
-                      className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                        verifType === "self"
-                          ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="font-medium">自己打卡</span>
-                      <span className="text-xs opacity-70">上传照片即可</span>
-                    </button>
-                    <button
-                      onClick={() => setVerifType("witness")}
-                      className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                        verifType === "witness"
-                          ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="font-medium">好友监督</span>
-                      <span className="text-xs opacity-70">邀请好友见证</span>
-                    </button>
-                  </div>
+                  {officialCreate ? (
+                    <div className="grid grid-cols-1 gap-3">
+                      <button
+                        onClick={() => setVerifType("self")}
+                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                          verifType === "self"
+                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
+                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="font-medium">自己打卡</span>
+                        <span className="text-xs opacity-70">上传照片即可</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setVerifType("self")}
+                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                          verifType === "self"
+                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
+                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="font-medium">自己打卡</span>
+                        <span className="text-xs opacity-70">上传照片即可</span>
+                      </button>
+                      <button
+                        onClick={() => setVerifType("witness")}
+                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                          verifType === "witness"
+                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
+                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="font-medium">好友监督</span>
+                        <span className="text-xs opacity-70">邀请好友见证</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
+                {verifType === "witness" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      监督人 ID（钱包地址或用户ID）
+                    </label>
+                    <input
+                      value={witnessId}
+                      onChange={(e) => setWitnessId(e.target.value)}
+                      placeholder="0x... 或 supabase 用户ID"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors text-black"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 mt-8">
@@ -508,6 +830,105 @@ export default function FlagsPage() {
           </>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {historyOpen && historyFlag && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+              onClick={() => setHistoryOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 p-6"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                打卡历史 · {historyFlag.title}
+              </h3>
+              <div className="space-y-3 max-h-[60vh] overflow-auto">
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </div>
+                ) : historyItems.length === 0 ? (
+                  <div className="text-sm text-gray-500">暂无打卡记录</div>
+                ) : (
+                  historyItems.map((it) => (
+                    <div
+                      key={it.id}
+                      className="p-3 rounded-xl border border-gray-200"
+                    >
+                      <div className="text-xs text-gray-400 mb-1">
+                        {new Date(it.created_at).toLocaleString()}
+                      </div>
+                      {it.note ? (
+                        <div className="text-sm text-gray-700">{it.note}</div>
+                      ) : null}
+                      {it.image_url ? (
+                        <img
+                          src={it.image_url}
+                          alt="打卡图片"
+                          className="mt-2 rounded-xl border border-gray-200 max-h-40 object-cover"
+                        />
+                      ) : null}
+                      {historyFlag?.verification_type === "witness" && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600">
+                            {String(it.review_status || "pending") ===
+                            "approved"
+                              ? "已通过"
+                              : String(it.review_status || "pending") ===
+                                "rejected"
+                              ? "已拒绝"
+                              : "待审核"}
+                          </span>
+                          {String(it.review_status || "pending") ===
+                            "pending" &&
+                            String(historyFlag?.user_id || "").toLowerCase() ===
+                              String(
+                                account || user?.id || ""
+                              ).toLowerCase() && (
+                              <>
+                                <button
+                                  disabled={reviewSubmittingId === it.id}
+                                  onClick={() =>
+                                    reviewCheckin(it.id, "approve")
+                                  }
+                                  className="px-2 py-1 text-xs rounded border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50"
+                                >
+                                  通过
+                                </button>
+                                <button
+                                  disabled={reviewSubmittingId === it.id}
+                                  onClick={() => reviewCheckin(it.id, "reject")}
+                                  className="px-2 py-1 text-xs rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                >
+                                  驳回
+                                </button>
+                              </>
+                            )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-6">
+                <button
+                  onClick={() => setHistoryOpen(false)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  关闭
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -516,10 +937,14 @@ function FlagCard({
   flag,
   isMine,
   onCheckin,
+  onViewHistory,
+  onSettle,
 }: {
   flag: FlagItem;
   isMine?: boolean;
   onCheckin?: () => void;
+  onViewHistory?: () => void;
+  onSettle?: () => void;
 }) {
   const statusConfig = {
     active: { color: "text-blue-600", bg: "bg-blue-50", label: "进行中" },
@@ -604,7 +1029,7 @@ function FlagCard({
       </div>
 
       {/* Hover Action - Mockup for now */}
-      <div className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+      <div className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
         {flag.status === "active" && (
           <button
             onClick={onCheckin}
@@ -613,6 +1038,23 @@ function FlagCard({
             去打卡
           </button>
         )}
+        <button
+          onClick={onViewHistory}
+          className="px-4 py-2 bg-white text-purple-700 border border-purple-200 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
+        >
+          查看打卡
+        </button>
+        {isMine &&
+          new Date(flag.deadline).getTime() <= Date.now() &&
+          flag.status !== "success" &&
+          flag.status !== "failed" && (
+            <button
+              onClick={onSettle}
+              className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
+            >
+              结算
+            </button>
+          )}
       </div>
     </motion.div>
   );

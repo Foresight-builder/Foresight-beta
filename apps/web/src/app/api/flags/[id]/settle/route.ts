@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin, getClient } from '@/lib/supabase'
+
+function toNum(v: any): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
+async function parseBody(req: Request): Promise<Record<string, any>> { const ct = req.headers.get('content-type') || ''; const t = await req.text(); if (ct.includes('application/json')) { try { return JSON.parse(t) } catch { return {} } } if (ct.includes('application/x-www-form-urlencoded')) { const p = new URLSearchParams(t); return Object.fromEntries(p.entries()) } try { return JSON.parse(t) } catch { return {} } }
+
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctx.params
+    const flagId = toNum(id)
+    if (!flagId) return NextResponse.json({ message: 'flagId 必填' }, { status: 400 })
+    const body = await parseBody(req as any)
+    const settler_id = String(body?.settler_id || '').trim()
+    const minDays = Math.max(1, Number(body?.min_days || 10))
+    const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)))
+
+    const client = supabaseAdmin || getClient()
+    if (!client) return NextResponse.json({ message: '服务未配置' }, { status: 500 })
+
+    const { data: flag, error: fErr } = await client.from('flags').select('*').eq('id', flagId).maybeSingle()
+    if (fErr) return NextResponse.json({ message: '查询失败', detail: fErr.message }, { status: 500 })
+    if (!flag) return NextResponse.json({ message: 'Flag 不存在' }, { status: 404 })
+    const owner = String(flag.user_id || '')
+    if (!settler_id || settler_id.toLowerCase() !== owner.toLowerCase()) return NextResponse.json({ message: '仅创建者可结算' }, { status: 403 })
+
+    const end = new Date(String(flag.deadline))
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+
+    let startDay: Date
+    if (flag.created_at) {
+      const c = new Date(String(flag.created_at))
+      startDay = new Date(c.getFullYear(), c.getMonth(), c.getDate())
+    } else {
+      // 回退：以最早打卡日作为起始
+      const first = await client.from('flag_checkins').select('created_at').eq('flag_id', flagId).order('created_at', { ascending: true }).limit(1)
+      if (!first.error && first.data && first.data[0]?.created_at) {
+        const c = new Date(String(first.data[0].created_at))
+        startDay = new Date(c.getFullYear(), c.getMonth(), c.getDate())
+      } else {
+        startDay = new Date(endDay.getTime())
+      }
+    }
+
+    const msDay = 86400000
+    const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1)
+
+    let approvedDays = 0
+    const { data: approvals, error: aErr } = await client
+      .from('flag_checkins')
+      .select('created_at')
+      .eq('flag_id', flagId)
+      .eq('review_status', 'approved')
+      .gte('created_at', startDay.toISOString())
+      .lte('created_at', new Date(endDay.getTime() + msDay - 1).toISOString())
+    if (!aErr && approvals) {
+      const set = new Set<string>()
+      for (const r of approvals) { const d = new Date(String(r.created_at)); const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; set.add(key) }
+      approvedDays = set.size
+    } else {
+      // 回退：没有专用表时，以 discussions 中的打卡视为通过
+      const { data: ds, error: dErr } = await client
+        .from('discussions')
+        .select('content,created_at')
+        .eq('proposal_id', flagId)
+        .gte('created_at', startDay.toISOString())
+        .lte('created_at', new Date(endDay.getTime() + msDay - 1).toISOString())
+      if (!dErr && ds) {
+        const set = new Set<string>()
+        for (const r of ds) { try { const obj = JSON.parse(String(r.content || '{}')); if (obj?.type === 'checkin') { const d = new Date(String(r.created_at)); const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; set.add(key) } } catch {} }
+        approvedDays = set.size
+      }
+    }
+
+    const ratio = approvedDays / totalDays
+    const status = ratio >= threshold && approvedDays >= minDays ? 'success' : 'failed'
+    const metrics = { approvedDays, totalDays, ratio, threshold, minDays, startDay: startDay.toISOString(), endDay: endDay.toISOString() }
+
+    await client.from('flags').update({ status }).eq('id', flagId)
+    try { await client.from('flag_settlements').insert({ flag_id: flagId, status, strategy: 'ratio_threshold', metrics, settled_by: settler_id, settled_at: new Date().toISOString() }) } catch {}
+
+    return NextResponse.json({ status, metrics }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ message: '结算失败', detail: String(e?.message || e) }, { status: 500 })
+  }
+}
+
