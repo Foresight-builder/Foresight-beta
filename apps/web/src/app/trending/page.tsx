@@ -1724,10 +1724,10 @@ export default function TrendingPage() {
                     return (
                       <motion.div
                         key={category.name}
-                        className={`relative h-[160px] rounded-3xl cursor-pointer overflow-hidden group transition-all duration-500 ${
+                        className={`relative h-[180px] rounded-[2rem] cursor-pointer overflow-hidden group transition-all duration-500 ${
                           isActive
-                            ? "shadow-xl shadow-purple-500/30 ring-2 ring-purple-400 ring-offset-2"
-                            : "hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-1"
+                            ? "shadow-2xl shadow-purple-500/30 ring-4 ring-purple-400/30 ring-offset-2"
+                            : "hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-2"
                         }`}
                         whileTap={{ scale: 0.96 }}
                         onClick={(e) => {
@@ -1747,69 +1747,98 @@ export default function TrendingPage() {
                           }
                         }}
                       >
-                        {/* 背景层 */}
+                        {/* 背景层 - 玻璃拟态增强 */}
                         <div
                           className={`absolute inset-0 transition-colors duration-500 ${
                             isActive
                               ? "bg-gradient-to-br " + category.color
-                              : "bg-white/60 backdrop-blur-xl group-hover:bg-white/80"
+                              : "bg-white/80 backdrop-blur-2xl group-hover:bg-white"
                           }`}
                         />
 
-                        {/* 装饰圆环 */}
+                        {/* 动态流光边框 */}
                         <div
-                          className={`absolute -right-12 -top-12 w-40 h-40 rounded-full border-[20px] transition-all duration-700 ${
-                            isActive
-                              ? "border-white/20 scale-150"
-                              : "border-purple-100/50 group-hover:border-purple-200/50 group-hover:scale-110"
+                          className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${
+                            isActive ? "opacity-100" : ""
                           }`}
-                        />
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:animate-shine" />
+                        </div>
+
+                        {/* 底部装饰波纹 */}
+                        <div
+                          className={`absolute bottom-0 left-0 right-0 h-24 opacity-30 ${
+                            isActive ? "text-white" : "text-purple-100"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 1440 320"
+                            className="w-full h-full preserve-3d"
+                          >
+                            <path
+                              fill="currentColor"
+                              fillOpacity="1"
+                              d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+                            ></path>
+                          </svg>
+                        </div>
 
                         {/* 内容容器 */}
-                        <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                        <div className="absolute inset-0 p-7 flex flex-col justify-between z-10">
                           <div className="flex justify-between items-start">
-                            {/* 图标容器 */}
+                            {/* 图标容器 - 悬浮3D效果 */}
                             <div
-                              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm transition-all duration-500 ${
+                              className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-lg transition-all duration-500 transform ${
                                 isActive
-                                  ? "bg-white/20 text-white backdrop-blur-md"
-                                  : "bg-white text-gray-700 group-hover:scale-110 group-hover:rotate-3"
+                                  ? "bg-white/20 text-white backdrop-blur-md rotate-6 scale-110 ring-1 ring-white/30"
+                                  : "bg-gradient-to-br from-white to-purple-50 text-gray-700 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl ring-1 ring-purple-100"
                               }`}
                             >
                               {category.icon}
                             </div>
 
-                            {/* 活跃指示点 */}
+                            {/* 活跃指示点 - 脉冲效果 */}
                             {isActive && (
-                              <motion.div
-                                layoutId="active-dot"
-                                className="w-2.5 h-2.5 rounded-full bg-white shadow-lg"
-                              />
+                              <div className="relative">
+                                <span className="absolute inline-flex h-3 w-3 rounded-full bg-white opacity-75 animate-ping"></span>
+                                <motion.div
+                                  layoutId="active-dot"
+                                  className="relative inline-flex w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+                                />
+                              </div>
                             )}
                           </div>
 
                           <div>
                             <h3
-                              className={`text-xl font-bold mb-1.5 tracking-tight transition-colors ${
+                              className={`text-2xl font-black mb-2 tracking-tight transition-colors ${
                                 isActive
-                                  ? "text-white"
+                                  ? "text-white drop-shadow-sm"
                                   : "text-gray-800 group-hover:text-purple-900"
                               }`}
                             >
                               {category.name}
                             </h3>
                             <div
-                              className={`text-xs font-medium flex items-center gap-1.5 ${
-                                isActive ? "text-white/90" : "text-gray-500"
+                              className={`text-sm font-bold flex items-center gap-2 ${
+                                isActive
+                                  ? "text-white/90"
+                                  : "text-gray-500 group-hover:text-purple-600"
                               }`}
                             >
-                              <Flame
-                                className={`w-3.5 h-3.5 ${
-                                  isActive
-                                    ? "text-white animate-pulse"
-                                    : "text-orange-500"
+                              <div
+                                className={`p-1 rounded-full ${
+                                  isActive ? "bg-white/20" : "bg-orange-100"
                                 }`}
-                              />
+                              >
+                                <Flame
+                                  className={`w-3.5 h-3.5 ${
+                                    isActive
+                                      ? "text-white animate-pulse"
+                                      : "text-orange-500"
+                                  }`}
+                                />
+                              </div>
                               <span>
                                 {categoryCounts[category.name] || 0} 个热门事件
                               </span>
@@ -1817,15 +1846,15 @@ export default function TrendingPage() {
                           </div>
                         </div>
 
-                        {/* 悬浮箭头 */}
+                        {/* 悬浮箭头 - 交互增强 */}
                         <div
-                          className={`absolute bottom-6 right-6 transition-all duration-300 transform ${
+                          className={`absolute top-6 right-6 transition-all duration-500 transform ${
                             isActive
-                              ? "text-white opacity-100"
-                              : "text-purple-400 opacity-0 translate-x-4 group-hover:translate-x-0 group-hover:opacity-100"
+                              ? "text-white opacity-100 rotate-[-45deg]"
+                              : "text-purple-400 opacity-0 -translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 group-hover:rotate-[-45deg]"
                           }`}
                         >
-                          <ArrowRightCircle className="w-6 h-6" />
+                          <ArrowRightCircle className="w-8 h-8" />
                         </div>
                       </motion.div>
                     );
@@ -1833,32 +1862,52 @@ export default function TrendingPage() {
 
                   {/* 更多分类卡片 */}
                   <motion.div
-                    className="relative h-[160px] rounded-3xl cursor-pointer overflow-hidden group transition-all duration-500 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-1"
+                    className="relative h-[180px] rounded-[2rem] cursor-pointer overflow-hidden group transition-all duration-500 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-2"
                     whileTap={{ scale: 0.96 }}
                   >
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-xl group-hover:bg-white/80 transition-colors duration-500" />
-                    <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full border-[20px] border-purple-100/50 group-hover:border-purple-200/50 group-hover:scale-110 transition-all duration-700" />
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-2xl group-hover:bg-white transition-colors duration-500" />
 
-                    <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                    {/* 动态流光边框 */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:animate-shine" />
+                    </div>
+
+                    {/* 底部装饰波纹 */}
+                    <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30 text-purple-100">
+                      <svg
+                        viewBox="0 0 1440 320"
+                        className="w-full h-full preserve-3d"
+                      >
+                        <path
+                          fill="currentColor"
+                          fillOpacity="1"
+                          d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+                        ></path>
+                      </svg>
+                    </div>
+
+                    <div className="absolute inset-0 p-7 flex flex-col justify-between z-10">
                       <div className="flex justify-between items-start">
-                        <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-3xl shadow-sm text-gray-700 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white to-purple-50 flex items-center justify-center text-4xl shadow-lg text-gray-700 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl ring-1 ring-purple-100 transition-all duration-500">
                           ✨
                         </div>
                       </div>
 
                       <div>
-                        <h3 className="text-xl font-bold mb-1.5 tracking-tight text-gray-800 group-hover:text-purple-900 transition-colors">
+                        <h3 className="text-2xl font-black mb-2 tracking-tight text-gray-800 group-hover:text-purple-900 transition-colors">
                           更多
                         </h3>
-                        <div className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                        <div className="text-sm font-bold text-gray-500 group-hover:text-purple-600 flex items-center gap-2">
+                          <div className="p-1 rounded-full bg-orange-100">
+                            <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                          </div>
                           <span>探索更多</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="absolute bottom-6 right-6 text-purple-400 opacity-0 translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
-                      <ArrowRightCircle className="w-6 h-6" />
+                    <div className="absolute top-6 right-6 text-purple-400 opacity-0 -translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 group-hover:rotate-[-45deg] transition-all duration-500">
+                      <ArrowRightCircle className="w-8 h-8" />
                     </div>
                   </motion.div>
                 </div>
