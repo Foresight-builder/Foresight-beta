@@ -339,12 +339,10 @@ export default function PredictionDetailPage() {
 
   // 将当前查看的事件写入最近浏览（供热门页侧边栏展示）
   useEffect(() => {
-    if (!prediction) return;
+    if (!prediction || !account) return;
     try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("recent_events")
-          : null;
+      // 本地存储兼容
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem("recent_events") : null;
       const arr = raw ? JSON.parse(raw) : [];
       const item = {
         id: prediction.id,
@@ -352,13 +350,18 @@ export default function PredictionDetailPage() {
         category: prediction.category,
         seen_at: new Date().toISOString(),
       };
-      const dedup = Array.isArray(arr)
-        ? arr.filter((x: any) => Number(x?.id) !== Number(prediction.id))
-        : [];
+      const dedup = Array.isArray(arr) ? arr.filter((x: any) => Number(x?.id) !== Number(prediction.id)) : [];
       const next = [item, ...dedup].slice(0, 10);
       window.localStorage.setItem("recent_events", JSON.stringify(next));
+
+      // 发送至后端
+      fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: prediction.id, walletAddress: account })
+      }).catch(err => console.error('Failed to sync history:', err));
     } catch {}
-  }, [prediction?.id]);
+  }, [prediction?.id, account]);
 
   useEffect(() => {
     // 设置页面进入动画状态

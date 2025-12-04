@@ -12,6 +12,14 @@ import {
   CheckCircle2,
   Users,
   Plus,
+  Sparkles,
+  Trophy,
+  Target,
+  Clock,
+  ArrowRight,
+  Smile,
+  Heart,
+  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -77,64 +85,81 @@ export default function FlagsPage() {
     title: string;
     ts: string;
   } | null>(null);
-  const [invitesCount, setInvitesCount] = useState(0);
+  const [activeQuote, setActiveQuote] = useState(0);
+  const quotes = [
+    {
+      text: "种一棵树最好的时间是十年前，其次是现在。",
+      author: "Dambisa Moyo",
+    },
+    { text: "不积跬步，无以至千里。", author: "荀子" },
+    { text: "自律给我自由。", author: "Jocko Willink" },
+    { text: "每一个不曾起舞的日子，都是对生命的辜负。", author: "尼采" },
+  ];
 
   const supabase = getClient();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveQuote((prev) => (prev + 1) % quotes.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const officialTemplates: Array<{
     id: string;
     title: string;
     description: string;
+    icon: any;
+    color: string;
+    bg: string;
   }> = [
     {
       id: "weather_rain_tomorrow",
-      title: "明天要不要带小伞？",
+      title: "明天会下雨吗？",
       description: "看天公作美，和小雨来不来打个赌～",
+      icon: Sparkles,
+      color: "text-blue-500",
+      bg: "bg-blue-50",
     },
     {
       id: "weather_snow_tomorrow",
-      title: "明天会下小雪吗？",
+      title: "明天会下雪吗？",
       description: "想看雪花跳舞，交给天气小精灵判定～",
+      icon: Sparkles,
+      color: "text-indigo-500",
+      bg: "bg-indigo-50",
     },
     {
       id: "temp_max_over",
-      title: "明天热到融化吗？",
+      title: "明天会热吗？",
       description: "最高温挑战阈值，太阳别太粘人～",
-    },
-    {
-      id: "temp_min_under",
-      title: "明天冷到哆嗦吗？",
-      description: "最低温降到线，毛绒外套准备好～",
-    },
-    {
-      id: "wind_over",
-      title: "明天风会呼呼啦？",
-      description: "风速拉满就算赢，吹走小烦恼～",
-    },
-    {
-      id: "aqi_good",
-      title: "明天空气会很乖吗？",
-      description: "AQI 乖乖在阈值内，呼吸自由～",
-    },
-    {
-      id: "pm25_under",
-      title: "明天 PM2.5 低低的？",
-      description: "灰尘不捣乱，清透一整天～",
-    },
-    {
-      id: "uvi_over",
-      title: "明天阳光要撒娇吗？",
-      description: "UVI 超线就算准，防晒别偷懒～",
-    },
-    {
-      id: "feels_like_comfort",
-      title: "明天天气体感刚刚好？",
-      description: "舒适区间打卡，心情软绵绵～",
+      icon: Zap,
+      color: "text-orange-500",
+      bg: "bg-orange-50",
     },
     {
       id: "early_morning",
-      title: "日出前把被子打败！",
-      description: "窗口前起床打卡，和瞌睡虫说拜拜～",
+      title: "早起挑战",
+      description: "日出前把被子打败！和瞌睡虫说拜拜～",
+      icon: Clock,
+      color: "text-green-500",
+      bg: "bg-green-50",
+    },
+    {
+      id: "feels_like_comfort",
+      title: "舒适天气",
+      description: "舒适区间打卡，心情软绵绵～",
+      icon: Smile,
+      color: "text-pink-500",
+      bg: "bg-pink-50",
+    },
+    {
+      id: "target_weight",
+      title: "体重管理",
+      description: "每天进步一点点，遇见更好的自己～",
+      icon: Target,
+      color: "text-purple-500",
+      bg: "bg-purple-50",
     },
   ];
 
@@ -412,209 +437,278 @@ export default function FlagsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 pb-20">
-      <div className="max-w-5xl mx-auto px-4 pt-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 pb-24">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+      </div>
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-12 gap-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Flag className="w-8 h-8 text-purple-600" />
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-violet-200 shadow-sm text-violet-700 text-xs font-bold mb-4 backdrop-blur-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-fuchsia-500" />
+              <span>让每一个小目标都闪闪发光</span>
+            </motion.div>
+            <h1 className="text-5xl md:text-6xl font-black text-gray-900 flex items-center gap-4 tracking-tight mb-4">
               我的 Flag
+              <motion.span
+                animate={{ rotate: [0, 15, 0] }}
+                transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
+                className="text-fuchsia-500 inline-block origin-bottom-left"
+              >
+                🚩
+              </motion.span>
             </h1>
-            <p className="text-gray-500 mt-1">立下目标，见证改变</p>
+            <p className="text-gray-600 text-lg md:text-xl max-w-xl leading-relaxed font-medium">
+              生活需要仪式感。无论是早起打卡，还是坚持运动，
+              <br className="hidden md:block" />
+              在这里立下目标，见证更好的自己。
+            </p>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleCreateClick}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200"
+            className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-xl shadow-violet-500/30 overflow-hidden w-full md:w-auto"
           >
-            <Plus className="w-5 h-5" />
-            立个 Flag
-          </button>
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[length:200%_100%] animate-gradient" />
+            <span className="relative flex items-center justify-center gap-3 text-lg">
+              <Plus className="w-6 h-6" />
+              立个新 Flag
+            </span>
+          </motion.button>
+        </div>
+
+        {/* Daily Quote Banner */}
+        <div className="mb-10">
+          <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-500 p-1 shadow-xl shadow-fuchsia-500/20">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay"></div>
+            <div className="relative bg-white/10 backdrop-blur-md rounded-[1.8rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
+              <div className="flex-1 text-white">
+                <div className="flex items-center gap-2 text-white/90 text-sm font-bold mb-2 uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  Daily Inspiration
+                </div>
+                <div className="h-20 relative">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeQuote}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="absolute inset-0"
+                    >
+                      <p className="text-2xl md:text-3xl font-black leading-tight mb-2">
+                        "{quotes[activeQuote].text}"
+                      </p>
+                      <p className="text-white/60 font-medium">
+                        — {quotes[activeQuote].author}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md shadow-inner border border-white/30">
+                  <Trophy className="w-10 h-10 text-white drop-shadow-lg" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {inviteNotice && (
-          <div className="mb-6 p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 flex items-center justify-between">
-            <div>
-              收到监督邀请：
-              <span className="font-medium text-yellow-900">
-                {inviteNotice.title}
-              </span>
-              <span className="ml-2 text-xs text-yellow-700">
-                {new Date(inviteNotice.ts).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs">总计 {invitesCount} 条</span>
-              <button
-                onClick={() => setInviteNotice(null)}
-                className="px-3 py-1 rounded-full bg-white text-yellow-800 border border-yellow-300 hover:bg-yellow-100 text-xs"
-              >
-                我知道了
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 官方推荐 */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-gray-900">官方可爱推荐</h2>
-            <span className="text-xs text-gray-500">
-              今天也来打个小趣味卡吧
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-            {officialTemplates.map((tpl) => (
-              <div
-                key={tpl.id}
-                className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-sm text-gray-500">模板</div>
-                    <div className="text-base font-semibold text-gray-900 mt-0.5">
-                      {tpl.title}
-                    </div>
-                  </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-100 shadow-sm flex items-center justify-between"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                <Users className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-sm text-yellow-800 font-medium">
+                  收到监督邀请
                 </div>
-                <div className="text-sm text-gray-600 mt-2">
-                  {tpl.description}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setNewTitle(tpl.title);
-                      setNewDesc(tpl.description);
-                      setVerifType("self");
-                      setOfficialCreate(true);
-                      setCreateOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-full bg-purple-600 text-white text-sm hover:bg-purple-700"
-                  >
-                    一键使用
-                  </button>
+                <div className="font-bold text-gray-900 mt-0.5">
+                  {inviteNotice.title}
                 </div>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-yellow-600 font-medium bg-yellow-100 px-2 py-1 rounded-full">
+                共 {invitesCount} 条
+              </span>
+              <button
+                onClick={() => setInviteNotice(null)}
+                className="px-4 py-2 rounded-xl bg-white text-yellow-800 text-sm font-bold hover:bg-yellow-50 transition-colors shadow-sm"
+              >
+                知道了
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Official Templates */}
+        <div className="mb-12">
+          <div className="flex items-center gap-2 mb-6">
+            <h2 className="text-xl font-bold text-gray-900">官方趣味挑战</h2>
+            <span className="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs font-medium">
+              一键开启
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {officialTemplates.map((tpl, i) => (
+              <motion.div
+                key={tpl.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="group relative bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden"
+                onClick={() => {
+                  setNewTitle(tpl.title);
+                  setNewDesc(tpl.description);
+                  setVerifType("self");
+                  setOfficialCreate(true);
+                  setCreateOpen(true);
+                }}
+              >
+                <div
+                  className={`absolute top-0 right-0 w-24 h-24 ${tpl.bg} rounded-bl-[4rem] -mr-4 -mt-4 transition-transform group-hover:scale-110`}
+                />
+                <div className="relative z-10">
+                  <div
+                    className={`w-12 h-12 rounded-2xl ${tpl.bg} ${tpl.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm`}
+                  >
+                    <tpl.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    {tpl.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                    {tpl.description}
+                  </p>
+                  <div className="flex items-center text-xs font-bold text-purple-600 gap-1 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
+                    立即挑战 <ArrowRight className="w-3 h-3" />
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                statusFilter === "all"
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200"
-              }`}
-            >
-              全部
-            </button>
-            <button
-              onClick={() => setStatusFilter("active")}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                statusFilter === "active"
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200"
-              }`}
-            >
-              进行中
-            </button>
-            <button
-              onClick={() => setStatusFilter("pending_review")}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                statusFilter === "pending_review"
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200"
-              }`}
-            >
-              审核中
-            </button>
-            <button
-              onClick={() => setStatusFilter("success")}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                statusFilter === "success"
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200"
-              }`}
-            >
-              成功
-            </button>
-            <button
-              onClick={() => setStatusFilter("failed")}
-              className={`px-3 py-1.5 rounded-full text-sm border ${
-                statusFilter === "failed"
-                  ? "bg-purple-600 text-white border-purple-600"
-                  : "bg-white text-gray-700 border-gray-200"
-              }`}
-            >
-              失败
-            </button>
+        {/* Filters & Controls */}
+        <div className="sticky top-20 z-30 bg-white/80 backdrop-blur-xl rounded-2xl p-2 mb-8 shadow-lg shadow-purple-500/5 border border-white/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-1 p-1 bg-gray-100/50 rounded-xl w-full sm:w-auto overflow-x-auto">
+            {[
+              { id: "all", label: "全部" },
+              { id: "active", label: "进行中" },
+              { id: "pending_review", label: "审核中" },
+              { id: "success", label: "成功" },
+              { id: "failed", label: "失败" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id as any)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
+                  statusFilter === tab.id
+                    ? "bg-white text-purple-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
+
           <button
             onClick={() => setFilterMine((v) => !v)}
-            className={`px-3 py-1.5 rounded-full text-sm border ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               filterMine
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-purple-100 text-purple-700"
+                : "bg-white text-gray-500 hover:bg-gray-50"
             }`}
           >
-            {filterMine ? "只看我的 ✓" : "只看我的"}
+            <Users className="w-4 h-4" />
+            {filterMine ? "只看我的" : "只看我的"}
           </button>
         </div>
 
-        {/* Grid */}
+        {/* Flags Grid */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
           </div>
         ) : flags.length === 0 ? (
-          <div className="text-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200">
-            <Flag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">还没有 Flag</h3>
-            <p className="text-gray-500 mb-6">今天想挑战什么？</p>
-            <button
-              onClick={handleCreateClick}
-              className="px-6 py-2 bg-white border border-purple-200 text-purple-600 rounded-full hover:bg-purple-50 transition-colors"
-            >
-              开始第一个挑战
-            </button>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-24 bg-white/60 backdrop-blur-xl rounded-[3rem] border border-white shadow-xl relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-orange-500/5" />
+            <div className="relative z-10">
+              <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <Flag className="w-12 h-12 text-purple-500" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-3">
+                还没有 Flag
+              </h3>
+              <p className="text-gray-500 mb-8 max-w-xs mx-auto text-lg">
+                生活需要一点仪式感，定个小目标，给自己一个惊喜吧 ✨
+              </p>
+              <button
+                onClick={handleCreateClick}
+                className="px-10 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all hover:scale-105 shadow-xl shadow-purple-500/20"
+              >
+                开始第一个挑战
+              </button>
+            </div>
+          </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {flags
-              .filter((f) =>
-                statusFilter === "all" ? true : f.status === statusFilter
-              )
-              .filter((f) => {
-                if (!filterMine) return true;
-                const me = account || user?.id || "";
-                return (
-                  me &&
-                  String(f.user_id || "").toLowerCase() ===
-                    String(me).toLowerCase()
-                );
-              })
-              .sort(
-                (a, b) =>
-                  new Date(a.deadline).getTime() -
-                  new Date(b.deadline).getTime()
-              )
-              .map((flag) => (
-                <FlagCard
-                  key={flag.id}
-                  flag={flag}
-                  isMine={
-                    Boolean(account || user?.id) &&
-                    String(flag.user_id || "").toLowerCase() ===
-                      String(account || user?.id || "").toLowerCase()
-                  }
-                  onCheckin={() => openCheckin(flag)}
-                  onViewHistory={() => openHistory(flag)}
-                  onSettle={() => settleFlag(flag)}
-                />
-              ))}
+            <AnimatePresence mode="popLayout">
+              {flags
+                .filter((f) =>
+                  statusFilter === "all" ? true : f.status === statusFilter
+                )
+                .filter((f) => {
+                  if (!filterMine) return true;
+                  const me = account || user?.id || "";
+                  return (
+                    me &&
+                    String(f.user_id || "").toLowerCase() ===
+                      String(me).toLowerCase()
+                  );
+                })
+                .sort(
+                  (a, b) =>
+                    new Date(a.deadline).getTime() -
+                    new Date(b.deadline).getTime()
+                )
+                .map((flag) => (
+                  <FlagCard
+                    key={flag.id}
+                    flag={flag}
+                    isMine={
+                      Boolean(account || user?.id) &&
+                      String(flag.user_id || "").toLowerCase() ===
+                        String(account || user?.id || "").toLowerCase()
+                    }
+                    onCheckin={() => openCheckin(flag)}
+                    onViewHistory={() => openHistory(flag)}
+                    onSettle={() => settleFlag(flag)}
+                  />
+                ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -627,134 +721,134 @@ export default function FlagsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/40 backdrop-blur-md z-50"
               onClick={() => setCreateOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 p-6"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-50 p-8"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                立个 Flag 🚩
-              </h2>
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black text-gray-900">
+                  立个 Flag 🚩
+                </h2>
+                <button
+                  onClick={() => setCreateOpen(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <ArrowRight className="w-5 h-5 text-gray-400 rotate-45" />
+                </button>
+              </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
                     我想...
                   </label>
                   <input
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     placeholder="例如：明天早起跑步"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors text-black"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all font-medium text-lg placeholder:text-gray-400 text-gray-900"
                     autoFocus
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
                     备注 (可选)
                   </label>
                   <textarea
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    placeholder="具体怎么做？"
-                    rows={2}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors resize-none text-black"
+                    placeholder="具体怎么做？给自己一点鼓励！"
+                    rows={3}
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all text-gray-900 resize-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
                     截止时间
                   </label>
                   <input
                     type="datetime-local"
                     value={newDeadline}
                     onChange={(e) => setNewDeadline(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors text-black"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all text-gray-900 font-mono"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
                     监督方式{officialCreate ? "（官方模板仅系统判定）" : ""}
                   </label>
                   {officialCreate ? (
-                    <div className="grid grid-cols-1 gap-3">
-                      <button
-                        onClick={() => setVerifType("self")}
-                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                          verifType === "self"
-                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
-                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span className="font-medium">自己打卡</span>
-                        <span className="text-xs opacity-70">上传照片即可</span>
-                      </button>
+                    <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      系统自动判定结果
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <button
                         onClick={() => setVerifType("self")}
-                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                        className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
                           verifType === "self"
-                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
-                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                            ? "bg-purple-50 border-purple-500 text-purple-700"
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
                         }`}
                       >
-                        <span className="font-medium">自己打卡</span>
-                        <span className="text-xs opacity-70">上传照片即可</span>
+                        <span className="font-bold">自己打卡</span>
+                        <span className="text-xs opacity-70">拍照记录</span>
                       </button>
                       <button
                         onClick={() => setVerifType("witness")}
-                        className={`px-4 py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                        className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
                           verifType === "witness"
-                            ? "bg-purple-50 border-purple-500 text-purple-700 ring-1 ring-purple-500"
-                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                            ? "bg-purple-50 border-purple-500 text-purple-700"
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
                         }`}
                       >
-                        <span className="font-medium">好友监督</span>
-                        <span className="text-xs opacity-70">邀请好友见证</span>
+                        <span className="font-bold">好友监督</span>
+                        <span className="text-xs opacity-70">邀请见证</span>
                       </button>
                     </div>
                   )}
                 </div>
-                {verifType === "witness" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      监督人 ID（钱包地址或用户ID）
+
+                {verifType === "witness" && !officialCreate && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="space-y-2"
+                  >
+                    <label className="text-sm font-bold text-gray-700 ml-1">
+                      监督人 ID
                     </label>
                     <input
                       value={witnessId}
                       onChange={(e) => setWitnessId(e.target.value)}
-                      placeholder="0x... 或 supabase 用户ID"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors text-black"
+                      placeholder="0x... 或 用户ID"
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all font-mono text-sm text-gray-900"
                     />
-                  </div>
+                  </motion.div>
                 )}
               </div>
 
-              <div className="flex gap-3 mt-8">
-                <button
-                  onClick={() => setCreateOpen(false)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                >
-                  取消
-                </button>
+              <div className="flex gap-4 mt-10">
                 <button
                   onClick={createFlag}
                   disabled={submitting || !newTitle || !newDeadline}
-                  className="flex-1 px-4 py-3 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="flex-1 py-4 rounded-2xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl shadow-purple-500/20"
                 >
                   {submitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    "确认发布"
+                    <>
+                      确认发布 <ArrowRight className="w-4 h-4" />
+                    </>
                   )}
                 </button>
               </div>
@@ -767,6 +861,8 @@ export default function FlagsPage() {
         isOpen={walletModalOpen}
         onClose={() => setWalletModalOpen(false)}
       />
+
+      {/* Checkin Modal */}
       <AnimatePresence>
         {checkinOpen && checkinFlag && (
           <>
@@ -774,54 +870,54 @@ export default function FlagsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/40 backdrop-blur-md z-50"
               onClick={() => setCheckinOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 p-6"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-50 p-8"
             >
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
-                打卡 · {checkinFlag.title}
+              <h3 className="text-2xl font-black text-gray-900 mb-6">
+                打卡记录 📸
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    备注
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
+                    心得体会
                   </label>
                   <textarea
                     value={checkinNote}
                     onChange={(e) => setCheckinNote(e.target.value)}
-                    placeholder="今天做了什么？"
+                    placeholder="今天做了什么？感觉如何？"
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors resize-none text-black"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all text-gray-900 resize-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
                     图片链接（可选）
                   </label>
                   <input
                     value={checkinImage}
                     onChange={(e) => setCheckinImage(e.target.value)}
                     placeholder="https://..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition-colors text-black"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-purple-500 outline-none transition-all text-gray-900"
                   />
                 </div>
               </div>
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-4 mt-8">
                 <button
                   onClick={() => setCheckinOpen(false)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-4 rounded-2xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={submitCheckin}
                   disabled={checkinSubmitting}
-                  className="flex-1 px-4 py-3 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
                 >
                   {checkinSubmitting ? "提交中…" : "提交打卡"}
                 </button>
@@ -830,6 +926,8 @@ export default function FlagsPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* History Modal */}
       <AnimatePresence>
         {historyOpen && historyFlag && (
           <>
@@ -837,47 +935,49 @@ export default function FlagsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/40 backdrop-blur-md z-50"
               onClick={() => setHistoryOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 p-6"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2rem] shadow-2xl z-50 p-8"
             >
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
-                打卡历史 · {historyFlag.title}
+              <h3 className="text-2xl font-black text-gray-900 mb-6">
+                时光机 🕰️
               </h3>
-              <div className="space-y-3 max-h-[60vh] overflow-auto">
+              <div className="space-y-4 max-h-[60vh] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                 {historyLoading ? (
                   <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
                   </div>
                 ) : historyItems.length === 0 ? (
-                  <div className="text-sm text-gray-500">暂无打卡记录</div>
+                  <div className="text-center py-10 text-gray-400">
+                    暂无打卡记录，加油鸭！
+                  </div>
                 ) : (
                   historyItems.map((it) => (
                     <div
                       key={it.id}
-                      className="p-3 rounded-xl border border-gray-200"
+                      className="p-4 rounded-2xl bg-gray-50 border border-gray-100"
                     >
-                      <div className="text-xs text-gray-400 mb-1">
-                        {new Date(it.created_at).toLocaleString()}
-                      </div>
-                      {it.note ? (
-                        <div className="text-sm text-gray-700">{it.note}</div>
-                      ) : null}
-                      {it.image_url ? (
-                        <img
-                          src={it.image_url}
-                          alt="打卡图片"
-                          className="mt-2 rounded-xl border border-gray-200 max-h-40 object-cover"
-                        />
-                      ) : null}
-                      {historyFlag?.verification_type === "witness" && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs font-medium text-gray-400 bg-white px-2 py-1 rounded-lg border border-gray-100">
+                          {new Date(it.created_at).toLocaleString()}
+                        </div>
+                        {historyFlag?.verification_type === "witness" && (
+                          <span
+                            className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                              String(it.review_status || "pending") ===
+                              "approved"
+                                ? "bg-green-100 text-green-700"
+                                : String(it.review_status || "pending") ===
+                                  "rejected"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-orange-100 text-orange-700"
+                            }`}
+                          >
                             {String(it.review_status || "pending") ===
                             "approved"
                               ? "已通过"
@@ -886,41 +986,50 @@ export default function FlagsPage() {
                               ? "已拒绝"
                               : "待审核"}
                           </span>
-                          {String(it.review_status || "pending") ===
-                            "pending" &&
-                            String(historyFlag?.user_id || "").toLowerCase() ===
-                              String(
-                                account || user?.id || ""
-                              ).toLowerCase() && (
-                              <>
-                                <button
-                                  disabled={reviewSubmittingId === it.id}
-                                  onClick={() =>
-                                    reviewCheckin(it.id, "approve")
-                                  }
-                                  className="px-2 py-1 text-xs rounded border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50"
-                                >
-                                  通过
-                                </button>
-                                <button
-                                  disabled={reviewSubmittingId === it.id}
-                                  onClick={() => reviewCheckin(it.id, "reject")}
-                                  className="px-2 py-1 text-xs rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
-                                >
-                                  驳回
-                                </button>
-                              </>
-                            )}
+                        )}
+                      </div>
+                      {it.note && (
+                        <div className="text-sm text-gray-800 font-medium leading-relaxed">
+                          {it.note}
                         </div>
                       )}
+                      {it.image_url && (
+                        <img
+                          src={it.image_url}
+                          alt="打卡图片"
+                          className="mt-3 rounded-xl w-full h-32 object-cover shadow-sm"
+                        />
+                      )}
+
+                      {historyFlag?.verification_type === "witness" &&
+                        String(it.review_status || "pending") === "pending" &&
+                        String(historyFlag?.user_id || "").toLowerCase() ===
+                          String(account || user?.id || "").toLowerCase() && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              disabled={reviewSubmittingId === it.id}
+                              onClick={() => reviewCheckin(it.id, "approve")}
+                              className="flex-1 py-2 text-xs font-bold rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                            >
+                              通过
+                            </button>
+                            <button
+                              disabled={reviewSubmittingId === it.id}
+                              onClick={() => reviewCheckin(it.id, "reject")}
+                              className="flex-1 py-2 text-xs font-bold rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                            >
+                              驳回
+                            </button>
+                          </div>
+                        )}
                     </div>
                   ))
                 )}
               </div>
-              <div className="mt-6">
+              <div className="mt-8">
                 <button
                   onClick={() => setHistoryOpen(false)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  className="w-full py-4 rounded-2xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
                 >
                   关闭
                 </button>
@@ -947,14 +1056,30 @@ function FlagCard({
   onSettle?: () => void;
 }) {
   const statusConfig = {
-    active: { color: "text-blue-600", bg: "bg-blue-50", label: "进行中" },
+    active: {
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+      label: "进行中",
+    },
     pending_review: {
       color: "text-orange-600",
       bg: "bg-orange-50",
+      border: "border-orange-100",
       label: "审核中",
     },
-    success: { color: "text-green-600", bg: "bg-green-50", label: "挑战成功" },
-    failed: { color: "text-red-600", bg: "bg-red-50", label: "挑战失败" },
+    success: {
+      color: "text-green-600",
+      bg: "bg-green-50",
+      border: "border-green-100",
+      label: "挑战成功",
+    },
+    failed: {
+      color: "text-red-600",
+      bg: "bg-red-50",
+      border: "border-red-100",
+      label: "挑战失败",
+    },
   };
 
   const s = statusConfig[flag.status];
@@ -969,92 +1094,130 @@ function FlagCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group"
+      exit={{ opacity: 0, scale: 0.9 }}
+      layout
+      whileHover={{ y: -5 }}
+      className="bg-white rounded-[2.5rem] p-7 shadow-lg shadow-purple-500/5 hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 border border-white/50 group flex flex-col h-full relative overflow-hidden"
     >
-      <div className="flex justify-between items-start mb-3">
-        <span
-          className={`text-xs font-bold px-2 py-1 rounded-lg ${s.bg} ${s.color}`}
-        >
-          {s.label}
-        </span>
-        <span className="text-xs text-gray-400 flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-            {remainText}
-          </span>
-          {isMine ? (
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
-              我的
-            </span>
-          ) : null}
-          {flag.verification_type === "self" ? (
-            <CheckCircle2 className="w-3 h-3" />
-          ) : (
-            <Users className="w-3 h-3" />
-          )}
-          {flag.verification_type === "self" ? "自律" : "监督"}
-        </span>
-      </div>
+      {/* 装饰背景 */}
+      <div
+        className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full -mr-8 -mt-8 opacity-10 transition-transform duration-500 group-hover:scale-150 ${s.bg
+          .replace("bg-", "bg-gradient-to-br from-")
+          .replace("50", "400 to-white")}`}
+      />
 
-      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-        {flag.title}
-      </h3>
-      {flag.description && (
-        <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-          {flag.description}
-        </p>
-      )}
-
-      {flag.proof_comment && (
-        <div className="mb-4 p-3 rounded-xl bg-purple-50 border border-purple-200 text-sm text-purple-700">
-          <span className="font-medium">最近打卡：</span>
-          <span>{flag.proof_comment}</span>
-        </div>
-      )}
-
-      {flag.proof_image_url && (
-        <div className="mb-4">
-          <img
-            src={flag.proof_image_url}
-            alt="打卡图片"
-            className="rounded-xl border border-gray-200 max-h-40 object-cover"
-          />
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 text-xs text-gray-400 mt-auto pt-4 border-t border-gray-50">
-        <Calendar className="w-3 h-3" />
-        截止: {new Date(flag.deadline).toLocaleString()}
-      </div>
-
-      {/* Hover Action - Mockup for now */}
-      <div className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
-        {flag.status === "active" && (
-          <button
-            onClick={onCheckin}
-            className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex justify-between items-start mb-5">
+          <span
+            className={`text-xs font-bold px-4 py-2 rounded-full ${s.bg} ${s.color} border ${s.border} shadow-sm flex items-center gap-1.5`}
           >
-            去打卡
-          </button>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${s.bg
+                .replace("bg-", "bg-")
+                .replace("50", "500")} animate-pulse`}
+            />
+            {s.label}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 bg-gray-100/80 px-3 py-1.5 rounded-full backdrop-blur-sm">
+              {remainText}
+            </span>
+          </div>
+        </div>
+
+        <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
+          {flag.title}
+        </h3>
+
+        {flag.description && (
+          <p className="text-sm text-gray-500 mb-6 line-clamp-2 leading-relaxed font-medium">
+            {flag.description}
+          </p>
         )}
-        <button
-          onClick={onViewHistory}
-          className="px-4 py-2 bg-white text-purple-700 border border-purple-200 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
-        >
-          查看打卡
-        </button>
-        {isMine &&
-          new Date(flag.deadline).getTime() <= Date.now() &&
-          flag.status !== "success" &&
-          flag.status !== "failed" && (
-            <button
-              onClick={onSettle}
-              className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
-            >
-              结算
-            </button>
+
+        <div className="mt-auto space-y-5">
+          {/* Last Checkin Preview */}
+          {flag.proof_comment || flag.proof_image_url ? (
+            <div className="p-4 rounded-3xl bg-gray-50/80 border border-gray-100/80 flex gap-4 items-center backdrop-blur-sm group-hover:bg-white/80 transition-colors duration-300">
+              {flag.proof_image_url ? (
+                <img
+                  src={flag.proof_image_url}
+                  alt="proof"
+                  className="w-12 h-12 rounded-2xl object-cover shadow-sm ring-2 ring-white"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm text-purple-500">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-400 font-bold mb-1 uppercase tracking-wide">
+                  最近打卡
+                </div>
+                <div className="text-sm text-gray-900 truncate font-bold">
+                  {flag.proof_comment || "图片打卡"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-3xl bg-gray-50/50 border border-dashed border-gray-200 flex gap-3 items-center justify-center text-gray-400 text-sm font-medium group-hover:border-purple-200 group-hover:text-purple-400 transition-colors">
+              <Sparkles className="w-4 h-4" />
+              暂无打卡记录
+            </div>
           )}
+
+          <div className="pt-5 border-t border-gray-100 flex items-center justify-between gap-3">
+            <div className="flex gap-3">
+              {flag.status === "active" && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={onCheckin}
+                  className="w-10 h-10 rounded-full bg-gray-900 text-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/30 flex items-center justify-center"
+                  title="打卡"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </motion.button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onViewHistory}
+                className="w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:border-purple-200 hover:text-purple-600 transition-colors shadow-sm hover:shadow-md flex items-center justify-center"
+                title="查看记录"
+              >
+                <Clock className="w-5 h-5" />
+              </motion.button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {flag.verification_type === "self" ? (
+                <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100">
+                  <Target className="w-3.5 h-3.5" /> 自律模式
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full text-xs font-bold border border-pink-100">
+                  <Users className="w-3.5 h-3.5" /> 好友监督
+                </span>
+              )}
+              {isMine &&
+                new Date(flag.deadline).getTime() <= Date.now() &&
+                flag.status !== "success" &&
+                flag.status !== "failed" && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onSettle}
+                    className="px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-bold hover:bg-green-200 transition-colors shadow-sm"
+                  >
+                    结算
+                  </motion.button>
+                )}
+            </div>
+          </div>
+        </div>
       </div>
     </motion.div>
   );

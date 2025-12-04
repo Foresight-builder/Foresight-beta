@@ -1218,8 +1218,32 @@ export default function TrendingPage() {
   // 当分类计数接口不可用时，基于已加载的预测数据进行本地回退计算
   // 本地回退逻辑已移除，分类计数仅依赖后端 /api/categories/counts
 
-  const displayEvents = allEvents;
-  const sortedEvents = allEvents;
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<any>({
+    title: "",
+    category: "",
+    status: "active",
+    deadline: "",
+    minStake: 0,
+  });
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
+
+  const displayEvents = useMemo(() => {
+    if (!searchQuery.trim()) return allEvents;
+    const q = searchQuery.toLowerCase();
+    return allEvents.filter(
+      (e) =>
+        (e.title || "").toLowerCase().includes(q) ||
+        (e.description || "").toLowerCase().includes(q) ||
+        (e.tag || "").toLowerCase().includes(q) ||
+        (e.category || "").toLowerCase().includes(q)
+    );
+  }, [allEvents, searchQuery]);
+  const sortedEvents = displayEvents;
 
   const bestEvent = useMemo(() => {
     const pool = displayEvents;
@@ -1237,19 +1261,6 @@ export default function TrendingPage() {
     })[0];
     return pick;
   }, [displayEvents]);
-
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({
-    title: "",
-    category: "",
-    status: "active",
-    deadline: "",
-    minStake: 0,
-  });
-  const [editTargetId, setEditTargetId] = useState<number | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -1498,22 +1509,22 @@ export default function TrendingPage() {
   }, [sortedEvents, displayCount, accountNorm]);
 
   return (
-    <div className="relative min-h-screen bg-[#FED3E7] overflow-hidden text-black">
+    <div className="relative min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 overflow-hidden text-gray-900">
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ease-out ${
-          canvasReady ? "opacity-60" : "opacity-0"
+          canvasReady ? "opacity-40" : "opacity-0"
         }`}
       />
       {/* 背景装饰，与首页一致 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"></div>
+        <div className="absolute -top-40 -right-40 w-[800px] h-[800px] bg-gradient-to-b from-violet-300/30 to-fuchsia-300/30 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/30 to-orange-200/30 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/20 rounded-full blur-[80px]" />
       </div>
 
       {/* 修改后的英雄区 - 轮播显示 */}
-      <section className="relative z-10 py-6 lg:py-8 bg-gradient-leaderboard overflow-hidden">
+      <section className="relative z-10 py-6 lg:py-8 overflow-hidden">
         {/* 背景装饰元素 - 增强版 */}
         <div className="absolute inset-0 pointer-events-none">
           {/* 细微的点阵纹理 */}
@@ -1567,7 +1578,7 @@ export default function TrendingPage() {
 
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 relative z-10">
           {/* 探索与热搜栏 */}
-          <div className="w-full mb-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-2xl p-2 shadow-sm flex flex-col md:flex-row items-center gap-2 md:gap-4">
+          <div className="w-full mb-8 bg-white/70 backdrop-blur-2xl border border-white/60 rounded-2xl p-2 shadow-2xl shadow-purple-500/10 flex flex-col md:flex-row items-center gap-2 md:gap-4">
             {/* 搜索框 */}
             <div className="relative flex-1 w-full group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -1575,13 +1586,15 @@ export default function TrendingPage() {
               </div>
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索感兴趣的预测事件、话题..."
                 className="block w-full pl-11 pr-4 py-3 bg-white/50 border border-white/40 rounded-xl text-sm text-gray-900 placeholder-gray-500 hover:bg-white hover:border-purple-400 hover:shadow-md focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/50 transition-all duration-300"
               />
               <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                <button className="p-1.5 hover:bg-gray-200/50 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
-                  <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-300 rounded-md">
-                    ⌘ K
+                <button className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
+                  <kbd className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-purple-500 bg-purple-50 border-2 border-purple-200 rounded-xl shadow-[0_2px_0_#E9D5FF] hover:translate-y-[1px] hover:shadow-[0_1px_0_#E9D5FF] transition-all">
+                    <span className="text-xs">⌘</span> K
                   </kbd>
                 </button>
               </div>
@@ -1606,6 +1619,7 @@ export default function TrendingPage() {
                 ].map((tag, i) => (
                   <button
                     key={tag}
+                    onClick={() => setSearchQuery(tag.replace(/^#/, ""))}
                     className="px-3 py-1.5 rounded-lg bg-white/40 hover:bg-white text-xs font-medium text-gray-600 hover:text-purple-600 border border-white/40 hover:border-purple-200 shadow-sm hover:shadow-md transition-all whitespace-nowrap active:scale-95"
                   >
                     {tag}
@@ -1621,7 +1635,7 @@ export default function TrendingPage() {
               {/* 上半部分：大卡片展示区 */}
               <div className="w-full relative group">
                 <div
-                  className={`relative h-[400px] md:h-[480px] w-full rounded-[2rem] shadow-2xl overflow-hidden border border-white/40 transition-transform duration-500 ${
+                  className={`relative h-[400px] md:h-[480px] w-full rounded-[2rem] shadow-2xl shadow-purple-500/10 overflow-hidden border border-white/60 transition-transform duration-500 ${
                     activeSlide?.id ? "cursor-pointer hover:scale-[1.005]" : ""
                   }`}
                   onClick={() => {
@@ -1960,18 +1974,20 @@ export default function TrendingPage() {
 
       <section
         ref={productsSectionRef}
-        className="relative z-10 px-10 py-12 bg-white/50 backdrop-blur-sm rounded-t-3xl"
+        className="relative z-10 px-10 py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"
         style={{ contentVisibility: "auto", containIntrinsicSize: "1000px" }}
       >
-        <h3 className="text-2xl font-bold text-black mb-8 text-center">
+        <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-purple-500" />
           加密货币保险产品
+          <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
 
         {/* 加载状态 */}
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            <p className="mt-4 text-black">正在加载数据...</p>
+            <p className="mt-4 text-gray-600">正在加载数据...</p>
           </div>
         )}
 
@@ -1979,10 +1995,10 @@ export default function TrendingPage() {
         {error && (
           <div className="text-center py-12">
             <div className="text-red-500 text-lg mb-2">加载失败</div>
-            <p className="text-black">{error}</p>
+            <p className="text-gray-600">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full"
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
             >
               重新加载
             </button>
@@ -1999,8 +2015,8 @@ export default function TrendingPage() {
             )}
             {sortedEvents.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-black text-lg">暂无预测事件数据</p>
-                <p className="text-gray-600 mt-2">请稍后再试或联系管理员</p>
+                <p className="text-gray-900 text-lg">暂无预测事件数据</p>
+                <p className="text-gray-500 mt-2">请稍后再试或联系管理员</p>
               </div>
             ) : (
               <>
@@ -2010,7 +2026,7 @@ export default function TrendingPage() {
                     return (
                       <motion.div
                         key={sortedEvents[globalIndex]?.id || globalIndex}
-                        className="bg-white/80 rounded-2xl shadow-md border border-purple-200/40 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg relative transform-gpu flex flex-col h-full min-h-[260px]"
+                        className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] shadow-lg shadow-purple-500/5 border border-white/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1 relative transform-gpu flex flex-col h-full min-h-[260px] group"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={(e) => {
@@ -2169,40 +2185,44 @@ export default function TrendingPage() {
                         )}
 
                         {/* 产品信息 */}
-                        <div className="p-3 flex flex-col flex-1">
-                          <div className="flex justify-between items-center mb-1.5">
-                            <h4 className="font-bold text-black text-base line-clamp-2">
+                        <div className="p-5 flex flex-col flex-1">
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-bold text-gray-900 text-lg line-clamp-2 group-hover:text-purple-700 transition-colors">
                               {product.title}
                             </h4>
-                            <span className="text-black text-xs bg-gray-100 px-2 py-1 rounded">
-                              已投金额 {product.insured}
-                            </span>
                           </div>
-                          <div className="flex items-center text-gray-500 text-sm mt-1.5">
-                            <Heart className="w-4 h-4 mr-1" />
-                            <span>
-                              {sortedEvents[globalIndex]?.followers_count || 0}{" "}
-                              人关注
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+                              已投 ${product.insured}
                             </span>
+                            <div className="flex items-center text-gray-500 text-xs font-medium">
+                              <Heart className="w-3.5 h-3.5 mr-1" />
+                              <span>
+                                {sortedEvents[globalIndex]?.followers_count ||
+                                  0}
+                              </span>
+                            </div>
                           </div>
                           {/* 多元选项 chip 展示（最多 6 个） */}
                           {Array.isArray(sortedEvents[globalIndex]?.outcomes) &&
                             sortedEvents[globalIndex]?.outcomes.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
+                              <div className="mt-auto pt-3 border-t border-gray-100 flex flex-wrap gap-1.5">
                                 {sortedEvents[globalIndex]?.outcomes
-                                  .slice(0, 6)
+                                  .slice(0, 4)
                                   .map((o: any, oi: number) => (
                                     <span
                                       key={oi}
-                                      className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200"
+                                      className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-gray-50 text-gray-600 border border-gray-200/60"
                                     >
                                       {String(o?.label || `选项${oi}`)}
                                     </span>
                                   ))}
                                 {sortedEvents[globalIndex]?.outcomes.length >
-                                  6 && (
-                                  <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                                    …
+                                  4 && (
+                                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-gray-50 text-gray-400 border border-gray-200/60">
+                                    +
+                                    {sortedEvents[globalIndex]?.outcomes
+                                      .length - 4}
                                   </span>
                                 )}
                               </div>

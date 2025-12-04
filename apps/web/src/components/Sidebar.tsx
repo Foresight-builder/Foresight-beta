@@ -73,9 +73,9 @@ export default function Sidebar() {
             icon: <Pin className="w-4 h-4" />,
           },
           {
-            label: "我的关注",
-            href: "/my-follows",
-            icon: <Heart className="w-4 h-4" />,
+            label: "个人中心",
+            href: "/profile",
+            icon: <Users className="w-4 h-4" />,
             requireWallet: true,
           },
           ...(isAdmin
