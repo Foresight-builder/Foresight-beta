@@ -9,6 +9,16 @@ import {
   Pencil,
   Trash2,
   ArrowRightCircle,
+  Sparkles,
+  Flame,
+  TrendingUp,
+  Zap,
+  Trophy,
+  Activity,
+  Users,
+  Globe,
+  BarChart3,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1194,6 +1204,7 @@ export default function TrendingPage() {
             prediction.title
           )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`,
         deadline: prediction.deadline,
+        status: prediction.status,
         criteria: prediction.criteria,
         followers_count: Number(prediction?.followers_count || 0),
         type: prediction.type || "binary",
@@ -1502,15 +1513,108 @@ export default function TrendingPage() {
       </div>
 
       {/* 修改后的英雄区 - 轮播显示 */}
-      <section className="relative z-10 py-12 lg:py-20 bg-gradient-leaderboard overflow-hidden">
-        {/* 背景装饰元素 */}
+      <section className="relative z-10 py-6 lg:py-8 bg-gradient-leaderboard overflow-hidden">
+        {/* 背景装饰元素 - 增强版 */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-300/20 rounded-full blur-[100px] mix-blend-overlay" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-fuchsia-300/20 rounded-full blur-[100px] mix-blend-overlay" />
-          <div className="absolute top-[40%] left-[60%] w-[300px] h-[300px] bg-pink-200/20 rounded-full blur-[80px] mix-blend-overlay" />
+          {/* 细微的点阵纹理 */}
+          <div
+            className="absolute inset-0 opacity-[0.15]"
+            style={{
+              backgroundImage: "radial-gradient(#8b5cf6 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          ></div>
+
+          {/* 动态光斑 */}
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.5, 0.3],
+              x: [0, 20, 0],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[-10%] left-[-5%] w-[700px] h-[700px] bg-purple-400/20 rounded-full blur-[120px] mix-blend-screen"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.4, 0.2],
+              y: [0, -30, 0],
+            }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1,
+            }}
+            className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-fuchsia-400/20 rounded-full blur-[120px] mix-blend-screen"
+          />
+          <motion.div
+            animate={{
+              scale: [1, 0.9, 1],
+              opacity: [0.2, 0.3, 0.2],
+              x: [0, -20, 0],
+            }}
+            transition={{
+              duration: 12,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2,
+            }}
+            className="absolute top-[40%] left-[60%] w-[400px] h-[400px] bg-pink-300/20 rounded-full blur-[100px] mix-blend-screen"
+          />
         </div>
 
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 relative z-10">
+          {/* 探索与热搜栏 */}
+          <div className="w-full mb-8 bg-white/40 backdrop-blur-xl border border-white/60 rounded-2xl p-2 shadow-sm flex flex-col md:flex-row items-center gap-2 md:gap-4">
+            {/* 搜索框 */}
+            <div className="relative flex-1 w-full group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+              </div>
+              <input
+                type="text"
+                placeholder="搜索感兴趣的预测事件、话题..."
+                className="block w-full pl-11 pr-4 py-3 bg-white/50 border border-white/40 rounded-xl text-sm text-gray-900 placeholder-gray-500 hover:bg-white hover:border-purple-400 hover:shadow-md focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/50 transition-all duration-300"
+              />
+              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                <button className="p-1.5 hover:bg-gray-200/50 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
+                  <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-300 rounded-md">
+                    ⌘ K
+                  </kbd>
+                </button>
+              </div>
+            </div>
+
+            {/* 分隔线 */}
+            <div className="hidden md:block w-px h-8 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+
+            {/* 热门标签 */}
+            <div className="w-full md:w-auto flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 px-1 md:px-0 scrollbar-hide">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700 whitespace-nowrap shrink-0">
+                <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                <span>热搜:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {[
+                  "#Bitcoin100k",
+                  "#GPT-5",
+                  "#WorldCup",
+                  "#SpaceX",
+                  "#Climate",
+                ].map((tag, i) => (
+                  <button
+                    key={tag}
+                    className="px-3 py-1.5 rounded-lg bg-white/40 hover:bg-white text-xs font-medium text-gray-600 hover:text-purple-600 border border-white/40 hover:border-purple-200 shadow-sm hover:shadow-md transition-all whitespace-nowrap active:scale-95"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
             {/* 左侧主要内容区域：轮播图 + 专题板块 */}
             <div className="w-full lg:w-2/3 flex flex-col gap-8">
@@ -1538,48 +1642,79 @@ export default function TrendingPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6 }}
                   />
-                  {/* 渐变遮罩 */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
+                  {/* 渐变遮罩 - 增强对比度 */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+
+                  {/* 顶部标签 */}
+                  <div className="absolute top-6 left-6 flex gap-3">
+                    <div className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-2 shadow-lg">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                      每日精选
+                    </div>
+                    <div className="px-4 py-2 rounded-full bg-red-500/20 backdrop-blur-md border border-red-400/30 text-white text-xs font-bold flex items-center gap-2 shadow-lg">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      LIVE
+                    </div>
+                  </div>
 
                   {/* 内容信息 */}
-                  <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="max-w-2xl space-y-3">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30">
-                          {activeCategory || "热门预测"}
-                        </span>
-                        <span className="text-white/80 text-xs font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                          {activeFollowers.toLocaleString()} 人正在关注
-                        </span>
+                  <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+                      <div className="max-w-2xl space-y-5">
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 rounded-lg bg-purple-600/90 backdrop-blur-md text-white text-xs font-bold shadow-lg">
+                            {activeCategory || "热门预测"}
+                          </span>
+                          <span className="text-white/90 text-xs font-medium flex items-center gap-1.5 bg-black/30 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10">
+                            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                            {activeFollowers.toLocaleString()} 人正在关注
+                          </span>
+                          <span className="text-white/90 text-xs font-medium flex items-center gap-1.5 bg-black/30 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10">
+                            <Wallet className="w-3.5 h-3.5 text-blue-400" />
+                            奖池 ${(activeFollowers * 12.5).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <h3 className="font-bold text-white text-3xl md:text-5xl leading-tight drop-shadow-xl tracking-tight">
+                          {activeTitle}
+                        </h3>
+
+                        <p className="text-white/80 text-base md:text-lg line-clamp-2 font-medium drop-shadow-md max-w-xl leading-relaxed">
+                          {activeDescription}
+                        </p>
                       </div>
-                      <h3 className="font-bold text-white text-2xl md:text-4xl leading-tight drop-shadow-lg">
-                        {activeTitle}
-                      </h3>
-                      <p className="text-white/90 text-base md:text-lg line-clamp-2 font-medium drop-shadow-md max-w-xl">
-                        {activeDescription}
-                      </p>
+
+                      <button className="shrink-0 px-8 py-4 bg-white text-purple-900 hover:bg-purple-50 rounded-2xl text-sm font-bold transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transform hover:-translate-y-1 flex items-center gap-3 group/btn border border-purple-100">
+                        <span>立即参与</span>
+                        <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center group-hover/btn:bg-purple-200 transition-colors">
+                          <ArrowRightCircle className="w-4 h-4 text-purple-600 group-hover/btn:translate-x-0.5 transition-transform" />
+                        </div>
+                      </button>
                     </div>
-                    <button className="shrink-0 px-6 py-3 bg-white text-purple-700 hover:bg-purple-50 rounded-full text-sm font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 group/btn">
-                      立即关注
-                      <ArrowRightCircle className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
-                    </button>
                   </div>
                 </div>
               </div>
 
               {/* 下半部分：热门专题 Grid */}
               <div>
-                <div className="flex items-center gap-4 mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <span className="w-2 h-8 rounded-full bg-gradient-to-b from-purple-600 to-pink-600" />
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                      <Flame className="w-5 h-5" />
+                    </div>
                     热门专题
                   </h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
+                  <button className="text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1">
+                    查看全部
+                    <ArrowRightCircle className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <div
-                  className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                  className="grid grid-cols-2 md:grid-cols-3 gap-5"
                   style={{ ["overflowAnchor" as any]: "none" }}
                 >
                   {categories.map((category, index) => {
@@ -1589,15 +1724,12 @@ export default function TrendingPage() {
                     return (
                       <motion.div
                         key={category.name}
-                        className={`relative p-4 rounded-2xl cursor-pointer transition-all duration-300 border overflow-hidden flex flex-col justify-between h-[140px] ${
+                        className={`relative h-[160px] rounded-3xl cursor-pointer overflow-hidden group transition-all duration-500 ${
                           isActive
-                            ? "bg-gradient-to-br " +
-                              category.color +
-                              " text-white border-transparent shadow-lg scale-[1.02]"
-                            : "bg-white/60 backdrop-blur-md text-gray-700 hover:bg-white border-white/50 hover:border-purple-200 hover:shadow-xl"
+                            ? "shadow-xl shadow-purple-500/30 ring-2 ring-purple-400 ring-offset-2"
+                            : "hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-1"
                         }`}
-                        whileHover={{ y: -4 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileTap={{ scale: 0.96 }}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1615,40 +1747,120 @@ export default function TrendingPage() {
                           }
                         }}
                       >
-                        {/* 背景装饰 */}
+                        {/* 背景层 */}
                         <div
-                          className={`absolute -right-4 -bottom-4 text-[80px] opacity-10 select-none pointer-events-none transform rotate-12 ${
-                            isActive ? "text-white" : "text-gray-400"
+                          className={`absolute inset-0 transition-colors duration-500 ${
+                            isActive
+                              ? "bg-gradient-to-br " + category.color
+                              : "bg-white/60 backdrop-blur-xl group-hover:bg-white/80"
+                          }`}
+                        />
+
+                        {/* 装饰圆环 */}
+                        <div
+                          className={`absolute -right-12 -top-12 w-40 h-40 rounded-full border-[20px] transition-all duration-700 ${
+                            isActive
+                              ? "border-white/20 scale-150"
+                              : "border-purple-100/50 group-hover:border-purple-200/50 group-hover:scale-110"
+                          }`}
+                        />
+
+                        {/* 内容容器 */}
+                        <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                          <div className="flex justify-between items-start">
+                            {/* 图标容器 */}
+                            <div
+                              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm transition-all duration-500 ${
+                                isActive
+                                  ? "bg-white/20 text-white backdrop-blur-md"
+                                  : "bg-white text-gray-700 group-hover:scale-110 group-hover:rotate-3"
+                              }`}
+                            >
+                              {category.icon}
+                            </div>
+
+                            {/* 活跃指示点 */}
+                            {isActive && (
+                              <motion.div
+                                layoutId="active-dot"
+                                className="w-2.5 h-2.5 rounded-full bg-white shadow-lg"
+                              />
+                            )}
+                          </div>
+
+                          <div>
+                            <h3
+                              className={`text-xl font-bold mb-1.5 tracking-tight transition-colors ${
+                                isActive
+                                  ? "text-white"
+                                  : "text-gray-800 group-hover:text-purple-900"
+                              }`}
+                            >
+                              {category.name}
+                            </h3>
+                            <div
+                              className={`text-xs font-medium flex items-center gap-1.5 ${
+                                isActive ? "text-white/90" : "text-gray-500"
+                              }`}
+                            >
+                              <Flame
+                                className={`w-3.5 h-3.5 ${
+                                  isActive
+                                    ? "text-white animate-pulse"
+                                    : "text-orange-500"
+                                }`}
+                              />
+                              <span>
+                                {categoryCounts[category.name] || 0} 个热门事件
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 悬浮箭头 */}
+                        <div
+                          className={`absolute bottom-6 right-6 transition-all duration-300 transform ${
+                            isActive
+                              ? "text-white opacity-100"
+                              : "text-purple-400 opacity-0 translate-x-4 group-hover:translate-x-0 group-hover:opacity-100"
                           }`}
                         >
-                          {category.icon}
-                        </div>
-
-                        <div className="relative z-10">
-                          <div className="text-3xl mb-2">{category.icon}</div>
-                          <h3 className="font-bold text-lg leading-none mb-1">
-                            {category.name}
-                          </h3>
-                        </div>
-
-                        <div className="relative z-10 flex items-center justify-between">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              isActive ? "bg-white/20" : "bg-gray-200/50"
-                            }`}
-                          >
-                            {categoryCounts[category.name] || 0} 热点
-                          </span>
-                          {isActive && (
-                            <motion.div
-                              layoutId="active-indicator"
-                              className="w-2 h-2 rounded-full bg-white shadow-sm"
-                            />
-                          )}
+                          <ArrowRightCircle className="w-6 h-6" />
                         </div>
                       </motion.div>
                     );
                   })}
+
+                  {/* 更多分类卡片 */}
+                  <motion.div
+                    className="relative h-[160px] rounded-3xl cursor-pointer overflow-hidden group transition-all duration-500 hover:shadow-lg hover:shadow-purple-500/10 hover:-translate-y-1"
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-xl group-hover:bg-white/80 transition-colors duration-500" />
+                    <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full border-[20px] border-purple-100/50 group-hover:border-purple-200/50 group-hover:scale-110 transition-all duration-700" />
+
+                    <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                      <div className="flex justify-between items-start">
+                        <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-3xl shadow-sm text-gray-700 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                          ✨
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-xl font-bold mb-1.5 tracking-tight text-gray-800 group-hover:text-purple-900 transition-colors">
+                          更多
+                        </h3>
+                        <div className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                          <span>探索更多</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="absolute bottom-6 right-6 text-purple-400 opacity-0 translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
+                      <ArrowRightCircle className="w-6 h-6" />
+                    </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
@@ -1658,15 +1870,38 @@ export default function TrendingPage() {
               <div className="sticky top-24">
                 <Leaderboard />
 
-                {/* 额外的信息卡片 - 增加右侧丰富度 */}
-                <div className="mt-6 bg-white/40 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50">
-                  <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <span>💡</span>
-                    <span>小贴士</span>
-                  </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    参与热门预测不仅能获得收益，还能提升您在社区的影响力。关注感兴趣的专题，不错过任何重要动态！
-                  </p>
+                {/* 额外的信息卡片 */}
+                <div className="mt-6 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-1">
+                  <div className="absolute -right-8 -top-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
+                    <BarChart3 className="w-40 h-40 transform rotate-12" />
+                  </div>
+
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/10 shadow-inner">
+                        <TrendingUp className="w-5 h-5 text-green-300" />
+                      </div>
+                      <h3 className="font-bold text-lg tracking-tight">
+                        市场风向标
+                      </h3>
+                    </div>
+
+                    <p className="text-blue-50 text-sm leading-relaxed mb-5 font-medium">
+                      科技板块今日交易量激增{" "}
+                      <span className="text-white font-bold text-lg">240%</span>
+                      ，AI 相关预测持续升温。
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs font-medium">
+                      <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        <span className="text-blue-100">情绪：极度贪婪</span>
+                      </div>
+                      <span className="flex items-center gap-1 hover:gap-2 transition-all text-white/90">
+                        查看详情 <ArrowRightCircle className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1949,11 +2184,17 @@ export default function TrendingPage() {
               </div>
               <div>
                 <div className="text-xs text-gray-600 mb-1">分类</div>
-                <input
+                <select
                   value={editForm.category}
                   onChange={(e) => setEditField("category", e.target.value)}
                   className="w-full rounded-lg border px-3 py-2"
-                />
+                >
+                  <option value="科技">科技</option>
+                  <option value="娱乐">娱乐</option>
+                  <option value="时政">时政</option>
+                  <option value="天气">天气</option>
+                  <option value="体育">体育</option>
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

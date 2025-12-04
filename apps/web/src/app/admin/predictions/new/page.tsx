@@ -96,7 +96,17 @@ export default function AdminCreatePredictionPage() {
             </div>
             <div>
               <div className="text-sm text-gray-800 mb-1">分类</div>
-              <input value={form.category} onChange={(e) => setField("category", e.target.value)} className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-purple-600 focus:border-purple-600 placeholder:text-gray-500 text-gray-900" placeholder="科技/娱乐/时政/天气" />
+              <select 
+                value={form.category} 
+                onChange={(e) => setField("category", e.target.value)} 
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-purple-600 focus:border-purple-600 text-gray-900 bg-white appearance-none"
+              >
+                <option value="科技">科技</option>
+                <option value="娱乐">娱乐</option>
+                <option value="时政">时政</option>
+                <option value="天气">天气</option>
+                <option value="体育">体育</option>
+              </select>
             </div>
             <div>
               <div className="text-sm text-gray-800 mb-1">截止时间</div>

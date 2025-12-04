@@ -42,7 +42,7 @@ const seeds = [
   {
     title: '英超2025赛季冠军归属',
     description: '预测2025赛季英超最终冠军球队',
-    category: '娱乐',
+    category: '体育',
     deadline: isoAfterDays(60),
     minStake: 1,
     criteria: '以英超官方最终积分榜为准',
