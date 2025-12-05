@@ -888,26 +888,39 @@ export default function PredictionDetailClient({
       
       // 如果当前网络未配置USDC，但我们有目标市场的 Chain ID，
       // 检查是否就是网络不匹配导致的
-      if (!usdc && m.chain_id && m.chain_id !== chainIdNum) {
+      // 注意：即便 usdc 存在，如果当前 chainIdNum 不等于 m.chain_id，也应该切换
+      if ((!usdc || (m.chain_id && m.chain_id !== chainIdNum)) && m.chain_id) {
          try {
            await (window as any).ethereum.request({
              method: 'wallet_switchEthereumChain',
              params: [{ chainId: '0x' + m.chain_id.toString(16) }],
            });
            // 切换后重新获取网络状态
+           // 注意：这里需要重新创建 provider，因为之前的 provider 可能还绑定在旧网络
            const newProvider = new ethers.BrowserProvider((window as any).ethereum);
            const newNet = await newProvider.getNetwork();
            chainIdNum = Number(newNet.chainId);
+           
+           // 如果切换后的网络仍然不匹配目标网络，可能是用户拒绝了或有其他问题
+           if (chainIdNum !== m.chain_id) {
+              throw new Error(`网络切换失败，当前仍在 Chain ID: ${chainIdNum}，目标: ${m.chain_id}`);
+           }
+
            // 重新解析地址
            const { usdc: newUsdc } = resolveAddresses(chainIdNum);
            if (!newUsdc) throw new Error(`未配置USDC地址 (Chain ID: ${chainIdNum})`);
            // 继续执行...
          } catch (switchError: any) {
+           console.error("Switch chain error:", switchError);
            // This error code indicates that the chain has not been added to MetaMask.
            if (switchError.code === 4902) {
              throw new Error("请在钱包中添加并切换到目标网络");
            }
-           throw new Error(`请切换网络到 Chain ID: ${m.chain_id}`);
+           // 如果是用户拒绝（4001），抛出具体信息
+           if (switchError.code === 4001) {
+             throw new Error("您取消了网络切换");
+           }
+           throw new Error(`请切换网络到 Chain ID: ${m.chain_id} (当前: ${chainIdNum})`);
          }
       } else if (!usdc) {
         console.error(
