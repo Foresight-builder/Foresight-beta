@@ -881,7 +881,43 @@ export default function PredictionDetailClient({
       const signer = await provider.getSigner();
       const accountAddr = await signer.getAddress();
       const net = await provider.getNetwork();
-      const chainIdNum = Number(net.chainId);
+      let chainIdNum = Number(net.chainId);
+      // 如果钱包在 Chain 1，但市场需要 80002，我们可能希望提示切换，但 resolveAddresses(1) 会返回空
+      // 这里如果当前网络不在配置中，尝试使用 m.chain_id 来获取地址配置（跨链读取或提示）
+      const { usdc } = resolveAddresses(chainIdNum);
+      
+      // 如果当前网络未配置USDC，但我们有目标市场的 Chain ID，
+      // 检查是否就是网络不匹配导致的
+      if (!usdc && m.chain_id && m.chain_id !== chainIdNum) {
+         try {
+           await (window as any).ethereum.request({
+             method: 'wallet_switchEthereumChain',
+             params: [{ chainId: '0x' + m.chain_id.toString(16) }],
+           });
+           // 切换后重新获取网络状态
+           const newProvider = new ethers.BrowserProvider((window as any).ethereum);
+           const newNet = await newProvider.getNetwork();
+           chainIdNum = Number(newNet.chainId);
+           // 重新解析地址
+           const { usdc: newUsdc } = resolveAddresses(chainIdNum);
+           if (!newUsdc) throw new Error(`未配置USDC地址 (Chain ID: ${chainIdNum})`);
+           // 继续执行...
+         } catch (switchError: any) {
+           // This error code indicates that the chain has not been added to MetaMask.
+           if (switchError.code === 4902) {
+             throw new Error("请在钱包中添加并切换到目标网络");
+           }
+           throw new Error(`请切换网络到 Chain ID: ${m.chain_id}`);
+         }
+      } else if (!usdc) {
+        console.error(
+          `[submitOrder] Missing USDC address for chainId: ${chainIdNum}`
+        );
+        throw new Error(
+          `未配置USDC地址 (Chain ID: ${chainIdNum})。请切换到 Amoy 测试网 (80002)`
+        );
+      }
+      
       const outcomeIndex = tradeOutcome;
       const isBuy = tradeSide === "buy";
       let priceDec = Number(priceInput || "0");
@@ -895,16 +931,12 @@ export default function PredictionDetailClient({
         throw new Error("价格不合法");
       if (!Number.isFinite(amountDec) || amountDec <= 0)
         throw new Error("数量不合法");
-      const { usdc } = resolveAddresses(chainIdNum);
-      if (!usdc) {
-        console.error(
-          `[submitOrder] Missing USDC address for chainId: ${chainIdNum}`
-        );
-        throw new Error(
-          `未配置USDC地址 (Chain ID: ${chainIdNum})。请切换到 Amoy 测试网 (80002)`
-        );
-      }
-      const token = new ethers.Contract(usdc, erc20Abi, signer);
+
+      // 重新获取正确的 USDC 地址（可能已经切换网络）
+      const { usdc: finalUsdc } = resolveAddresses(chainIdNum);
+      if (!finalUsdc) throw new Error("无法获取当前网络的 USDC 地址");
+
+      const token = new ethers.Contract(finalUsdc, erc20Abi, signer);
       let decimals = 6;
       try {
         decimals = await token.decimals();
