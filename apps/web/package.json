@@ -11,7 +11,6 @@
     "supabase:test": "node scripts/verify-supabase.js"
   },
   "dependencies": {
-    "@forsight/shared": "file:../../packages/shared",
     "@supabase/supabase-js": "^2.84.0",
     "lightweight-charts": "^5.0.9",
     "next": "15.5.4",

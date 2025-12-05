@@ -79,6 +79,7 @@ export default function FlagsPage() {
   );
   const [settlingId, setSettlingId] = useState<number | null>(null);
   const [officialCreate, setOfficialCreate] = useState(false);
+  const [invitesCount, setInvitesCount] = useState(0);
   const [inviteNotice, setInviteNotice] = useState<{
     flag_id: number;
     owner_id: string;

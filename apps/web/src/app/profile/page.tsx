@@ -69,7 +69,7 @@ const MOCK_HISTORY = [
 type TabType = "overview" | "predictions" | "history" | "following";
 
 export default function ProfilePage() {
-  const { account, disconnect } = useWallet();
+  const { account, disconnectWallet: disconnect } = useWallet();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [history, setHistory] = useState(MOCK_HISTORY);

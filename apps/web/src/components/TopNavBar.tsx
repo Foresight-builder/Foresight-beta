@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Copy, LogOut, Wallet, ExternalLink } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -40,7 +41,10 @@ export default function TopNavBar() {
     top: 0,
     left: 0,
   });
-  const [walletSelectorPos, setWalletSelectorPos] = useState<{ top: number; left: number }>({
+  const [walletSelectorPos, setWalletSelectorPos] = useState<{
+    top: number;
+    left: number;
+  }>({
     top: 0,
     left: 0,
   });
@@ -63,7 +67,9 @@ export default function TopNavBar() {
   }, [connectError, mounted]);
 
   // 头像菜单：复制与断开
-  const handleConnectWallet = async (walletType?: 'metamask' | 'coinbase' | 'binance') => {
+  const handleConnectWallet = async (
+    walletType?: "metamask" | "coinbase" | "binance"
+  ) => {
     await connectWallet(walletType);
     setWalletSelectorOpen(false);
   };
@@ -74,7 +80,9 @@ export default function TopNavBar() {
 
   const handleDisconnectWallet = async () => {
     await disconnectWallet();
-    try { await fetch('/api/siwe/logout', { method: 'GET' }); } catch {}
+    try {
+      await fetch("/api/siwe/logout", { method: "GET" });
+    } catch {}
     setMenuOpen(false);
   };
 
@@ -133,16 +141,26 @@ export default function TopNavBar() {
     updateNetworkInfo();
   }, [account]);
 
-  const [profile, setProfile] = useState<{ username?: string; email?: string } | null>(null);
+  const [profile, setProfile] = useState<{
+    username?: string;
+    email?: string;
+  } | null>(null);
   useEffect(() => {
     const load = async () => {
       try {
-        const addr = String(account || '').toLowerCase();
-        if (!addr) { setProfile(null); return; }
-        const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`);
+        const addr = String(account || "").toLowerCase();
+        if (!addr) {
+          setProfile(null);
+          return;
+        }
+        const res = await fetch(
+          `/api/user-profiles?address=${encodeURIComponent(addr)}`
+        );
         const data = await res.json();
         setProfile(data?.profile || null);
-      } catch { setProfile(null); }
+      } catch {
+        setProfile(null);
+      }
     };
     load();
   }, [account]);
@@ -181,8 +199,13 @@ export default function TopNavBar() {
       if (menuContentRef.current && menuContentRef.current.contains(target))
         return;
       // 点击钱包选择器按钮或内容不关闭
-      if (walletButtonRef.current && walletButtonRef.current.contains(target)) return;
-      if (walletSelectorRef.current && walletSelectorRef.current.contains(target)) return;
+      if (walletButtonRef.current && walletButtonRef.current.contains(target))
+        return;
+      if (
+        walletSelectorRef.current &&
+        walletSelectorRef.current.contains(target)
+      )
+        return;
       setMenuOpen(false);
       setWalletSelectorOpen(false);
     };
@@ -310,20 +333,29 @@ export default function TopNavBar() {
         {account ? (
           <div className="relative group" ref={menuRef}>
             <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
-              <img
+              <Image
                 src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
                 alt="User avatar"
                 title={account}
+                width={40}
+                height={40}
                 role="button"
                 aria-label="打开用户菜单"
                 aria-expanded={menuOpen}
                 tabIndex={0}
-                className="w-10 h-10 rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md"
+                className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md"
                 onClick={() => setMenuOpen((v) => !v)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ")
                     setMenuOpen((v) => !v);
                 }}
+                // Pass the ref to the parent div or handle differently because Image component doesn't forward ref directly to img usually?
+                // Actually Next/Image forwards ref to the underlying img element in newer versions or we can wrap it.
+                // But here the ref is used for positioning. Let's attach ref to the wrapper or handle it.
+                // The original code had ref={avatarRef} on the img.
+                // We can try putting it on Image, or wrap it.
+                // Let's wrap it in a div or check if Image supports ref.
+                // Next.js 13+ Image supports ref.
                 ref={avatarRef}
               />
             </div>
@@ -362,15 +394,23 @@ export default function TopNavBar() {
                           </span>
                           {currentWalletType && (
                             <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-gray-800">
-                              {currentWalletType === 'metamask' ? 'MetaMask' :
-                               currentWalletType === 'coinbase' ? 'Coinbase' :
-                               currentWalletType === 'okx' ? 'OKX' : 'Binance'}
+                              {currentWalletType === "metamask"
+                                ? "MetaMask"
+                                : currentWalletType === "coinbase"
+                                ? "Coinbase"
+                                : currentWalletType === "okx"
+                                ? "OKX"
+                                : "Binance"}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-xs font-semibold text-black">
-                        {balanceLoading ? "..." : balanceEth ? `${balanceEth} ETH` : "--"}
+                        {balanceLoading
+                          ? "..."
+                          : balanceEth
+                          ? `${balanceEth} ETH`
+                          : "--"}
                       </div>
                     </div>
                     <button
@@ -416,15 +456,21 @@ export default function TopNavBar() {
           </div>
         ) : user ? (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">已登录：{user.email || "未绑定邮箱"}</span>
+            <span className="text-sm text-gray-700">
+              已登录：{user.email || "未绑定邮箱"}
+            </span>
             <button
-              onClick={async () => { 
-                await signOut(); 
-                await disconnectWallet(); 
-                try { await fetch('/api/siwe/logout', { method: 'GET' }); } catch {} 
+              onClick={async () => {
+                await signOut();
+                await disconnectWallet();
+                try {
+                  await fetch("/api/siwe/logout", { method: "GET" });
+                } catch {}
               }}
               className="px-3 py-1.5 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200"
-            >退出</button>
+            >
+              退出
+            </button>
           </div>
         ) : (
           <div className="relative">
@@ -442,7 +488,10 @@ export default function TopNavBar() {
       {mounted && modal && createPortal(modal, document.body)}
 
       {mounted && (
-        <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+        <WalletModal
+          isOpen={walletModalOpen}
+          onClose={() => setWalletModalOpen(false)}
+        />
       )}
     </div>
   );

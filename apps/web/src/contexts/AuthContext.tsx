@@ -1,9 +1,15 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { supabase } from "@/lib/supabase";
 
 interface AuthContextValue {
-  user: { id: string; email: string | null } | null;
+  user: { id: string; email: string | null; user_metadata?: any } | null;
   loading: boolean;
   error: string | null;
   // 发送邮箱 OTP / 魔法链接
@@ -36,16 +42,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(error.message);
       }
       const sessUser = data?.session?.user || null;
-      setUser(sessUser ? { id: sessUser.id, email: sessUser.email ?? null } : null);
+      setUser(
+        sessUser
+          ? {
+              id: sessUser.id,
+              email: sessUser.email ?? null,
+              user_metadata: sessUser.user_metadata,
+            }
+          : null
+      );
       setLoading(false);
     });
 
     // 监听会话变化
-    const { data: sub } = (supabase as any).auth.onAuthStateChange((_event: any, session: any) => {
-      const sessUser = session?.user || null;
-      setUser(sessUser ? { id: sessUser.id, email: sessUser.email ?? null } : null);
-      setLoading(false);
-    });
+    const { data: sub } = (supabase as any).auth.onAuthStateChange(
+      (_event: any, session: any) => {
+        const sessUser = session?.user || null;
+        setUser(
+          sessUser
+            ? {
+                id: sessUser.id,
+                email: sessUser.email ?? null,
+                user_metadata: sessUser.user_metadata,
+              }
+            : null
+        );
+        setLoading(false);
+      }
+    );
 
     return () => {
       mounted = false;
@@ -57,7 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
-      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+      const redirectTo =
+        typeof window !== "undefined" ? window.location.origin : undefined;
       if (!supabase) throw new Error("Supabase 未配置");
       const { error } = await (supabase as any).auth.signInWithOtp({
         email,
@@ -85,7 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (error) throw error;
       const sessUser = data?.user || data?.session?.user || null;
-      setUser(sessUser ? { id: sessUser.id, email: sessUser.email ?? null } : null);
+      setUser(
+        sessUser
+          ? {
+              id: sessUser.id,
+              email: sessUser.email ?? null,
+              user_metadata: sessUser.user_metadata,
+            }
+          : null
+      );
       setEmailPending(null);
     } catch (e: any) {
       setError(e?.message || String(e));
@@ -96,7 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendMagicLink = async (email: string) => {
     setError(null);
     try {
-      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+      const redirectTo =
+        typeof window !== "undefined" ? window.location.origin : undefined;
       if (!supabase) throw new Error("Supabase 未配置");
       const { error } = await (supabase as any).auth.signInWithOtp({
         email,
