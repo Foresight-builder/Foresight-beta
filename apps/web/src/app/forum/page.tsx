@@ -1,377 +1,300 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import ChatPanel from "@/components/ChatPanel";
-import { motion, AnimatePresence } from "framer-motion";
+
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  Search,
-  Hash,
-  Users,
+  MessageSquare,
   TrendingUp,
-  Clock,
-  Zap,
-  MessageCircle,
+  Users,
+  Search,
+  Filter,
+  Hash,
   MoreHorizontal,
+  ArrowUpRight,
   Activity,
   BarChart3,
-  Shield,
-  Info,
-  Menu,
-  Loader2,
+  MessageCircle,
+  Globe,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import ChatPanel from "@/components/ChatPanel";
 
-interface EventData {
+type PredictionItem = {
   id: number;
   title: string;
+  description?: string;
   category?: string;
-  status?: string;
+  created_at?: string;
   followers_count?: number;
-  end_date?: string;
-  image_url?: string;
+};
+
+const ALLOWED_CATEGORIES = ["体育", "娱乐", "时政", "天气", "科技"] as const;
+const CATEGORIES = [{ id: "all", name: "All Topics", icon: Globe }].concat(
+  ALLOWED_CATEGORIES.map((c) => ({ id: c, name: c, icon: Activity }))
+);
+
+function normalizeCategory(raw?: string): string {
+  const s = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (!s) return "科技";
+  if (["tech", "technology", "ai", "人工智能", "机器人", "科技"].includes(s))
+    return "科技";
+  if (["entertainment", "media", "娱乐", "综艺", "影视"].includes(s))
+    return "娱乐";
+  if (
+    [
+      "politics",
+      "时政",
+      "政治",
+      "news",
+      "国际",
+      "finance",
+      "经济",
+      "宏观",
+      "market",
+      "stocks",
+    ].includes(s)
+  )
+    return "时政";
+  if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
+  if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s))
+    return "体育";
+  return "科技";
 }
 
 export default function ForumPage() {
-  const [events, setEvents] = useState<EventData[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [q, setQ] = useState<string>("");
-  const [isSidebarOpen, setSidebarOpen] = useState(true); // Mobile toggle
+  const [predictions, setPredictions] = useState<PredictionItem[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const searchParams = useSearchParams();
-
-  // Fetch Events
   useEffect(() => {
-    const fetchEvents = async () => {
+    let cancelled = false;
+    (async () => {
       try {
-        const res = await fetch("/api/predictions");
-        const json = await res.json();
-        const list: any[] = Array.isArray(json?.data) ? json.data : [];
-        const mapped = list
-          .filter((x) => Number.isFinite(Number(x?.id)))
-          .map((x) => ({
-            id: Number(x.id),
-            title: String(x.title || `Event #${x.id}`),
-            category: String(x.category || "General"),
-            status: String(x.status || "active"),
-            followers_count: Number(x.followers_count || 0),
-            end_date: x.end_date,
-            image_url: x.image_url,
-          }));
-        setEvents(mapped);
-        if (!selectedId && mapped.length > 0) setSelectedId(mapped[0].id);
-      } catch (e) {
-        console.error("Failed to fetch events", e);
-      }
+        const res = await fetch("/api/predictions?includeOutcomes=0");
+        const data = await res.json();
+        const list: PredictionItem[] = Array.isArray(data?.data)
+          ? data.data
+          : [];
+        if (!cancelled) {
+          setPredictions(list);
+          setSelectedTopicId((prev) => prev ?? list[0]?.id ?? null);
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
     };
-    fetchEvents();
   }, []);
 
-  // Handle URL params
-  useEffect(() => {
-    const idStr = searchParams?.get("id");
-    const idNum = Number(idStr);
-    if (Number.isFinite(idNum) && idNum > 0) {
-      setSelectedId(idNum);
-    }
-  }, [searchParams, events.length]);
+  const categories = CATEGORIES;
 
-  const activeEvent = events.find((e) => e.id === selectedId) || events[0];
-  const activeId = activeEvent?.id || 0;
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return predictions.filter((p) => {
+      const cat = normalizeCategory(p.category);
+      const catOk = activeCategory === "all" || cat === activeCategory;
+      const qOk =
+        !q ||
+        String(p.title || "")
+          .toLowerCase()
+          .includes(q);
+      return catOk && qOk;
+    });
+  }, [predictions, activeCategory, searchQuery]);
 
-  // Category Styles
-  const getCategoryStyle = (cat: string) => {
-    const c = cat.toLowerCase();
-    if (c.includes("tech"))
-      return { bg: "bg-blue-100", text: "text-blue-600", icon: "💻" };
-    if (c.includes("crypto"))
-      return { bg: "bg-orange-100", text: "text-orange-600", icon: "💰" };
-    if (c.includes("sport"))
-      return { bg: "bg-green-100", text: "text-green-600", icon: "⚽" };
-    if (c.includes("politic"))
-      return { bg: "bg-red-100", text: "text-red-600", icon: "⚖️" };
-    if (c.includes("entertainment"))
-      return { bg: "bg-pink-100", text: "text-pink-600", icon: "🎬" };
-    return { bg: "bg-purple-100", text: "text-purple-600", icon: "✨" };
-  };
-
-  // Filtered Events
-  const filteredEvents = events.filter(
-    (e) =>
-      e.title.toLowerCase().includes(q.toLowerCase()) ||
-      e.category?.toLowerCase().includes(q.toLowerCase())
-  );
+  const currentTopic = useMemo(() => {
+    const id = selectedTopicId;
+    if (!id && filtered.length) return filtered[0];
+    return predictions.find((p) => p.id === id) || filtered[0] || null;
+  }, [predictions, filtered, selectedTopicId]);
 
   return (
-    <div className="h-screen bg-[#F0F2F5] text-gray-800 font-sans overflow-hidden relative flex">
-      {/* Vivid Background */}
-      <div className="fixed inset-0 -z-20 bg-white" />
+    <div className="h-screen w-full bg-white p-4 lg:p-6 flex gap-6 overflow-hidden font-sans text-slate-800">
+      {/* LEFT COLUMN: Navigation & Topic List */}
       <motion.div
-        animate={{ x: [0, 50, 0], y: [0, 30, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        className="fixed top-[-10%] left-[-10%] w-[80vw] h-[80vw] bg-blue-400/30 rounded-full blur-[100px] -z-10"
-      />
-      <motion.div
-        animate={{ x: [0, -50, 0], y: [0, 50, 0], scale: [1, 1.2, 1] }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 2,
-        }}
-        className="fixed bottom-[-10%] right-[-10%] w-[80vw] h-[80vw] bg-purple-400/30 rounded-full blur-[100px] -z-10"
-      />
-
-      {/* Left Sidebar - Channels */}
-      <div
-        className={`w-80 bg-white/80 backdrop-blur-xl border-r border-white/50 flex flex-col transition-all duration-300 absolute md:relative z-20 h-full ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-80 flex-shrink-0 flex flex-col gap-4"
       >
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100/50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <MessageCircle className="w-6 h-6 fill-current" />
+        {/* Brand / Header Area */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-purple-200">
+              <MessageSquare size={20} fill="currentColor" />
             </div>
-            <h1 className="font-black text-xl tracking-tight text-gray-900">
-              Forum
-            </h1>
+            <div>
+              <h1 className="font-bold text-lg text-slate-900 leading-tight">
+                Forum
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">
+                Community Discussions
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Search */}
-        <div className="p-4">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search channels..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Channel List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-          <div className="px-3 pb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Active Channels
-          </div>
-          {filteredEvents.map((event) => {
-            const style = getCategoryStyle(event.category || "");
-            const isActive = selectedId === event.id;
-            return (
+          {/* Category Nav */}
+          <nav className="space-y-1">
+            {categories.map((cat) => (
               <button
-                key={event.id}
-                onClick={() => {
-                  setSelectedId(event.id);
-                  if (window.innerWidth < 768) setSidebarOpen(false);
-                }}
-                className={`w-full text-left p-3 rounded-2xl transition-all duration-200 group relative overflow-hidden ${
-                  isActive
-                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md shadow-blue-500/20"
-                    : "hover:bg-white hover:shadow-sm text-gray-700"
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  activeCategory === cat.id
+                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
+                    : "text-slate-600 hover:bg-purple-50 hover:text-purple-700"
                 }`}
               >
-                <div className="flex items-start gap-3 relative z-10">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
-                      isActive ? "bg-white/20 text-white" : style.bg
+                <cat.icon size={18} />
+                {cat.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Search & Topic List */}
+        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-gray-50">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+              />
+              <input
+                type="text"
+                placeholder="Search topics..."
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-purple-100 transition-all outline-none placeholder:text-gray-400 text-slate-700"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+            {filtered.map((topic) => (
+              <button
+                key={topic.id}
+                onClick={() => setSelectedTopicId(topic.id)}
+                className={`w-full text-left p-3 rounded-xl transition-all duration-200 border ${
+                  selectedTopicId === topic.id
+                    ? "bg-purple-50/50 border-purple-100 shadow-sm"
+                    : "bg-transparent border-transparent hover:bg-gray-50 hover:border-gray-50"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      selectedTopicId === topic.id
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-gray-100 text-gray-500"
                     }`}
                   >
-                    {style.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className={`font-bold text-sm truncate ${
-                        isActive ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      {event.title}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className={`text-xs truncate ${
-                          isActive ? "text-blue-100" : "text-gray-400"
-                        }`}
-                      >
-                        {event.category}
-                      </span>
-                      {event.status === "active" && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                          LIVE
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    {normalizeCategory(topic.category)}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    {topic.created_at
+                      ? new Date(topic.created_at).toLocaleDateString()
+                      : ""}
+                  </span>
+                </div>
+                <h3
+                  className={`text-sm font-semibold leading-snug mb-2 ${
+                    selectedTopicId === topic.id
+                      ? "text-purple-900"
+                      : "text-slate-700"
+                  }`}
+                >
+                  {topic.title}
+                </h3>
+                <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
+                  <span className="flex items-center gap-1">
+                    <Users size={12} /> {topic.followers_count ?? 0}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp size={12} className="text-purple-500" />{" "}
+                    {normalizeCategory(topic.category)}
+                  </span>
                 </div>
               </button>
-            );
-          })}
-        </div>
-
-        {/* User Stats Footer */}
-        <div className="p-4 border-t border-gray-100/50 bg-gray-50/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full" />
-              {events.length} Channels
-            </div>
-            <div>v1.0</div>
+            ))}
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10 min-w-0">
-        {/* Chat Header */}
-        <header className="h-20 bg-white/60 backdrop-blur-md border-b border-white/50 flex items-center justify-between px-6 shrink-0">
+      {/* RIGHT COLUMN: Main Chat Area */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative"
+      >
+        {/* Header with Integrated Stats */}
+        <header className="h-16 px-6 border-b border-gray-50 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-lg"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-2xl shadow-inner">
-              {activeEvent
-                ? getCategoryStyle(activeEvent.category || "").icon
-                : "💬"}
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-black text-lg text-gray-900 truncate flex items-center gap-2">
-                {activeEvent?.title}
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] rounded-full uppercase tracking-wider">
-                  Beta
-                </span>
+            <div className="flex flex-col min-w-0">
+              <h2 className="font-bold text-slate-900 truncate">
+                {currentTopic?.title || ""}
               </h2>
-              <div className="flex items-center gap-3 text-xs font-bold text-gray-500">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3 h-3" />{" "}
-                  {activeEvent?.followers_count || 0} Members
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1 text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Live
                 </span>
-                <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                <span className="text-green-600 flex items-center gap-1">
-                  <Activity className="w-3 h-3" /> High Activity
-                </span>
+                <span>•</span>
+                <span>ID: #{currentTopic?.id ?? "-"}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="p-2.5 bg-white hover:bg-gray-50 text-gray-400 hover:text-blue-500 rounded-xl border border-gray-200 transition-colors shadow-sm">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2.5 bg-white hover:bg-gray-50 text-gray-400 hover:text-purple-500 rounded-xl border border-gray-200 transition-colors shadow-sm">
-              <Info className="w-5 h-5" />
+          {/* Key Metrics integrated into Header */}
+          <div className="flex items-center gap-6">
+            {/* Followers Stat */}
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+                Followers
+              </span>
+              <span className="text-sm font-bold text-slate-800 flex items-center gap-1">
+                <Users size={14} className="text-purple-500" />
+                {currentTopic?.followers_count ?? 0}
+              </span>
+            </div>
+
+            <div className="w-px h-8 bg-gray-100" />
+
+            {/* Category Stat */}
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+                Category
+              </span>
+              <span className="text-sm font-bold text-slate-800 flex items-center gap-1">
+                <TrendingUp size={14} className="text-purple-500" />
+                {normalizeCategory(currentTopic?.category)}
+              </span>
+            </div>
+
+            <div className="w-px h-8 bg-gray-100" />
+
+            <button className="p-2 text-gray-400 hover:text-slate-700 hover:bg-gray-50 rounded-lg transition-colors">
+              <MoreHorizontal size={20} />
             </button>
           </div>
         </header>
 
         {/* Chat Content */}
-        <main className="flex-1 overflow-hidden relative flex">
-          <div className="flex-1 flex flex-col min-w-0 bg-white/30 backdrop-blur-sm">
-            {activeId ? (
+        <div className="flex-1 relative bg-white/50">
+          {/* Using the existing ChatPanel component but we might need to wrap it to fit fully */}
+          <div className="absolute inset-0 flex flex-col">
+            {currentTopic?.id ? (
               <ChatPanel
-                key={activeId}
-                eventId={activeId}
-                roomTitle={activeEvent?.title}
-                roomCategory={activeEvent?.category}
-                isProposalRoom={false}
+                eventId={currentTopic.id}
+                roomTitle={currentTopic.title}
+                roomCategory={currentTopic.category}
+                minHeightVh={88}
               />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                <p>Loading Channel...</p>
-              </div>
-            )}
+            ) : null}
           </div>
-
-          {/* Right Sidebar - Market Intel (Desktop Only) */}
-          <div className="w-80 bg-white/60 backdrop-blur-xl border-l border-white/50 hidden xl:flex flex-col p-6 gap-6 overflow-y-auto">
-            {/* Market Sentiment Widget */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[2rem] p-6 text-white shadow-xl shadow-gray-900/20 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl -mr-10 -mt-10" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4 opacity-80">
-                  <BarChart3 className="w-5 h-5" />
-                  <h3 className="font-bold text-sm uppercase tracking-wider">
-                    Market Sentiment
-                  </h3>
-                </div>
-
-                <div className="flex items-end justify-between mb-2">
-                  <span className="text-3xl font-black text-green-400">
-                    68%
-                  </span>
-                  <span className="text-sm font-bold text-green-400 mb-1">
-                    Bullish
-                  </span>
-                </div>
-
-                {/* Sentiment Bar */}
-                <div className="h-3 bg-gray-700 rounded-full overflow-hidden flex">
-                  <div className="w-[68%] bg-gradient-to-r from-green-400 to-emerald-500" />
-                  <div className="flex-1 bg-red-500/50" />
-                </div>
-                <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400">
-                  <span>Bullish</span>
-                  <span>Bearish</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Participants */}
-            <div className="bg-white/80 rounded-[2rem] p-6 border border-white shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-black text-gray-900">Live Traders</h3>
-                <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  {Math.floor(Math.random() * 50) + 10} Online
-                </span>
-              </div>
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 border border-white shadow-sm" />
-                    <div className="flex-1">
-                      <div className="h-2.5 w-24 bg-gray-200 rounded-full mb-1" />
-                      <div className="h-2 w-16 bg-gray-100 rounded-full" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="space-y-3">
-              <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-                <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
-                  Total Volume
-                </div>
-                <div className="text-xl font-black text-blue-900">$124,592</div>
-              </div>
-              <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100">
-                <div className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">
-                  Prediction End
-                </div>
-                <div className="text-lg font-black text-purple-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {activeEvent?.end_date
-                    ? new Date(activeEvent.end_date).toLocaleDateString()
-                    : "TBA"}
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

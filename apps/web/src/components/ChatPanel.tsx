@@ -12,6 +12,7 @@ interface ChatPanelProps {
   roomCategory?: string
   isProposalRoom?: boolean
   minHeightPx?: number
+  minHeightVh?: number
 }
 
 interface ChatMessageView {
@@ -21,7 +22,7 @@ interface ChatMessageView {
   created_at: string
 }
 
-export default function ChatPanel({ eventId, roomTitle, roomCategory, isProposalRoom, minHeightPx }: ChatPanelProps) {
+export default function ChatPanel({ eventId, roomTitle, roomCategory, isProposalRoom, minHeightPx, minHeightVh }: ChatPanelProps) {
 const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissions, multisigSign } = useWallet()
   const [messages, setMessages] = useState<ChatMessageView[]>([])
   const [forumThreads, setForumThreads] = useState<any[]>([])
@@ -194,7 +195,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   }
 
   const containerCls = 'rounded-3xl border border-purple-200/50 bg-white/60 backdrop-blur-xl shadow-lg overflow-hidden flex flex-col'
-  const minH = String(minHeightPx && minHeightPx > 0 ? `${minHeightPx}px` : (isProposalRoom ? '60vh' : '75vh'))
+  const minH = String(minHeightPx && minHeightPx > 0 ? `${minHeightPx}px` : (minHeightVh && minHeightVh > 0 ? `${minHeightVh}vh` : (isProposalRoom ? '60vh' : '75vh')))
 
   return (
     <div className={containerCls} style={{ minHeight: minH }}>
