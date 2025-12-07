@@ -3,13 +3,14 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useWallet } from "@/contexts/WalletContext";
-import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
+import { MessageSquare, Sparkles, Loader2, Smile, Pin, Users, TrendingUp, MoreHorizontal } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 
 interface ChatPanelProps {
   eventId: number;
   roomTitle?: string;
   roomCategory?: string;
+  followersCount?: number;
   isProposalRoom?: boolean;
   minHeightPx?: number;
   minHeightVh?: number;
@@ -26,6 +27,7 @@ export default function ChatPanel({
   eventId,
   roomTitle,
   roomCategory,
+  followersCount = 0,
   isProposalRoom,
   minHeightPx,
   minHeightVh,
@@ -311,28 +313,61 @@ export default function ChatPanel({
 
   const getMessageBubbleColor = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育"))
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba"))
       return "bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-orange-200/50 shadow-md";
-    if (c.includes("娱乐"))
+    if (c.includes("娱乐") || c.includes("entertainment") || c.includes("movie"))
       return "bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-pink-200/50 shadow-md";
-    if (c.includes("时政") || c.includes("政治"))
+    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
       return "bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-emerald-200/50 shadow-md";
-    if (c.includes("天气"))
+    if (c.includes("天气") || c.includes("weather"))
       return "bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-cyan-200/50 shadow-md";
-    if (c.includes("科技"))
+    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto"))
       return "bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-violet-200/50 shadow-md";
     return "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-200/50 shadow-md";
   };
 
+  const getButtonGradient = () => {
+    return "bg-gradient-to-r from-[#a855f7] to-[#ec4899] hover:brightness-105 text-white shadow-purple-200 shadow-md";
+  };
+
+  const getFooterBg = () => {
+    const c = String(roomCategory || "").toLowerCase();
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba") || c.includes("football"))
+      return "bg-orange-50/95 border-orange-100";
+    if (c.includes("娱乐") || c.includes("entertainment") || c.includes("movie") || c.includes("music"))
+      return "bg-pink-50/95 border-pink-100";
+    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news") || c.includes("finance"))
+      return "bg-emerald-50/95 border-emerald-100";
+    if (c.includes("天气") || c.includes("weather") || c.includes("climate"))
+      return "bg-cyan-50/95 border-cyan-100";
+    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto"))
+      return "bg-violet-50/95 border-violet-100";
+    // 默认也给科技色，或者保持暖米色。用户说“科技分类还没改”，暗示当前是科技分类但没生效。
+    // 如果默认就是科技分类，这里应该兜底到科技色，或者确保逻辑能命中。
+    // 但为了保险，我把 Tech 相关的词加全。
+    return "bg-[#FAF2DA] border-[#FAF2DA]";
+  };
+
   const getHeaderGradient = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育")) return "from-orange-500/90 to-amber-500/90";
-    if (c.includes("娱乐")) return "from-pink-500/90 to-rose-500/90";
-    if (c.includes("时政") || c.includes("政治"))
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba")) return "from-orange-500/90 to-amber-500/90";
+    if (c.includes("娱乐") || c.includes("entertainment")) return "from-pink-500/90 to-rose-500/90";
+    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
       return "from-emerald-500/90 to-teal-500/90";
-    if (c.includes("天气")) return "from-cyan-500/90 to-blue-500/90";
-    if (c.includes("科技")) return "from-violet-500/90 to-purple-500/90";
+    if (c.includes("天气") || c.includes("weather")) return "from-cyan-500/90 to-blue-500/90";
+    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto")) return "from-violet-500/90 to-purple-500/90";
     return "from-indigo-500/90 to-purple-600/90";
+  };
+
+  const getCategoryIconColor = () => {
+    const c = String(roomCategory || "").toLowerCase();
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba")) return "text-orange-200";
+    if (c.includes("娱乐") || c.includes("entertainment")) return "text-pink-200";
+    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
+      return "text-emerald-200";
+    if (c.includes("天气") || c.includes("weather")) return "text-cyan-200";
+    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto")) return "text-violet-200";
+    return "text-indigo-200";
   };
 
   const containerCls = "flex flex-col h-full bg-transparent relative";
@@ -347,20 +382,56 @@ export default function ChatPanel({
   return (
     <div className={containerCls} style={{ minHeight: minH }}>
       <div
-        className={`px-4 py-4 bg-gradient-to-r ${getHeaderGradient()} text-white border-b border-white/10 flex items-center justify-between relative overflow-hidden`}
+        className={`px-4 py-3 bg-gradient-to-r ${getHeaderGradient()} text-white border-b border-white/10 flex items-center justify-between relative overflow-hidden shrink-0`}
       >
         <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-        <div className="flex items-center gap-2 relative z-10">
-          <div className="inline-flex items-center justify-center w-8 h-8 bg-white/20 rounded-xl shadow-sm">
-            <MessageSquare className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-3 relative z-10 min-w-0 flex-1 mr-2">
+          <div className="inline-flex items-center justify-center w-9 h-9 bg-white/20 rounded-xl shadow-sm flex-shrink-0">
+            <MessageSquare className="w-5 h-5 text-white" />
           </div>
-          <div className="font-bold flex items-center gap-2">
-            <span className="tracking-tight">{roomLabel}</span>
+          <div className="flex flex-col min-w-0">
+            <div className="font-bold flex items-center gap-2 text-lg leading-tight">
+              <span className="truncate">{roomTitle || "聊天室"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-white/80 mt-0.5">
+              <span className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+              {account && (
+                <>
+                  <span className="opacity-60">•</span>
+                  <span className="truncate max-w-[100px]">{displayName(account)}</span>
+                </>
+              )}
+            </div>
           </div>
-          <Sparkles className="w-4 h-4 text-white/90" />
         </div>
-        <div className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-lg border border-white/20 relative z-10">
-          {account ? `你：${displayName(account)}` : "未连接钱包"}
+        
+        <div className="flex items-center gap-4 relative z-10 flex-shrink-0">
+          <div className="flex flex-col items-end hidden sm:flex">
+            <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
+              Followers
+            </span>
+            <span className="text-sm font-bold text-white flex items-center gap-1">
+              <Users size={14} className={getCategoryIconColor()} />
+              {followersCount}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-end hidden sm:flex">
+            <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
+              Category
+            </span>
+            <span className="text-sm font-bold text-white flex items-center gap-1">
+              <TrendingUp size={14} className={getCategoryIconColor()} />
+              {roomCategory || "General"}
+            </span>
+          </div>
+
+          <button className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+            <MoreHorizontal size={20} />
+          </button>
         </div>
       </div>
 
@@ -390,7 +461,7 @@ export default function ChatPanel({
 
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent custom-scrollbar"
+        className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent scrollbar-hide"
       >
         {mergedMessages.length === 0 && (
           <div className="text-center text-gray-400 text-sm mt-10">
@@ -422,16 +493,16 @@ export default function ChatPanel({
                 <div
                   className={`${
                     mine ? "order-2" : ""
-                  } w-8 h-8 rounded-full bg-white/80 border border-white flex items-center justify-center text-purple-600 text-xs font-bold shadow-sm`}
+                  } w-8 h-8 rounded-full bg-slate-100/80 border border-white/50 flex items-center justify-center text-purple-600 text-xs font-bold shadow-sm`}
                 >
                   {displayName(m.user_id).slice(0, 2)}
                 </div>
                 <div className={`${mine ? "order-1" : ""} max-w-[80%]`}>
                   <div
-                    className={`$
+                    className={`${
                       mine
                         ? getMessageBubbleColor()
-                    : "bg-white/60 text-gray-800 border border-white/30 shadow-sm"
+                        : "bg-slate-50/80 backdrop-blur-sm text-gray-900 border border-white/40 shadow-sm"
                     } rounded-2xl px-3 py-2`}
                   >
                     <div className="text-xs opacity-80 mb-1">
@@ -449,10 +520,10 @@ export default function ChatPanel({
         })}
       </div>
 
-      <div className="p-3 border-t border-white/30 bg-white/20 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-white">
+      <div className={`p-3 border-t backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800 ${getFooterBg()}`}>
         {!account ? (
           <div className="flex items-center justify-between">
-            <div className="text-sm text-white font-medium">
+            <div className="text-sm text-slate-600 font-medium">
               发送消息需连接钱包
             </div>
             <Button
@@ -477,7 +548,7 @@ export default function ChatPanel({
                   key={idx}
                   type="button"
                   onClick={() => setInput(p)}
-                  className="text-xs px-2 py-1 rounded-full border border-white/30 bg-white/10 text-slate-800 hover:bg-white/20 transition-colors"
+                  className="text-xs px-2 py-1 rounded-full border border-transparent bg-white/60 text-slate-600 hover:bg-white transition-colors shadow-sm"
                 >
                   {p}
                 </button>
@@ -497,7 +568,7 @@ export default function ChatPanel({
                   }}
                   placeholder="输入消息，按 Enter 发送，Shift+Enter 换行"
                   rows={2}
-                  className="w-full resize-none px-3 py-2 border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/40 bg-white/15 focus:bg-white/25 transition-all shadow-inner placeholder:text-white/70 text-white"
+                  className="w-full resize-none px-3 py-2 border border-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF7A15]/20 bg-white focus:bg-white transition-all shadow-sm placeholder:text-slate-400 text-slate-800"
                 />
                 {/* 表情选择 */}
                 <div className="absolute right-2 bottom-2">
@@ -515,7 +586,7 @@ export default function ChatPanel({
                   </button>
                 </div>
                 {showEmojis && (
-                  <div className="absolute right-0 bottom-14 z-10 bg-white/80 backdrop-blur-md border border-white/60 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1">
+                  <div className="absolute right-0 bottom-14 z-10 bg-slate-100/95 backdrop-blur-md border border-white/50 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1">
                     {[
                       "🙂",
                       "🔥",
@@ -546,11 +617,11 @@ export default function ChatPanel({
                 onClick={sendMessage}
                 disabled={sending}
                 size="sm"
-                variant="primary"
+                className={getButtonGradient()}
               >
                 {sending ? (
                   <span className="inline-flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
                     发送中…
                   </span>
                 ) : (
