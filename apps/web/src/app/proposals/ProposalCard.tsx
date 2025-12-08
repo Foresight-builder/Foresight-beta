@@ -24,79 +24,43 @@ export default function ProposalCard({
 }: ProposalCardProps) {
   const totalVotes = (proposal.upvotes || 0) - (proposal.downvotes || 0);
 
-  // Enhanced gradients for better visuals
-  const gradients = [
-    {
-      bg: "from-pink-100 to-rose-100",
-      border: "group-hover:border-pink-200",
-      icon: "text-pink-500",
-      hoverBg: "group-hover:bg-pink-50/30",
-    },
-    {
-      bg: "from-blue-100 to-cyan-100",
-      border: "group-hover:border-blue-200",
-      icon: "text-blue-500",
-      hoverBg: "group-hover:bg-blue-50/30",
-    },
-    {
-      bg: "from-purple-100 to-violet-100",
-      border: "group-hover:border-purple-200",
-      icon: "text-purple-500",
-      hoverBg: "group-hover:bg-purple-50/30",
-    },
-    {
-      bg: "from-amber-100 to-orange-100",
-      border: "group-hover:border-orange-200",
-      icon: "text-orange-500",
-      hoverBg: "group-hover:bg-orange-50/30",
-    },
-    {
-      bg: "from-emerald-100 to-teal-100",
-      border: "group-hover:border-emerald-200",
-      icon: "text-emerald-500",
-      hoverBg: "group-hover:bg-emerald-50/30",
-    },
-  ];
-
-  const style = gradients[proposal.id % gradients.length];
-
   return (
     <motion.div
       layout
-      whileHover={{ scale: 1.02, rotate: 1 }}
+      whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={`relative bg-white rounded-[2.5rem] p-5 shadow-sm border border-gray-100 cursor-pointer overflow-hidden group transition-all duration-300 ${style.border} ${style.hoverBg} hover:shadow-lg`}
+      className="relative bg-white rounded-3xl p-6 shadow-[0_2px_20px_rgba(0,0,0,0.02)] border border-gray-100 cursor-pointer overflow-hidden group hover:shadow-[0_8px_30px_rgba(124,58,237,0.06)] hover:border-purple-100 transition-all duration-300"
       onClick={() => onClick(proposal.id)}
     >
-      {/* Decorative Background Blob */}
+      {/* Accent Color Bar based on category/id */}
       <div
-        className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${style.bg} opacity-40 rounded-bl-[5rem] -mr-12 -mt-12 transition-all duration-500 group-hover:scale-110 group-hover:opacity-60`}
+        className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-purple-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity`}
       />
 
       <div className="flex gap-5 relative z-10">
-        {/* Left Voting Pill */}
-        <div className="flex flex-col items-center bg-gray-50/80 backdrop-blur-sm rounded-full py-3 px-1.5 gap-1 h-fit shrink-0 border border-gray-100 shadow-inner">
+        {/* Left Voting Column - Simplified */}
+        <div className="flex flex-col items-center gap-0.5 pt-1">
           <motion.button
             whileTap={{ scale: 0.8 }}
             onClick={(e) => {
               e.stopPropagation();
               onVote(proposal.id, "up");
             }}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-1.5 rounded-lg transition-all ${
               proposal.userVote === "up"
-                ? "bg-orange-100 text-orange-500"
-                : "hover:bg-white hover:text-orange-500 text-gray-400"
+                ? "text-purple-600 bg-purple-50"
+                : "text-gray-300 hover:text-purple-500 hover:bg-purple-50"
             }`}
           >
-            <ArrowBigUp className="w-7 h-7 fill-current" />
+            <ArrowBigUp className="w-6 h-6 fill-current" />
           </motion.button>
 
           <span
-            className={`font-black text-sm py-1 ${
+            className={`font-bold text-xs ${
               totalVotes > 0
-                ? "text-orange-500"
+                ? "text-purple-600"
                 : totalVotes < 0
-                ? "text-blue-500"
+                ? "text-blue-600"
                 : "text-gray-400"
             }`}
           >
@@ -111,65 +75,54 @@ export default function ProposalCard({
               e.stopPropagation();
               onVote(proposal.id, "down");
             }}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-1.5 rounded-lg transition-all ${
               proposal.userVote === "down"
-                ? "bg-blue-100 text-blue-500"
-                : "hover:bg-white hover:text-blue-500 text-gray-400"
+                ? "text-blue-600 bg-blue-50"
+                : "text-gray-300 hover:text-blue-500 hover:bg-blue-50"
             }`}
           >
-            <ArrowBigDown className="w-7 h-7 fill-current" />
+            <ArrowBigDown className="w-6 h-6 fill-current" />
           </motion.button>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 pt-1">
-          {/* Meta Info */}
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
-            <div
-              className={`bg-white/80 backdrop-blur px-3 py-1.5 rounded-xl text-xs font-black border border-gray-100 flex items-center gap-1.5 shadow-sm ${style.icon}`}
-            >
-              <div
-                className={`w-2 h-2 rounded-full animate-pulse bg-current`}
-              />
+        <div className="flex-1 min-w-0">
+          {/* Meta Info - Cleaner */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">
               r/{proposal.category || "General"}
-            </div>
-            <span className="text-xs text-gray-400 font-bold flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
+            </span>
+            <span className="w-0.5 h-0.5 rounded-full bg-gray-300" />
+            <span className="text-[10px] font-bold text-gray-400">
               {new Date(proposal.created_at).toLocaleDateString()}
             </span>
-            {(proposal.upvotes || 0) > 10 && (
-              <div className="flex items-center gap-1 text-xs font-black text-orange-500 bg-orange-50 px-2 py-1 rounded-lg border border-orange-100">
-                <Sparkles className="w-3 h-3 fill-current" /> Hot
-              </div>
-            )}
           </div>
 
           {/* Title & Content */}
-          <h3 className="text-xl font-black text-gray-800 mb-3 leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-600 group-hover:to-purple-600 transition-all">
+          <h3 className="text-lg font-bold text-gray-900 mb-2 leading-snug group-hover:text-purple-700 transition-colors">
             {proposal.title}
           </h3>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed line-clamp-3 mb-5 pr-4">
+          <p className="text-sm text-gray-500 font-medium leading-relaxed line-clamp-2 mb-4 group-hover:text-gray-600 transition-colors">
             {proposal.content}
           </p>
 
-          {/* Action Bar */}
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold hover:bg-white hover:shadow-md hover:text-blue-500 transition-all group/btn border border-transparent hover:border-gray-100">
-              <MessageCircle className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-              {proposal.comments?.length || 0} Comments
+          {/* Action Bar - Minimal */}
+          <div className="flex items-center gap-4">
+            <button className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-purple-600 transition-colors group/btn">
+              <MessageCircle className="w-4 h-4" />
+              {proposal.comments?.length || 0}
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-500 text-xs font-bold hover:bg-white hover:shadow-md hover:text-pink-500 transition-all group/btn border border-transparent hover:border-gray-100">
-              <Share2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+
+            <button className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-blue-600 transition-colors group/btn">
+              <Share2 className="w-4 h-4" />
               Share
             </button>
-            <div className="ml-auto flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button className="p-2 rounded-xl hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
-                <Flag className="w-4 h-4" />
-              </button>
-              <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
+
+            {(proposal.upvotes || 0) > 10 && (
+              <div className="ml-auto flex items-center gap-1 text-[10px] font-bold text-amber-500">
+                <Sparkles className="w-3 h-3 fill-current" /> Hot
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -6,6 +6,8 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Sparkles,
+  FileText,
+  Send,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -67,79 +69,86 @@ export default function CreateProposalModal({
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/20 backdrop-blur-md z-50"
+            className="fixed inset-0 bg-black/30 backdrop-blur-md z-50 transition-all duration-300"
           />
+          
+          {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh] border-2 border-white/80 ring-4 ring-purple-50/50"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-purple-500/10 z-50 p-8 overflow-hidden max-h-[90vh] overflow-y-auto border border-white/50"
           >
-            {/* Header - More Vibrant */}
-            <div className="flex items-center justify-between px-8 py-6 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-pink-50">
+            {/* Background Decorations */}
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-purple-50/50 to-transparent pointer-events-none" />
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-200/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-200/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8 relative z-10">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-fuchsia-500 border border-fuchsia-100">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-purple-600 border border-purple-100">
                   <Sparkles className="w-6 h-6 fill-current" />
                 </div>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                  New Proposal
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                    New Proposal
+                  </h2>
+                  <p className="text-sm font-medium text-gray-400">
+                    Share your ideas with the community
+                  </p>
+                </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:scale-110 transition-all shadow-sm hover:shadow-md"
+                className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:scale-110 transition-all shadow-sm hover:shadow-md border border-gray-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Tabs - Updated Style */}
-            <div className="flex px-8 pt-6 gap-4">
+            {/* Content Type Tabs */}
+            <div className="flex gap-3 mb-8 relative z-10">
               {[
-                { id: "post", label: "Post", icon: null },
+                { id: "post", label: "Post", icon: FileText },
                 { id: "image", label: "Media", icon: ImageIcon },
                 { id: "link", label: "Link", icon: LinkIcon },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                  className={`flex-1 py-4 rounded-2xl font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all border-2 ${
                     activeTab === tab.id
-                      ? "bg-gray-900 text-white shadow-lg shadow-purple-500/20 scale-105"
-                      : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      ? "bg-purple-50 border-purple-200 text-purple-600 shadow-sm"
+                      : "bg-white border-gray-100 text-gray-400 hover:bg-gray-50 hover:border-gray-200"
                   }`}
                 >
-                  {tab.icon && <tab.icon className="w-4 h-4" />}
+                  <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? "fill-current" : ""}`} />
                   {tab.label}
                 </button>
               ))}
             </div>
 
-            {/* Form fields - Better Inputs */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* Form Fields */}
+            <div className="space-y-6 relative z-10">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-4">
-                  Title
-                </label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="An interesting title..."
-                  className="w-full px-6 py-4 rounded-3xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-fuchsia-200 focus:ring-4 focus:ring-fuchsia-50 outline-none text-lg font-bold text-gray-800 placeholder:text-gray-300 transition-all"
-                  maxLength={300}
+                  placeholder="What's on your mind?"
+                  className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-lg font-bold text-gray-800 placeholder:text-gray-300 transition-all shadow-sm"
+                  maxLength={100}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-4">
-                  Content
-                </label>
                 <textarea
                   value={form.content}
                   onChange={(e) =>
@@ -147,30 +156,30 @@ export default function CreateProposalModal({
                   }
                   placeholder={
                     activeTab === "post"
-                      ? "Share your thoughts..."
+                      ? "Elaborate on your proposal..."
                       : activeTab === "link"
                       ? "Paste URL here..."
                       : "Add a caption..."
                   }
                   rows={6}
-                  className="w-full px-6 py-4 rounded-3xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-fuchsia-200 focus:ring-4 focus:ring-fuchsia-50 outline-none text-base font-medium text-gray-700 placeholder:text-gray-300 resize-none transition-all"
+                  className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-base font-medium text-gray-700 placeholder:text-gray-300 resize-none transition-all shadow-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-4">
-                  Category
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                  Select Category
                 </label>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   {["General", "Tech", "Crypto", "Sports", "Politics"].map(
                     (cat) => (
                       <button
                         key={cat}
                         onClick={() => setForm({ ...form, category: cat })}
-                        className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition-all ${
+                        className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
                           form.category === cat
-                            ? "border-fuchsia-500 text-fuchsia-600 bg-fuchsia-50 shadow-sm"
-                            : "border-gray-100 text-gray-400 hover:border-gray-200 bg-white"
+                            ? "border-purple-200 bg-purple-50 text-purple-600 shadow-sm"
+                            : "border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         r/{cat}
@@ -182,19 +191,23 @@ export default function CreateProposalModal({
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-6 bg-gray-50/80 backdrop-blur flex justify-end gap-4">
+            <div className="mt-8 flex justify-end gap-3 relative z-10">
               <button
                 onClick={onClose}
-                className="px-6 py-3 rounded-full text-sm font-bold text-gray-500 hover:bg-gray-200 transition-colors"
+                className="px-6 py-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading || !form.title}
-                className="px-8 py-3 rounded-full bg-gray-900 text-white text-sm font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-xl shadow-purple-500/20"
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-gray-900 to-gray-800 text-white text-sm font-bold hover:shadow-lg hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
                 Post Proposal
               </button>
             </div>
