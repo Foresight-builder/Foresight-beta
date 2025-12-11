@@ -36,6 +36,9 @@ import {
   Trophy,
   Flame,
   ShieldCheck,
+  ChevronRight,
+  CheckCircle2,
+  TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -92,6 +95,7 @@ export default function FlagsPage() {
     undefined
   );
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [officialListOpen, setOfficialListOpen] = useState(false);
   const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
   const [allStickers, setAllStickers] = useState<StickerItem[]>([]);
 
@@ -619,91 +623,210 @@ export default function FlagsPage() {
           </div>
         </div>
 
-        {/* Official Challenges Section */}
-        <div className="mb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-orange-100 rounded-2xl text-orange-600">
-                <Trophy className="w-6 h-6" />
+        {/* Official Challenges Banner */}
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          onClick={() => setOfficialListOpen(true)}
+          className="mb-12 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-8 md:p-10 cursor-pointer shadow-xl shadow-purple-500/30 text-white group"
+        >
+          {/* Decor */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-700" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-fuchsia-500/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
+          <div className="absolute top-1/2 left-1/2 w-full h-32 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-1/2 -translate-y-1/2 rotate-12 blur-xl" />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold mb-4 shadow-sm group-hover:bg-white/20 transition-colors">
+                <Trophy className="w-3.5 h-3.5 text-yellow-300" />
+                <span className="text-white/90 tracking-wide">
+                  官方认证模板库
+                </span>
               </div>
-              <div>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                  官方精选挑战
-                </h2>
-                <p className="text-sm font-bold text-gray-400 mt-0.5">
-                  精选 10+ 款热门挑战模板
-                </p>
+              <h2 className="text-3xl md:text-4xl font-black mb-3 tracking-tight text-white drop-shadow-sm">
+                不知道立什么 Flag？
+              </h2>
+              <p className="text-purple-100 text-lg font-medium max-w-lg leading-relaxed">
+                从早起打卡到冥想阅读，浏览 10+
+                种官方精选挑战，一键开启你的蜕变之旅。
+              </p>
+            </div>
+
+            <div className="flex-shrink-0 relative">
+              <div className="absolute inset-0 bg-white/20 rounded-full blur-lg scale-110" />
+              <div className="w-16 h-16 rounded-full bg-white text-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10">
+                <ArrowRight className="w-7 h-7" />
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-            {officialTemplates.map((tpl) => (
-              <motion.div
-                key={tpl.id}
-                whileHover={{ y: -4 }}
-                whileTap={{ scale: 0.98 }}
-                className="group relative overflow-hidden rounded-[2rem] bg-white border border-gray-100 p-6 cursor-pointer shadow-sm hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300"
-                onClick={() => {
-                  setInitTitle(tpl.title);
-                  setInitDesc(tpl.description);
-                  setOfficialCreate(true);
-                  setSelectedTplId(tpl.id);
-                  setTplConfig(defaultConfigFor(tpl.id));
-                  setCreateOpen(true);
-                }}
-              >
-                {/* Hover Gradient Background */}
-                <div
-                  className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br ${tpl.gradient} opacity-[0.08]`}
-                />
-
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between mb-6">
-                    <div
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center ${tpl.bg} ${tpl.color} group-hover:scale-110 transition-transform duration-300`}
-                    >
-                      <tpl.icon className="w-7 h-7" />
-                    </div>
-                    <div className="px-2 py-1 rounded-full bg-gray-50 border border-gray-100 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-gray-400" />
-                      <span className="text-[10px] font-bold text-gray-400">
-                        官方
-                      </span>
-                    </div>
-                  </div>
-
-                  <h3 className="text-lg font-black text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
-                    {tpl.title}
-                  </h3>
-                  <p className="text-sm font-bold text-gray-400 leading-relaxed line-clamp-2">
-                    {tpl.description}
-                  </p>
-
-                  <div className="mt-6 flex items-center gap-2 text-xs font-bold text-gray-300 group-hover:text-purple-500 transition-colors">
-                    <span>立即挑战</span>
-                    <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        </motion.div>
 
         {/* My Flags Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-xl text-purple-600">
-                <Flag className="w-6 h-6" />
+              <div className="p-2.5 bg-gray-900 rounded-2xl text-white shadow-lg shadow-gray-900/20">
+                <Target className="w-6 h-6" />
               </div>
-              <h2 className="text-2xl font-black text-gray-900">
-                我的 Flag 墙
-              </h2>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                  今日待办
+                </h2>
+                <p className="text-sm font-bold text-gray-400 mt-0.5">
+                  保持专注，完成今日目标
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={() => {
+                loadCollectedStickers();
+                setGalleryOpen(true);
+              }}
+              className="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-purple-200 hover:text-purple-600 hover:shadow-lg hover:shadow-purple-500/5 transition-all duration-300"
+            >
+              <Smile className="w-4 h-4 text-gray-400 group-hover:text-purple-500 transition-colors" />
+              <span>我的图鉴</span>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+            </button>
           </div>
 
-          <FlagsStats flags={flags} />
+          {/* Today's Tasks & Stats Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            {/* Left: Quick Actions / Today's Focus */}
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Daily Check-in Card */}
+              <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 border border-gray-100 shadow-sm group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform duration-300">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-gray-900 block">
+                        今日打卡
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold">
+                        Keep going
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between mt-4">
+                    <div>
+                      <div className="text-4xl font-black text-gray-900 mb-1 tracking-tight">
+                        {flags.filter((f) => f.status === "active").length}
+                      </div>
+                      <p className="text-xs font-bold text-gray-400">
+                        个待完成 Flag
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const activeFlag = flags.find(
+                          (f) => f.status === "active"
+                        );
+                        if (activeFlag) openCheckin(activeFlag);
+                        else handleCreateClick();
+                      }}
+                      className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gray-900/20 flex items-center gap-1.5 group/btn"
+                    >
+                      {flags.some((f) => f.status === "active")
+                        ? "去打卡"
+                        : "创建"}
+                      <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Streak Card */}
+              <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 border border-gray-100 shadow-sm group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform duration-300">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-gray-900 block">
+                        连续坚持
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold">
+                        Don't stop
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between mt-4">
+                    <div>
+                      <div className="text-4xl font-black text-gray-900 mb-1 tracking-tight">
+                        0
+                      </div>
+                      <p className="text-xs font-bold text-gray-400">
+                        天完美达成
+                      </p>
+                    </div>
+                    <div className="px-3 py-1.5 bg-gray-100 rounded-lg text-xs font-bold text-gray-500">
+                      加油！
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Progress Card (Dark Theme) */}
+            <div className="relative overflow-hidden rounded-[2rem] bg-gray-900 p-6 shadow-xl shadow-gray-900/10 group hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-500">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-black" />
+              <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500" />
+
+              <div className="relative z-10 text-white h-full flex flex-col justify-between">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-300">
+                    <TrendingUp className="w-6 h-6 text-yellow-400" />
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-white/10 text-purple-200 text-xs font-bold uppercase tracking-wider border border-white/10">
+                    Level Up
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <div className="text-5xl font-black tracking-tighter bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                      {Math.round(
+                        (flags.filter((f) => f.status === "success").length /
+                          (flags.length || 1)) *
+                          100
+                      )}
+                    </div>
+                    <span className="text-2xl font-thin text-gray-500">%</span>
+                  </div>
+
+                  <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-all duration-1000"
+                      style={{
+                        width: `${Math.round(
+                          (flags.filter((f) => f.status === "success").length /
+                            (flags.length || 1)) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-2 flex justify-between items-center text-xs font-medium text-gray-400">
+                    <span>总完成率</span>
+                    <span className="text-green-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      继续保持
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Filter Tabs & Main Content */}
           <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/60 shadow-xl shadow-purple-500/5 min-h-[400px]">
@@ -842,6 +965,111 @@ export default function FlagsPage() {
           </div>
         </div>
       </div>
+
+      {/* Official Challenges Modal */}
+      <AnimatePresence>
+        {officialListOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              onClick={() => setOfficialListOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 sm:inset-10 z-50 bg-[#F0F2F5] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 p-6 flex items-center justify-between shrink-0 z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900">
+                      官方精选挑战
+                    </h3>
+                    <p className="text-sm font-bold text-gray-400">
+                      精选 10+ 款热门挑战模板
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOfficialListOpen(false)}
+                  className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                  {officialTemplates.map((tpl) => (
+                    <motion.div
+                      key={tpl.id}
+                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`group relative overflow-hidden rounded-[2rem] p-6 cursor-pointer transition-all duration-300 border border-white/40 shadow-lg hover:shadow-2xl bg-gradient-to-br ${tpl.gradient} ${tpl.shadow}`}
+                      onClick={() => {
+                        setOfficialListOpen(false);
+                        setInitTitle(tpl.title);
+                        setInitDesc(tpl.description);
+                        setOfficialCreate(true);
+                        setSelectedTplId(tpl.id);
+                        setTplConfig(defaultConfigFor(tpl.id));
+                        setCreateOpen(true);
+                      }}
+                    >
+                      {/* Decorative Elements */}
+                      <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+                      <div className="absolute top-0 left-0 w-full h-full bg-white/0 group-hover:bg-white/10 transition-colors duration-300" />
+
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-6">
+                          <div
+                            className={`w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${tpl.color}`}
+                          >
+                            <tpl.icon className="w-7 h-7" />
+                          </div>
+                          <div className="px-2.5 py-1 rounded-full bg-white/60 backdrop-blur-md border border-white/40 flex items-center gap-1.5 shadow-sm">
+                            <ShieldCheck
+                              className={`w-3.5 h-3.5 ${tpl.color}`}
+                            />
+                            <span
+                              className={`text-[10px] font-extrabold ${tpl.color}`}
+                            >
+                              OFFICIAL
+                            </span>
+                          </div>
+                        </div>
+
+                        <h3 className="text-xl font-black text-gray-900 mb-2 tracking-tight group-hover:translate-x-1 transition-transform duration-300">
+                          {tpl.title}
+                        </h3>
+                        <p className="text-sm font-bold text-gray-700/90 leading-relaxed line-clamp-2 mb-6 h-10">
+                          {tpl.description}
+                        </p>
+
+                        <div
+                          className={`flex items-center gap-2 text-xs font-black ${tpl.color} bg-white/80 w-fit px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm group-hover:bg-white group-hover:scale-105 transition-all duration-300`}
+                        >
+                          <span className="tracking-wide">立即挑战</span>
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <CreateFlagModal
         isOpen={createOpen}
