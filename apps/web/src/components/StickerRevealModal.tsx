@@ -10,6 +10,7 @@ export interface StickerItem {
   rarity: "common" | "rare" | "epic" | "legendary";
   desc: string;
   color: string;
+  image_url?: string;
 }
 
 // Helper to check if string is an image URL
