@@ -621,20 +621,29 @@ export default function FlagsPage() {
 
         {/* Official Challenges Section */}
         <div className="mb-16">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-orange-100 rounded-xl text-orange-600">
-              <Trophy className="w-6 h-6" />
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-orange-100 rounded-2xl text-orange-600">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                  官方精选挑战
+                </h2>
+                <p className="text-sm font-bold text-gray-400 mt-0.5">
+                  精选 10+ 款热门挑战模板
+                </p>
+              </div>
             </div>
-            <h2 className="text-2xl font-black text-gray-900">官方精选挑战</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
             {officialTemplates.map((tpl) => (
               <motion.div
                 key={tpl.id}
-                whileHover={{ y: -5, scale: 1.02 }}
+                whileHover={{ y: -4 }}
                 whileTap={{ scale: 0.98 }}
-                className={`relative overflow-hidden rounded-[2rem] p-5 cursor-pointer border border-white/50 shadow-lg transition-all bg-gradient-to-br ${tpl.gradient} ${tpl.shadow}`}
+                className="group relative overflow-hidden rounded-[2rem] bg-white border border-gray-100 p-6 cursor-pointer shadow-sm hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300"
                 onClick={() => {
                   setInitTitle(tpl.title);
                   setInitDesc(tpl.description);
@@ -644,25 +653,37 @@ export default function FlagsPage() {
                   setCreateOpen(true);
                 }}
               >
-                {/* Decorative background circle */}
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/30 rounded-full blur-2xl" />
-
+                {/* Hover Gradient Background */}
                 <div
-                  className={`w-12 h-12 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center mb-4 ${tpl.color} shadow-sm`}
-                >
-                  <tpl.icon className="w-6 h-6" />
-                </div>
+                  className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br ${tpl.gradient} opacity-[0.08]`}
+                />
 
-                <h3 className="text-lg font-black text-gray-900 mb-1 leading-tight">
-                  {tpl.title}
-                </h3>
-                <p className="text-xs font-bold text-gray-600/80 leading-relaxed">
-                  {tpl.description}
-                </p>
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center ${tpl.bg} ${tpl.color} group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      <tpl.icon className="w-7 h-7" />
+                    </div>
+                    <div className="px-2 py-1 rounded-full bg-gray-50 border border-gray-100 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-400">
+                        官方
+                      </span>
+                    </div>
+                  </div>
 
-                <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-white/40 self-start px-2 py-1 rounded-full w-fit">
-                  <ShieldCheck className="w-3 h-3" />
-                  官方认证
+                  <h3 className="text-lg font-black text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
+                    {tpl.title}
+                  </h3>
+                  <p className="text-sm font-bold text-gray-400 leading-relaxed line-clamp-2">
+                    {tpl.description}
+                  </p>
+
+                  <div className="mt-6 flex items-center gap-2 text-xs font-bold text-gray-300 group-hover:text-purple-500 transition-colors">
+                    <span>立即挑战</span>
+                    <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
+                  </div>
                 </div>
               </motion.div>
             ))}
