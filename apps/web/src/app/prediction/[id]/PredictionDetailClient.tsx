@@ -171,6 +171,7 @@ export default function PredictionDetailClient({
 
   // User State
   const [balance, setBalance] = useState<string>("0.00"); // Mock or fetch real balance
+  const [mintInput, setMintInput] = useState<string>("");
   const [following, setFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -472,21 +473,22 @@ export default function PredictionDetailClient({
       // Refresh signer after switch
       const signer = await provider.getSigner();
       const addresses = resolveAddresses(market.chain_id);
+      const collateralToken = market.collateral_token || addresses.usdc;
+
+      // Resolve collateral decimals and convert price/amount to on-chain units
+      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
+      const decimals = Number(await tokenContract.decimals());
+      const priceBN = parseUnitsByDecimals(price.toString(), decimals);
+      const amountInt = Math.floor(amount);
+      if (amountInt <= 0) throw new Error("数量无效");
+      const amountBN = BigInt(amountInt);
       
       // 2. Check Allowance (only for Buy orders or if using collateral)
       // For Buy: User pays USDC (or collateral)
       // For Sell: User pays Conditional Tokens (CT)
       // Simplified: Assume USDC for Buy, CT for Sell.
-      // Note: If selling, we need to approve the CT contract (Market) to spend the CT tokens?
-      // Actually CT are usually held by the user.
-      // Let's assume Buy = Pay Collateral, Sell = Pay CT.
-      
-      const collateralToken = market.collateral_token || addresses.usdc;
-      
       if (tradeSide === 'buy') {
-          const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
-          const decimals = await tokenContract.decimals();
-          const cost = parseUnitsByDecimals(amount * price, Number(decimals)); // Approx cost
+          const cost = amountBN * priceBN;
           
           const allowance = await tokenContract.allowance(account, market.market);
           if (allowance < cost) {
@@ -513,12 +515,6 @@ export default function PredictionDetailClient({
       // 3. Construct Order
       const salt = Math.floor(Math.random() * 1000000).toString();
       const expiry = Math.floor(Date.now() / 1000) + 3600 * 24; // 24h expiry
-      
-      // Convert to appropriate units
-      // Price is usually scaled by 1e18 or similar in CLOB
-      // Amount is base units
-      const priceBN = ethers.parseUnits(price.toString(), 18);
-      const amountBN = ethers.parseUnits(amount.toString(), 18); // Assume 18 decimals for amount (CT)
 
       const domain = {
         name: "Foresight",
@@ -682,6 +678,30 @@ export default function PredictionDetailClient({
                     cancelOrder={cancelOrder}
                     outcomes={outcomes}
                 />
+                <div className="mt-4 bg-white border border-purple-100 rounded-3xl p-4 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between text-sm font-medium text-gray-700">
+                    <span>铸币 (USDC → 预测份额)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={mintInput}
+                      onChange={(e) => setMintInput(e.target.value)}
+                      placeholder="输入铸币数量 (USDC)"
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm text-gray-900 focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-2 focus:ring-purple-500/10"
+                    />
+                    <button
+                      onClick={() => mintInput && handleMint(mintInput)}
+                      disabled={!market || !account || !mintInput}
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      铸币
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    先用 USDC 铸造完整预测份额，再在上方交易面板中挂卖单。
+                  </div>
+                </div>
              </div>
           </div>
         </div>

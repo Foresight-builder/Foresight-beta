@@ -67,9 +67,25 @@ export function TradingPanel({
   // Format Helpers
   const formatPrice = (p: string) => {
     try {
-      return Number(formatUnits(BigInt(p), 6)).toFixed(2);
+      const v = BigInt(p);
+      if (v === 0n) return "-";
+      const decimals = v > 10n ** 12n ? 18 : 6;
+      return Number(formatUnits(v, decimals)).toFixed(2);
     } catch {
       return "-";
+    }
+  };
+
+  const formatAmount = (raw: string) => {
+    try {
+      const v = BigInt(raw);
+      if (v === 0n) return "0";
+      if (v > 10n ** 12n) {
+        return Number(formatUnits(v, 18)).toFixed(4);
+      }
+      return raw;
+    } catch {
+      return raw;
     }
   };
 
@@ -399,7 +415,7 @@ export function TradingPanel({
                       </span>
                     </div>
                     <div className="text-xs font-medium text-gray-500 mt-1.5 ml-1">
-                      {formatPrice(o.price)} x {o.remaining}
+                      {formatPrice(o.price)} x {formatAmount(o.remaining)}
                     </div>
                   </div>
                   <button
