@@ -1425,11 +1425,16 @@ export default function TrendingPage({
     const q = searchQuery.toLowerCase();
     return allEvents.filter(
       (e: any) =>
-        (e.title || "").toLowerCase().includes(q) ||
-        (e.description || "").toLowerCase().includes(q) ||
-        (e.tag || "").toLowerCase().includes(q)
+      (e.title || "").toLowerCase().includes(q) ||
+      (e.description || "").toLowerCase().includes(q) ||
+      (e.tag || "").toLowerCase().includes(q)
     );
   }, [allEvents, searchQuery]);
+
+  useEffect(() => {
+    setTotalEventsCount(displayEvents.length);
+  }, [displayEvents]);
+
   const sortedEvents = useMemo(() => {
     const now = Date.now();
     return [...displayEvents].sort((a: any, b: any) => {
