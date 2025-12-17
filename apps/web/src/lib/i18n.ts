@@ -3,6 +3,7 @@
  * 不使用 next-intl 的路由功能，避免影响现有路由
  */
 
+import { useState, useEffect } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 
@@ -47,11 +48,25 @@ export function t(key: string, locale?: Locale): string {
 }
 
 /**
- * React Hook 用于翻译
+ * React Hook 用于翻译（响应语言变化）
  */
 export function useTranslations(namespace?: string) {
-  const locale = getCurrentLocale();
-  const translations = getTranslation(locale);
+  const [locale, setLocale] = useState<Locale>("zh-CN");
+
+  useEffect(() => {
+    // 初始化语言
+    setLocale(getCurrentLocale());
+
+    // 监听 storage 变化（跨标签页同步）
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "preferred-language" && e.newValue) {
+        setLocale(e.newValue as Locale);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   return (key: string) => {
     const fullKey = namespace ? `${namespace}.${key}` : key;

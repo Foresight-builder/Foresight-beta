@@ -19,6 +19,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
+import { useTranslations } from "@/lib/i18n";
 
 type MenuItem = {
   label: string;
@@ -35,6 +36,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const profileCtx = useUserProfileOptional();
   const isAdmin = !!profileCtx?.isAdmin;
+  const t = useTranslations("nav");
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     markets: true,
@@ -45,38 +47,41 @@ export default function Sidebar() {
   const [searchText, setSearchText] = useState("");
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
+  const tCommon = useTranslations("common");
+  const tAuth = useTranslations("auth");
+
   const menu: MenuItem[] = useMemo(
     () => [
       {
         label: "导航",
         children: [
           {
-            label: "热门趋势",
+            label: t("trending"),
             href: "/trending",
             icon: <BarChart3 className="w-4 h-4" />,
           },
           {
-            label: "排行榜",
+            label: t("leaderboard"),
             href: "/leaderboard",
             icon: <Trophy className="w-4 h-4" />,
           },
           {
-            label: "论坛",
+            label: t("forum"),
             href: "/forum",
             icon: <MessageSquare className="w-4 h-4" />,
           },
           {
-            label: "我的Flag",
+            label: t("flags"),
             href: "/flags",
             icon: <Flag className="w-4 h-4" />,
           },
           {
-            label: "提案频道",
+            label: t("proposals"),
             href: "/proposals",
             icon: <Pin className="w-4 h-4" />,
           },
           {
-            label: "个人中心",
+            label: t("profile"),
             href: "/profile",
             icon: <Users className="w-4 h-4" />,
             requireWallet: true,
@@ -84,7 +89,7 @@ export default function Sidebar() {
           ...(isAdmin
             ? [
                 {
-                  label: "管理员中心",
+                  label: t("admin"),
                   href: "/admin/predictions/new",
                   icon: <Users className="w-4 h-4" />,
                   requireWallet: true,
@@ -94,7 +99,7 @@ export default function Sidebar() {
         ],
       },
     ],
-    [isAdmin]
+    [isAdmin, t, tAuth]
   );
 
   const isActive = (href?: string) => !!href && pathname === href;
@@ -132,7 +137,7 @@ export default function Sidebar() {
           className="px-3 py-2 rounded-xl bg-white/80 text-black border border-gray-200 shadow-sm"
           onClick={() => setMobileOpen((v) => !v)}
         >
-          菜单
+          {tCommon("menu")}
         </button>
       </div>
 
@@ -265,7 +270,7 @@ export default function Sidebar() {
                 onClick={() => setWalletModalOpen(true)}
               >
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-                <span className="relative z-10">Connect Wallet</span>
+                <span className="relative z-10">{tAuth("connectWallet")}</span>
               </button>
             )}
           </div>

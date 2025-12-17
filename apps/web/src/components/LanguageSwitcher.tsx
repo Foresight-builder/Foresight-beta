@@ -38,8 +38,10 @@ export default function LanguageSwitcher() {
     // 保存语言偏好到 localStorage
     localStorage.setItem("preferred-language", langCode);
 
-    // 刷新页面以应用语言变化（简单方案）
-    // 未来可以使用 Context 或其他方式动态切换
+    // 触发自定义事件通知其他组件语言已切换
+    window.dispatchEvent(new CustomEvent("languagechange", { detail: { locale: langCode } }));
+
+    // 刷新页面以应用语言变化
     window.location.reload();
   };
 
