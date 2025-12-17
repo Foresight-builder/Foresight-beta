@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertCircle, RefreshCcw, Home } from "lucide-react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 export default function Error({
   error,
@@ -15,7 +16,21 @@ export default function Error({
     // 记录错误到监控服务
     console.error("Application Error:", error);
 
-    // 发送到错误日志 API
+    // 发送到 Sentry
+    Sentry.captureException(error, {
+      tags: {
+        errorBoundary: "page",
+        digest: error.digest,
+      },
+      contexts: {
+        page: {
+          url: typeof window !== "undefined" ? window.location.href : undefined,
+          pathname: typeof window !== "undefined" ? window.location.pathname : undefined,
+        },
+      },
+    });
+
+    // 发送到错误日志 API（作为备份）
     if (typeof window !== "undefined") {
       fetch("/api/error-log", {
         method: "POST",

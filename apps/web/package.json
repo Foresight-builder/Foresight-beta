@@ -9,9 +9,14 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "next build",
     "start": "next start",
-    "supabase:test": "node scripts/verify-supabase.js"
+    "supabase:test": "node scripts/verify-supabase.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.31.0",
     "@supabase/supabase-js": "^2.84.0",
     "@tanstack/react-query": "^5.90.12",
     "@types/canvas-confetti": "^1.9.0",
@@ -22,6 +27,7 @@
     "lightweight-charts": "^5.0.9",
     "lucide-react": "^0.556.0",
     "next": "15.5.4",
+    "next-intl": "^4.6.1",
     "nodemailer": "^7.0.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -31,8 +37,15 @@
   "devDependencies": {
     "@next/bundle-analyzer": "^16.0.10",
     "@tanstack/react-query-devtools": "^5.91.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
     "@types/nodemailer": "^7.0.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/ui": "^4.0.16",
     "eslint": "^9.13.0",
-    "eslint-config-next": "15.5.4"
+    "eslint-config-next": "15.5.4",
+    "jsdom": "^27.3.0",
+    "vitest": "^4.0.16"
   }
 }

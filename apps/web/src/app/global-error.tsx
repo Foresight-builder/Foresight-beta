@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 export default function GlobalError({
   error,
@@ -12,7 +13,21 @@ export default function GlobalError({
   useEffect(() => {
     console.error("Global Error:", error);
 
-    // 发送到错误日志 API
+    // 发送到 Sentry（严重错误）
+    Sentry.captureException(error, {
+      level: "fatal",
+      tags: {
+        errorBoundary: "global",
+        digest: error.digest,
+      },
+      contexts: {
+        app: {
+          crashed: true,
+        },
+      },
+    });
+
+    // 发送到错误日志 API（作为备份）
     if (typeof window !== "undefined") {
       fetch("/api/error-log", {
         method: "POST",

@@ -1,0 +1,91 @@
+{
+  "common": {
+    "appName": "Foresight",
+    "welcome": "欢迎",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "filter": "筛选",
+    "more": "更多",
+    "less": "收起"
+  },
+  "nav": {
+    "trending": "热门趋势",
+    "leaderboard": "排行榜",
+    "forum": "论坛",
+    "flags": "我的Flag",
+    "proposals": "提案频道",
+    "profile": "个人中心",
+    "admin": "管理员中心"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出",
+    "register": "注册",
+    "connectWallet": "连接钱包",
+    "disconnectWallet": "断开连接",
+    "signMessage": "签名消息",
+    "welcome": "欢迎来到 Foresight",
+    "signToConnect": "签名以连接"
+  },
+  "wallet": {
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "balance": "余额",
+    "address": "地址",
+    "copyAddress": "复制地址",
+    "addressCopied": "地址已复制",
+    "viewOnExplorer": "在区块浏览器查看",
+    "switchNetwork": "切换网络",
+    "refreshBalance": "刷新余额",
+    "noWallet": "未检测到钱包",
+    "installMetaMask": "安装 MetaMask"
+  },
+  "prediction": {
+    "title": "预测",
+    "createPrediction": "创建预测",
+    "predictions": "预测列表",
+    "category": "分类",
+    "deadline": "截止时间",
+    "minStake": "最小押注",
+    "status": "状态",
+    "active": "进行中",
+    "completed": "已完成",
+    "cancelled": "已取消",
+    "description": "描述",
+    "criteria": "判定标准"
+  },
+  "trading": {
+    "buy": "买入",
+    "sell": "卖出",
+    "price": "价格",
+    "amount": "数量",
+    "total": "总计",
+    "limitOrder": "限价单",
+    "marketOrder": "市价单",
+    "placeOrder": "下单",
+    "cancelOrder": "撤单",
+    "myOrders": "我的订单",
+    "orderBook": "订单簿",
+    "depth": "深度",
+    "bids": "买单",
+    "asks": "卖单",
+    "filled": "已成交",
+    "open": "未成交"
+  },
+  "errors": {
+    "somethingWrong": "哎呀，出错了！",
+    "pageNotFound": "页面不存在",
+    "serverError": "服务器错误",
+    "networkError": "网络错误",
+    "tryAgain": "重试",
+    "goHome": "返回首页",
+    "contactSupport": "联系技术支持"
+  }
+}

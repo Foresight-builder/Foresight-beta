@@ -1,0 +1,91 @@
+{
+  "common": {
+    "appName": "Foresight",
+    "welcome": "Welcome",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "more": "More",
+    "less": "Less"
+  },
+  "nav": {
+    "trending": "Trending",
+    "leaderboard": "Leaderboard",
+    "forum": "Forum",
+    "flags": "My Flags",
+    "proposals": "Proposals",
+    "profile": "Profile",
+    "admin": "Admin Center"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "connectWallet": "Connect Wallet",
+    "disconnectWallet": "Disconnect",
+    "signMessage": "Sign Message",
+    "welcome": "Welcome to Foresight",
+    "signToConnect": "Sign to connect"
+  },
+  "wallet": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "balance": "Balance",
+    "address": "Address",
+    "copyAddress": "Copy Address",
+    "addressCopied": "Address Copied",
+    "viewOnExplorer": "View on Explorer",
+    "switchNetwork": "Switch Network",
+    "refreshBalance": "Refresh Balance",
+    "noWallet": "No wallet detected",
+    "installMetaMask": "Install MetaMask"
+  },
+  "prediction": {
+    "title": "Prediction",
+    "createPrediction": "Create Prediction",
+    "predictions": "Predictions",
+    "category": "Category",
+    "deadline": "Deadline",
+    "minStake": "Min Stake",
+    "status": "Status",
+    "active": "Active",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "description": "Description",
+    "criteria": "Criteria"
+  },
+  "trading": {
+    "buy": "Buy",
+    "sell": "Sell",
+    "price": "Price",
+    "amount": "Amount",
+    "total": "Total",
+    "limitOrder": "Limit Order",
+    "marketOrder": "Market Order",
+    "placeOrder": "Place Order",
+    "cancelOrder": "Cancel Order",
+    "myOrders": "My Orders",
+    "orderBook": "Order Book",
+    "depth": "Depth",
+    "bids": "Bids",
+    "asks": "Asks",
+    "filled": "Filled",
+    "open": "Open"
+  },
+  "errors": {
+    "somethingWrong": "Oops! Something went wrong!",
+    "pageNotFound": "Page Not Found",
+    "serverError": "Server Error",
+    "networkError": "Network Error",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home",
+    "contactSupport": "Contact Support"
+  }
+}

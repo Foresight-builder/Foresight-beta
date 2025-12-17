@@ -7,6 +7,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function TopNavBar() {
   const {
@@ -70,9 +71,7 @@ export default function TopNavBar() {
   }, [connectError, mounted]);
 
   // 头像菜单：复制与断开
-  const handleConnectWallet = async (
-    walletType?: "metamask" | "coinbase" | "binance"
-  ) => {
+  const handleConnectWallet = async (walletType?: "metamask" | "coinbase" | "binance") => {
     await connectWallet(walletType);
     setWalletSelectorOpen(false);
   };
@@ -168,16 +167,10 @@ export default function TopNavBar() {
       if (!target) return;
       // 点击头像或菜单内容不关闭
       if (avatarRef.current && avatarRef.current.contains(target)) return;
-      if (menuContentRef.current && menuContentRef.current.contains(target))
-        return;
+      if (menuContentRef.current && menuContentRef.current.contains(target)) return;
       // 点击钱包选择器按钮或内容不关闭
-      if (walletButtonRef.current && walletButtonRef.current.contains(target))
-        return;
-      if (
-        walletSelectorRef.current &&
-        walletSelectorRef.current.contains(target)
-      )
-        return;
+      if (walletButtonRef.current && walletButtonRef.current.contains(target)) return;
+      if (walletSelectorRef.current && walletSelectorRef.current.contains(target)) return;
       setMenuOpen(false);
       setWalletSelectorOpen(false);
     };
@@ -302,6 +295,8 @@ export default function TopNavBar() {
   return (
     <div className="fixed top-4 right-4 z-50">
       <div className="flex items-center space-x-3">
+        {/* 语言切换器 */}
+        <LanguageSwitcher />
         {account ? (
           <div className="relative group" ref={menuRef}>
             <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
@@ -319,8 +314,7 @@ export default function TopNavBar() {
                 className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md"
                 onClick={() => setMenuOpen((v) => !v)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ")
-                    setMenuOpen((v) => !v);
+                  if (e.key === "Enter" || e.key === " ") setMenuOpen((v) => !v);
                 }}
                 // Pass the ref to the parent div or handle differently because Image component doesn't forward ref directly to img usually?
                 // Actually Next/Image forwards ref to the underlying img element in newer versions or we can wrap it.
@@ -341,10 +335,7 @@ export default function TopNavBar() {
               createPortal(
                 <>
                   {/* 点击遮罩关闭，避免被父级样式影响 */}
-                  <div
-                    className="fixed inset-0 z-[9998]"
-                    onClick={() => setMenuOpen(false)}
-                  />
+                  <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)} />
                   <div
                     ref={menuContentRef}
                     className="fixed z-[9999] w-64 bg-white/90 backdrop-blur-md border border-[rgba(168,85,247,0.25)] rounded-xl shadow-2xl p-2"
@@ -370,20 +361,16 @@ export default function TopNavBar() {
                               {currentWalletType === "metamask"
                                 ? "MetaMask"
                                 : currentWalletType === "coinbase"
-                                ? "Coinbase"
-                                : currentWalletType === "okx"
-                                ? "OKX"
-                                : "Binance"}
+                                  ? "Coinbase"
+                                  : currentWalletType === "okx"
+                                    ? "OKX"
+                                    : "Binance"}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-xs font-semibold text-black">
-                        {balanceLoading
-                          ? "..."
-                          : balanceEth
-                          ? `${balanceEth} ETH`
-                          : "--"}
+                        {balanceLoading ? "..." : balanceEth ? `${balanceEth} ETH` : "--"}
                       </div>
                     </div>
                     <button
@@ -429,9 +416,7 @@ export default function TopNavBar() {
           </div>
         ) : user ? (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">
-              已登录：{user.email || "未绑定邮箱"}
-            </span>
+            <span className="text-sm text-gray-700">已登录：{user.email || "未绑定邮箱"}</span>
             <button
               onClick={async () => {
                 await signOut();
@@ -461,10 +446,7 @@ export default function TopNavBar() {
       {mounted && modal && createPortal(modal, document.body)}
 
       {mounted && (
-        <WalletModal
-          isOpen={walletModalOpen}
-          onClose={() => setWalletModalOpen(false)}
-        />
+        <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       )}
     </div>
   );

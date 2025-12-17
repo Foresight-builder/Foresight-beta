@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -58,4 +59,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default bundleAnalyzer(nextConfig);
+// Sentry 配置选项
+const sentryWebpackPluginOptions = {
+  // 自动上传 source maps
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+};
+
+// 导出配置（先 bundle analyzer，再 Sentry）
+export default withSentryConfig(bundleAnalyzer(nextConfig), sentryWebpackPluginOptions);
