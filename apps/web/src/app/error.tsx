@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { AlertCircle, RefreshCcw, Home } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect } from "react";
+import { AlertCircle, RefreshCcw, Home } from "lucide-react";
+import Link from "next/link";
 
 export default function Error({
   error,
@@ -12,8 +12,25 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // 记录错误到监控服务（如 Sentry）
-    console.error('Application Error:', error);
+    // 记录错误到监控服务
+    console.error("Application Error:", error);
+
+    // 发送到错误日志 API
+    if (typeof window !== "undefined") {
+      fetch("/api/error-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: error.message,
+          stack: error.stack,
+          digest: error.digest,
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+        }),
+      }).catch((err) => {
+        console.error("Failed to log error:", err);
+      });
+    }
   }, [error]);
 
   return (
@@ -33,31 +50,21 @@ export default function Error({
         </div>
 
         {/* 标题 */}
-        <h1 className="text-3xl font-bold text-gray-900 text-center mb-4">
-          哎呀，出错了！
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 text-center mb-4">哎呀，出错了！</h1>
 
         {/* 错误信息 */}
-        <p className="text-gray-600 text-center mb-2">
-          应用程序遇到了一个意外错误
-        </p>
+        <p className="text-gray-600 text-center mb-2">应用程序遇到了一个意外错误</p>
 
         {/* 错误详情（开发环境） */}
-        {process.env.NODE_ENV === 'development' && error.message && (
+        {process.env.NODE_ENV === "development" && error.message && (
           <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <p className="text-xs font-mono text-gray-700 break-all">
-              {error.message}
-            </p>
-            {error.digest && (
-              <p className="text-xs text-gray-500 mt-2">
-                错误 ID: {error.digest}
-              </p>
-            )}
+            <p className="text-xs font-mono text-gray-700 break-all">{error.message}</p>
+            {error.digest && <p className="text-xs text-gray-500 mt-2">错误 ID: {error.digest}</p>}
           </div>
         )}
 
         {/* 生产环境友好提示 */}
-        {process.env.NODE_ENV === 'production' && (
+        {process.env.NODE_ENV === "production" && (
           <p className="text-sm text-gray-500 text-center mt-4">
             我们已经记录了这个问题，会尽快修复
             {error.digest && ` (错误 ID: ${error.digest})`}
@@ -83,11 +90,8 @@ export default function Error({
         </div>
 
         {/* 帮助文本 */}
-        <p className="text-xs text-gray-400 text-center mt-6">
-          如果问题持续存在，请联系技术支持
-        </p>
+        <p className="text-xs text-gray-400 text-center mt-6">如果问题持续存在，请联系技术支持</p>
       </div>
     </div>
   );
 }
-

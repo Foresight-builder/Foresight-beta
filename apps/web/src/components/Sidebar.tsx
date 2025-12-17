@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -157,19 +158,17 @@ export default function Sidebar() {
       >
         {/* Paper Texture Overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
-        
+
         {/* Colorful Mesh Gradient at bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
         <div className="relative flex flex-col h-full p-4 z-10">
           <div className="flex items-center gap-3 mb-6 px-2">
             <div className="relative w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center rotate-[-3deg] hover:rotate-0 transition-transform duration-300">
-               <img src="/images/logo.png" alt="Foresight" className="w-6 h-6" />
-               <div className="absolute -top-1.5 -right-1.5 text-yellow-400 text-xs">✨</div>
+              <Image src="/images/logo.png" alt="Foresight" width={24} height={24} priority />
+              <div className="absolute -top-1.5 -right-1.5 text-yellow-400 text-xs">✨</div>
             </div>
-            <span className="font-black text-xl text-gray-800 tracking-tight">
-              Foresight
-            </span>
+            <span className="font-black text-xl text-gray-800 tracking-tight">Foresight</span>
           </div>
 
           <div className="relative mb-6">
@@ -192,10 +191,12 @@ export default function Sidebar() {
             {/* 导航分组 */}
             <div>
               <div className="px-2 mb-2 flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                 <span className="text-xs font-black text-gray-400 uppercase tracking-wider">Explore</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                <span className="text-xs font-black text-gray-400 uppercase tracking-wider">
+                  Explore
+                </span>
               </div>
-              
+
               <div className="space-y-1">
                 {menu[0].children!.map((it) => (
                   <button
@@ -210,13 +211,15 @@ export default function Sidebar() {
                     {isActive(it.href) && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-purple-500 rounded-r-full" />
                     )}
-                    <div className={`transition-transform duration-300 ${isActive(it.href) ? "scale-110 text-purple-500" : "group-hover:scale-110"}`}>
-                       {it.icon}
+                    <div
+                      className={`transition-transform duration-300 ${isActive(it.href) ? "scale-110 text-purple-500" : "group-hover:scale-110"}`}
+                    >
+                      {it.icon}
                     </div>
                     <span className="text-sm font-bold">{it.label}</span>
-                    
+
                     {isActive(it.href) && (
-                       <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-purple-500" />
                     )}
                   </button>
                 ))}
@@ -230,14 +233,17 @@ export default function Sidebar() {
               <div className="relative group cursor-pointer bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
                 {/* Tape */}
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-purple-100/80 rotate-2 z-10" />
-                
+
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gray-50 p-0.5 border border-gray-100 overflow-hidden">
-                    <img
+                    <Image
                       src={`https://api.dicebear.com/7.x/notionists/svg?seed=${
                         account || user?.email || "guest"
                       }&backgroundColor=e9d5ff`}
                       alt="avatar"
+                      width={40}
+                      height={40}
+                      unoptimized
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -245,10 +251,10 @@ export default function Sidebar() {
                     <div className="text-xs font-black text-gray-800 truncate">
                       {account
                         ? `${String(account).slice(0, 6)}...${String(account).slice(-4)}`
-                        : user?.email?.split('@')[0]}
+                        : user?.email?.split("@")[0]}
                     </div>
                     <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
-                       Level 3 Dreamer
+                      Level 3 Dreamer
                     </div>
                   </div>
                 </div>
@@ -266,10 +272,7 @@ export default function Sidebar() {
         </div>
       </motion.aside>
 
-      <WalletModal
-        isOpen={walletModalOpen}
-        onClose={() => setWalletModalOpen(false)}
-      />
+      <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </>
   );
 }
