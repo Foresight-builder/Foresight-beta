@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { Globe } from "lucide-react";
 
 const languages = [
@@ -13,14 +12,12 @@ export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState<string>("zh-CN");
   const menuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // 从路径中检测当前语言
-    const pathLang = pathname.split("/")[1];
-    if (pathLang && languages.some((l) => l.code === pathLang)) {
-      setCurrentLang(pathLang);
+    // 从 localStorage 读取语言偏好
+    const savedLang = localStorage.getItem("preferred-language");
+    if (savedLang && languages.some((l) => l.code === savedLang)) {
+      setCurrentLang(savedLang);
     }
 
     // 点击外部关闭菜单
@@ -32,28 +29,18 @@ export default function LanguageSwitcher() {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [pathname]);
+  }, []);
 
   const changeLanguage = (langCode: string) => {
-    // 移除当前语言前缀（如果有）
-    let newPath = pathname;
-    languages.forEach((lang) => {
-      if (newPath.startsWith(`/${lang.code}`)) {
-        newPath = newPath.slice(lang.code.length + 1);
-      }
-    });
-
-    // 添加新语言前缀（除非是默认语言 zh-CN）
-    if (langCode !== "zh-CN") {
-      newPath = `/${langCode}${newPath || "/"}`;
-    }
-
-    router.push(newPath || "/");
     setCurrentLang(langCode);
     setIsOpen(false);
 
-    // 保存语言偏好
+    // 保存语言偏好到 localStorage
     localStorage.setItem("preferred-language", langCode);
+
+    // 刷新页面以应用语言变化（简单方案）
+    // 未来可以使用 Context 或其他方式动态切换
+    window.location.reload();
   };
 
   const currentLanguage = languages.find((l) => l.code === currentLang) || languages[0];
