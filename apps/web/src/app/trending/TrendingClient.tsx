@@ -34,6 +34,8 @@ import DatePicker from "@/components/ui/DatePicker";
 import { toast } from "@/lib/toast";
 import { EventCardSkeleton } from "@/components/ui/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import FilterSort, { type FilterSortState } from "@/components/FilterSort";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 const HERO_EVENTS = [
   {
@@ -137,6 +139,12 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
   const [totalEventsCount, setTotalEventsCount] = useState(0);
   const productsSectionRef = useRef<HTMLElement | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+
+  // 筛选排序状态（持久化）
+  const [filters, setFilters] = usePersistedState<FilterSortState>("trending_filters", {
+    category: null,
+    sortBy: "trending",
+  });
 
   // 登录提示弹窗状态
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -1257,24 +1265,57 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
   const sortedEvents = useMemo(() => {
     const now = Date.now();
-    return [...displayEvents].sort((a: any, b: any) => {
-      const fa = Number(a?.followers_count || 0);
-      const fb = Number(b?.followers_count || 0);
-      if (fb !== fa) return fb - fa;
+    let events = [...displayEvents];
 
-      const taTotal = Number(a?.stats?.totalAmount || 0);
-      const tbTotal = Number(b?.stats?.totalAmount || 0);
-      if (tbTotal !== taTotal) return tbTotal - taTotal;
+    // 1. 筛选分类
+    if (filters.category) {
+      events = events.filter((e: any) => {
+        const category = String(e?.category || "").toLowerCase();
+        const filterCategory = filters.category?.toLowerCase();
+        return category === filterCategory || category.includes(filterCategory || "");
+      });
+    }
 
-      const da = new Date(String(a?.deadline || 0)).getTime() - now;
-      const db = new Date(String(b?.deadline || 0)).getTime() - now;
-      const ta = da <= 0 ? Number.POSITIVE_INFINITY : da;
-      const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
-      if (Math.abs(ta - tb) > 1000) return ta - tb;
+    // 2. 排序
+    events.sort((a: any, b: any) => {
+      if (filters.sortBy === "trending") {
+        // 热门优先：关注数 > 成交额 > 截止时间
+        const fa = Number(a?.followers_count || 0);
+        const fb = Number(b?.followers_count || 0);
+        if (fb !== fa) return fb - fa;
 
+        const taTotal = Number(a?.stats?.totalAmount || 0);
+        const tbTotal = Number(b?.stats?.totalAmount || 0);
+        if (tbTotal !== taTotal) return tbTotal - taTotal;
+
+        const da = new Date(String(a?.deadline || 0)).getTime() - now;
+        const db = new Date(String(b?.deadline || 0)).getTime() - now;
+        const ta = da <= 0 ? Number.POSITIVE_INFINITY : da;
+        const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
+        if (Math.abs(ta - tb) > 1000) return ta - tb;
+      } else if (filters.sortBy === "newest") {
+        // 最新发布：创建时间倒序
+        const ta = new Date(String(a?.created_at || 0)).getTime();
+        const tb = new Date(String(b?.created_at || 0)).getTime();
+        if (tb !== ta) return tb - ta;
+      } else if (filters.sortBy === "ending") {
+        // 即将截止：截止时间正序（最早截止的在前）
+        const da = new Date(String(a?.deadline || 0)).getTime();
+        const db = new Date(String(b?.deadline || 0)).getTime();
+        if (da !== db) return da - db;
+      } else if (filters.sortBy === "popular") {
+        // 最多关注：关注数倒序
+        const fa = Number(a?.followers_count || 0);
+        const fb = Number(b?.followers_count || 0);
+        if (fb !== fa) return fb - fa;
+      }
+
+      // 默认按 ID 倒序
       return Number(b.id) - Number(a.id);
     });
-  }, [displayEvents]);
+
+    return events;
+  }, [displayEvents, filters]);
 
   const bestEvent = useMemo(() => {
     if (sortedEvents.length > 0) return sortedEvents[0];
@@ -1981,6 +2022,16 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           加密货币保险产品
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
+
+        {/* 筛选排序 */}
+        {!loading && !error && (
+          <div className="mb-8">
+            <FilterSort
+              onFilterChange={setFilters}
+              initialFilters={filters}
+            />
+          </div>
+        )}
 
         {/* 加载状态 */}
         {loading && (
