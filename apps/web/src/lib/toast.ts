@@ -1,16 +1,19 @@
 import { toast as sonnerToast } from "sonner";
-import { logger } from "./logger";
 
 /**
  * 统一的 Toast 通知工具
  * 替代所有 alert() 调用，提供更好的用户体验
+ *
+ * 注意：为避免日志系统错误传播，Toast 直接使用 console 而不通过 logger
  */
 export const toast = {
   /**
    * 成功提示
    */
   success: (message: string, description?: string) => {
-    logger.info("Toast Success", { message, description });
+    if (process.env.NODE_ENV === "development") {
+      console.log(`✅ [Toast Success] ${message}`, description || "");
+    }
     return sonnerToast.success(message, {
       description,
     });
@@ -24,7 +27,9 @@ export const toast = {
     description?: string,
     options?: { action?: { label: string; onClick: () => void } }
   ) => {
-    logger.error("Toast Error", { message, description });
+    if (process.env.NODE_ENV === "development") {
+      console.error(`❌ [Toast Error] ${message}`, description || "");
+    }
     return sonnerToast.error(message, {
       description,
       ...options,
@@ -35,7 +40,9 @@ export const toast = {
    * 警告提示
    */
   warning: (message: string, description?: string) => {
-    logger.warn("Toast Warning", { message, description });
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`⚠️ [Toast Warning] ${message}`, description || "");
+    }
     return sonnerToast.warning(message, {
       description,
     });
@@ -45,7 +52,9 @@ export const toast = {
    * 信息提示
    */
   info: (message: string, description?: string) => {
-    logger.info("Toast Info", { message, description });
+    if (process.env.NODE_ENV === "development") {
+      console.log(`ℹ️ [Toast Info] ${message}`, description || "");
+    }
     return sonnerToast.info(message, {
       description,
     });
@@ -87,7 +96,10 @@ export const toast = {
  * 根据 HTTP 状态码返回友好的中文错误信息
  */
 export function handleApiError(error: unknown, defaultMessage = "操作失败") {
-  logger.error("API Error", { error });
+  // 直接使用 console 记录，避免与 logger 的循环依赖
+  if (process.env.NODE_ENV === "development") {
+    console.error("❌ [API Error]", error);
+  }
 
   if (error instanceof Error) {
     // 网络错误
