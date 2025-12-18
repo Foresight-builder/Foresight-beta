@@ -21,7 +21,13 @@ export function getCurrentLocale(): Locale {
   if (typeof window === "undefined") return "zh-CN";
 
   const saved = localStorage.getItem("preferred-language");
-  return (saved as Locale) || "zh-CN";
+  
+  // 验证是否为有效的 locale
+  if (saved === "zh-CN" || saved === "en") {
+    return saved;
+  }
+  
+  return "zh-CN";
 }
 
 /**

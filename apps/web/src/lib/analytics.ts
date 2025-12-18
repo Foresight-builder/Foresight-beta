@@ -5,6 +5,53 @@
 import { onCLS, onFCP, onFID, onLCP, onTTFB, type Metric } from "web-vitals";
 
 /**
+ * 获取设备信息
+ */
+function getDeviceInfo() {
+  return {
+    type: /mobile/i.test(navigator.userAgent) 
+      ? 'mobile' 
+      : /tablet|ipad/i.test(navigator.userAgent) 
+      ? 'tablet' 
+      : 'desktop',
+  };
+}
+
+/**
+ * 获取网络信息
+ */
+function getConnectionInfo() {
+  // @ts-ignore - Navigator.connection 是实验性 API
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  
+  if (!connection) {
+    return {
+      type: null,
+      effectiveType: null,
+    };
+  }
+
+  return {
+    type: connection.type || null,
+    effectiveType: connection.effectiveType || null,
+    downlink: connection.downlink || null,
+    rtt: connection.rtt || null,
+    saveData: connection.saveData || false,
+  };
+}
+
+/**
+ * 获取视口信息
+ */
+function getViewportInfo() {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+  };
+}
+
+/**
  * 发送指标到分析服务
  */
 function sendToAnalytics(metric: Metric) {
@@ -17,6 +64,9 @@ function sendToAnalytics(metric: Metric) {
     navigationType: metric.navigationType,
     url: window.location.href,
     timestamp: Date.now(),
+    device: getDeviceInfo(),
+    connection: getConnectionInfo(),
+    viewport: getViewportInfo(),
   });
 
   // 使用 sendBeacon 确保数据发送（即使页面关闭）

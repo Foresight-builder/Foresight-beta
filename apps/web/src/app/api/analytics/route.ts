@@ -1,20 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 
+// 获取设备类型
+function getDeviceType(userAgent: string): string {
+  if (/mobile/i.test(userAgent)) return 'mobile';
+  if (/tablet|ipad/i.test(userAgent)) return 'tablet';
+  return 'desktop';
+}
+
+// 获取浏览器信息
+function getBrowser(userAgent: string): string {
+  if (userAgent.includes('Chrome')) return 'Chrome';
+  if (userAgent.includes('Firefox')) return 'Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  if (userAgent.includes('Edge')) return 'Edge';
+  return 'Unknown';
+}
+
+// 获取操作系统
+function getOS(userAgent: string): string {
+  if (userAgent.includes('Win')) return 'Windows';
+  if (userAgent.includes('Mac')) return 'macOS';
+  if (userAgent.includes('Linux')) return 'Linux';
+  if (userAgent.includes('Android')) return 'Android';
+  if (userAgent.includes('iOS')) return 'iOS';
+  return 'Unknown';
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { name, value, rating, delta, id, navigationType, url, timestamp } = body;
+    const { 
+      name, 
+      value, 
+      rating, 
+      delta, 
+      id, 
+      navigationType, 
+      url, 
+      timestamp,
+      device,
+      connection,
+      viewport,
+    } = body;
 
-    // 在生产环境记录到数据库或发送到分析服务
+    // 获取用户信息
+    const userAgent = req.headers.get('user-agent') || '';
+    const deviceType = device?.type || getDeviceType(userAgent);
+    const browser = getBrowser(userAgent);
+    const os = getOS(userAgent);
+
+    // 在生产环境记录到数据库
     if (process.env.NODE_ENV === "production") {
-      // 可以发送到 Vercel Analytics, Google Analytics 等
-      console.log("Web Vital:", { name, value, rating });
-
-      // 或记录到数据库（需要创建 web_vitals 表）
       const client = getClient();
       if (client) {
+        // 尝试获取当前用户 ID
+        const { data: { session } } = await client.auth.getSession();
+        
         await client
           .from("web_vitals")
           .insert({
@@ -25,18 +68,35 @@ export async function POST(req: NextRequest) {
             metric_id: id,
             navigation_type: navigationType,
             page_url: url,
-            created_at: new Date(timestamp).toISOString(),
+            user_id: session?.user?.id || null,
+            device_type: deviceType,
+            browser,
+            os,
+            screen_resolution: viewport?.width && viewport?.height 
+              ? `${viewport.width}x${viewport.height}` 
+              : null,
+            connection_type: connection?.type || null,
+            connection_effective_type: connection?.effectiveType || null,
+            created_at: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
           })
-          .catch(() => {
-            // 表不存在时静默失败
+          .catch((error) => {
+            // 静默失败，但记录错误
+            console.error('Failed to insert web_vitals:', error);
           });
       }
+
+      // 同时发送到 Vercel Analytics（如果配置了）
+      if (process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_ID) {
+        console.log("Web Vital:", { name, value, rating });
+      }
     } else {
-      // 开发环境仅输出到控制台
+      // 开发环境输出到控制台
       console.log(`[Web Vital] ${name}:`, {
         value: Math.round(value),
         rating,
         delta: Math.round(delta),
+        device: deviceType,
+        page: url,
       });
     }
 

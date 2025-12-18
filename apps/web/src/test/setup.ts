@@ -1,10 +1,46 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeAll, vi } from "vitest";
+
+// 设置测试环境变量
+beforeAll(() => {
+  process.env.JWT_SECRET = 'test-secret-key-for-testing-only-do-not-use-in-production';
+  process.env.NODE_ENV = 'test';
+  process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+});
+
+// Mock Sentry
+vi.mock('@sentry/nextjs', () => ({
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  captureEvent: vi.fn(),
+  addBreadcrumb: vi.fn(),
+  setUser: vi.fn(),
+  setContext: vi.fn(),
+  startTransaction: vi.fn(() => ({
+    setStatus: vi.fn(),
+    finish: vi.fn(),
+  })),
+  init: vi.fn(),
+  replayIntegration: vi.fn(),
+  browserTracingIntegration: vi.fn(),
+}));
+
+// 保留原始 console，让各个测试自己决定是否 mock
+// 如果全局 mock console 会影响某些测试
+
+// Mock navigator.clipboard
+Object.assign(navigator, {
+  clipboard: {
+    writeText: vi.fn().mockResolvedValue(undefined),
+    readText: vi.fn().mockResolvedValue(''),
+  },
+});
 
 // 每个测试后清理
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
 // Mock Next.js router
