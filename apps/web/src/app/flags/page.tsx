@@ -254,22 +254,41 @@ export default function FlagsPage() {
     try {
       setLoading(true);
       const me = account || user?.id || "";
+      console.log("[Flag Debug] 🔍 开始加载 Flags，用户ID:", me);
+
       if (!me) {
+        console.log("[Flag Debug] ⚠️ 用户未登录，无法加载数据");
         setFlags([]);
         return;
       }
-      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}`, {
-        cache: "no-store",
-      });
+
+      const url = `/api/flags?viewer_id=${encodeURIComponent(me)}`;
+      console.log("[Flag Debug] 📡 请求 URL:", url);
+
+      const res = await fetch(url, { cache: "no-store" });
+      console.log("[Flag Debug] 📥 API 响应状态:", res.status, res.statusText);
+
       if (!res.ok) {
+        console.error("[Flag Debug] ❌ API 请求失败");
+        toast.error("数据加载失败", `HTTP ${res.status}: ${res.statusText}`);
         setFlags([]);
         return;
       }
+
       const payload = await res.json().catch(() => ({ flags: [] }));
+      console.log("[Flag Debug] 📦 返回的数据:", payload);
+
       const list = Array.isArray(payload?.flags) ? payload.flags : [];
+      console.log("[Flag Debug] ✅ 成功加载", list.length, "个 Flags");
+
       setFlags(list as FlagItem[]);
+
+      if (list.length === 0) {
+        toast.info("暂无数据", "您还没有创建任何 Flag");
+      }
     } catch (e) {
-      console.error(e);
+      console.error("[Flag Debug] 💥 加载出错:", e);
+      toast.error("加载失败", String(e));
     } finally {
       setLoading(false);
     }
@@ -479,6 +498,27 @@ export default function FlagsPage() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [flags, statusFilter, filterMine, account, user?.id]
   );
+
+  // 调试信息
+  useEffect(() => {
+    console.log("[Flag Debug] 📊 数据状态汇总:");
+    console.log("  - 原始 Flags 数量:", flags.length);
+    console.log("  - 过滤后数量:", filteredFlags.length);
+    console.log("  - 当前状态过滤:", statusFilter);
+    console.log("  - 仅显示我的:", filterMine);
+    console.log("  - 用户ID:", account || user?.id);
+    console.log("  - Active Flags:", activeFlags.length);
+    console.log("  - Completed Flags:", completedFlags.length);
+  }, [
+    flags,
+    filteredFlags,
+    statusFilter,
+    filterMine,
+    account,
+    user?.id,
+    activeFlags,
+    completedFlags,
+  ]);
 
   return (
     <div className="h-[calc(100vh-64px)] w-full bg-[#FAFAFA] relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
