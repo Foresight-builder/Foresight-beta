@@ -43,9 +43,11 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "@react-spring/web": "^10.0.3",
     "@safe-global/safe-contracts": "^1.4.1-2",
     "@supabase/supabase-js": "^2.75.1",
     "@tanstack/react-query": "^5.90.5",
+    "@use-gesture/react": "^10.3.1",
     "abdk-libraries-solidity": "^3.2.0",
     "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
@@ -59,7 +61,8 @@
     "siwe": "^3.0.0",
     "solmate": "^6.8.0",
     "viem": "^2.38.3",
-    "wagmi": "^2.18.1"
+    "wagmi": "^2.18.1",
+    "web-vitals": "^5.1.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",

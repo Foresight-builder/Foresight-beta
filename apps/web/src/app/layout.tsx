@@ -11,6 +11,7 @@ import ToastProvider from "@/components/providers/ToastProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProgressBar from "@/components/ProgressBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import WebVitalsReporter from "@/components/WebVitalsReporter";
 
 export const metadata: Metadata = {
   title: {
@@ -94,6 +95,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body>
         <ProgressBar />
+        <WebVitalsReporter />
         <ErrorBoundary level="page">
           <ReactQueryProvider>
             <AuthProvider>
