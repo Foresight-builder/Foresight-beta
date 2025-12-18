@@ -90,7 +90,29 @@ export default function DatePicker({
     const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
 
     // Preserve time if time is already selected or default to current time
-    const [hours, minutes] = time.split(":").map(Number);
+    let [hours, minutes] = time.split(":").map(Number);
+
+    // If selecting today, ensure time is not in the past
+    const now = new Date();
+    if (
+      newDate.getFullYear() === now.getFullYear() &&
+      newDate.getMonth() === now.getMonth() &&
+      newDate.getDate() === now.getDate()
+    ) {
+      const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+      const selectedTotalMinutes = hours * 60 + minutes;
+
+      if (selectedTotalMinutes < currentTotalMinutes) {
+        hours = now.getHours();
+        minutes = now.getMinutes() + 1; // At least 1 minute in the future
+        if (minutes >= 60) {
+          minutes = 0;
+          hours = (hours + 1) % 24;
+        }
+        setTime(`${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`);
+      }
+    }
+
     newDate.setHours(hours || 0);
     newDate.setMinutes(minutes || 0);
 
@@ -106,14 +128,34 @@ export default function DatePicker({
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = e.target.value;
-    setTime(newTime);
+
     if (selectedDate) {
       const [h, m] = newTime.split(":").map(Number);
       const newDate = new Date(selectedDate);
       newDate.setHours(h);
       newDate.setMinutes(m);
+
+      // If today, don't allow past time
+      const now = new Date();
+      if (
+        newDate.getFullYear() === now.getFullYear() &&
+        newDate.getMonth() === now.getMonth() &&
+        newDate.getDate() === now.getDate()
+      ) {
+        if (newDate < now) {
+          // If past time is selected on today, reset to current time or don't allow
+          const currentH = now.getHours().toString().padStart(2, "0");
+          const currentM = (now.getMinutes() + 1).toString().padStart(2, "0");
+          setTime(`${currentH}:${currentM}`);
+          return;
+        }
+      }
+
+      setTime(newTime);
       setSelectedDate(newDate);
       emitChange(newDate);
+    } else {
+      setTime(newTime);
     }
   };
 
@@ -169,6 +211,20 @@ export default function DatePicker({
       today.getMonth() === viewDate.getMonth() &&
       today.getFullYear() === viewDate.getFullYear()
     );
+  };
+
+  const isDisabled = (day: number) => {
+    const dateToCompare = new Date(viewDate.getFullYear(), viewDate.getMonth(), day, 23, 59, 59);
+    const now = new Date();
+
+    if (minDate) {
+      const min = new Date(minDate);
+      return dateToCompare < min;
+    }
+
+    // Default: cannot select dates before today
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return dateToCompare < today;
   };
 
   const formatDisplay = () => {
@@ -249,16 +305,20 @@ export default function DatePicker({
               {days.map((day) => {
                 const selected = isSelected(day);
                 const today = isToday(day);
+                const disabled = isDisabled(day);
                 return (
                   <button
                     key={day}
-                    onClick={() => handleDateClick(day)}
+                    onClick={() => !disabled && handleDateClick(day)}
+                    disabled={disabled}
                     className={`h-9 w-9 rounded-xl text-sm font-medium flex items-center justify-center transition-all ${
-                      selected
-                        ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-                        : today
-                          ? "bg-purple-50 text-purple-600 font-bold"
-                          : "text-gray-700 hover:bg-gray-100"
+                      disabled
+                        ? "text-gray-300 cursor-not-allowed bg-gray-50/50"
+                        : selected
+                          ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+                          : today
+                            ? "bg-purple-50 text-purple-600 font-bold"
+                            : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     {day}

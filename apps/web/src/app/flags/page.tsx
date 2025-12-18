@@ -358,15 +358,19 @@ export default function FlagsPage() {
       });
       if (!res.ok) throw new Error("Checkin failed");
       const ret = await res.json();
+
+      // 1. 先关闭打卡框并刷新数据
       setCheckinOpen(false);
       loadFlags();
 
-      // Check for sticker
-      if (ret.sticker_earned) {
+      // 2. 立即检查是否有表情包奖励
+      if (ret.sticker_earned && ret.sticker_id) {
+        // 从本地池中找到对应的表情包配置
         const s = OFFICIAL_STICKERS.find((x) => x.id === ret.sticker_id);
         if (s) {
           setEarnedSticker(s);
-          setStickerOpen(true);
+          // 延迟极短时间确保打卡框关闭动画不冲突，然后开启惊喜弹窗
+          setTimeout(() => setStickerOpen(true), 100);
         }
       }
     } catch (e) {
@@ -512,6 +516,25 @@ export default function FlagsPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* 重新设计的画廊入口 - 符合全站玻璃拟态风格 */}
+            <button
+              onClick={() => setGalleryOpen(true)}
+              className="group flex items-center gap-3 px-6 py-2.5 bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl shadow-soft hover:shadow-brand/20 hover:bg-white/60 transition-all duration-300 active:scale-95"
+            >
+              <div className="relative">
+                <Smile className="w-5 h-5 text-brand group-hover:rotate-12 transition-transform duration-300" />
+                <div className="absolute inset-0 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <span className="text-sm font-black text-slate-800 tracking-tight">收藏画廊</span>
+              {collectedStickers.length > 0 && (
+                <div className="flex items-center justify-center min-w-[20px] h-[20px] bg-brand/10 rounded-lg border border-brand/20">
+                  <span className="text-[10px] font-black text-brand">
+                    {collectedStickers.length}
+                  </span>
+                </div>
+              )}
+            </button>
+
             {/* Filter Tabs - Sticker Style */}
             <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
               {[

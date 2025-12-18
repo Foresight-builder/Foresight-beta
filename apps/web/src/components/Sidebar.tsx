@@ -14,6 +14,7 @@ import {
   Pin,
   Flag,
   Trophy,
+  ShieldCheck,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,7 +92,7 @@ export default function Sidebar() {
                 {
                   label: t("admin"),
                   href: "/admin/predictions/new",
-                  icon: <Users className="w-4 h-4" />,
+                  icon: <ShieldCheck className="w-4 h-4" />,
                   requireWallet: true,
                 },
               ]

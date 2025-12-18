@@ -139,7 +139,22 @@ export default function CreateFlagModal({
   }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc]);
 
   const handleSubmit = async () => {
-    if (!user && !account) return;
+    if (!user && !account) {
+      alert("请先连接钱包");
+      return;
+    }
+
+    // 必填项校验
+    if (!title.trim()) {
+      alert("请输入 Flag 标题");
+      return;
+    }
+
+    if (verifType === "witness" && !witnessId.trim() && !isOfficial) {
+      alert("请填写见证人 ID 或地址");
+      return;
+    }
+
     try {
       setLoading(true);
       const payload: any = {
@@ -382,7 +397,7 @@ export default function CreateFlagModal({
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={loading || (!title && !isOfficial)}
+                  disabled={loading}
                   className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                 >
                   {loading && <Loader2 className="w-5 h-5 animate-spin" />}
