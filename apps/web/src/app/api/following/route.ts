@@ -7,20 +7,14 @@ import { logApiError } from "@/lib/serverUtils";
 export async function GET(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { message: "Supabase client not initialized" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
     }
 
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json(
-        { message: "Address is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Address is required" }, { status: 400 });
     }
 
     // 1. 获取关注的事件 ID 列表
@@ -30,16 +24,13 @@ export async function GET(req: Request) {
       .eq("user_id", address)
       .order("created_at", { ascending: false });
 
-    const followData =
-      (rawFollowData ||
-        null) as Database["public"]["Tables"]["event_follows"]["Row"][] | null;
+    const followData = (rawFollowData || null) as
+      | Database["public"]["Tables"]["event_follows"]["Row"][]
+      | null;
 
     if (followError) {
       logApiError("GET /api/following fetch ids failed", followError);
-      return NextResponse.json(
-        { message: "Failed to fetch following" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Failed to fetch following" }, { status: 500 });
     }
 
     if (!followData || followData.length === 0) {
@@ -47,26 +38,17 @@ export async function GET(req: Request) {
     }
 
     const eventIds = followData.map((item) => item.event_id);
-    const followMap = new Map(
-      followData.map((item) => [item.event_id, item.created_at])
-    );
+    const followMap = new Map(followData.map((item) => [item.event_id, item.created_at]));
 
     // 2. 根据 ID 获取预测事件详情
-    const { data: predictionsData, error: predictionsError } =
-      await supabaseAdmin
-        .from("predictions")
-        .select("id, title, image_url, category, deadline")
-        .in("id", eventIds);
+    const { data: predictionsData, error: predictionsError } = await supabaseAdmin
+      .from("predictions")
+      .select("id, title, image_url, category, deadline")
+      .in("id", eventIds);
 
     if (predictionsError) {
-      logApiError(
-        "GET /api/following fetch predictions failed",
-        predictionsError
-      );
-      return NextResponse.json(
-        { message: "Failed to fetch predictions" },
-        { status: 500 }
-      );
+      logApiError("GET /api/following fetch predictions failed", predictionsError);
+      return NextResponse.json({ message: "Failed to fetch predictions" }, { status: 500 });
     }
 
     // 3. 获取这些事件的总关注数
@@ -77,9 +59,8 @@ export async function GET(req: Request) {
 
     const counts: Record<number, number> = {};
     if (!allFollowsError && allFollows) {
-      const allFollowRows =
-        (allFollows ||
-          []) as Database["public"]["Tables"]["event_follows"]["Row"][];
+      const allFollowRows = (allFollows ||
+        []) as Database["public"]["Tables"]["event_follows"]["Row"][];
       for (const f of allFollowRows) {
         const eid = f.event_id;
         counts[eid] = (counts[eid] || 0) + 1;
@@ -97,9 +78,8 @@ export async function GET(req: Request) {
       followed_at: string | undefined;
     };
 
-    const predictionRows =
-      (predictionsData ||
-        []) as Database["public"]["Tables"]["predictions"]["Row"][];
+    const predictionRows = (predictionsData ||
+      []) as Database["public"]["Tables"]["predictions"]["Row"][];
 
     const following: FollowingItem[] = predictionRows.map((prediction) => ({
       id: prediction.id,

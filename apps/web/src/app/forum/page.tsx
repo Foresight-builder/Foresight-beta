@@ -37,10 +37,8 @@ function normalizeCategory(raw?: string): string {
     .trim()
     .toLowerCase();
   if (!s) return "科技";
-  if (["tech", "technology", "ai", "人工智能", "机器人", "科技"].includes(s))
-    return "科技";
-  if (["entertainment", "media", "娱乐", "综艺", "影视"].includes(s))
-    return "娱乐";
+  if (["tech", "technology", "ai", "人工智能", "机器人", "科技"].includes(s)) return "科技";
+  if (["entertainment", "media", "娱乐", "综艺", "影视"].includes(s)) return "娱乐";
   if (
     [
       "politics",
@@ -57,8 +55,7 @@ function normalizeCategory(raw?: string): string {
   )
     return "时政";
   if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
-  if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s))
-    return "体育";
+  if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
   return "科技";
 }
 
@@ -81,9 +78,7 @@ export default function ForumPage() {
           throw new Error("Failed to fetch predictions");
         }
         const data = await res.json();
-        const list: PredictionItem[] = Array.isArray(data?.data)
-          ? data.data
-          : [];
+        const list: PredictionItem[] = Array.isArray(data?.data) ? data.data : [];
         if (!cancelled) {
           setPredictions(list);
           setSelectedTopicId((prev) => prev ?? list[0]?.id ?? null);
@@ -340,12 +335,8 @@ export default function ForumPage() {
                 <MessageSquare size={16} fill="currentColor" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white leading-tight">
-                  Forum
-                </h2>
-                <p className="text-[11px] text-white/80">
-                  Community Discussions
-                </p>
+                <h2 className="text-sm font-bold text-white leading-tight">Forum</h2>
+                <p className="text-[11px] text-white/80">Community Discussions</p>
               </div>
             </div>
 
@@ -383,11 +374,7 @@ export default function ForumPage() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-2 custom-scrollbar">
             {filtered.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-white/80">
-                {loading
-                  ? "加载话题中..."
-                  : error
-                  ? "暂无可用话题"
-                  : "暂无话题"}
+                {loading ? "加载话题中..." : error ? "暂无可用话题" : "暂无话题"}
               </div>
             ) : (
               filtered.map((topic) => {
@@ -421,9 +408,7 @@ export default function ForumPage() {
                         {catName}
                       </span>
                       <span className="text-[10px] text-gray-400 font-medium">
-                        {topic.created_at
-                          ? new Date(topic.created_at).toLocaleDateString()
-                          : ""}
+                        {topic.created_at ? new Date(topic.created_at).toLocaleDateString() : ""}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold leading-snug mb-2 text-slate-700 group-hover:text-slate-900 line-clamp-2">
@@ -434,10 +419,7 @@ export default function ForumPage() {
                         <Users size={12} /> {topic.followers_count ?? 0}
                       </span>
                       <span className="flex items-center gap-1">
-                        <TrendingUp
-                          size={12}
-                          className={getCategoryAccentText(catName)}
-                        />{" "}
+                        <TrendingUp size={12} className={getCategoryAccentText(catName)} />{" "}
                         {catName}
                       </span>
                     </div>
@@ -467,9 +449,7 @@ export default function ForumPage() {
                     Live Discussion
                   </span>
                   <span>•</span>
-                  <span className="font-mono text-white/70">
-                    #{currentTopic?.id ?? "-"}
-                  </span>
+                  <span className="font-mono text-white/70">#{currentTopic?.id ?? "-"}</span>
                 </div>
               </div>
             </div>
@@ -480,10 +460,7 @@ export default function ForumPage() {
                   Followers
                 </span>
                 <span className="text-sm font-bold text-white flex items-center gap-1">
-                  <Users
-                    size={14}
-                    className={getCategoryAccentText(activeCat)}
-                  />
+                  <Users size={14} className={getCategoryAccentText(activeCat)} />
                   {currentTopic?.followers_count ?? 0}
                 </span>
               </div>
@@ -495,10 +472,7 @@ export default function ForumPage() {
                   Category
                 </span>
                 <span className="text-sm font-bold text-white flex items-center gap-1">
-                  <TrendingUp
-                    size={14}
-                    className={getCategoryAccentText(activeCat)}
-                  />
+                  <TrendingUp size={14} className={getCategoryAccentText(activeCat)} />
                   {normalizeCategory(currentTopic?.category)}
                 </span>
               </div>
@@ -533,8 +507,8 @@ export default function ForumPage() {
                     {loading
                       ? "加载话题中..."
                       : error
-                      ? "加载失败，请稍后重试"
-                      : "请选择一个话题开始讨论"}
+                        ? "加载失败，请稍后重试"
+                        : "请选择一个话题开始讨论"}
                   </div>
                 )}
               </div>

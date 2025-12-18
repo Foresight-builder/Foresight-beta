@@ -98,9 +98,7 @@ export default function CreateProposalModal({
                   <Sparkles className="w-6 h-6 fill-current" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                    New Proposal
-                  </h2>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Proposal</h2>
                   <p className="text-sm font-medium text-gray-400">
                     Share your ideas with the community
                   </p>
@@ -130,11 +128,7 @@ export default function CreateProposalModal({
                       : "bg-white border-gray-100 text-gray-400 hover:bg-gray-50 hover:border-gray-200"
                   }`}
                 >
-                  <tab.icon
-                    className={`w-5 h-5 ${
-                      activeTab === tab.id ? "fill-current" : ""
-                    }`}
-                  />
+                  <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? "fill-current" : ""}`} />
                   {tab.label}
                 </button>
               ))}
@@ -155,15 +149,13 @@ export default function CreateProposalModal({
               <div className="space-y-2">
                 <textarea
                   value={form.content}
-                  onChange={(e) =>
-                    setForm({ ...form, content: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, content: e.target.value })}
                   placeholder={
                     activeTab === "post"
                       ? "Elaborate on your proposal..."
                       : activeTab === "link"
-                      ? "Paste URL here..."
-                      : "Add a caption..."
+                        ? "Paste URL here..."
+                        : "Add a caption..."
                   }
                   rows={6}
                   className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-base font-medium text-gray-700 placeholder:text-gray-300 resize-none transition-all shadow-sm"
@@ -175,21 +167,19 @@ export default function CreateProposalModal({
                   Select Category
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {["General", "Tech", "Crypto", "Sports", "Politics"].map(
-                    (cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setForm({ ...form, category: cat })}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
-                          form.category === cat
-                            ? "border-purple-200 bg-purple-50 text-purple-600 shadow-sm"
-                            : "border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        r/{cat}
-                      </button>
-                    )
-                  )}
+                  {["General", "Tech", "Crypto", "Sports", "Politics"].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setForm({ ...form, category: cat })}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                        form.category === cat
+                          ? "border-purple-200 bg-purple-50 text-purple-600 shadow-sm"
+                          : "border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      r/{cat}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

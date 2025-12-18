@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { user_id, sticker_id } = body;
-    
+
     if (!user_id || !sticker_id) {
       return NextResponse.json({ error: "Missing params" }, { status: 400 });
     }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const { error } = await (client.from("user_emojis") as any).insert({
       user_id,
       emoji_id: sticker_id,
-      source: 'manual_api',
+      source: "manual_api",
     });
 
     if (error) {

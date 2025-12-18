@@ -7,16 +7,16 @@ export function CardSkeleton() {
     <div className="animate-pulse bg-white rounded-3xl p-6 border border-gray-100">
       {/* 图片占位 */}
       <div className="w-full h-48 bg-gray-200 rounded-2xl mb-4"></div>
-      
+
       {/* 标题 */}
       <div className="h-6 bg-gray-200 rounded-lg w-3/4 mb-3"></div>
-      
+
       {/* 描述 */}
       <div className="space-y-2 mb-4">
         <div className="h-4 bg-gray-200 rounded w-full"></div>
         <div className="h-4 bg-gray-200 rounded w-5/6"></div>
       </div>
-      
+
       {/* 底部信息 */}
       <div className="flex items-center justify-between">
         <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -38,4 +38,3 @@ export function CardListSkeleton({ count = 6 }: { count?: number }) {
     </div>
   );
 }
-

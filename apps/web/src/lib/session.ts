@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createToken, verifyToken, createRefreshToken, type JWTPayload } from './jwt';
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createToken, verifyToken, createRefreshToken, type JWTPayload } from "./jwt";
 
-const SESSION_COOKIE_NAME = 'fs_session';
-const REFRESH_COOKIE_NAME = 'fs_refresh';
+const SESSION_COOKIE_NAME = "fs_session";
+const REFRESH_COOKIE_NAME = "fs_refresh";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
 };
 
 /**
@@ -66,10 +66,7 @@ export async function getSessionFromCookies(): Promise<JWTPayload | null> {
 /**
  * 尝试刷新会话
  */
-export async function refreshSession(
-  req: NextRequest,
-  response: NextResponse
-): Promise<boolean> {
+export async function refreshSession(req: NextRequest, response: NextResponse): Promise<boolean> {
   const refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value;
 
   if (!refreshToken) {
@@ -92,12 +89,12 @@ export async function refreshSession(
  * 清除会话
  */
 export function clearSession(response: NextResponse): void {
-  response.cookies.set(SESSION_COOKIE_NAME, '', {
+  response.cookies.set(SESSION_COOKIE_NAME, "", {
     ...COOKIE_OPTIONS,
     maxAge: 0,
   });
 
-  response.cookies.set(REFRESH_COOKIE_NAME, '', {
+  response.cookies.set(REFRESH_COOKIE_NAME, "", {
     ...COOKIE_OPTIONS,
     maxAge: 0,
   });
@@ -114,7 +111,7 @@ export async function requireAuth(
   if (!session) {
     return {
       authenticated: false,
-      error: '未认证或会话已过期',
+      error: "未认证或会话已过期",
     };
   }
 
@@ -139,4 +136,3 @@ export async function verifySessionAddress(
 
   return session.address.toLowerCase() === expectedAddress.toLowerCase();
 }
-

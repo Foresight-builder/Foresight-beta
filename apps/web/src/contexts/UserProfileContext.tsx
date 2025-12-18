@@ -19,9 +19,7 @@ interface UserProfileContextValue {
   isAdmin: boolean;
 }
 
-const UserProfileContext = createContext<UserProfileContextValue | undefined>(
-  undefined
-);
+const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { account } = useWallet();
@@ -39,10 +37,9 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/user-profiles?address=${encodeURIComponent(addr)}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => ({}));
       const p = data?.profile ?? null;
       setProfile(p);
@@ -66,11 +63,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     isAdmin: !!profile?.is_admin,
   };
 
-  return (
-    <UserProfileContext.Provider value={value}>
-      {children}
-    </UserProfileContext.Provider>
-  );
+  return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>;
 }
 
 export function useUserProfile() {
@@ -84,4 +77,3 @@ export function useUserProfile() {
 export function useUserProfileOptional() {
   return useContext(UserProfileContext);
 }
-

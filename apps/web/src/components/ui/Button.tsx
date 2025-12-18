@@ -1,7 +1,15 @@
 "use client";
 import React from "react";
 
-type Variant = "primary" | "secondary" | "success" | "warning" | "danger" | "ghost" | "subtle" | "cta";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "success"
+  | "warning"
+  | "danger"
+  | "ghost"
+  | "subtle"
+  | "cta";
 type Size = "sm" | "md" | "lg";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -32,7 +40,15 @@ const variants: Record<Variant, string> = {
   cta: "btn-cta",
 };
 
-export default function Button({ variant = "primary", size = "md", icon, fullWidth, className, children, ...props }: ButtonProps) {
+export default function Button({
+  variant = "primary",
+  size = "md",
+  icon,
+  fullWidth,
+  className,
+  children,
+  ...props
+}: ButtonProps) {
   return (
     <button
       className={cn(base, sizes[size], variants[variant], fullWidth && "w-full", className)}

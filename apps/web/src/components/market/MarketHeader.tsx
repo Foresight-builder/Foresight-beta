@@ -1,4 +1,3 @@
-
 import React from "react";
 import { motion } from "framer-motion";
 import {
@@ -37,8 +36,7 @@ export function MarketHeader({
     prediction.status === "active" && !isExpired
       ? "text-emerald-600 bg-emerald-50 border-emerald-200"
       : "text-gray-500 bg-gray-100 border-gray-200";
-  const statusText =
-    prediction.status === "active" && !isExpired ? "进行中" : "已结束";
+  const statusText = prediction.status === "active" && !isExpired ? "进行中" : "已结束";
 
   // 计算总交易量或金额 (示例)
   const volume = prediction.stats?.totalAmount || 0;
@@ -59,9 +57,7 @@ export function MarketHeader({
           {prediction.category}
         </Link>
         <span className="text-gray-300">/</span>
-        <span className="text-gray-900 font-medium truncate max-w-[200px]">
-          {prediction.title}
-        </span>
+        <span className="text-gray-900 font-medium truncate max-w-[200px]">{prediction.title}</span>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
@@ -111,13 +107,9 @@ export function MarketHeader({
                 : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
             }`}
           >
-            <Star
-              className={`w-4 h-4 ${following ? "fill-current" : ""}`}
-            />
+            <Star className={`w-4 h-4 ${following ? "fill-current" : ""}`} />
             {following ? "已关注" : "关注"}
-            <span className="ml-1 opacity-80 text-xs">
-              {followersCount}
-            </span>
+            <span className="ml-1 opacity-80 text-xs">{followersCount}</span>
           </button>
         </div>
       </div>
@@ -131,9 +123,7 @@ export function MarketHeader({
             </div>
             总交易量
           </span>
-          <span className="text-xl font-black text-gray-900 z-10">
-            ${volume.toLocaleString()}
-          </span>
+          <span className="text-xl font-black text-gray-900 z-10">${volume.toLocaleString()}</span>
         </div>
 
         <div className="flex flex-col gap-2 p-5 rounded-3xl bg-blue-50/50 border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all hover:bg-blue-50">

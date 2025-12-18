@@ -7,18 +7,14 @@ async function main() {
   console.log("Deployer:", deployerAddress);
 
   // Deploy CLOBMarket implementation (template)
-  const CLOBMarketFactory = await hre.ethers.getContractFactory(
-    "CLOBMarket"
-  );
+  const CLOBMarketFactory = await hre.ethers.getContractFactory("CLOBMarket");
   const clobImpl = await CLOBMarketFactory.deploy();
   await clobImpl.waitForDeployment();
   const clobImplAddress = await clobImpl.getAddress();
   console.log("CLOBMarket implementation:", clobImplAddress);
 
   // Deploy MarketFactory
-  const MarketFactoryFactory = await hre.ethers.getContractFactory(
-    "MarketFactory"
-  );
+  const MarketFactoryFactory = await hre.ethers.getContractFactory("MarketFactory");
   const mf = await MarketFactoryFactory.deploy(deployerAddress);
   await mf.waitForDeployment();
   const mfAddress = await mf.getAddress();
@@ -26,11 +22,7 @@ async function main() {
 
   // Register CLOB template
   const templateId = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("CLOB"));
-  const txReg = await mf.registerTemplate(
-    templateId,
-    clobImplAddress,
-    "CLOB"
-  );
+  const txReg = await mf.registerTemplate(templateId, clobImplAddress, "CLOB");
   await txReg.wait();
   console.log("Registered BINARY template");
 
@@ -43,15 +35,13 @@ async function main() {
   if (!collateral) {
     switch (chainId) {
       case 137: // polygon
-        collateral =
-          env.USDT_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDT_ADDRESS_POLYGON;
+        collateral = env.USDT_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDT_ADDRESS_POLYGON;
         break;
       case 80002: // amoy
         collateral = env.USDT_ADDRESS_AMOY || env.NEXT_PUBLIC_USDT_ADDRESS_AMOY;
         break;
       case 11155111: // sepolia
-        collateral =
-          env.USDT_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA;
+        collateral = env.USDT_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA;
         break;
       case 1337: // localhost
         collateral =
@@ -61,9 +51,7 @@ async function main() {
         break;
       default:
         collateral =
-          env.USDT_ADDRESS ||
-          env.NEXT_PUBLIC_USDT_ADDRESS ||
-          env.COLLATERAL_TOKEN_ADDRESS;
+          env.USDT_ADDRESS || env.NEXT_PUBLIC_USDT_ADDRESS || env.COLLATERAL_TOKEN_ADDRESS;
     }
   }
 
@@ -121,18 +109,14 @@ async function main() {
     const parsed = tryParse();
     if (parsed) {
       console.log("MarketCreated:", {
-        marketId:
-          parsed.args?.marketId?.toString?.() ?? parsed.args?.[0]?.toString?.(),
+        marketId: parsed.args?.marketId?.toString?.() ?? parsed.args?.[0]?.toString?.(),
         market: parsed.args?.market ?? parsed.args?.[1],
         templateId: parsed.args?.templateId ?? parsed.args?.[2],
         creator: parsed.args?.creator ?? parsed.args?.[3],
         collateralToken: parsed.args?.collateralToken ?? parsed.args?.[4],
         oracle: parsed.args?.oracle ?? parsed.args?.[5],
-        feeBps:
-          parsed.args?.feeBps?.toString?.() ?? parsed.args?.[6]?.toString?.(),
-        resolutionTime:
-          parsed.args?.resolutionTime?.toString?.() ??
-          parsed.args?.[7]?.toString?.(),
+        feeBps: parsed.args?.feeBps?.toString?.() ?? parsed.args?.[6]?.toString?.(),
+        resolutionTime: parsed.args?.resolutionTime?.toString?.() ?? parsed.args?.[7]?.toString?.(),
       });
     } else {
       console.log("Market created (parse fallback). Tx:", receipt.hash);

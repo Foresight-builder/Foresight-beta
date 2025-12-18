@@ -34,8 +34,10 @@ export default function DatePicker({
   };
 
   const [viewDate, setViewDate] = useState(() => parseDate(value)); // For calendar navigation
-  const [selectedDate, setSelectedDate] = useState<Date | null>(() => (value ? parseDate(value) : null));
-  
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() =>
+    value ? parseDate(value) : null
+  );
+
   // Time state
   const [time, setTime] = useState(() => {
     if (!value) return "00:00";
@@ -86,17 +88,17 @@ export default function DatePicker({
 
   const handleDateClick = (day: number) => {
     const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    
+
     // Preserve time if time is already selected or default to current time
     const [hours, minutes] = time.split(":").map(Number);
     newDate.setHours(hours || 0);
     newDate.setMinutes(minutes || 0);
 
     setSelectedDate(newDate);
-    
+
     // Format output
     emitChange(newDate);
-    
+
     if (!includeTime) {
       setIsOpen(false);
     }
@@ -121,7 +123,7 @@ export default function DatePicker({
     const y = date.getFullYear();
     const m = (date.getMonth() + 1).toString().padStart(2, "0");
     const d = date.getDate().toString().padStart(2, "0");
-    
+
     if (includeTime) {
       const h = date.getHours().toString().padStart(2, "0");
       const min = date.getMinutes().toString().padStart(2, "0");
@@ -136,7 +138,20 @@ export default function DatePicker({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const blanks = Array.from({ length: firstDay }, (_, i) => i);
 
-  const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+  const monthNames = [
+    "一月",
+    "二月",
+    "三月",
+    "四月",
+    "五月",
+    "六月",
+    "七月",
+    "八月",
+    "九月",
+    "十月",
+    "十一月",
+    "十二月",
+  ];
 
   const isSelected = (day: number) => {
     if (!selectedDate) return false;
@@ -170,11 +185,7 @@ export default function DatePicker({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {label && (
-        <label className="text-sm font-bold text-gray-700 ml-1 mb-1 block">
-          {label}
-        </label>
-      )}
+      {label && <label className="text-sm font-bold text-gray-700 ml-1 mb-1 block">{label}</label>}
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-4 py-3 rounded-xl bg-white border border-gray-200 flex items-center justify-between cursor-pointer transition-all hover:border-purple-300 hover:shadow-md ${
@@ -182,7 +193,9 @@ export default function DatePicker({
         }`}
       >
         <div className="flex items-center gap-3 text-gray-700">
-          <div className={`p-1.5 rounded-lg ${value ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400"}`}>
+          <div
+            className={`p-1.5 rounded-lg ${value ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400"}`}
+          >
             <CalendarIcon className="w-4 h-4" />
           </div>
           <span className={`font-medium ${!value ? "text-gray-400" : "text-gray-900"}`}>
@@ -244,8 +257,8 @@ export default function DatePicker({
                       selected
                         ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
                         : today
-                        ? "bg-purple-50 text-purple-600 font-bold"
-                        : "text-gray-700 hover:bg-gray-100"
+                          ? "bg-purple-50 text-purple-600 font-bold"
+                          : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     {day}
@@ -269,17 +282,16 @@ export default function DatePicker({
                 />
               </div>
             )}
-            
-            {/* Action Bar */}
-             <div className="mt-4 flex justify-end">
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="text-xs font-bold text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  确定
-                </button>
-             </div>
 
+            {/* Action Bar */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-xs font-bold text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                确定
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

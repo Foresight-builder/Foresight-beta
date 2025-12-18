@@ -19,7 +19,7 @@
 
 - 开发：`npm run ws:dev` 或进入 `apps/web` 目录执行 `npm run dev`。
 - 构建：`npm run ws:build` 或进入 `apps/web` 目录执行 `npm run build`。
- - 并发启动前后端：`npm run ws:dev:all`（relayer 端口由根 `.env` 的 `PORT` 控制）。
+- 并发启动前后端：`npm run ws:dev:all`（relayer 端口由根 `.env` 的 `PORT` 控制）。
 
 ## 常见问题
 

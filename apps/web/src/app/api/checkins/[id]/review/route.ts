@@ -8,41 +8,25 @@ function toNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function POST(
-  req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const checkinId = toNum(id);
-    if (!checkinId)
-      return NextResponse.json({ message: "checkinId 必填" }, { status: 400 });
+    if (!checkinId) return NextResponse.json({ message: "checkinId 必填" }, { status: 400 });
     const body = await parseRequestBody(req as any);
     const actionRaw = String(body?.action || "")
       .trim()
       .toLowerCase();
     const action =
-      actionRaw === "approve"
-        ? "approved"
-        : actionRaw === "reject"
-        ? "rejected"
-        : null;
+      actionRaw === "approve" ? "approved" : actionRaw === "reject" ? "rejected" : null;
     const reviewer_id = String(body?.reviewer_id || "").trim();
     const reason = String(body?.reason || "").trim() || null;
     if (!action)
-      return NextResponse.json(
-        { message: "action 必须为 approve 或 reject" },
-        { status: 400 }
-      );
-    if (!reviewer_id)
-      return NextResponse.json(
-        { message: "reviewer_id 必填" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "action 必须为 approve 或 reject" }, { status: 400 });
+    if (!reviewer_id) return NextResponse.json({ message: "reviewer_id 必填" }, { status: 400 });
 
     const client = (supabaseAdmin || getClient()) as any;
-    if (!client)
-      return NextResponse.json({ message: "服务未配置" }, { status: 500 });
+    if (!client) return NextResponse.json({ message: "服务未配置" }, { status: 500 });
 
     const { data: rawChk, error: chkErr } = await client
       .from("flag_checkins")
@@ -70,8 +54,7 @@ export async function POST(
       await client.from("discussions").insert(payload);
       return NextResponse.json({ message: "ok" }, { status: 200 });
     }
-    if (!chk)
-      return NextResponse.json({ message: "打卡记录不存在" }, { status: 404 });
+    if (!chk) return NextResponse.json({ message: "打卡记录不存在" }, { status: 404 });
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -82,23 +65,13 @@ export async function POST(
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
     if (fErr)
-      return NextResponse.json(
-        { message: "查询失败", detail: fErr.message },
-        { status: 500 }
-      );
-    if (!flag)
-      return NextResponse.json({ message: "Flag 不存在" }, { status: 404 });
+      return NextResponse.json({ message: "查询失败", detail: fErr.message }, { status: 500 });
+    if (!flag) return NextResponse.json({ message: "Flag 不存在" }, { status: 404 });
     if (String(flag?.verification_type || "") !== "witness")
-      return NextResponse.json(
-        { message: "非监督模式无需审核" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "非监督模式无需审核" }, { status: 400 });
 
     const allowedReviewer = String(flag?.witness_id || flag?.user_id || "");
-    if (
-      !allowedReviewer ||
-      allowedReviewer.toLowerCase() !== reviewer_id.toLowerCase()
-    )
+    if (!allowedReviewer || allowedReviewer.toLowerCase() !== reviewer_id.toLowerCase())
       return NextResponse.json({ message: "仅监督人可审核" }, { status: 403 });
 
     const { data: upd, error: uErr } = await client
@@ -134,10 +107,7 @@ export async function POST(
 
     // 若 flags 当前为 pending_review，审核后回到 active
     if (String(flag?.status || "") === "pending_review") {
-      await client
-        .from("flags")
-        .update({ status: "active" })
-        .eq("id", chk.flag_id);
+      await client.from("flags").update({ status: "active" }).eq("id", chk.flag_id);
     }
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });

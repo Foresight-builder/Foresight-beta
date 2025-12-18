@@ -7,20 +7,14 @@ import { supabaseAdmin } from "@/lib/supabase";
 export async function POST(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { message: "Supabase client not initialized" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
     }
 
     const body = await req.json();
     const { eventId, walletAddress } = body;
 
     if (!eventId || !walletAddress) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
     // 使用 upsert 确保每个用户对每个事件只记录一次，并更新时间
@@ -35,10 +29,7 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("Failed to record view history:", error);
-      return NextResponse.json(
-        { message: "Failed to record history" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Failed to record history" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
@@ -50,20 +41,14 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { message: "Supabase client not initialized" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
     }
 
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json(
-        { message: "Address is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Address is required" }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
@@ -85,10 +70,7 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error("Failed to fetch history:", error);
-      return NextResponse.json(
-        { message: "Failed to fetch history" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Failed to fetch history" }, { status: 500 });
     }
 
     // 格式化数据

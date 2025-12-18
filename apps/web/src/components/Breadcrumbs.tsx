@@ -37,14 +37,18 @@ export default function Breadcrumbs() {
   return (
     <nav aria-label="breadcrumb" className="px-4 py-2">
       <div className="flex items-center flex-wrap gap-2 text-sm">
-        <Link href="/" className="text-gray-600 hover:text-gray-800">首页</Link>
+        <Link href="/" className="text-gray-600 hover:text-gray-800">
+          首页
+        </Link>
         {crumbs.map((c, idx) => (
           <span key={c.href} className="flex items-center gap-2">
             <span className="text-gray-400">/</span>
             {idx === crumbs.length - 1 ? (
               <span className="text-gray-800 font-medium">{c.label}</span>
             ) : (
-              <Link href={c.href} className="text-gray-600 hover:text-gray-800">{c.label}</Link>
+              <Link href={c.href} className="text-gray-600 hover:text-gray-800">
+                {c.label}
+              </Link>
             )}
           </span>
         ))}

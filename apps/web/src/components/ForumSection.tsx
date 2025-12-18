@@ -70,12 +70,9 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
   }, [subjectName, actionVerb, targetValue, deadline]);
   const criteriaPreview = useMemo(() => {
     const act = String(actionVerb || "").trim();
-    if (act === "价格达到")
-      return "以权威价格数据源为准，在截止时间前达到或超过目标值视为达成";
-    if (act === "将会赢得")
-      return "以赛事官方结果为准，在截止时间前确认夺冠视为达成";
-    if (act === "将会发生")
-      return "以官方公告或权威媒体报道为准，事件在截止时间前发生视为达成";
+    if (act === "价格达到") return "以权威价格数据源为准，在截止时间前达到或超过目标值视为达成";
+    if (act === "将会赢得") return "以赛事官方结果为准，在截止时间前确认夺冠视为达成";
+    if (act === "将会发生") return "以官方公告或权威媒体报道为准，事件在截止时间前发生视为达成";
     return "以客观可验证来源为准，截止前满足条件视为达成";
   }, [actionVerb]);
   const formError = useMemo(() => {
@@ -100,9 +97,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
     return nameMap[key] || formatAddress(addr);
   };
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
-  const [userVoteTypes, setUserVoteTypes] = useState<
-    Record<string, "up" | "down">
-  >({});
+  const [userVoteTypes, setUserVoteTypes] = useState<Record<string, "up" | "down">>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,9 +151,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
         });
       });
       if (account) addrs.add(String(account));
-      const unknown = Array.from(addrs).filter(
-        (a) => !nameMap[String(a || "").toLowerCase()]
-      );
+      const unknown = Array.from(addrs).filter((a) => !nameMap[String(a || "").toLowerCase()]);
       if (unknown.length === 0) return;
       const next = await fetchUsernamesByAddresses(unknown);
       if (Object.keys(next).length === 0) return;
@@ -204,11 +197,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
     }
   };
 
-  const postComment = async (
-    threadId: number,
-    text: string,
-    parentId?: number | null
-  ) => {
+  const postComment = async (threadId: number, text: string, parentId?: number | null) => {
     if (!account) {
       setError("请先连接钱包");
       return;
@@ -233,11 +222,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
     }
   };
 
-  const vote = async (
-    type: "thread" | "comment",
-    id: number,
-    dir: "up" | "down"
-  ) => {
+  const vote = async (type: "thread" | "comment", id: number, dir: "up" | "down") => {
     try {
       if (!account) {
         setError("请先连接钱包再投票");
@@ -273,25 +258,14 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
       if (!byParent[key]) byParent[key] = [];
       byParent[key].push(c);
     });
-    const renderBranch = (
-      parentId: number | null,
-      depth = 0
-    ): React.ReactNode[] => {
+    const renderBranch = (parentId: number | null, depth = 0): React.ReactNode[] => {
       const key = String(parentId ?? "root");
       const nodes = byParent[key] || [];
       return nodes.flatMap((node) => [
-        <div
-          key={node.id}
-          className="mt-3 pl-0"
-          style={{ marginLeft: depth * 16 }}
-        >
+        <div key={node.id} className="mt-3 pl-0" style={{ marginLeft: depth * 16 }}>
           <div className="text-sm text-gray-800">
-            <span className="text-purple-700 font-medium mr-2">
-              {displayName(node.user_id)}
-            </span>
-            <span className="text-gray-400">
-              {new Date(node.created_at).toLocaleString()}
-            </span>
+            <span className="text-purple-700 font-medium mr-2">{displayName(node.user_id)}</span>
+            <span className="text-gray-400">{new Date(node.created_at).toLocaleString()}</span>
           </div>
           <div className="mt-1 text-gray-700 break-words">{node.content}</div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
@@ -303,9 +277,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
               ▲ {node.upvotes}
             </button>
             {account && (
-              <ReplyBox
-                onSubmit={(text) => postComment(node.thread_id, text, node.id)}
-              />
+              <ReplyBox onSubmit={(text) => postComment(node.thread_id, text, node.id)} />
             )}
           </div>
         </div>,
@@ -327,9 +299,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
         <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
           {!account ? (
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600 font-medium">
-                发帖需连接钱包
-              </div>
+              <div className="text-sm text-gray-600 font-medium">发帖需连接钱包</div>
               <Button
                 size="sm"
                 variant="cta"
@@ -389,13 +359,9 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
               </div>
               <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">
                 <div className="font-medium text-indigo-700">标题预览</div>
-                <div className="mt-1">
-                  {titlePreview || "请完善表单以生成标题"}
-                </div>
+                <div className="mt-1">{titlePreview || "请完善表单以生成标题"}</div>
                 <div className="font-medium text-indigo-700 mt-3">结算标准</div>
-                <div className="mt-1">
-                  {criteriaPreview || "请完善表单以生成结算标准"}
-                </div>
+                <div className="mt-1">{criteriaPreview || "请完善表单以生成结算标准"}</div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-gray-600">{formError || ""}</div>
@@ -419,25 +385,17 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
             <div className="text-sm text-gray-500">暂无主题</div>
           )}
           {threads.map((t) => (
-            <div
-              key={t.id}
-              className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm"
-            >
+            <div key={t.id} className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                     {t.title}
                   </div>
                   {String(t.content || "").trim() && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      {t.content}
-                    </div>
+                    <div className="text-sm text-gray-600 mt-1">{t.content}</div>
                   )}
                   <div className="text-xs text-gray-400 mt-1">
-                    由{" "}
-                    <span className="text-indigo-700 font-medium">
-                      {displayName(t.user_id)}
-                    </span>{" "}
+                    由 <span className="text-indigo-700 font-medium">{displayName(t.user_id)}</span>{" "}
                     在 {new Date(t.created_at).toLocaleString()} 发布
                   </div>
                 </div>
@@ -468,9 +426,7 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
                           : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {userVoteTypes[`thread:${t.id}`] === "down"
-                        ? "已踩"
-                        : "已赞"}
+                      {userVoteTypes[`thread:${t.id}`] === "down" ? "已踩" : "已赞"}
                     </span>
                   )}
                 </div>

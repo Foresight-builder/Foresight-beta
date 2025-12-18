@@ -1,11 +1,11 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+  process.env.JWT_SECRET || "your-secret-key-change-in-production"
 );
 
-const JWT_ISSUER = 'foresight';
-const JWT_AUDIENCE = 'foresight-users';
+const JWT_ISSUER = "foresight";
+const JWT_AUDIENCE = "foresight-users";
 
 export interface JWTPayload {
   address: string;
@@ -31,7 +31,7 @@ export async function createToken(
   };
 
   const token = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
@@ -55,7 +55,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 
     return payload as unknown as JWTPayload;
   } catch (error) {
-    console.error('JWT verification failed:', error);
+    console.error("JWT verification failed:", error);
     return null;
   }
 }
@@ -65,10 +65,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
  * @param address 用户地址
  * @param chainId 链 ID
  */
-export async function createRefreshToken(
-  address: string,
-  chainId?: number
-): Promise<string> {
+export async function createRefreshToken(address: string, chainId?: number): Promise<string> {
   // 刷新 token 有效期 30 天
   return createToken(address, chainId, 30 * 24 * 60 * 60);
 }
@@ -78,16 +75,13 @@ export async function createRefreshToken(
  */
 export function decodeToken(token: string): JWTPayload | null {
   try {
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) return null;
 
-    const payload = JSON.parse(
-      Buffer.from(parts[1], 'base64url').toString('utf-8')
-    );
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
 
     return payload as JWTPayload;
   } catch {
     return null;
   }
 }
-

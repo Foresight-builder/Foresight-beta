@@ -67,8 +67,7 @@ const leaderboardData = [
     profit: "+2,890",
     winRate: "65%",
     trades: 87,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Eve_NFT&backgroundColor=b6e3f4",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Eve_NFT&backgroundColor=b6e3f4",
     trend: "+5%",
     tags: ["NFT Degen"],
     history: [45, 42, 48, 40, 38, 42, 45, 28],
@@ -79,8 +78,7 @@ const leaderboardData = [
     profit: "+1,920",
     winRate: "59%",
     trades: 65,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Frank_Whale&backgroundColor=c0aede",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Frank_Whale&backgroundColor=c0aede",
     trend: "-2%",
     tags: ["Whale"],
     history: [60, 58, 55, 52, 50, 48, 45, 19],
@@ -91,8 +89,7 @@ const leaderboardData = [
     profit: "+1,240",
     winRate: "62%",
     trades: 45,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Grace_Yield&backgroundColor=ffdfbf",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Grace_Yield&backgroundColor=ffdfbf",
     trend: "+3%",
     tags: ["Yield Farmer"],
     history: [20, 22, 25, 24, 26, 28, 30, 12],
@@ -103,8 +100,7 @@ const leaderboardData = [
     profit: "+980",
     winRate: "55%",
     trades: 32,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Helen_Stake&backgroundColor=d1d4f9",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Helen_Stake&backgroundColor=d1d4f9",
     trend: "+1%",
     tags: ["Staker"],
     history: [15, 16, 15, 17, 16, 18, 17, 9],
@@ -115,8 +111,7 @@ const leaderboardData = [
     profit: "+850",
     winRate: "51%",
     trades: 28,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Ivan_Invest&backgroundColor=ffd5dc",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ivan_Invest&backgroundColor=ffd5dc",
     trend: "+4%",
     tags: ["Investor"],
     history: [10, 12, 11, 13, 12, 14, 13, 8],
@@ -127,8 +122,7 @@ const leaderboardData = [
     profit: "+720",
     winRate: "48%",
     trades: 22,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack_Trade&backgroundColor=c0aede",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack_Trade&backgroundColor=c0aede",
     trend: "0%",
     tags: ["Trader"],
     history: [8, 8, 8, 9, 8, 9, 8, 7],
@@ -139,8 +133,7 @@ const leaderboardData = [
     profit: "+540",
     winRate: "45%",
     trades: 18,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Kate_Hold&backgroundColor=b6e3f4",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kate_Hold&backgroundColor=b6e3f4",
     trend: "-1%",
     tags: ["Hodler"],
     history: [10, 9, 8, 7, 6, 5, 6, 5],
@@ -148,13 +141,7 @@ const leaderboardData = [
 ];
 
 // Simple Sparkline Component
-const Sparkline = ({
-  data,
-  color = "#10B981",
-}: {
-  data: number[];
-  color?: string;
-}) => {
+const Sparkline = ({ data, color = "#10B981" }: { data: number[]; color?: string }) => {
   if (!data || data.length < 2) return null;
 
   const min = Math.min(...data);
@@ -267,9 +254,7 @@ const TopThreeCard = ({ user }: { user: any }) => {
 
       {/* Avatar */}
       <div className="relative mb-4 mt-6 group-hover:scale-105 transition-transform duration-500">
-        <div
-          className={`p-2.5 rounded-full border-[4px] relative z-10 bg-white ${styles.avatar}`}
-        >
+        <div className={`p-2.5 rounded-full border-[4px] relative z-10 bg-white ${styles.avatar}`}>
           <img
             src={user.avatar}
             alt={user.name}
@@ -289,9 +274,7 @@ const TopThreeCard = ({ user }: { user: any }) => {
       </div>
 
       {/* Info */}
-      <h3 className="text-2xl font-black text-gray-800 mb-2 mt-6 tracking-tight">
-        {user.name}
-      </h3>
+      <h3 className="text-2xl font-black text-gray-800 mb-2 mt-6 tracking-tight">{user.name}</h3>
       <div className="flex items-center gap-1.5 mb-6">
         {user.tags?.map((tag: string) => (
           <span
@@ -310,25 +293,20 @@ const TopThreeCard = ({ user }: { user: any }) => {
             Total Profit
           </span>
           <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
-            {user.profit}{" "}
-            <span className="text-sm text-gray-400 font-bold">USDC</span>
+            {user.profit} <span className="text-sm text-gray-400 font-bold">USDC</span>
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-              Win Rate
-            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Win Rate</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Target className="w-3.5 h-3.5 text-emerald-500" />
               {user.winRate}
             </div>
           </div>
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-              Best Hit
-            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Best Hit</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-500" />
               {user.bestTrade || "N/A"}
@@ -403,9 +381,7 @@ const RankItem = ({ user, index }: { user: any; index: number }) => {
               user.trend.startsWith("+") ? "text-green-500" : "text-red-500"
             }`}
           >
-            {user.trend.startsWith("+") ? (
-              <ArrowUpRight className="w-3 h-3" />
-            ) : null}
+            {user.trend.startsWith("+") ? <ArrowUpRight className="w-3 h-3" /> : null}
             {user.trend}
           </div>
         </div>

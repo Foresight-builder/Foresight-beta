@@ -10,9 +10,7 @@ function isMissingRelation(error?: { message?: string }) {
     (msg.includes("relation") && msg.includes("does not exist")) ||
     (msg.includes("could not find") &&
       msg.includes("column") &&
-      (msg.includes("user_address") ||
-        msg.includes("user_wallet") ||
-        msg.includes("user_id")))
+      (msg.includes("user_address") || msg.includes("user_wallet") || msg.includes("user_id")))
   );
 }
 
@@ -21,8 +19,7 @@ function isUserIdForeignKeyViolation(error?: { message?: string }) {
   if (!error?.message) return false;
   const msg = error.message.toLowerCase();
   return (
-    msg.includes("violates foreign key constraint") &&
-    msg.includes("event_follows_user_id_fkey")
+    msg.includes("violates foreign key constraint") && msg.includes("event_follows_user_id_fkey")
   );
 }
 
@@ -51,10 +48,7 @@ function isUserIdTypeIntegerError(error?: { message?: string }) {
 function isOnConflictNoUniqueConstraint(error?: { message?: string }) {
   if (!error?.message) return false;
   const msg = error.message.toLowerCase();
-  return (
-    msg.includes("no unique or exclusion constraint") &&
-    msg.includes("on conflict")
-  );
+  return msg.includes("no unique or exclusion constraint") && msg.includes("on conflict");
 }
 
 // POST /api/follows  body: { predictionId: number, walletAddress: string }
@@ -63,8 +57,7 @@ export async function POST(req: Request) {
     if (!supabaseAdmin) {
       return NextResponse.json(
         {
-          message:
-            "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
+          message: "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
         },
         { status: 500 }
       );
@@ -86,10 +79,7 @@ export async function POST(req: Request) {
       );
     }
     if (!rawWallet) {
-      return NextResponse.json(
-        { message: "walletAddress 必填", received: "" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "walletAddress 必填", received: "" }, { status: 400 });
     }
     if (!walletAddress) {
       return NextResponse.json(
@@ -112,10 +102,7 @@ export async function POST(req: Request) {
         predictionId,
         message: pidCheckError?.message,
       });
-      return NextResponse.json(
-        { message: "服务端读取预测事件失败，请稍后重试" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "服务端读取预测事件失败，请稍后重试" }, { status: 500 });
     }
     if (!pidCount) {
       return NextResponse.json(
@@ -148,8 +135,7 @@ export async function POST(req: Request) {
         if (isMissingRelation(error)) {
           return NextResponse.json(
             {
-              message:
-                "缺少 event_follows 表，请在 Supabase 控制台执行以下 SQL 并重试",
+              message: "缺少 event_follows 表，请在 Supabase 控制台执行以下 SQL 并重试",
               setupRequired: true,
               sql: `
 CREATE TABLE IF NOT EXISTS public.event_follows (
@@ -169,8 +155,7 @@ FOR ALL USING (true) WITH CHECK (true);`,
         if (isUserIdForeignKeyViolation(error)) {
           return NextResponse.json(
             {
-              message:
-                "event_follows.user_id 外键约束错误，请修复为 TEXT 唯一键",
+              message: "event_follows.user_id 外键约束错误，请修复为 TEXT 唯一键",
               setupRequired: true,
               detail: error.message,
               sql: `
@@ -184,8 +169,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.e
         if (isUserIdTypeIntegerError(error)) {
           return NextResponse.json(
             {
-              message:
-                "event_follows.user_id 列类型错误，请改为 TEXT 并添加唯一索引",
+              message: "event_follows.user_id 列类型错误，请改为 TEXT 并添加唯一索引",
               setupRequired: true,
               detail: error.message,
               sql: `
@@ -279,10 +263,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.e
           );
         }
 
-        return NextResponse.json(
-          { message: "已关注", follow: insData },
-          { status: 200 }
-        );
+        return NextResponse.json({ message: "已关注", follow: insData }, { status: 200 });
       }
 
       // 针对 event_id 外键冲突返回明确的 400
@@ -297,16 +278,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.e
           { status: 400 }
         );
       }
-      return NextResponse.json(
-        { message: "关注失败", detail: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "关注失败", detail: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(
-      { message: "已关注", follow: data },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "已关注", follow: data }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { message: "请求处理失败", detail: String(e?.message || e) },
@@ -321,8 +296,7 @@ export async function DELETE(req: Request) {
     if (!supabaseAdmin) {
       return NextResponse.json(
         {
-          message:
-            "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
+          message: "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
         },
         { status: 500 }
       );
@@ -332,10 +306,7 @@ export async function DELETE(req: Request) {
     const walletAddress = normalizeAddress(String(body?.walletAddress || ""));
 
     if (!predictionId || !walletAddress) {
-      return NextResponse.json(
-        { message: "predictionId 与 walletAddress 必填" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "predictionId 与 walletAddress 必填" }, { status: 400 });
     }
 
     const { error } = await supabaseAdmin
@@ -370,8 +341,7 @@ CREATE TABLE IF NOT EXISTS public.event_follows (
         if (isUserIdForeignKeyViolation(error)) {
           return NextResponse.json(
             {
-              message:
-                "event_follows.user_id 外键约束错误，请删除约束并改为 TEXT",
+              message: "event_follows.user_id 外键约束错误，请删除约束并改为 TEXT",
               setupRequired: true,
               detail: error.message,
               sql: `
@@ -393,10 +363,7 @@ ALTER TABLE public.event_follows ALTER COLUMN user_id TYPE TEXT;`,
           );
         }
       }
-      return NextResponse.json(
-        { message: "取消关注失败", detail: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "取消关注失败", detail: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ message: "已取消关注" }, { status: 200 });
@@ -414,24 +381,18 @@ export async function GET(req: Request) {
     if (!supabaseAdmin) {
       return NextResponse.json(
         {
-          message:
-            "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
+          message: "服务端未配置 SUPABASE_SERVICE_ROLE_KEY，请在 .env.local 中设置后重启开发服务器",
         },
         { status: 500 }
       );
     }
     const { searchParams } = new URL(req.url);
     const predictionId = Number(searchParams.get("predictionId"));
-    const wa = normalizeAddress(
-      String(searchParams.get("walletAddress") || "")
-    );
+    const wa = normalizeAddress(String(searchParams.get("walletAddress") || ""));
     const walletAddress = /^0x[a-f0-9]{40}$/.test(wa) ? wa : "";
 
     if (!predictionId) {
-      return NextResponse.json(
-        { message: "predictionId 必填" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "predictionId 必填" }, { status: 400 });
     }
 
     const { count, error: countError } = await supabaseAdmin
@@ -500,10 +461,7 @@ ALTER TABLE public.event_follows ALTER COLUMN user_id TYPE TEXT;`,
       }
     }
 
-    return NextResponse.json(
-      { following, followersCount: count || 0 },
-      { status: 200 }
-    );
+    return NextResponse.json({ following, followersCount: count || 0 }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { message: "请求处理失败", detail: String(e?.message || e) },

@@ -7,18 +7,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req as any);
     const client = (supabaseAdmin || getClient()) as any;
-    if (!client)
-      return NextResponse.json({ message: "服务未配置" }, { status: 500 });
+    if (!client) return NextResponse.json({ message: "服务未配置" }, { status: 500 });
 
     const flagId = Number(body?.flag_id);
     const userId = String(body?.user_id || "").trim();
     const note = String(body?.note || "").trim();
     const imageUrl = String(body?.image_url || "").trim();
     if (!flagId || !userId)
-      return NextResponse.json(
-        { message: "flag_id 与 user_id 必填" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "flag_id 与 user_id 必填" }, { status: 400 });
 
     const { data: rawFlag, error: findErr } = await client
       .from("flags")
@@ -29,12 +25,8 @@ export async function POST(req: NextRequest) {
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
     if (findErr)
-      return NextResponse.json(
-        { message: "查询失败", detail: findErr.message },
-        { status: 500 }
-      );
-    if (!flag)
-      return NextResponse.json({ message: "不存在的 Flag" }, { status: 404 });
+      return NextResponse.json({ message: "查询失败", detail: findErr.message }, { status: 500 });
+    if (!flag) return NextResponse.json({ message: "不存在的 Flag" }, { status: 404 });
     if (String(flag.user_id || "") !== userId)
       return NextResponse.json({ message: "仅创建者可打卡" }, { status: 403 });
     const now = new Date();
@@ -62,10 +54,7 @@ export async function POST(req: NextRequest) {
       if (!fb.error) todayCount = Number(fb.count || 0);
     }
     if (todayCount >= 100)
-      return NextResponse.json(
-        { message: "今日打卡次数已达上限（100）" },
-        { status: 429 }
-      );
+      return NextResponse.json({ message: "今日打卡次数已达上限（100）" }, { status: 429 });
 
     const historyPayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
       proposal_id: flagId,
@@ -83,8 +72,7 @@ export async function POST(req: NextRequest) {
       logApiError("POST /api/flags/checkin history insert failed", e);
     }
 
-    let insertedCheckin: Database["public"]["Tables"]["flag_checkins"]["Row"] | null =
-      null;
+    let insertedCheckin: Database["public"]["Tables"]["flag_checkins"]["Row"] | null = null;
     try {
       const ins = await client
         .from("flag_checkins")
@@ -106,13 +94,11 @@ export async function POST(req: NextRequest) {
     // 2. If verification_type is 'self' (User manually created self-supervised flag)
     // 3. If the user is the owner AND there is no witness set (implicit self-supervision)
     const isSelfSupervised =
-      flag.verification_type === "self" ||
-      (!flag.witness_id && flag.user_id === userId);
+      flag.verification_type === "self" || (!flag.witness_id && flag.user_id === userId);
 
     if (
       insertedCheckin?.id &&
-      ((flag?.verification_type === "witness" &&
-        String(flag?.witness_id || "") === "official") ||
+      ((flag?.verification_type === "witness" && String(flag?.witness_id || "") === "official") ||
         isSelfSupervised)
     ) {
       try {
@@ -134,8 +120,7 @@ export async function POST(req: NextRequest) {
     // Only reward if checkin is approved (official or self)
     if (
       insertedCheckin?.id &&
-      ((flag?.verification_type === "witness" &&
-        String(flag?.witness_id || "") === "official") ||
+      ((flag?.verification_type === "witness" && String(flag?.witness_id || "") === "official") ||
         isSelfSupervised)
     ) {
       try {
@@ -144,16 +129,13 @@ export async function POST(req: NextRequest) {
 
         if (allStickers && allStickers.length > 0) {
           // Simple random selection
-          const randomSticker =
-            allStickers[Math.floor(Math.random() * allStickers.length)];
+          const randomSticker = allStickers[Math.floor(Math.random() * allStickers.length)];
 
           // 2. Insert into user_stickers
-          const { error: rewardError } = await client
-            .from("user_stickers")
-            .insert({
-              user_id: userId,
-              sticker_id: randomSticker.id,
-            });
+          const { error: rewardError } = await client.from("user_stickers").insert({
+            user_id: userId,
+            sticker_id: randomSticker.id,
+          });
 
           if (!rewardError) {
             rewardedSticker = randomSticker;
@@ -166,8 +148,7 @@ export async function POST(req: NextRequest) {
 
     // For self-supervised flags, update status to 'success' immediately if checkin is approved
     let newStatus =
-      flag.verification_type === "witness" &&
-      String(flag?.witness_id || "") !== "official"
+      flag.verification_type === "witness" && String(flag?.witness_id || "") !== "official"
         ? "pending_review"
         : "active";
 
@@ -205,10 +186,7 @@ export async function POST(req: NextRequest) {
         );
       data = fallback.data;
     }
-    return NextResponse.json(
-      { message: "ok", data, reward: rewardedSticker },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "ok", data, reward: rewardedSticker }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { message: "打卡失败", detail: String(e?.message || e) },

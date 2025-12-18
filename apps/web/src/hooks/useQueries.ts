@@ -1,31 +1,31 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ApiResponse } from '@/types/api';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ApiResponse } from "@/types/api";
 
 /**
  * Query Keys 常量
  */
 export const QueryKeys = {
-  predictions: ['predictions'] as const,
-  prediction: (id: number) => ['prediction', id] as const,
-  predictionOutcomes: (id: number) => ['prediction', id, 'outcomes'] as const,
-  
-  categories: ['categories'] as const,
-  
-  userProfile: (address: string) => ['userProfile', address] as const,
-  userPortfolio: (address: string) => ['userPortfolio', address] as const,
-  userFollows: (address: string) => ['userFollows', address] as const,
-  
+  predictions: ["predictions"] as const,
+  prediction: (id: number) => ["prediction", id] as const,
+  predictionOutcomes: (id: number) => ["prediction", id, "outcomes"] as const,
+
+  categories: ["categories"] as const,
+
+  userProfile: (address: string) => ["userProfile", address] as const,
+  userPortfolio: (address: string) => ["userPortfolio", address] as const,
+  userFollows: (address: string) => ["userFollows", address] as const,
+
   orders: (params: { chainId?: number; contract?: string; maker?: string; status?: string }) =>
-    ['orders', params] as const,
+    ["orders", params] as const,
   orderDepth: (contract: string, chainId: number, outcomeIndex: number) =>
-    ['orderDepth', contract, chainId, outcomeIndex] as const,
-  
-  flags: (userId?: string) => ['flags', userId] as const,
-  flag: (id: number) => ['flag', id] as const,
-  
-  forumThreads: (eventId: number) => ['forumThreads', eventId] as const,
-  
-  market: (contract: string, chainId: number) => ['market', contract, chainId] as const,
+    ["orderDepth", contract, chainId, outcomeIndex] as const,
+
+  flags: (userId?: string) => ["flags", userId] as const,
+  flag: (id: number) => ["flag", id] as const,
+
+  forumThreads: (eventId: number) => ["forumThreads", eventId] as const,
+
+  market: (contract: string, chainId: number) => ["market", contract, chainId] as const,
 } as const;
 
 /**
@@ -35,7 +35,7 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
@@ -43,15 +43,15 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({
       success: false,
-      error: { message: 'Network error', code: 'NETWORK_ERROR' },
+      error: { message: "Network error", code: "NETWORK_ERROR" },
     }));
-    throw new Error(error.error?.message || 'Request failed');
+    throw new Error(error.error?.message || "Request failed");
   }
 
   const data: ApiResponse<T> = await response.json();
 
   if (!data.success) {
-    throw new Error(data.error?.message || 'Request failed');
+    throw new Error(data.error?.message || "Request failed");
   }
 
   return data.data;
@@ -60,15 +60,11 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
 /**
  * 获取预测列表
  */
-export function usePredictions(params?: {
-  category?: string;
-  status?: string;
-  limit?: number;
-}) {
+export function usePredictions(params?: { category?: string; status?: string; limit?: number }) {
   const query = new URLSearchParams();
-  if (params?.category) query.set('category', params.category);
-  if (params?.status) query.set('status', params.status);
-  if (params?.limit) query.set('limit', params.limit.toString());
+  if (params?.category) query.set("category", params.category);
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit) query.set("limit", params.limit.toString());
 
   return useQuery({
     queryKey: [...QueryKeys.predictions, params],
@@ -82,7 +78,7 @@ export function usePredictions(params?: {
  */
 export function usePrediction(id: number, options?: { includeOutcomes?: boolean }) {
   const query = new URLSearchParams();
-  if (options?.includeOutcomes) query.set('includeOutcomes', '1');
+  if (options?.includeOutcomes) query.set("includeOutcomes", "1");
 
   return useQuery({
     queryKey: QueryKeys.prediction(id),
@@ -97,7 +93,7 @@ export function usePrediction(id: number, options?: { includeOutcomes?: boolean 
  */
 export function useUserPortfolio(address?: string) {
   return useQuery({
-    queryKey: QueryKeys.userPortfolio(address || ''),
+    queryKey: QueryKeys.userPortfolio(address || ""),
     queryFn: () => fetcher<any>(`/api/user-portfolio?address=${address}`),
     enabled: !!address,
     staleTime: 2 * 60 * 1000, // 2分钟
@@ -114,10 +110,10 @@ export function useOrders(params: {
   status?: string;
 }) {
   const query = new URLSearchParams();
-  if (params.chainId) query.set('chainId', params.chainId.toString());
-  if (params.contract) query.set('contract', params.contract);
-  if (params.maker) query.set('maker', params.maker);
-  if (params.status) query.set('status', params.status);
+  if (params.chainId) query.set("chainId", params.chainId.toString());
+  if (params.contract) query.set("contract", params.contract);
+  if (params.maker) query.set("maker", params.maker);
+  if (params.status) query.set("status", params.status);
 
   return useQuery({
     queryKey: QueryKeys.orders(params),
@@ -135,21 +131,21 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (orderData: any) => {
-      return fetcher<any>('/api/orderbook/orders', {
-        method: 'POST',
+      return fetcher<any>("/api/orderbook/orders", {
+        method: "POST",
         body: JSON.stringify(orderData),
       });
     },
     onSuccess: (data, variables) => {
       // 刷新相关订单列表
       queryClient.invalidateQueries({
-        queryKey: ['orders'],
+        queryKey: ["orders"],
       });
-      
+
       // 刷新订单深度
       if (variables.verifyingContract && variables.chainId) {
         queryClient.invalidateQueries({
-          queryKey: ['orderDepth', variables.verifyingContract, variables.chainId],
+          queryKey: ["orderDepth", variables.verifyingContract, variables.chainId],
         });
       }
     },
@@ -164,8 +160,8 @@ export function useFollowEvent() {
 
   return useMutation({
     mutationFn: async ({ eventId, userId }: { eventId: number; userId: string }) => {
-      return fetcher<any>('/api/follows', {
-        method: 'POST',
+      return fetcher<any>("/api/follows", {
+        method: "POST",
         body: JSON.stringify({ event_id: eventId, user_id: userId }),
       });
     },
@@ -174,12 +170,12 @@ export function useFollowEvent() {
       queryClient.invalidateQueries({
         queryKey: QueryKeys.userFollows(variables.userId),
       });
-      
+
       // 刷新事件详情（关注数变化）
       queryClient.invalidateQueries({
         queryKey: QueryKeys.prediction(variables.eventId),
       });
-      
+
       // 刷新预测列表
       queryClient.invalidateQueries({
         queryKey: QueryKeys.predictions,
@@ -196,8 +192,8 @@ export function useUnfollowEvent() {
 
   return useMutation({
     mutationFn: async ({ eventId, userId }: { eventId: number; userId: string }) => {
-      return fetcher<any>('/api/follows', {
-        method: 'DELETE',
+      return fetcher<any>("/api/follows", {
+        method: "DELETE",
         body: JSON.stringify({ event_id: eventId, user_id: userId }),
       });
     },
@@ -214,4 +210,3 @@ export function useUnfollowEvent() {
     },
   });
 }
-

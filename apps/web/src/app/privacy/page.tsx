@@ -1,7 +1,6 @@
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-white text-black">
-      
       <div className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-4">隐私政策（Privacy Policy）</h1>
         <p className="text-sm text-gray-600 mb-8">最后更新：2025-11-07</p>
@@ -10,7 +9,9 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold">1. 我们收集的信息</h2>
           <ul className="list-disc pl-6 space-y-2">
             <li>账户信息：邮箱地址、钱包账户、基础档案信息（如有）。</li>
-            <li>认证数据：一次性验证码（OTP）、登录链接（魔法链接）、签名相关元数据（如 SIWE）。</li>
+            <li>
+              认证数据：一次性验证码（OTP）、登录链接（魔法链接）、签名相关元数据（如 SIWE）。
+            </li>
             <li>技术信息：设备信息、浏览器类型、语言、IP 地址、近似位置、日志与错误报告。</li>
             <li>使用数据：页面访问、点击、交互行为与偏好设置。</li>
           </ul>
@@ -29,7 +30,8 @@ export default function PrivacyPage() {
         <section className="space-y-4 mb-8">
           <h2 className="text-xl font-semibold">3. Cookies 与本地存储</h2>
           <p>
-            我们可能使用 Cookies、LocalStorage 或类似技术用于会话保持、偏好设置与分析。你可以在浏览器中管理相关设置，但禁用后部分功能可能不可用。
+            我们可能使用 Cookies、LocalStorage
+            或类似技术用于会话保持、偏好设置与分析。你可以在浏览器中管理相关设置，但禁用后部分功能可能不可用。
           </p>
         </section>
 
@@ -77,9 +79,7 @@ export default function PrivacyPage() {
 
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">10. 联系我们</h2>
-          <p>
-            如果你对隐私相关问题有任何疑问或请求，请通过平台内的联系方式与我们取得联系。
-          </p>
+          <p>如果你对隐私相关问题有任何疑问或请求，请通过平台内的联系方式与我们取得联系。</p>
         </section>
       </div>
     </main>

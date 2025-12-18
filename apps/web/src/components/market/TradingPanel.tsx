@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   ArrowDown,
@@ -105,47 +104,46 @@ export function TradingPanel({
   const potentialProfit = tradeSide === "buy" ? amountNum - total : 0;
   const profitPercent = total > 0 ? (potentialProfit / total) * 100 : 0;
 
-  const currentOutcomeLabel =
-    outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? "Yes" : "No");
+  const currentOutcomeLabel = outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? "Yes" : "No");
   const currentOutcomeColor =
     outcomes[tradeOutcome]?.color || (tradeOutcome === 0 ? "#10b981" : "#ef4444");
 
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden flex flex-col h-full min-h-[600px] shadow-xl shadow-purple-500/5 relative">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
-      
+
       {/* Top Tabs */}
       <div className="flex border-b border-gray-100 bg-gray-50/50 p-1 mx-2 mt-4 rounded-xl gap-1">
-          <button
-            onClick={() => setActiveTab("trade")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-              activeTab === "trade"
-                ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
-            }`}
-          >
-            交易
-          </button>
-          <button
-            onClick={() => setActiveTab("depth")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-              activeTab === "depth"
-                ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
-            }`}
-          >
-            深度
-          </button>
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
-              activeTab === "orders"
-                ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
-            }`}
-          >
-            订单 ({userOrders.length})
-          </button>
+        <button
+          onClick={() => setActiveTab("trade")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            activeTab === "trade"
+              ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
+              : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
+          }`}
+        >
+          交易
+        </button>
+        <button
+          onClick={() => setActiveTab("depth")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            activeTab === "depth"
+              ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
+              : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
+          }`}
+        >
+          深度
+        </button>
+        <button
+          onClick={() => setActiveTab("orders")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            activeTab === "orders"
+              ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
+              : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
+          }`}
+        >
+          订单 ({userOrders.length})
+        </button>
       </div>
 
       {/* Content Area */}
@@ -171,8 +169,7 @@ export function TradingPanel({
                     <span
                       className="w-2 h-2 rounded-full shadow-sm"
                       style={{
-                        backgroundColor:
-                          o.color || (idx === 0 ? "#10b981" : "#ef4444"),
+                        backgroundColor: o.color || (idx === 0 ? "#10b981" : "#ef4444"),
                       }}
                     />
                     {o.label || (idx === 0 ? "Yes" : "No")}
@@ -233,9 +230,7 @@ export function TradingPanel({
               <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium text-gray-500">
                   <span>价格 (USDC)</span>
-                  {orderMode === "best" && (
-                    <span className="text-purple-500">自动匹配最优价</span>
-                  )}
+                  {orderMode === "best" && <span className="text-purple-500">自动匹配最优价</span>}
                 </div>
                 <div className="relative group">
                   <input
@@ -246,9 +241,7 @@ export function TradingPanel({
                     placeholder="0.00"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
                   />
-                  <span className="absolute right-4 top-3.5 text-gray-400 font-medium">
-                    $
-                  </span>
+                  <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
                 </div>
                 {/* Quick Price Refs */}
                 <div className="flex gap-3 text-xs font-medium pt-1">
@@ -289,14 +282,12 @@ export function TradingPanel({
             <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-sm border border-gray-100">
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">总投入</span>
-                <span className="text-gray-900 font-bold text-base">
-                  ${total.toFixed(2)}
-                </span>
+                <span className="text-gray-900 font-bold text-base">${total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">潜在回报</span>
                 <span className="text-emerald-600 font-bold text-base flex items-center gap-1">
-                  ${potentialReturn.toFixed(2)} 
+                  ${potentialReturn.toFixed(2)}
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium">
                     +{profitPercent.toFixed(0)}%
                   </span>
@@ -313,8 +304,8 @@ export function TradingPanel({
                   isSubmitting
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
                     : tradeSide === "buy"
-                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-200"
-                    : "bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-rose-200"
+                      ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-200"
+                      : "bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-rose-200"
                 }`}
               >
                 {isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
@@ -348,7 +339,9 @@ export function TradingPanel({
                 </div>
                 <div className="space-y-1.5">
                   {depthBuy.length === 0 && (
-                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">暂无买单</div>
+                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">
+                      暂无买单
+                    </div>
                   )}
                   {depthBuy.map((row, i) => (
                     <div
@@ -356,7 +349,9 @@ export function TradingPanel({
                       onClick={() => fillPrice(row.price)}
                       className="flex justify-between text-xs cursor-pointer hover:bg-emerald-50 p-2 rounded-lg transition-colors group"
                     >
-                      <span className="text-emerald-600 font-medium group-hover:text-emerald-700">{row.price}</span>
+                      <span className="text-emerald-600 font-medium group-hover:text-emerald-700">
+                        {row.price}
+                      </span>
                       <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
                     </div>
                   ))}
@@ -370,7 +365,9 @@ export function TradingPanel({
                 </div>
                 <div className="space-y-1.5">
                   {depthSell.length === 0 && (
-                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">暂无卖单</div>
+                    <div className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">
+                      暂无卖单
+                    </div>
                   )}
                   {depthSell.map((row, i) => (
                     <div
@@ -378,7 +375,9 @@ export function TradingPanel({
                       onClick={() => fillPrice(row.price)}
                       className="flex justify-between text-xs cursor-pointer hover:bg-rose-50 p-2 rounded-lg transition-colors group"
                     >
-                      <span className="text-rose-600 font-medium group-hover:text-rose-700">{row.price}</span>
+                      <span className="text-rose-600 font-medium group-hover:text-rose-700">
+                        {row.price}
+                      </span>
                       <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
                     </div>
                   ))}
@@ -413,8 +412,7 @@ export function TradingPanel({
                         {o.is_buy ? "买" : "卖"}
                       </span>
                       <span className="text-sm font-bold text-gray-900">
-                        {outcomes[o.outcome_index]?.label ||
-                          (o.outcome_index === 0 ? "Yes" : "No")}
+                        {outcomes[o.outcome_index]?.label || (o.outcome_index === 0 ? "Yes" : "No")}
                       </span>
                     </div>
                     <div className="text-xs font-medium text-gray-500 mt-1.5 ml-1">

@@ -6,10 +6,7 @@ export async function GET(req: NextRequest) {
     const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ data: [] });
 
-    const { data, error } = await client
-      .from("emojis")
-      .select("*")
-      .order('id');
+    const { data, error } = await client.from("emojis").select("*").order("id");
 
     if (error) {
       console.error("Fetch emojis error:", error);

@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, HelpCircle } from "lucide-react";
-import {
-  OFFICIAL_STICKERS,
-  StickerItem,
-  isImageUrl,
-} from "./StickerRevealModal";
+import { OFFICIAL_STICKERS, StickerItem, isImageUrl } from "./StickerRevealModal";
 
 interface StickerGalleryModalProps {
   isOpen: boolean;
@@ -20,9 +16,7 @@ export default function StickerGalleryModal({
   collectedIds,
   stickers = [],
 }: StickerGalleryModalProps) {
-  const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(
-    null
-  );
+  const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
 
   const displayStickers = stickers.length > 0 ? stickers : OFFICIAL_STICKERS;
 
@@ -145,9 +139,7 @@ export default function StickerGalleryModal({
                     ) : (
                       <>
                         <Lock className="w-8 h-8 text-gray-300 mb-2" />
-                        <div className="text-[10px] font-bold text-gray-400">
-                          ???
-                        </div>
+                        <div className="text-[10px] font-bold text-gray-400">???</div>
                       </>
                     )}
                   </motion.div>
@@ -179,9 +171,7 @@ export default function StickerGalleryModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-gray-900 truncate">
-                        {selectedSticker.name}
-                      </h4>
+                      <h4 className="font-bold text-gray-900 truncate">{selectedSticker.name}</h4>
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${getRarityColor(
                           selectedSticker.rarity
@@ -190,9 +180,7 @@ export default function StickerGalleryModal({
                         {getRarityLabel(selectedSticker.rarity)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate">
-                      {selectedSticker.desc}
-                    </p>
+                    <p className="text-sm text-gray-500 truncate">{selectedSticker.desc}</p>
                   </div>
                   <button
                     onClick={() => setSelectedSticker(null)}

@@ -54,11 +54,7 @@ export default function ChatPanel({
     return nameMap[key] || formatAddress(addr);
   };
 
-  const quickPrompts = [
-    "这条预测的依据是什么？",
-    "有没有最新进展？",
-    "我认为概率更高的理由是…",
-  ];
+  const quickPrompts = ["这条预测的依据是什么？", "有没有最新进展？", "我认为概率更高的理由是…"];
 
   useEffect(() => {
     let unsub: any;
@@ -120,9 +116,7 @@ export default function ChatPanel({
               const merged = [...prev];
               if (!merged.find((x) => x.id === m.id)) merged.push(m);
               merged.sort(
-                (a, b) =>
-                  new Date(a.created_at).getTime() -
-                  new Date(b.created_at).getTime()
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               return merged;
             });
@@ -184,9 +178,7 @@ export default function ChatPanel({
           fm.push({
             id: `thread:${t.id}`,
             user_id: String(t.user_id || ""),
-            content: `${String(t.title || "")}\n${String(
-              t.content || ""
-            )}`.trim(),
+            content: `${String(t.title || "")}\n${String(t.content || "")}`.trim(),
             created_at: String(t.created_at || ""),
           });
           (Array.isArray(t.comments) ? t.comments : []).forEach((c: any) => {
@@ -198,10 +190,7 @@ export default function ChatPanel({
             });
           });
         });
-        fm.sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+        fm.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         setForumMessages(fm);
       } catch {}
     };
@@ -224,9 +213,7 @@ export default function ChatPanel({
         if (m.user_id) addrs.add(String(m.user_id));
       });
       if (account) addrs.add(String(account));
-      const unknown = Array.from(addrs).filter(
-        (a) => !nameMap[String(a || "").toLowerCase()]
-      );
+      const unknown = Array.from(addrs).filter((a) => !nameMap[String(a || "").toLowerCase()]);
       if (unknown.length === 0) return;
       const next = await fetchUsernamesByAddresses(unknown);
       if (Object.keys(next).length === 0) return;
@@ -242,10 +229,7 @@ export default function ChatPanel({
       byId[m.id] = m;
     });
     const arr = Object.values(byId);
-    arr.sort(
-      (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     return arr;
   }, [messages, forumMessages]);
 
@@ -290,11 +274,9 @@ export default function ChatPanel({
     if (c.includes("科技")) return "bg-sky-100 text-sky-700";
     if (c.includes("体育")) return "bg-emerald-100 text-emerald-700";
     if (c.includes("娱乐")) return "bg-pink-100 text-pink-700";
-    if (c.includes("时政") || c.includes("政治"))
-      return "bg-emerald-100 text-emerald-700";
+    if (c.includes("时政") || c.includes("政治")) return "bg-emerald-100 text-emerald-700";
     if (c.includes("天气")) return "bg-cyan-100 text-cyan-700";
-    if (c.includes("加密") || c.includes("crypto"))
-      return "bg-indigo-100 text-indigo-700";
+    if (c.includes("加密") || c.includes("crypto")) return "bg-indigo-100 text-indigo-700";
     if (c.includes("生活")) return "bg-rose-100 text-rose-700";
     if (c.includes("科技")) return "bg-violet-100 text-violet-700";
     if (c.includes("体育")) return "bg-orange-100 text-orange-700";
@@ -320,8 +302,7 @@ export default function ChatPanel({
     const c = String(roomCategory || "").toLowerCase();
     if (c.includes("体育")) return "from-orange-500/90 to-amber-500/90";
     if (c.includes("娱乐")) return "from-pink-500/90 to-rose-500/90";
-    if (c.includes("时政") || c.includes("政治"))
-      return "from-emerald-500/90 to-teal-500/90";
+    if (c.includes("时政") || c.includes("政治")) return "from-emerald-500/90 to-teal-500/90";
     if (c.includes("天气")) return "from-cyan-500/90 to-blue-500/90";
     if (c.includes("科技")) return "from-violet-500/90 to-purple-500/90";
     return "from-indigo-500/90 to-purple-600/90";
@@ -332,8 +313,8 @@ export default function ChatPanel({
     minHeightPx && minHeightPx > 0
       ? `${minHeightPx}px`
       : minHeightVh && minHeightVh > 0
-      ? `${minHeightVh}vh`
-      : "100%"
+        ? `${minHeightVh}vh`
+        : "100%"
   );
 
   return (
@@ -357,18 +338,14 @@ export default function ChatPanel({
       </div>
 
       <div className="px-4 py-2 bg-white/10 border-b border-white/20 flex items-center gap-2 text-xs text-white">
-        <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">
-          公告
-        </span>
+        <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">公告</span>
         <div className="flex-1 truncate">
           {forumThreads.slice(0, 2).map((t) => (
             <span key={t.id} className="mr-3 opacity-90">
               {String(t.title || "").slice(0, 40)}
             </span>
           ))}
-          {forumThreads.length === 0 && (
-            <span className="opacity-75">暂无公告</span>
-          )}
+          {forumThreads.length === 0 && <span className="opacity-75">暂无公告</span>}
         </div>
       </div>
 
@@ -385,9 +362,7 @@ export default function ChatPanel({
         className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent custom-scrollbar"
       >
         {mergedMessages.length === 0 && (
-          <div className="text-center text-gray-400 text-sm mt-10">
-            暂无消息，快来开启讨论吧！
-          </div>
+          <div className="text-center text-gray-400 text-sm mt-10">暂无消息，快来开启讨论吧！</div>
         )}
         {mergedMessages.map((m, i) => {
           const mine =
@@ -397,8 +372,7 @@ export default function ChatPanel({
           const prev = i > 0 ? mergedMessages[i - 1] : null;
           const dateChanged =
             prev &&
-            new Date(prev.created_at).toDateString() !==
-              new Date(m.created_at).toDateString();
+            new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
           return (
             <React.Fragment key={m.id}>
               {dateChanged && (
@@ -408,9 +382,7 @@ export default function ChatPanel({
                   </span>
                 </div>
               )}
-              <div
-                className={`flex items-end gap-3 ${mine ? "justify-end" : ""}`}
-              >
+              <div className={`flex items-end gap-3 ${mine ? "justify-end" : ""}`}>
                 <div
                   className={`${
                     mine ? "order-2" : ""
@@ -430,9 +402,7 @@ export default function ChatPanel({
                       <span className="mr-2">{displayName(m.user_id)}</span>
                       <span>{new Date(m.created_at).toLocaleString()}</span>
                     </div>
-                    <div className="leading-relaxed break-words">
-                      {m.content}
-                    </div>
+                    <div className="leading-relaxed break-words">{m.content}</div>
                   </div>
                 </div>
               </div>
@@ -444,9 +414,7 @@ export default function ChatPanel({
       <div className="p-3 border-t border-white/30 bg-white/20 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-white">
         {!account ? (
           <div className="flex items-center justify-between">
-            <div className="text-sm text-white font-medium">
-              发送消息需连接钱包
-            </div>
+            <div className="text-sm text-white font-medium">发送消息需连接钱包</div>
             <Button
               size="sm"
               variant="cta"
@@ -508,38 +476,22 @@ export default function ChatPanel({
                 </div>
                 {showEmojis && (
                   <div className="absolute right-0 bottom-14 z-10 bg-white/80 backdrop-blur-md border border-white/60 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1">
-                    {[
-                      "🙂",
-                      "🔥",
-                      "🚀",
-                      "💡",
-                      "🎯",
-                      "👏",
-                      "📈",
-                      "🤔",
-                      "✅",
-                      "❗",
-                      "✨",
-                      "📌",
-                    ].map((emo) => (
-                      <button
-                        key={emo}
-                        className="text-base px-1 py-1 hover:bg-gray-100 rounded"
-                        type="button"
-                        onClick={() => setInput((prev) => prev + emo)}
-                      >
-                        {emo}
-                      </button>
-                    ))}
+                    {["🙂", "🔥", "🚀", "💡", "🎯", "👏", "📈", "🤔", "✅", "❗", "✨", "📌"].map(
+                      (emo) => (
+                        <button
+                          key={emo}
+                          className="text-base px-1 py-1 hover:bg-gray-100 rounded"
+                          type="button"
+                          onClick={() => setInput((prev) => prev + emo)}
+                        >
+                          {emo}
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
               </div>
-              <Button
-                onClick={sendMessage}
-                disabled={sending}
-                size="sm"
-                variant="primary"
-              >
+              <Button onClick={sendMessage} disabled={sending} size="sm" variant="primary">
                 {sending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />

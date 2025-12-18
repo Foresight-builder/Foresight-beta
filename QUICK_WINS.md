@@ -8,6 +8,7 @@
 ## 🎯 立即可做（今天！）
 
 ### 1. 添加 .nvmrc 文件
+
 **时间**: 2 分钟  
 **价值**: ⭐⭐⭐
 
@@ -20,6 +21,7 @@ echo "20" > .nvmrc
 ---
 
 ### 2. 配置 Prettier
+
 **时间**: 10 分钟  
 **价值**: ⭐⭐⭐⭐
 
@@ -28,6 +30,7 @@ npm install --save-dev prettier
 ```
 
 创建 `.prettierrc`:
+
 ```json
 {
   "semi": true,
@@ -38,6 +41,7 @@ npm install --save-dev prettier
 ```
 
 运行格式化:
+
 ```bash
 npx prettier --write "apps/web/src/**/*.{ts,tsx}"
 ```
@@ -47,10 +51,12 @@ npx prettier --write "apps/web/src/**/*.{ts,tsx}"
 ---
 
 ### 3. 添加 Lighthouse CI
+
 **时间**: 15 分钟  
 **价值**: ⭐⭐⭐⭐
 
 `.github/workflows/lighthouse.yml`:
+
 ```yaml
 name: Lighthouse CI
 on: [pull_request]
@@ -71,6 +77,7 @@ jobs:
 ---
 
 ### 4. 添加 bundle 分析
+
 **时间**: 5 分钟  
 **价值**: ⭐⭐⭐⭐⭐
 
@@ -79,9 +86,10 @@ npm install --save-dev @next/bundle-analyzer
 ```
 
 `next.config.ts`:
+
 ```typescript
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
 });
 
 module.exports = withBundleAnalyzer({
@@ -90,6 +98,7 @@ module.exports = withBundleAnalyzer({
 ```
 
 运行:
+
 ```bash
 ANALYZE=true npm run build
 ```
@@ -101,6 +110,7 @@ ANALYZE=true npm run build
 ## 📋 本周可完成（2-3天）
 
 ### 5. 添加 Health Check 端点
+
 **时间**: 30 分钟  
 **价值**: ⭐⭐⭐⭐⭐
 
@@ -114,12 +124,12 @@ export async function GET() {
     redis: await checkRedis(),
     externalAPI: await checkExternalAPI(),
   };
-  
-  const allHealthy = Object.values(checks).every(c => c.healthy);
-  
+
+  const allHealthy = Object.values(checks).every((c) => c.healthy);
+
   return NextResponse.json(
-    { 
-      status: allHealthy ? 'healthy' : 'degraded',
+    {
+      status: allHealthy ? "healthy" : "degraded",
       checks,
       timestamp: new Date().toISOString(),
     },
@@ -133,6 +143,7 @@ export async function GET() {
 ---
 
 ### 6. 图片优化
+
 **时间**: 1 小时  
 **价值**: ⭐⭐⭐⭐⭐
 
@@ -140,21 +151,16 @@ export async function GET() {
 
 ```tsx
 // 优化前
-<img src="/logo.png" alt="Logo" />
+<img src="/logo.png" alt="Logo" />;
 
 // 优化后
-import Image from 'next/image';
+import Image from "next/image";
 
-<Image 
-  src="/logo.png" 
-  alt="Logo" 
-  width={100} 
-  height={100}
-  loading="lazy"
-/>
+<Image src="/logo.png" alt="Logo" width={100} height={100} loading="lazy" />;
 ```
 
-**好处**: 
+**好处**:
+
 - 自动优化图片格式（WebP）
 - 懒加载
 - 响应式图片
@@ -163,6 +169,7 @@ import Image from 'next/image';
 ---
 
 ### 7. 添加错误边界日志
+
 **时间**: 30 分钟  
 **价值**: ⭐⭐⭐⭐
 
@@ -171,8 +178,8 @@ import Image from 'next/image';
 ```typescript
 useEffect(() => {
   // 发送到日志服务
-  fetch('/api/error-log', {
-    method: 'POST',
+  fetch("/api/error-log", {
+    method: "POST",
     body: JSON.stringify({
       error: error.message,
       stack: error.stack,
@@ -189,14 +196,16 @@ useEffect(() => {
 ---
 
 ### 8. API 响应压缩
+
 **时间**: 10 分钟  
 **价值**: ⭐⭐⭐⭐
 
 `next.config.ts`:
+
 ```typescript
 module.exports = {
   compress: true, // 启用 gzip 压缩
-  
+
   // 对大于 1KB 的响应压缩
   experimental: {
     compress: {
@@ -211,12 +220,14 @@ module.exports = {
 ---
 
 ### 9. 添加 Meta 标签
+
 **时间**: 1 小时  
 **价值**: ⭐⭐⭐⭐
 
 在 `layout.tsx` 中添加完整的 SEO meta（见主文档）
 
-**好处**: 
+**好处**:
+
 - Google 搜索排名提升
 - 社交媒体分享预览
 - 提升专业度
@@ -224,10 +235,12 @@ module.exports = {
 ---
 
 ### 10. 配置 robots.txt
+
 **时间**: 5 分钟  
 **价值**: ⭐⭐⭐
 
 `public/robots.txt`:
+
 ```txt
 User-agent: *
 Allow: /
@@ -244,6 +257,7 @@ Sitemap: https://foresight.market/sitemap.xml
 ## 🔥 极速优化（半天）
 
 ### 11. 去除未使用的依赖
+
 **时间**: 2 小时  
 **价值**: ⭐⭐⭐⭐
 
@@ -258,7 +272,8 @@ npx depcheck
 npm uninstall <package-name>
 ```
 
-**好处**: 
+**好处**:
+
 - 减少 node_modules 大小
 - 加快安装速度
 - 减少安全风险
@@ -266,18 +281,21 @@ npm uninstall <package-name>
 ---
 
 ### 12. React Query 优化配置（已完成✅）
+
 **时间**: 0 分钟  
 **价值**: ⭐⭐⭐⭐⭐
 
 已在之前的修复中完成！
 
 **好处**:
+
 - 减少 60% 的网络请求
 - 更快的页面切换
 
 ---
 
 ### 13. 数据库索引（已完成✅）
+
 **时间**: 0 分钟  
 **价值**: ⭐⭐⭐⭐⭐
 
@@ -293,13 +311,14 @@ npm uninstall <package-name>
 ---
 
 ### 14. 添加 Loading 状态
+
 **时间**: 2 小时  
 **价值**: ⭐⭐⭐⭐
 
 使用我们创建的骨架屏组件：
 
 ```tsx
-import { CardListSkeleton } from '@/components/skeletons';
+import { CardListSkeleton } from "@/components/skeletons";
 
 if (isLoading) {
   return <CardListSkeleton count={6} />;
@@ -312,38 +331,42 @@ if (isLoading) {
 
 ## 📊 投资回报率排名
 
-| 优化项 | 时间 | 价值 | ROI |
-|--------|------|------|-----|
-| Bundle 分析 | 5分钟 | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥🔥 |
-| 图片优化 | 1小时 | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥🔥 |
-| Health Check | 30分钟 | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥 |
-| Meta 标签 | 1小时 | ⭐⭐⭐⭐ | 🔥🔥🔥🔥 |
-| API 压缩 | 10分钟 | ⭐⭐⭐⭐ | 🔥🔥🔥🔥 |
-| Prettier | 10分钟 | ⭐⭐⭐⭐ | 🔥🔥🔥 |
-| 错误日志 | 30分钟 | ⭐⭐⭐⭐ | 🔥🔥🔥 |
-| 去除依赖 | 2小时 | ⭐⭐⭐⭐ | 🔥🔥🔥 |
+| 优化项       | 时间   | 价值       | ROI        |
+| ------------ | ------ | ---------- | ---------- |
+| Bundle 分析  | 5分钟  | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥🔥 |
+| 图片优化     | 1小时  | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥🔥 |
+| Health Check | 30分钟 | ⭐⭐⭐⭐⭐ | 🔥🔥🔥🔥   |
+| Meta 标签    | 1小时  | ⭐⭐⭐⭐   | 🔥🔥🔥🔥   |
+| API 压缩     | 10分钟 | ⭐⭐⭐⭐   | 🔥🔥🔥🔥   |
+| Prettier     | 10分钟 | ⭐⭐⭐⭐   | 🔥🔥🔥     |
+| 错误日志     | 30分钟 | ⭐⭐⭐⭐   | 🔥🔥🔥     |
+| 去除依赖     | 2小时  | ⭐⭐⭐⭐   | 🔥🔥🔥     |
 
 ---
 
 ## 🎯 建议执行顺序
 
 ### Day 1 上午（2小时）
+
 1. ✅ 添加 .nvmrc
 2. ✅ 配置 Prettier
 3. ✅ 添加 bundle 分析
 4. ✅ 运行并优化
 
 ### Day 1 下午（3小时）
+
 5. ✅ 图片优化（最重要！）
 6. ✅ 添加 Meta 标签
 7. ✅ 配置 robots.txt
 
 ### Day 2 上午（2小时）
+
 8. ✅ Health Check 增强
 9. ✅ API 压缩
 10. ✅ 错误边界日志
 
 ### Day 2 下午（3小时）
+
 11. ✅ 去除未使用依赖
 12. ✅ 添加 Loading 骨架屏
 13. ✅ Lighthouse CI
@@ -354,13 +377,13 @@ if (isLoading) {
 
 完成上述优化后：
 
-| 指标 | 优化前 | 优化后 | 提升 |
-|------|--------|--------|------|
-| Lighthouse 分数 | 65 | 85+ | +20 |
-| 首屏加载 | 3s | 1.5s | 50% |
-| Bundle 大小 | 800KB | 500KB | 37% |
-| 网络请求数 | 50+ | 20-30 | 40% |
-| 感知速度 | 😐 | 🚀 | ++++ |
+| 指标            | 优化前 | 优化后 | 提升 |
+| --------------- | ------ | ------ | ---- |
+| Lighthouse 分数 | 65     | 85+    | +20  |
+| 首屏加载        | 3s     | 1.5s   | 50%  |
+| Bundle 大小     | 800KB  | 500KB  | 37%  |
+| 网络请求数      | 50+    | 20-30  | 40%  |
+| 感知速度        | 😐     | 🚀     | ++++ |
 
 ---
 
@@ -384,6 +407,7 @@ if (isLoading) {
 ---
 
 **完成后别忘了**:
+
 1. 运行 `npm run build` 检查构建
 2. 运行 Lighthouse 测试
 3. 提交代码并创建 PR
@@ -392,4 +416,3 @@ if (isLoading) {
 ---
 
 **需要帮助？** 参考完整的 `OPTIMIZATION_ROADMAP.md`
-

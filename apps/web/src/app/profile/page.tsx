@@ -185,9 +185,7 @@ export default function ProfilePage() {
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 p-[3px] mb-4 shadow-lg shadow-fuchsia-500/30 hover:scale-105 transition-transform duration-300">
                   <div className="w-full h-full rounded-full bg-white p-1 flex items-center justify-center overflow-hidden">
                     <img
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                        account || "User"
-                      }`}
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${account || "User"}`}
                       alt="Avatar"
                       className="w-full h-full object-cover rounded-full bg-gray-50"
                     />
@@ -198,32 +196,24 @@ export default function ProfilePage() {
                 </h2>
                 <div className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono text-purple-600 mb-6 shadow-sm">
                   <Wallet className="w-3.5 h-3.5" />
-                  {account
-                    ? `${account.slice(0, 6)}...${account.slice(-4)}`
-                    : "未连接钱包"}
+                  {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "未连接钱包"}
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 w-full mb-2">
                   <div className="text-center p-3 bg-violet-50/80 rounded-2xl border border-violet-100 hover:bg-violet-100/80 transition-colors">
-                    <div className="text-xl font-black text-violet-600">
-                      {positionsCount}
-                    </div>
+                    <div className="text-xl font-black text-violet-600">{positionsCount}</div>
                     <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wide">
                       预测
                     </div>
                   </div>
                   <div className="text-center p-3 bg-fuchsia-50/80 rounded-2xl border border-fuchsia-100 hover:bg-fuchsia-100/80 transition-colors">
-                    <div className="text-xl font-black text-fuchsia-600">
-                      {followingCount}
-                    </div>
+                    <div className="text-xl font-black text-fuchsia-600">{followingCount}</div>
                     <div className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wide">
                       关注
                     </div>
                   </div>
                   <div className="text-center p-3 bg-cyan-50/80 rounded-2xl border border-cyan-100 hover:bg-cyan-100/80 transition-colors">
-                    <div className="text-xl font-black text-cyan-600">
-                      {history.length}
-                    </div>
+                    <div className="text-xl font-black text-cyan-600">{history.length}</div>
                     <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-wide">
                       浏览
                     </div>
@@ -286,10 +276,7 @@ export default function ProfilePage() {
                 transition={{ duration: 0.3 }}
               >
                 {activeTab === "overview" && (
-                  <OverviewTab
-                    portfolioStats={portfolioStats}
-                    positionsCount={positionsCount}
-                  />
+                  <OverviewTab portfolioStats={portfolioStats} positionsCount={positionsCount} />
                 )}
                 {activeTab === "predictions" && <PredictionsTab />}
                 {activeTab === "history" && <HistoryTab />}
@@ -333,9 +320,7 @@ function OverviewTab({
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
           <div className="relative z-10">
             <div className="text-purple-200 text-sm font-bold mb-1">总押注</div>
-            <div className="text-3xl font-black mb-4">
-              ${totalInvested.toFixed(2)}
-            </div>
+            <div className="text-3xl font-black mb-4">${totalInvested.toFixed(2)}</div>
             <div className="flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-md">
               <TrendingUp className="w-3 h-3" />
               <span>共参与 {positionsCount} 场预测</span>
@@ -351,13 +336,14 @@ function OverviewTab({
           </div>
           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full ${
-                realizedPnl >= 0 ? "bg-green-500" : "bg-red-500"
-              }`}
+              className={`h-full rounded-full ${realizedPnl >= 0 ? "bg-green-500" : "bg-red-500"}`}
               style={{
                 width: `${Math.max(
                   5,
-                  Math.min(100, Math.abs(totalInvested > 0 ? (realizedPnl / totalInvested) * 100 : 0))
+                  Math.min(
+                    100,
+                    Math.abs(totalInvested > 0 ? (realizedPnl / totalInvested) * 100 : 0)
+                  )
                 )}%`,
               }}
             />
@@ -366,9 +352,7 @@ function OverviewTab({
 
         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
           <div className="text-gray-400 text-sm font-bold mb-1">胜率</div>
-          <div className="text-3xl font-black text-gray-900 mb-4">
-            {winRate}
-          </div>
+          <div className="text-3xl font-black text-gray-900 mb-4">{winRate}</div>
           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500 rounded-full"
@@ -384,10 +368,7 @@ function OverviewTab({
           </div>
           <div className="flex -space-x-2">
             {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white"
-              />
+              <div key={i} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white" />
             ))}
           </div>
         </div>
@@ -413,8 +394,8 @@ function OverviewTab({
                   {i === 0
                     ? "买入 Yes - Bitcoin 100k"
                     : i === 1
-                    ? "结算收益 +$50"
-                    : "浏览了 SpaceX 话题"}
+                      ? "结算收益 +$50"
+                      : "浏览了 SpaceX 话题"}
                 </div>
                 <div className="text-xs text-gray-400">2小时前</div>
               </div>
@@ -489,21 +470,13 @@ function PredictionsTab() {
       <div className="grid gap-4">
         {predictions.map((pred) => {
           const yesProb =
-            typeof pred.stats?.yesProbability === "number"
-              ? pred.stats.yesProbability
-              : 0.5;
+            typeof pred.stats?.yesProbability === "number" ? pred.stats.yesProbability : 0.5;
           const noProb =
-            typeof pred.stats?.noProbability === "number"
-              ? pred.stats.noProbability
-              : 1 - yesProb;
+            typeof pred.stats?.noProbability === "number" ? pred.stats.noProbability : 1 - yesProb;
 
-          const isYes =
-            String(pred.outcome || "").toLowerCase() === "yes";
+          const isYes = String(pred.outcome || "").toLowerCase() === "yes";
           const sideProb = isYes ? yesProb : noProb;
-          const probPercent = Math.max(
-            0,
-            Math.min(100, Number((sideProb * 100).toFixed(1)) || 0)
-          );
+          const probPercent = Math.max(0, Math.min(100, Number((sideProb * 100).toFixed(1)) || 0));
 
           return (
             <Link href={`/prediction/${pred.id}`} key={pred.id}>
@@ -520,9 +493,7 @@ function PredictionsTab() {
                   <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                     <span
                       className={`px-2 py-0.5 rounded-md font-bold ${
-                        isYes
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
+                        isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                       }`}
                     >
                       {pred.outcome}
@@ -532,38 +503,27 @@ function PredictionsTab() {
                   <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-1">
                     <span className="flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-purple-500" />
-                      <span>
-                        成交 $
-                        {Number(pred.stats?.totalAmount || 0).toFixed(2)}
-                      </span>
+                      <span>成交 ${Number(pred.stats?.totalAmount || 0).toFixed(2)}</span>
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="w-3 h-3 text-gray-400" />
-                      <span>
-                        {Number(pred.stats?.participantCount || 0)} 人参与
-                      </span>
+                      <span>{Number(pred.stats?.participantCount || 0)} 人参与</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
                     <span>你选择方向的当前市场概率</span>
-                    <span className="font-bold text-gray-700">
-                      {probPercent.toFixed(1)}%
-                    </span>
+                    <span className="font-bold text-gray-700">{probPercent.toFixed(1)}%</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <div
                     className={`font-bold ${
-                      pred.pnl.startsWith("+")
-                        ? "text-green-600"
-                        : "text-red-600"
+                      pred.pnl.startsWith("+") ? "text-green-600" : "text-red-600"
                     }`}
                   >
                     {pred.pnl}
                   </div>
-                  <div className="text-xs text-gray-400 uppercase">
-                    {pred.status}
-                  </div>
+                  <div className="text-xs text-gray-400 uppercase">{pred.status}</div>
                 </div>
               </div>
             </Link>
@@ -638,10 +598,7 @@ function HistoryTab() {
             <div className="bg-white rounded-[1.5rem] p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
               <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                 <img
-                  src={
-                    item.image_url ||
-                    `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`
-                  }
+                  src={item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`}
                   alt={item.title || "浏览记录封面"}
                   className="w-full h-full object-cover"
                 />
@@ -655,8 +612,7 @@ function HistoryTab() {
                     </span>
                   )}
                   <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />{" "}
-                    {new Date(item.viewed_at).toLocaleString()}
+                    <Clock className="w-3 h-3" /> {new Date(item.viewed_at).toLocaleString()}
                   </span>
                 </div>
                 <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors">
@@ -731,10 +687,7 @@ function FollowingTab() {
             <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group h-full flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <img
-                  src={
-                    item.image_url ||
-                    `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`
-                  }
+                  src={item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`}
                   alt={item.title || "关注事件封面"}
                   className="w-10 h-10 rounded-full bg-gray-100 object-cover"
                 />
@@ -750,9 +703,7 @@ function FollowingTab() {
                   {item.followers_count} 人关注
                 </span>
                 {item.deadline && (
-                  <span>
-                    • {new Date(item.deadline).toLocaleDateString()} 截止
-                  </span>
+                  <span>• {new Date(item.deadline).toLocaleDateString()} 截止</span>
                 )}
               </div>
             </div>

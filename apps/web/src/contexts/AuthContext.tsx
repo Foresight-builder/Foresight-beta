@@ -1,11 +1,5 @@
 "use client";
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface AuthContextValue {
@@ -55,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    const hasRemember = (typeof document !== "undefined") && document.cookie.split(";").some(s => s.trim().startsWith("fs_remember=1"));
+    const hasRemember =
+      typeof document !== "undefined" &&
+      document.cookie.split(";").some((s) => s.trim().startsWith("fs_remember=1"));
     if (!hasRemember) {
       setUser(null);
       setLoading(false);
@@ -69,10 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(
           sessUser
             ? {
-              id: sessUser.id,
-              email: sessUser.email ?? null,
-              user_metadata: sessUser.user_metadata,
-            }
+                id: sessUser.id,
+                email: sessUser.email ?? null,
+                user_metadata: sessUser.user_metadata,
+              }
             : null
         );
         setLoading(false);
@@ -80,21 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // 监听会话变化
-    const { data: sub } = (supabase as any).auth.onAuthStateChange(
-      (_event: any, session: any) => {
-        const sessUser = session?.user || null;
-        setUser(
-          sessUser
-            ? {
+    const { data: sub } = (supabase as any).auth.onAuthStateChange((_event: any, session: any) => {
+      const sessUser = session?.user || null;
+      setUser(
+        sessUser
+          ? {
               id: sessUser.id,
               email: sessUser.email ?? null,
               user_metadata: sessUser.user_metadata,
             }
-            : null
-        );
-        setLoading(false);
-      }
-    );
+          : null
+      );
+      setLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -106,8 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
-      const redirectTo =
-        typeof window !== "undefined" ? window.location.origin : undefined;
+      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
       if (!supabase) throw new Error("Supabase 未配置");
       const { error } = await (supabase as any).auth.signInWithOtp({
         email,
@@ -154,8 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendMagicLink = async (email: string) => {
     setError(null);
     try {
-      const redirectTo =
-        typeof window !== "undefined" ? window.location.origin : undefined;
+      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
       if (!supabase) throw new Error("Supabase 未配置");
       const { error } = await (supabase as any).auth.signInWithOtp({
         email,

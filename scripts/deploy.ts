@@ -41,13 +41,10 @@ async function main() {
     address: address,
     collateralToken: tokenAddress,
     deployer: deployerAddress,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
-  fs.writeFileSync(
-    "deployment.json",
-    JSON.stringify(deploymentInfo, null, 2)
-  );
+  fs.writeFileSync("deployment.json", JSON.stringify(deploymentInfo, null, 2));
 
   console.log("Deployment information saved to deployment.json");
 }

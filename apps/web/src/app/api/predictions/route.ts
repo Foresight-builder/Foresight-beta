@@ -1,16 +1,7 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getClient,
-  supabaseAdmin,
-  supabase,
-  type Prediction,
-} from "@/lib/supabase";
-import {
-  getSessionAddress,
-  normalizeAddress,
-  isAdminAddress,
-} from "@/lib/serverUtils";
+import { getClient, supabaseAdmin, supabase, type Prediction } from "@/lib/supabase";
+import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,16 +12,12 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const status = searchParams.get("status");
     const limit = searchParams.get("limit");
-    const includeOutcomes =
-      (searchParams.get("includeOutcomes") || "0") !== "0";
+    const includeOutcomes = (searchParams.get("includeOutcomes") || "0") !== "0";
 
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
 
     // 构建Supabase查询
@@ -86,9 +73,7 @@ export async function GET(request: NextRequest) {
               return [eid, e ? 0 : count || 0] as const;
             })
           );
-          followerCounts = Object.fromEntries(
-            list.map(([k, v]) => [Number(k), Number(v)])
-          );
+          followerCounts = Object.fromEntries(list.map(([k, v]) => [Number(k), Number(v)]));
         }
       }
 
@@ -183,10 +168,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("获取预测事件列表异常:", error);
-    return NextResponse.json(
-      { success: false, message: "获取预测事件列表失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "获取预测事件列表失败" }, { status: 500 });
   }
 }
 
@@ -196,9 +178,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const sessAddr = getSessionAddress(request);
-    let walletAddress: string = normalizeAddress(
-      String(body.walletAddress || "")
-    );
+    let walletAddress: string = normalizeAddress(String(body.walletAddress || ""));
     if (!walletAddress && sessAddr) walletAddress = normalizeAddress(sessAddr);
 
     // 验证钱包地址格式
@@ -221,14 +201,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证必填字段
-    const requiredFields = [
-      "title",
-      "description",
-      "category",
-      "deadline",
-      "minStake",
-      "criteria",
-    ];
+    const requiredFields = ["title", "description", "category", "deadline", "minStake", "criteria"];
     const missingFields = requiredFields.filter((field) => !body[field]);
 
     if (missingFields.length > 0) {
@@ -253,10 +226,7 @@ export async function POST(request: NextRequest) {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
     const client = (getClient() || supabase) as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
 
     const { data: prof, error: profErr } = await (client as any)
@@ -266,10 +236,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(walletAddress);
     if (profErr || !isAdmin) {
-      return NextResponse.json(
-        { success: false, message: "需要管理员权限" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
     }
     // 检查是否已存在相同标题的预测事件
     const { data: rawExistingPredictions, error: checkError } = await client
@@ -288,10 +255,7 @@ export async function POST(request: NextRequest) {
 
     if (checkError) {
       console.error("检查重复标题失败:", checkError);
-      return NextResponse.json(
-        { success: false, message: "检查预测事件失败" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "检查预测事件失败" }, { status: 500 });
     }
 
     // 如果存在相同标题的预测事件，返回错误并列出所有重复事件
@@ -314,10 +278,7 @@ export async function POST(request: NextRequest) {
 
     // 验证图片URL（如果提供了）
     if (body.imageUrl && typeof body.imageUrl !== "string") {
-      return NextResponse.json(
-        { success: false, message: "图片URL格式无效" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "图片URL格式无效" }, { status: 400 });
     }
 
     // 优先使用上传的图片URL，如果没有上传则使用生成的图片
@@ -330,16 +291,14 @@ export async function POST(request: NextRequest) {
         imageUrl = body.imageUrl;
       } else {
         // 生成基于标题的图片URL
-        const seed =
-          body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
+        const seed = body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
         imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
           seed
         )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
       }
     } else {
       // 如果没有提供图片URL，根据标题生成图片
-      const seed =
-        body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
+      const seed = body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
       imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
         seed
       )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
@@ -357,10 +316,7 @@ export async function POST(request: NextRequest) {
 
     if (maxIdError) {
       console.error("获取最大ID失败:", maxIdError);
-      return NextResponse.json(
-        { success: false, message: "创建预测事件失败" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "创建预测事件失败" }, { status: 500 });
     }
 
     const nextId = maxIdData && maxIdData.length > 0 ? maxIdData[0].id + 1 : 1;
@@ -404,10 +360,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("创建预测事件失败:", error);
-      return NextResponse.json(
-        { success: false, message: "创建预测事件失败" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "创建预测事件失败" }, { status: 500 });
     }
 
     // 根据类型插入选项（binary 默认 Yes/No；multi 按用户输入）
@@ -434,9 +387,7 @@ export async function POST(request: NextRequest) {
                 label: "No",
               },
             ];
-      const { error: outcomesErr } = await client
-        .from("prediction_outcomes")
-        .insert(items);
+      const { error: outcomesErr } = await client.from("prediction_outcomes").insert(items);
       if (outcomesErr) {
         console.warn("插入选项失败：", outcomesErr);
       }

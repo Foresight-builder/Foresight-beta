@@ -19,14 +19,9 @@ export async function POST(req: NextRequest) {
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = toNum(body?.eventId ?? searchParams.get("eventId"));
-    if (!eventId)
-      return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
+    if (!eventId) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
     const client = getClient() as any;
-    if (!client)
-      return NextResponse.json(
-        { message: "Supabase 未配置" },
-        { status: 500 }
-      );
+    if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
     const { data: rawThreads, error: tErr } = await client
       .from("forum_threads")
       .select("*")
@@ -47,10 +42,7 @@ export async function POST(req: NextRequest) {
     }> | null;
 
     if (tErr)
-      return NextResponse.json(
-        { message: "查询主题失败", detail: tErr.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "查询主题失败", detail: tErr.message }, { status: 500 });
     const ids = (threads || []).map((t) => t.id);
     let comments: any[] = [];
     if (ids.length > 0) {
@@ -65,10 +57,7 @@ export async function POST(req: NextRequest) {
         );
       comments = rows || [];
     }
-    const stat: Record<
-      string,
-      { comments: number; participants: Set<string> }
-    > = {};
+    const stat: Record<string, { comments: number; participants: Set<string> }> = {};
     threads?.forEach((t) => {
       stat[String(t.id)] = {
         comments: 0,
@@ -91,8 +80,7 @@ export async function POST(req: NextRequest) {
       }))
       .sort((a, b) => b.score - a.score);
     const top = ranked[0];
-    if (!top)
-      return NextResponse.json({ message: "暂无主题" }, { status: 404 });
+    if (!top) return NextResponse.json({ message: "暂无主题" }, { status: 404 });
     const { data: topRowRaw } = await client
       .from("forum_threads")
       .select("*")
@@ -123,9 +111,7 @@ export async function POST(req: NextRequest) {
       topRow?.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成"
     );
     const eventTitle = `${subj}${actionLabel(verb)}${target}`.trim();
-    const seed = (eventTitle || "prediction")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .toLowerCase();
+    const seed = (eventTitle || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
     const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
       seed
     )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
@@ -148,10 +134,7 @@ export async function POST(req: NextRequest) {
     const pred = predRaw as { id: number } | null;
 
     if (error)
-      return NextResponse.json(
-        { message: "创建失败", detail: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
     if (pred?.id)
       await client
         .from("forum_threads")

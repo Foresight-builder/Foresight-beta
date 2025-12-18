@@ -27,11 +27,7 @@ export async function POST(req: NextRequest) {
     const id = toNum(body?.id);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
     const userAddr = getSessionAddressFromCookie(req);
-    if (!userAddr)
-      return NextResponse.json(
-        { message: "未登录或会话失效" },
-        { status: 401 }
-      );
+    if (!userAddr) return NextResponse.json({ message: "未登录或会话失效" }, { status: 401 });
 
     // 内容存在性与事件ID解析
     let eventId: number | null = null;
@@ -43,12 +39,8 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .maybeSingle();
       if (error)
-        return NextResponse.json(
-          { message: "查询失败", detail: error.message },
-          { status: 500 }
-        );
-      if (!t)
-        return NextResponse.json({ message: "未找到对象" }, { status: 404 });
+        return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
+      if (!t) return NextResponse.json({ message: "未找到对象" }, { status: 404 });
       eventId = Number((t as any).event_id);
     } else {
       const { data: c, error } = await client
@@ -57,25 +49,15 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .maybeSingle();
       if (error)
-        return NextResponse.json(
-          { message: "查询失败", detail: error.message },
-          { status: 500 }
-        );
-      if (!c)
-        return NextResponse.json({ message: "未找到对象" }, { status: 404 });
+        return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
+      if (!c) return NextResponse.json({ message: "未找到对象" }, { status: 404 });
       eventId = Number((c as any).event_id);
     }
     if (!Number.isFinite(eventId))
-      return NextResponse.json(
-        { message: "事件不存在或无效" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "事件不存在或无效" }, { status: 400 });
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { message: "服务端未配置 SUPABASE_SERVICE_KEY" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "服务端未配置 SUPABASE_SERVICE_KEY" }, { status: 500 });
     }
 
     // 重复投票检查
@@ -107,10 +89,7 @@ export async function POST(req: NextRequest) {
     if (insErr) {
       const msg = (insErr.message || "").toLowerCase();
       if (msg.includes("unique") || msg.includes("duplicate")) {
-        return NextResponse.json(
-          { message: "您已经投过票了" },
-          { status: 409 }
-        );
+        return NextResponse.json({ message: "您已经投过票了" }, { status: 409 });
       }
       return NextResponse.json(
         { message: "投票记录写入失败", detail: insErr.message },
@@ -128,8 +107,7 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .maybeSingle();
       const up = Number((cur as any)?.upvotes || 0) + (dir === "up" ? 1 : 0);
-      const down =
-        Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
+      const down = Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
       const { data: updated, error: uerr } = await admin
         .from("forum_threads")
         .update({ upvotes: up, downvotes: down } as any)
@@ -137,10 +115,7 @@ export async function POST(req: NextRequest) {
         .select()
         .maybeSingle();
       if (uerr)
-        return NextResponse.json(
-          { message: "更新失败", detail: uerr.message },
-          { status: 500 }
-        );
+        return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
       return NextResponse.json({
         message: "ok",
         data: updated,
@@ -153,8 +128,7 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .maybeSingle();
       const up = Number((cur as any)?.upvotes || 0) + (dir === "up" ? 1 : 0);
-      const down =
-        Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
+      const down = Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
       const { data: updated, error: uerr } = await admin
         .from("forum_comments")
         .update({ upvotes: up, downvotes: down } as any)
@@ -162,10 +136,7 @@ export async function POST(req: NextRequest) {
         .select()
         .maybeSingle();
       if (uerr)
-        return NextResponse.json(
-          { message: "更新失败", detail: uerr.message },
-          { status: 500 }
-        );
+        return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
       return NextResponse.json({
         message: "ok",
         data: updated,

@@ -23,7 +23,7 @@ import {
   Activity,
   User,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
 import ProposalCard from "./ProposalCard";
 import CreateProposalModal from "./CreateProposalModal";
@@ -156,59 +156,73 @@ export default function ProposalsPage() {
     { id: "Politics", label: "Politics", icon: Shield },
   ];
 
-  const activeProposalsCount = proposals.filter((p: any) => ((p.upvotes || 0) + (p.downvotes || 0)) > 10).length;
+  const activeProposalsCount = proposals.filter(
+    (p: any) => (p.upvotes || 0) + (p.downvotes || 0) > 10
+  ).length;
 
   return (
     <div className="h-[calc(100vh-64px)] w-full relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
       {/* Decorative Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" />
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-fuchsia-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-purple-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" style={{ animationDelay: "2s" }} />
+        <div
+          className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-fuchsia-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse"
+          style={{ animationDelay: "1s" }}
+        />
+        <div
+          className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-purple-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse"
+          style={{ animationDelay: "2s" }}
+        />
       </div>
-      
+
       {/* LEFT SIDEBAR: Dashboard Control (Fixed Width) */}
       <div className="hidden lg:flex flex-col w-64 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
-        
         {/* User Stats - Minimalist with Tape */}
         <div className="bg-white border border-gray-200 rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4 relative">
           {/* Tape Effect */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-purple-100/80 backdrop-blur-sm rotate-[-2deg] shadow-sm mask-tape" style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }} />
+          <div
+            className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-purple-100/80 backdrop-blur-sm rotate-[-2deg] shadow-sm mask-tape"
+            style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }}
+          />
 
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden p-0.5">
-               <img
-                  src={`https://api.dicebear.com/7.x/notionists/svg?seed=${
-                    account || user?.email || "User"
-                  }&backgroundColor=e9d5ff`}
-                  alt="Avatar"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-             </div>
-             <div className="min-w-0">
-               <div className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Member</div>
-               <div className="text-sm font-black text-gray-800 truncate">
-                 {(account || user?.email || "Guest").slice(0, 12)}
-               </div>
-             </div>
+            <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden p-0.5">
+              <img
+                src={`https://api.dicebear.com/7.x/notionists/svg?seed=${
+                  account || user?.email || "User"
+                }&backgroundColor=e9d5ff`}
+                alt="Avatar"
+                className="w-full h-full object-cover rounded-lg"
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                Member
+              </div>
+              <div className="text-sm font-black text-gray-800 truncate">
+                {(account || user?.email || "Guest").slice(0, 12)}
+              </div>
+            </div>
           </div>
-          
+
           <div className="h-px bg-dashed-line my-1" />
-          
+
           <div className="grid grid-cols-2 gap-2 text-center">
-             <div className="bg-gray-50 rounded-xl p-2">
-               <div className="text-lg font-black text-gray-800">
-                  {proposals.filter((p: any) => {
+            <div className="bg-gray-50 rounded-xl p-2">
+              <div className="text-lg font-black text-gray-800">
+                {
+                  proposals.filter((p: any) => {
                     const me = account || user?.id || "";
                     return me && String(p.user_id || "").toLowerCase() === String(me).toLowerCase();
-                  }).length}
-               </div>
-               <div className="text-[10px] font-bold text-gray-400 uppercase">My Posts</div>
-             </div>
-             <div className="bg-gray-50 rounded-xl p-2">
-               <div className="text-lg font-black text-gray-800">{proposals.length}</div>
-               <div className="text-[10px] font-bold text-gray-400 uppercase">Total</div>
-             </div>
+                  }).length
+                }
+              </div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase">My Posts</div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-2">
+              <div className="text-lg font-black text-gray-800">{proposals.length}</div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase">Total</div>
+            </div>
           </div>
 
           <button
@@ -244,11 +258,13 @@ export default function ProposalsPage() {
               }`}
             >
               {filter === item.id && (
-                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-purple-500 rounded-r-full" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-purple-500 rounded-r-full" />
               )}
               <item.icon
                 className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                  filter === item.id ? "text-purple-500" : "text-gray-400 group-hover:text-purple-500"
+                  filter === item.id
+                    ? "text-purple-500"
+                    : "text-gray-400 group-hover:text-purple-500"
                 }`}
               />
               {item.label}
@@ -275,7 +291,6 @@ export default function ProposalsPage() {
 
         {/* Scrollable List Container */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
-          
           {/* Topics Header */}
           <div className="flex-none mb-6">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
@@ -289,7 +304,9 @@ export default function ProposalsPage() {
                       : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <cat.icon className={`w-3.5 h-3.5 ${category === cat.id ? "text-white" : "text-slate-400"}`} />
+                  <cat.icon
+                    className={`w-3.5 h-3.5 ${category === cat.id ? "text-white" : "text-slate-400"}`}
+                  />
                   {cat.label}
                 </button>
               ))}
@@ -306,9 +323,7 @@ export default function ProposalsPage() {
               <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 border border-slate-200">
                 <MessageCircle className="w-10 h-10 text-slate-300" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">
-                No proposals yet
-              </h3>
+              <h3 className="text-xl font-black text-slate-900 mb-2">No proposals yet</h3>
               <p className="text-slate-500 font-medium mb-8">
                 Be the first to share your idea with the community.
               </p>
@@ -351,7 +366,6 @@ export default function ProposalsPage() {
 
       {/* RIGHT SIDEBAR: Widgets */}
       <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
-        
         {/* Official Featured Widget (New) */}
         <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -388,7 +402,7 @@ export default function ProposalsPage() {
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-xl shadow-slate-900/20 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -ml-10 -mb-10" />
-          
+
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
@@ -443,9 +457,9 @@ export default function ProposalsPage() {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-slate-200/50">
-             <button className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-600 transition-colors">
-               Learn More
-             </button>
+            <button className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-600 transition-colors">
+              Learn More
+            </button>
           </div>
         </div>
       </div>

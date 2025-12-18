@@ -11,12 +11,7 @@ type Props = {
   installUrl: string;
 };
 
-export default function InstallPromptModal({
-  open,
-  onClose,
-  walletName,
-  installUrl,
-}: Props) {
+export default function InstallPromptModal({ open, onClose, walletName, installUrl }: Props) {
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -52,12 +47,8 @@ export default function InstallPromptModal({
             </div>
             <div className="px-6 mt-4">
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="text-sm text-gray-700">
-                  仅从官方渠道安装以确保安全。
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  安装完成后刷新页面即可继续连接。
-                </div>
+                <div className="text-sm text-gray-700">仅从官方渠道安装以确保安全。</div>
+                <div className="mt-2 text-xs text-gray-500">安装完成后刷新页面即可继续连接。</div>
               </div>
             </div>
             <div className="px-6 pb-6 mt-6 flex items-center justify-end gap-3">

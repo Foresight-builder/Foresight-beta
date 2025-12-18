@@ -36,7 +36,11 @@ async function main() {
   {
     const t = await mf.getTemplate(templateIdMulti);
     if (!t.exists) {
-      const txReg = await mf.registerTemplate(templateIdMulti, multiImplAddress, "MultiOutcome1155");
+      const txReg = await mf.registerTemplate(
+        templateIdMulti,
+        multiImplAddress,
+        "MultiOutcome1155"
+      );
       await txReg.wait();
       console.log("Registered MULTI template");
     } else {
@@ -76,10 +80,14 @@ async function main() {
         collateral = env.USDT_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA;
         break;
       case 1337: // localhost
-        collateral = env.USDT_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST || env.COLLATERAL_TOKEN_ADDRESS;
+        collateral =
+          env.USDT_ADDRESS_LOCALHOST ||
+          env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST ||
+          env.COLLATERAL_TOKEN_ADDRESS;
         break;
       default:
-        collateral = env.USDT_ADDRESS || env.NEXT_PUBLIC_USDT_ADDRESS || env.COLLATERAL_TOKEN_ADDRESS;
+        collateral =
+          env.USDT_ADDRESS || env.NEXT_PUBLIC_USDT_ADDRESS || env.COLLATERAL_TOKEN_ADDRESS;
     }
   }
 
@@ -94,7 +102,9 @@ async function main() {
   }
   const feeBps = env.MARKET_FEE_BPS ? Number(env.MARKET_FEE_BPS) : 30; // 0.30%
   const now = Math.floor(Date.now() / 1000);
-  const resolutionTime = env.MARKET_RESOLUTION_TS ? Number(env.MARKET_RESOLUTION_TS) : (now + 7 * 24 * 3600);
+  const resolutionTime = env.MARKET_RESOLUTION_TS
+    ? Number(env.MARKET_RESOLUTION_TS)
+    : now + 7 * 24 * 3600;
 
   // Prepare data: abi.encode(outcome1155, outcomeCount)
   const outcomeCount = env.OUTCOME_COUNT ? Number(env.OUTCOME_COUNT) : 3;
@@ -102,16 +112,25 @@ async function main() {
   const data = abiCoder.encode(["address", "uint256"], [outcome1155Address, outcomeCount]);
 
   // Create market
-  const txCreate = await mf.createMarket(templateIdMulti, collateral, oracle, feeBps, resolutionTime, data);
+  const txCreate = await mf.createMarket(
+    templateIdMulti,
+    collateral,
+    oracle,
+    feeBps,
+    resolutionTime,
+    data
+  );
   const receipt = await txCreate.wait();
 
   // Parse MarketCreated
   const iface = mf.interface;
   const log = receipt.logs.find((l: any) => {
-    try { 
+    try {
       const parsedLog = iface.parseLog(l);
-      return parsedLog && parsedLog.name === "MarketCreated"; 
-    } catch (_) { return false; }
+      return parsedLog && parsedLog.name === "MarketCreated";
+    } catch (_) {
+      return false;
+    }
   });
   if (log) {
     const parsed = iface.parseLog(log);
@@ -124,7 +143,7 @@ async function main() {
         collateralToken: parsed.args[4],
         oracle: parsed.args[5],
         feeBps: parsed.args[6].toString(),
-        resolutionTime: parsed.args[7].toString()
+        resolutionTime: parsed.args[7].toString(),
       });
     }
   } else {
@@ -133,10 +152,12 @@ async function main() {
 
   // Grant MINTER_ROLE on OutcomeToken1155 to created market
   // We need the market address from event above
-  const createdMarket = log ? ((): any => { 
-    const p = iface.parseLog(log); 
-    return p ? (p.args.market ?? p.args[1]) : undefined; 
-  })() : undefined;
+  const createdMarket = log
+    ? ((): any => {
+        const p = iface.parseLog(log);
+        return p ? (p.args.market ?? p.args[1]) : undefined;
+      })()
+    : undefined;
   if (createdMarket) {
     const MINTER_ROLE = await outcome1155.MINTER_ROLE();
     const hasRole = await outcome1155.hasRole(MINTER_ROLE, createdMarket);

@@ -92,15 +92,9 @@ interface StickerRevealModalProps {
   sticker?: StickerItem; // 如果不传，组件内部可以随机或者显示加载状态
 }
 
-export default function StickerRevealModal({
-  isOpen,
-  onClose,
-  sticker,
-}: StickerRevealModalProps) {
+export default function StickerRevealModal({ isOpen, onClose, sticker }: StickerRevealModalProps) {
   const [step, setStep] = useState<"box" | "open" | "revealed">("box");
-  const [currentSticker, setCurrentSticker] = useState<StickerItem | null>(
-    null
-  );
+  const [currentSticker, setCurrentSticker] = useState<StickerItem | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -109,10 +103,7 @@ export default function StickerRevealModal({
       if (sticker) {
         setCurrentSticker(sticker);
       } else {
-        const random =
-          OFFICIAL_STICKERS[
-            Math.floor(Math.random() * OFFICIAL_STICKERS.length)
-          ];
+        const random = OFFICIAL_STICKERS[Math.floor(Math.random() * OFFICIAL_STICKERS.length)];
         setCurrentSticker(random);
       }
     }
@@ -299,9 +290,7 @@ export default function StickerRevealModal({
                     <h3 className="text-2xl font-black text-gray-900 mb-2">
                       {currentSticker.name}
                     </h3>
-                    <p className="text-gray-500 font-medium mb-8">
-                      {currentSticker.desc}
-                    </p>
+                    <p className="text-gray-500 font-medium mb-8">{currentSticker.desc}</p>
 
                     <div className="flex gap-3">
                       <button

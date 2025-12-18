@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   AlignLeft,
@@ -16,9 +15,7 @@ import dynamic from "next/dynamic";
 const ChatPanel = dynamic(() => import("@/components/ChatPanel"), {
   ssr: false,
   loading: () => (
-    <div className="h-[300px] flex items-center justify-center text-gray-500">
-      加载评论...
-    </div>
+    <div className="h-[300px] flex items-center justify-center text-gray-500">加载评论...</div>
   ),
 });
 
@@ -27,14 +24,12 @@ interface MarketInfoProps {
 }
 
 export function MarketInfo({ prediction }: MarketInfoProps) {
-  const [activeTab, setActiveTab] = useState<"desc" | "rules" | "comments">(
-    "desc"
-  );
+  const [activeTab, setActiveTab] = useState<"desc" | "rules" | "comments">("desc");
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
 
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden shadow-sm relative">
-       <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-50 -mr-10 -mt-10 pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-50 -mr-10 -mt-10 pointer-events-none"></div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-100 bg-gray-50/30 p-2 gap-2">
@@ -140,32 +135,33 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 )}
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                   <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">仲裁者</div>
-                   <div className="text-base font-medium text-gray-900 flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                     Foresight Oracle Committee
-                   </div>
-               </div>
-               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                   <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">裁决时间</div>
-                   <div className="text-base font-medium text-gray-900 flex items-center gap-2">
-                     <Clock className="w-4 h-4 text-gray-400" />
-                     {new Date(prediction.deadline).toLocaleString()} 后 24小时内
-                   </div>
-               </div>
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                  仲裁者
+                </div>
+                <div className="text-base font-medium text-gray-900 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  Foresight Oracle Committee
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+                  裁决时间
+                </div>
+                <div className="text-base font-medium text-gray-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  {new Date(prediction.deadline).toLocaleString()} 后 24小时内
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === "comments" && (
           <div className="min-h-[400px]">
-            <ChatPanel
-              eventId={prediction.id}
-              roomTitle={prediction.title}
-            />
+            <ChatPanel eventId={prediction.id} roomTitle={prediction.title} />
           </div>
         )}
       </div>

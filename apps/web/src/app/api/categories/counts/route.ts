@@ -6,10 +6,7 @@ export async function GET() {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
     const { data: rawCategories, error: categoriesError } = await client
       .from("categories")
@@ -66,9 +63,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("获取分类热点数量失败:", error);
-    return NextResponse.json(
-      { success: false, message: "获取分类热点数量失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "获取分类热点数量失败" }, { status: 500 });
   }
 }

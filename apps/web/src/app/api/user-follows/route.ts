@@ -10,8 +10,7 @@ function isUserIdForeignKeyViolation(error?: { message?: string }) {
   if (!error?.message) return false;
   const msg = error.message.toLowerCase();
   return (
-    msg.includes("violates foreign key constraint") &&
-    msg.includes("event_follows_user_id_fkey")
+    msg.includes("violates foreign key constraint") && msg.includes("event_follows_user_id_fkey")
   );
 }
 function isUserIdTypeIntegerError(error?: { message?: string }) {
@@ -53,9 +52,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ follows: [], total: 0 });
     }
 
-    const eventIds: number[] = (followedEventIds || []).map(
-      (follow) => follow.event_id
-    );
+    const eventIds: number[] = (followedEventIds || []).map((follow) => follow.event_id);
     if (!eventIds.length) {
       return NextResponse.json({ follows: [], total: 0 });
     }

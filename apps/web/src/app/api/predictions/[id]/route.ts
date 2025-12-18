@@ -1,30 +1,19 @@
 // 预测事件详情API路由 - 处理单个预测事件的GET请求
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, type Prediction } from "@/lib/supabase";
-import {
-  getSessionAddress,
-  normalizeAddress,
-  isAdminAddress,
-} from "@/lib/serverUtils";
+import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await Promise.resolve(params);
     const url = new URL(request.url);
     const includeStatsParam = url.searchParams.get("includeStats");
     const includeStats = includeStatsParam !== "0";
-    const includeOutcomes =
-      (url.searchParams.get("includeOutcomes") || "0") !== "0";
+    const includeOutcomes = (url.searchParams.get("includeOutcomes") || "0") !== "0";
 
     // 验证ID参数
     if (!id || isNaN(parseInt(id))) {
-      return NextResponse.json(
-        { success: false, message: "无效的预测事件ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
     }
 
     const predictionId = parseInt(id);
@@ -32,10 +21,7 @@ export async function GET(
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
 
     // 查询预测详情
@@ -48,10 +34,7 @@ export async function GET(
 
     if (error) {
       if ((error as any)?.code === "PGRST116") {
-        return NextResponse.json(
-          { success: false, message: "预测事件不存在" },
-          { status: 404 }
-        );
+        return NextResponse.json({ success: false, message: "预测事件不存在" }, { status: 404 });
       }
       console.error("获取预测事件详情失败:", error);
       return NextResponse.json(
@@ -69,9 +52,7 @@ export async function GET(
     if (includeStats) {
       const { data: statsRow, error: statsError } = await client
         .from("prediction_stats")
-        .select(
-          "yes_amount, no_amount, total_amount, participant_count, bet_count"
-        )
+        .select("yes_amount, no_amount, total_amount, participant_count, bet_count")
         .eq("prediction_id", predictionId)
         .maybeSingle();
 
@@ -168,10 +149,7 @@ export async function GET(
     );
   } catch (error) {
     console.error("获取预测事件详情异常:", error);
-    return NextResponse.json(
-      { success: false, message: "获取预测事件详情失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: "获取预测事件详情失败" }, { status: 500 });
   }
 }
 
@@ -207,18 +185,12 @@ function getTimeRemaining(deadline: string): string {
   return "即将截止";
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await Promise.resolve(params);
     const predictionId = parseInt(String(id));
     if (!Number.isFinite(predictionId)) {
-      return NextResponse.json(
-        { success: false, message: "无效的预测事件ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
     }
     const body = await request.json().catch(() => ({}));
     const sessAddr = getSessionAddress(request);
@@ -231,10 +203,7 @@ export async function PATCH(
     }
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
     const { data: prof } = await (client as any)
       .from("user_profiles")
@@ -243,29 +212,20 @@ export async function PATCH(
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(addr);
     if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, message: "需要管理员权限" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
     }
     const upd: any = {};
     if (typeof body.title === "string") upd.title = body.title;
-    if (typeof body.description === "string")
-      upd.description = body.description;
+    if (typeof body.description === "string") upd.description = body.description;
     if (typeof body.category === "string") upd.category = body.category;
     if (typeof body.deadline === "string") upd.deadline = body.deadline;
-    if (typeof body.minStake !== "undefined")
-      upd.min_stake = Number(body.minStake);
+    if (typeof body.minStake !== "undefined") upd.min_stake = Number(body.minStake);
     if (typeof body.criteria === "string") upd.criteria = body.criteria;
-    if (typeof body.reference_url === "string")
-      upd.reference_url = body.reference_url;
+    if (typeof body.reference_url === "string") upd.reference_url = body.reference_url;
     if (typeof body.image_url === "string") upd.image_url = body.image_url;
     if (typeof body.status === "string") upd.status = body.status;
     if (Object.keys(upd).length === 0) {
-      return NextResponse.json(
-        { success: false, message: "无可更新字段" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "无可更新字段" }, { status: 400 });
     }
     const { data, error } = await client
       .from("predictions")
@@ -279,15 +239,9 @@ export async function PATCH(
         { status: 500 }
       );
     }
-    return NextResponse.json(
-      { success: true, data, message: "更新成功" },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, data, message: "更新成功" }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { success: false, message: String(e?.message || e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
   }
 }
 
@@ -299,10 +253,7 @@ export async function DELETE(
     const { id } = await Promise.resolve(params);
     const predictionId = parseInt(String(id));
     if (!Number.isFinite(predictionId)) {
-      return NextResponse.json(
-        { success: false, message: "无效的预测事件ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
     }
     const sessAddr = getSessionAddress(request);
     const addr = normalizeAddress(String(sessAddr || ""));
@@ -314,10 +265,7 @@ export async function DELETE(
     }
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase 未配置" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
     }
     const { data: prof } = await (client as any)
       .from("user_profiles")
@@ -326,29 +274,17 @@ export async function DELETE(
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(addr);
     if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, message: "需要管理员权限" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
     }
-    const { error } = await client
-      .from("predictions")
-      .delete()
-      .eq("id", predictionId);
+    const { error } = await client.from("predictions").delete().eq("id", predictionId);
     if (error) {
       return NextResponse.json(
         { success: false, message: "删除失败", detail: error.message },
         { status: 500 }
       );
     }
-    return NextResponse.json(
-      { success: true, message: "已删除" },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, message: "已删除" }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { success: false, message: String(e?.message || e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
   }
 }

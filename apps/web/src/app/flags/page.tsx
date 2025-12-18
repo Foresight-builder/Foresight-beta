@@ -1,5 +1,5 @@
 "use client";
- 
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,7 +50,7 @@ import {
   Phone,
   Trash2,
   Coffee,
-  PiggyBank
+  PiggyBank,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -87,9 +87,7 @@ export default function FlagsPage() {
       review_reason?: string;
     }>
   >([]);
-  const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(
-    null
-  );
+  const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(null);
 
   const [settlingId, setSettlingId] = useState<number | null>(null);
 
@@ -259,10 +257,9 @@ export default function FlagsPage() {
         setFlags([]);
         return;
       }
-      const res = await fetch(
-        `/api/flags?viewer_id=${encodeURIComponent(me)}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
         setFlags([]);
         return;
@@ -281,10 +278,9 @@ export default function FlagsPage() {
     try {
       const me = account || user?.id || "";
       if (!me) return;
-      const res = await fetch(
-        `/api/stickers?user_id=${encodeURIComponent(me)}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/stickers?user_id=${encodeURIComponent(me)}`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => ({ stickers: [] }));
       const list = Array.isArray(data?.stickers) ? data.stickers : [];
       setCollectedStickers(list.map((s: any) => s.sticker_id));
@@ -297,10 +293,9 @@ export default function FlagsPage() {
     try {
       const me = account || user?.id || "";
       if (!me) return;
-      const res = await fetch(
-        `/api/flags?viewer_id=${encodeURIComponent(me)}&role=witness`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}&role=witness`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => ({ flags: [] }));
       const list = (data.flags || []) as FlagItem[];
       const pending = list.filter((f) => f.status === "pending_review");
@@ -389,14 +384,12 @@ export default function FlagsPage() {
     try {
       const me = account || user?.id || "";
       const res = await fetch(
-        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(
-          me
-        )}`,
+        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(me)}`,
         {
           cache: "no-store",
         }
       );
-      const data = await res.json().catch(() => ({} as any));
+      const data = await res.json().catch(() => ({}) as any);
       const items = Array.isArray(data?.items) ? data.items : [];
       setHistoryItems(items);
     } catch {
@@ -406,10 +399,7 @@ export default function FlagsPage() {
     }
   };
 
-  const handleReview = async (
-    checkinId: string,
-    action: "approve" | "reject"
-  ) => {
+  const handleReview = async (checkinId: string, action: "approve" | "reject") => {
     try {
       setReviewSubmittingId(checkinId);
       const me = account || user?.id || "";
@@ -433,8 +423,7 @@ export default function FlagsPage() {
   };
 
   const settleFlag = async (flag: FlagItem) => {
-    if (!confirm("确定要结算该 Flag 吗？结算后将根据完成情况退还押金。"))
-      return;
+    if (!confirm("确定要结算该 Flag 吗？结算后将根据完成情况退还押金。")) return;
     try {
       setSettlingId(flag.id);
       const me = account || user?.id || "";
@@ -469,34 +458,19 @@ export default function FlagsPage() {
 
   const allStickers = OFFICIAL_STICKERS;
 
-  const activeFlags = useMemo(
-    () => flags.filter((f) => f.status === "active"),
-    [flags]
-  );
-  const completedFlags = useMemo(
-    () => flags.filter((f) => f.status === "success"),
-    [flags]
-  );
+  const activeFlags = useMemo(() => flags.filter((f) => f.status === "active"), [flags]);
+  const completedFlags = useMemo(() => flags.filter((f) => f.status === "success"), [flags]);
 
   const filteredFlags = useMemo(
     () =>
       flags
-        .filter((f) =>
-          statusFilter === "all" ? true : f.status === statusFilter
-        )
+        .filter((f) => (statusFilter === "all" ? true : f.status === statusFilter))
         .filter((f) => {
           if (!filterMine) return true;
           const me = account || user?.id || "";
-          return (
-            me &&
-            String(f.user_id || "").toLowerCase() ===
-              String(me).toLowerCase()
-          );
+          return me && String(f.user_id || "").toLowerCase() === String(me).toLowerCase();
         })
-        .sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ),
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [flags, statusFilter, filterMine, account, user?.id]
   );
 
@@ -506,12 +480,12 @@ export default function FlagsPage() {
       <div className="fixed top-[-20%] left-[-10%] w-[800px] h-[800px] bg-purple-200/40 rounded-full blur-[120px] mix-blend-multiply filter pointer-events-none animate-blob" />
       <div className="fixed top-[20%] right-[-10%] w-[600px] h-[600px] bg-pink-200/40 rounded-full blur-[120px] mix-blend-multiply filter pointer-events-none animate-blob animation-delay-2000" />
       <div className="fixed bottom-[-20%] left-[20%] w-[600px] h-[600px] bg-orange-200/40 rounded-full blur-[120px] mix-blend-multiply filter pointer-events-none animate-blob animation-delay-4000" />
-      
+
       {/* Grid Texture Overlay */}
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 pointer-events-none mix-blend-soft-light" />
 
       {/* LEFT SIDEBAR: Dashboard Control (Fixed Width) - REMOVED, merged into main view */}
-      
+
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 z-10 h-full max-w-[1600px] mx-auto w-full">
         {/* Header Section */}
@@ -520,44 +494,44 @@ export default function FlagsPage() {
             <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2 relative inline-block">
               My Vision Board
               <div className="absolute -top-6 -right-8 transform rotate-12">
-                 <div className="px-3 py-1 bg-yellow-300 text-yellow-800 text-xs font-black uppercase tracking-widest rounded-sm shadow-sm transform -rotate-3">
-                   Dream Big!
-                 </div>
+                <div className="px-3 py-1 bg-yellow-300 text-yellow-800 text-xs font-black uppercase tracking-widest rounded-sm shadow-sm transform -rotate-3">
+                  Dream Big!
+                </div>
               </div>
             </h1>
             <div className="flex items-center gap-4 text-sm font-bold text-gray-500">
-               <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span>{activeFlags.length} Active</span>
-               </div>
-               <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span>{completedFlags.length} Achieved</span>
-               </div>
+              <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-orange-400" />
+                <span>{activeFlags.length} Active</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>{completedFlags.length} Achieved</span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-             {/* Filter Tabs - Sticker Style */}
-             <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
-               {[
-                 { id: "all", label: "All" },
-                 { id: "active", label: "Active" },
-                 { id: "success", label: "Done" },
-               ].map((tab) => (
-                 <button
-                   key={tab.id}
-                   onClick={() => setStatusFilter(tab.id as any)}
-                   className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-                     statusFilter === tab.id
-                       ? "bg-white text-gray-900 shadow-sm"
-                       : "text-gray-500 hover:text-gray-900"
-                   }`}
-                 >
-                   {tab.label}
-                 </button>
-               ))}
-             </div>
+            {/* Filter Tabs - Sticker Style */}
+            <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
+              {[
+                { id: "all", label: "All" },
+                { id: "active", label: "Active" },
+                { id: "success", label: "Done" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setStatusFilter(tab.id as any)}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                    statusFilter === tab.id
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -570,28 +544,33 @@ export default function FlagsPage() {
             </div>
           ) : (
             <div className="columns-1 md:columns-2 xl:columns-3 2xl:columns-4 gap-8 space-y-8 pb-20 mx-auto">
-               {/* Create New Card - Always First */}
-               <motion.div
-                 layout
-                 onClick={handleCreateClick}
-                 className="break-inside-avoid group cursor-pointer"
-                 whileHover={{ scale: 1.02 }}
-                 whileTap={{ scale: 0.98 }}
-               >
-                 <div className="relative h-[300px] rounded-[2rem] border-[4px] border-dashed border-gray-300 bg-white/30 hover:bg-white/60 hover:border-purple-300 transition-all duration-300 flex flex-col items-center justify-center gap-4 text-center p-6">
-                    <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
-                       <Plus className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
-                    </div>
-                    <div>
-                       <h3 className="text-lg font-black text-gray-600 group-hover:text-purple-600 transition-colors">Pin New Goal</h3>
-                       <p className="text-xs font-bold text-gray-400 mt-1">Start a new journey</p>
-                    </div>
-                    {/* Decorative Tape */}
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-gray-200/50 rotate-1 mask-tape" style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }} />
-                 </div>
-               </motion.div>
+              {/* Create New Card - Always First */}
+              <motion.div
+                layout
+                onClick={handleCreateClick}
+                className="break-inside-avoid group cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="relative h-[300px] rounded-[2rem] border-[4px] border-dashed border-gray-300 bg-white/30 hover:bg-white/60 hover:border-purple-300 transition-all duration-300 flex flex-col items-center justify-center gap-4 text-center p-6">
+                  <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
+                    <Plus className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-600 group-hover:text-purple-600 transition-colors">
+                      Pin New Goal
+                    </h3>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Start a new journey</p>
+                  </div>
+                  {/* Decorative Tape */}
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-gray-200/50 rotate-1 mask-tape"
+                    style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }}
+                  />
+                </div>
+              </motion.div>
 
-               <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="popLayout">
                 {filteredFlags.map((flag, index) => (
                   <motion.div
                     key={flag.id}
@@ -706,12 +685,8 @@ export default function FlagsPage() {
                     <Trophy className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900">
-                      官方精选挑战
-                    </h3>
-                    <p className="text-sm font-bold text-gray-400">
-                      精选 10+ 款热门挑战模板
-                    </p>
+                    <h3 className="text-2xl font-black text-gray-900">官方精选挑战</h3>
+                    <p className="text-sm font-bold text-gray-400">精选 10+ 款热门挑战模板</p>
                   </div>
                 </div>
                 <button
@@ -753,12 +728,8 @@ export default function FlagsPage() {
                             <tpl.icon className="w-7 h-7" />
                           </div>
                           <div className="px-2.5 py-1 rounded-full bg-white/60 backdrop-blur-md border border-white/40 flex items-center gap-1.5 shadow-sm">
-                            <ShieldCheck
-                              className={`w-3.5 h-3.5 ${tpl.color}`}
-                            />
-                            <span
-                              className={`text-[10px] font-extrabold ${tpl.color}`}
-                            >
+                            <ShieldCheck className={`w-3.5 h-3.5 ${tpl.color}`} />
+                            <span className={`text-[10px] font-extrabold ${tpl.color}`}>
                               OFFICIAL
                             </span>
                           </div>
@@ -801,10 +772,7 @@ export default function FlagsPage() {
         isOfficial={officialCreate}
       />
 
-      <WalletModal
-        isOpen={walletModalOpen}
-        onClose={() => setWalletModalOpen(false)}
-      />
+      <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
 
       <StickerRevealModal
         isOpen={stickerOpen}
@@ -846,20 +814,14 @@ export default function FlagsPage() {
                     <Camera className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900">
-                      打卡时刻
-                    </h3>
-                    <p className="text-sm text-gray-500 font-medium">
-                      记录你的每一次进步
-                    </p>
+                    <h3 className="text-2xl font-black text-gray-900">打卡时刻</h3>
+                    <p className="text-sm text-gray-500 font-medium">记录你的每一次进步</p>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">
-                      心得体会
-                    </label>
+                    <label className="text-sm font-bold text-gray-700 ml-1">心得体会</label>
                     <textarea
                       value={checkinNote}
                       onChange={(e) => setCheckinNote(e.target.value)}
@@ -869,9 +831,7 @@ export default function FlagsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">
-                      图片链接 (可选)
-                    </label>
+                    <label className="text-sm font-bold text-gray-700 ml-1">图片链接 (可选)</label>
                     <input
                       value={checkinImage}
                       onChange={(e) => setCheckinImage(e.target.value)}
@@ -921,9 +881,7 @@ export default function FlagsPage() {
               className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0">
-                <h3 className="text-xl font-black text-gray-900">
-                  挑战记录
-                </h3>
+                <h3 className="text-xl font-black text-gray-900">挑战记录</h3>
                 <button
                   onClick={() => setHistoryOpen(false)}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -938,9 +896,7 @@ export default function FlagsPage() {
                     <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
                   </div>
                 ) : historyItems.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500 font-medium">
-                    暂无打卡记录
-                  </div>
+                  <div className="text-center py-10 text-gray-500 font-medium">暂无打卡记录</div>
                 ) : (
                   <div className="relative border-l-2 border-gray-100 ml-4 space-y-8">
                     {historyItems.map((item, idx) => (
@@ -950,9 +906,7 @@ export default function FlagsPage() {
                           {new Date(item.created_at).toLocaleString()}
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                          <p className="text-gray-900 font-medium mb-2">
-                            {item.note}
-                          </p>
+                          <p className="text-gray-900 font-medium mb-2">{item.note}</p>
                           {item.image_url && (
                             <img
                               src={item.image_url}
@@ -960,40 +914,41 @@ export default function FlagsPage() {
                               className="w-full rounded-lg mb-2 object-cover max-h-48"
                             />
                           )}
-                          
+
                           {/* Review status */}
-                          {item.review_status === 'pending' && historyFlag.verification_type === 'witness' && (
-                             <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
-                               {item.reviewer_id === (account || user?.id) ? (
+                          {item.review_status === "pending" &&
+                            historyFlag.verification_type === "witness" && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
+                                {item.reviewer_id === (account || user?.id) ? (
                                   <>
-                                    <button 
+                                    <button
                                       disabled={!!reviewSubmittingId}
-                                      onClick={() => handleReview(item.id, 'approve')}
+                                      onClick={() => handleReview(item.id, "approve")}
                                       className="flex-1 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200"
                                     >
-                                      {reviewSubmittingId === item.id ? '...' : 'Approve'}
+                                      {reviewSubmittingId === item.id ? "..." : "Approve"}
                                     </button>
-                                    <button 
+                                    <button
                                       disabled={!!reviewSubmittingId}
-                                      onClick={() => handleReview(item.id, 'reject')}
+                                      onClick={() => handleReview(item.id, "reject")}
                                       className="flex-1 py-1.5 bg-rose-100 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-200"
                                     >
-                                       {reviewSubmittingId === item.id ? '...' : 'Reject'}
+                                      {reviewSubmittingId === item.id ? "..." : "Reject"}
                                     </button>
                                   </>
-                               ) : (
-                                 <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
-                                   <Clock className="w-3 h-3" /> Waiting for review
-                                 </span>
-                               )}
-                             </div>
-                          )}
-                          {item.review_status === 'approved' && (
+                                ) : (
+                                  <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> Waiting for review
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          {item.review_status === "approved" && (
                             <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" /> Verified
                             </div>
                           )}
-                           {item.review_status === 'rejected' && (
+                          {item.review_status === "rejected" && (
                             <div className="mt-2 text-xs font-bold text-rose-600 flex items-center gap-1">
                               <X className="w-3 h-3" /> Rejected
                             </div>

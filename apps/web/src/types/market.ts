@@ -24,7 +24,7 @@ export interface Order {
   remaining: string;
   expiry: Date | null;
   signature: string;
-  status: 'open' | 'filled' | 'cancelled' | 'expired';
+  status: "open" | "filled" | "cancelled" | "expired";
   created_at: string;
 }
 
@@ -61,13 +61,12 @@ export interface EIP712Domain {
 
 export const ORDER_TYPES = {
   Order: [
-    { name: 'maker', type: 'address' },
-    { name: 'outcomeIndex', type: 'uint256' },
-    { name: 'isBuy', type: 'bool' },
-    { name: 'price', type: 'uint256' },
-    { name: 'amount', type: 'uint256' },
-    { name: 'salt', type: 'uint256' },
-    { name: 'expiry', type: 'uint256' }
-  ]
+    { name: "maker", type: "address" },
+    { name: "outcomeIndex", type: "uint256" },
+    { name: "isBuy", type: "bool" },
+    { name: "price", type: "uint256" },
+    { name: "amount", type: "uint256" },
+    { name: "salt", type: "uint256" },
+    { name: "expiry", type: "uint256" },
+  ],
 } as const;
-

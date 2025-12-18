@@ -12,8 +12,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
   const total = flags.length;
 
   // Calculate a "Focus Score" based on ratio of active+success / total
-  const focusScore =
-    total > 0 ? Math.round(((activeCount + successCount) / total) * 100) : 0;
+  const focusScore = total > 0 ? Math.round(((activeCount + successCount) / total) * 100) : 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
@@ -43,9 +42,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               </div>
               <span className="text-lg text-gray-400 font-bold">Flags</span>
             </div>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              当前正在进行的挑战
-            </p>
+            <p className="text-sm text-gray-500 font-medium mt-1">当前正在进行的挑战</p>
           </div>
         </div>
       </motion.div>
@@ -76,9 +73,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               </div>
               <span className="text-lg text-gray-400 font-bold">Goals</span>
             </div>
-            <p className="text-sm text-gray-500 font-medium mt-1">
-              已成功达成的目标
-            </p>
+            <p className="text-sm text-gray-500 font-medium mt-1">已成功达成的目标</p>
           </div>
         </div>
       </motion.div>

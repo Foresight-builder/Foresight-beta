@@ -9,14 +9,14 @@ export function ProfileSkeleton() {
         <div className="flex items-center gap-6">
           {/* 头像 */}
           <div className="w-24 h-24 bg-gray-200 rounded-full"></div>
-          
+
           {/* 信息 */}
           <div className="flex-1">
             <div className="h-8 bg-gray-200 rounded-lg w-48 mb-3"></div>
             <div className="h-4 bg-gray-200 rounded w-64"></div>
           </div>
         </div>
-        
+
         {/* 统计 */}
         <div className="grid grid-cols-3 gap-4 mt-6">
           {[1, 2, 3].map((i) => (
@@ -27,7 +27,7 @@ export function ProfileSkeleton() {
           ))}
         </div>
       </div>
-      
+
       {/* 内容区 */}
       <div className="bg-white rounded-3xl p-6 border border-gray-100">
         {[1, 2, 3].map((i) => (
@@ -40,4 +40,3 @@ export function ProfileSkeleton() {
     </div>
   );
 }
-

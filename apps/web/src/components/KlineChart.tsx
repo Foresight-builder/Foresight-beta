@@ -10,7 +10,12 @@ interface KlineChartProps {
   resolution?: string;
 }
 
-export default function KlineChart({ market, chainId, outcomeIndex, resolution = '15m' }: KlineChartProps) {
+export default function KlineChart({
+  market,
+  chainId,
+  outcomeIndex,
+  resolution = "15m",
+}: KlineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
@@ -75,12 +80,12 @@ export default function KlineChart({ market, chainId, outcomeIndex, resolution =
 
     const fetchCandles = async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005';
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:3005";
         const url = `${base}/orderbook/candles?market=${market}&chainId=${chainId}&outcome=${outcomeIndex}&resolution=${resolution}&limit=200`;
         const res = await fetch(url);
         const json = await res.json();
         if (json.success === false) return;
-        
+
         const data = (json.data || [])
           .map((c: any) => {
             const t = new Date(c.time).getTime() / 1000;

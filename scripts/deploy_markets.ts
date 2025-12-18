@@ -15,10 +15,14 @@ function getEnvCollateral(chainId: number, env: NodeJS.ProcessEnv) {
         collateral = env.USDT_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDT_ADDRESS_SEPOLIA;
         break;
       case 1337:
-        collateral = env.USDT_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST || env.COLLATERAL_TOKEN_ADDRESS;
+        collateral =
+          env.USDT_ADDRESS_LOCALHOST ||
+          env.NEXT_PUBLIC_USDT_ADDRESS_LOCALHOST ||
+          env.COLLATERAL_TOKEN_ADDRESS;
         break;
       default:
-        collateral = env.USDT_ADDRESS || env.NEXT_PUBLIC_USDT_ADDRESS || env.COLLATERAL_TOKEN_ADDRESS;
+        collateral =
+          env.USDT_ADDRESS || env.NEXT_PUBLIC_USDT_ADDRESS || env.COLLATERAL_TOKEN_ADDRESS;
     }
   }
   return collateral;
@@ -88,16 +92,31 @@ async function createClobMarket(mf: any, deployerAddress: string) {
   const oracle = env.ORACLE_ADDRESS || deployerAddress;
   const feeBps = env.MARKET_FEE_BPS ? Number(env.MARKET_FEE_BPS) : 30;
   const now = Math.floor(Date.now() / 1000);
-  const resolutionTime = env.MARKET_RESOLUTION_TS ? Number(env.MARKET_RESOLUTION_TS) : (now + 7 * 24 * 3600);
+  const resolutionTime = env.MARKET_RESOLUTION_TS
+    ? Number(env.MARKET_RESOLUTION_TS)
+    : now + 7 * 24 * 3600;
   const outcome1155Address = env.OUTCOME1155_ADDRESS;
   if (!outcome1155Address) throw new Error("Missing OUTCOME1155_ADDRESS for clob market.");
-  const data = new hre.ethers.AbiCoder().encode(["address"],[outcome1155Address]);
+  const data = new hre.ethers.AbiCoder().encode(["address"], [outcome1155Address]);
 
   const templateIdClob = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("CLOB"));
-  const txCreate = await mf.createMarket(templateIdClob, collateral, oracle, feeBps, resolutionTime, data);
+  const txCreate = await mf.createMarket(
+    templateIdClob,
+    collateral,
+    oracle,
+    feeBps,
+    resolutionTime,
+    data
+  );
   const receipt = await txCreate.wait();
   const iface = mf.interface;
-  const log = receipt.logs.find((l: any) => { try { return iface.parseLog(l).name === "MarketCreated"; } catch (_) { return false; } });
+  const log = receipt.logs.find((l: any) => {
+    try {
+      return iface.parseLog(l).name === "MarketCreated";
+    } catch (_) {
+      return false;
+    }
+  });
   if (log) {
     const parsed = iface.parseLog(log);
     console.log("MarketCreated (CLOB):", {
@@ -136,17 +155,35 @@ async function createMultiMarket(mf: any, deployerAddress: string) {
   const oracle = env.ORACLE_ADDRESS || deployerAddress;
   const feeBps = env.MARKET_FEE_BPS ? Number(env.MARKET_FEE_BPS) : 30;
   const now = Math.floor(Date.now() / 1000);
-  const resolutionTime = env.MARKET_RESOLUTION_TS ? Number(env.MARKET_RESOLUTION_TS) : (now + 7 * 24 * 3600);
+  const resolutionTime = env.MARKET_RESOLUTION_TS
+    ? Number(env.MARKET_RESOLUTION_TS)
+    : now + 7 * 24 * 3600;
 
   const { outcome1155, outcome1155Address } = await ensureOutcome1155();
   const outcomeCount = env.OUTCOME_COUNT ? Number(env.OUTCOME_COUNT) : 3;
-  const data = new hre.ethers.AbiCoder().encode(["address", "uint256"], [outcome1155Address, outcomeCount]);
+  const data = new hre.ethers.AbiCoder().encode(
+    ["address", "uint256"],
+    [outcome1155Address, outcomeCount]
+  );
 
   const templateIdMulti = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("MULTI"));
-  const txCreate = await mf.createMarket(templateIdMulti, collateral, oracle, feeBps, resolutionTime, data);
+  const txCreate = await mf.createMarket(
+    templateIdMulti,
+    collateral,
+    oracle,
+    feeBps,
+    resolutionTime,
+    data
+  );
   const receipt = await txCreate.wait();
   const iface = mf.interface;
-  const log = receipt.logs.find((l: any) => { try { return iface.parseLog(l).name === "MarketCreated"; } catch (_) { return false; } });
+  const log = receipt.logs.find((l: any) => {
+    try {
+      return iface.parseLog(l).name === "MarketCreated";
+    } catch (_) {
+      return false;
+    }
+  });
   let createdMarket: string | undefined;
   if (log) {
     const parsed = iface.parseLog(log);
@@ -180,7 +217,7 @@ async function main() {
   const deployerAddress = await deployer.getAddress();
   console.log("Deployer:", deployerAddress);
 
-  const typeArg = (process.argv.find(a => a.startsWith("--type=")) || "").split("=")[1];
+  const typeArg = (process.argv.find((a) => a.startsWith("--type=")) || "").split("=")[1];
   const envType = process.env.MARKET_TYPE;
   const mode = (typeArg || envType || "both").toLowerCase();
 

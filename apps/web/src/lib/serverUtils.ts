@@ -1,98 +1,104 @@
-import { NextRequest } from 'next/server'
+import { NextRequest } from "next/server";
 
 export type OtpRecord = {
-  email: string
-  address: string
-  code: string
-  expiresAt: number
-  sentAtList: number[]
-  failCount: number
-  lockUntil: number
-  createdIp: string
-  createdAt: number
-}
+  email: string;
+  address: string;
+  code: string;
+  expiresAt: number;
+  sentAtList: number[];
+  failCount: number;
+  lockUntil: number;
+  createdIp: string;
+  createdAt: number;
+};
 
 export type LogItem = {
-  email: string
-  address: string
-  status: 'queued' | 'sent' | 'error' | 'verified'
-  messageId?: string
-  error?: string
-  sentAt: number
-}
+  email: string;
+  address: string;
+  status: "queued" | "sent" | "error" | "verified";
+  messageId?: string;
+  error?: string;
+  sentAt: number;
+};
 
 export function normalizeAddress(addr: string) {
-  const a = String(addr || '')
-  return a.startsWith('0x') ? a.toLowerCase() : a
+  const a = String(addr || "");
+  return a.startsWith("0x") ? a.toLowerCase() : a;
 }
 
 export function getSessionAddress(req: NextRequest) {
-  const raw = req.cookies.get('fs_session')?.value || ''
+  const raw = req.cookies.get("fs_session")?.value || "";
   try {
-    const obj = JSON.parse(raw)
-    return normalizeAddress(String(obj?.address || ''))
+    const obj = JSON.parse(raw);
+    return normalizeAddress(String(obj?.address || ""));
   } catch {
-    return ''
+    return "";
   }
 }
 
 export function getEmailOtpShared() {
-  const g = globalThis as any
-  if (!g.__emailOtpStore) g.__emailOtpStore = new Map<string, OtpRecord>()
-  if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[]
-  return { store: g.__emailOtpStore as Map<string, OtpRecord>, logs: g.__emailOtpLogs as LogItem[] }
+  const g = globalThis as any;
+  if (!g.__emailOtpStore) g.__emailOtpStore = new Map<string, OtpRecord>();
+  if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[];
+  return {
+    store: g.__emailOtpStore as Map<string, OtpRecord>,
+    logs: g.__emailOtpLogs as LogItem[],
+  };
 }
 
 export function isAdminAddress(addr: string) {
-  const raw = (process.env.ADMIN_ADDRESSES || '').toLowerCase()
-  const list = raw.split(',').map(s => s.trim()).filter(Boolean)
-  const a = normalizeAddress(String(addr || '').toLowerCase())
-  return list.includes(a)
+  const raw = (process.env.ADMIN_ADDRESSES || "").toLowerCase();
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const a = normalizeAddress(String(addr || "").toLowerCase());
+  return list.includes(a);
 }
 
 export async function parseRequestBody(req: Request): Promise<Record<string, any>> {
-  const contentType = req.headers.get('content-type') || ''
+  const contentType = req.headers.get("content-type") || "";
   try {
-    if (contentType.includes('application/json')) {
-      const text = await req.text()
+    if (contentType.includes("application/json")) {
+      const text = await req.text();
       try {
-        return JSON.parse(text)
+        return JSON.parse(text);
       } catch {
-        return {}
+        return {};
       }
     }
-    if (contentType.includes('application/x-www-form-urlencoded')) {
-      const text = await req.text()
-      const params = new URLSearchParams(text)
-      return Object.fromEntries(params.entries())
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const text = await req.text();
+      const params = new URLSearchParams(text);
+      return Object.fromEntries(params.entries());
     }
-    if (contentType.includes('multipart/form-data')) {
-      const form = await (req as any).formData?.()
-      if (form && typeof (form as any).entries === 'function') {
-        const obj: Record<string, any> = {}
+    if (contentType.includes("multipart/form-data")) {
+      const form = await (req as any).formData?.();
+      if (form && typeof (form as any).entries === "function") {
+        const obj: Record<string, any> = {};
         for (const [k, v] of (form as any).entries()) {
-          obj[k] = v as any
+          obj[k] = v as any;
         }
-        return obj
+        return obj;
       }
-      return {}
+      return {};
     }
-    const text = await req.text()
+    const text = await req.text();
     if (text) {
       try {
-        return JSON.parse(text)
+        return JSON.parse(text);
       } catch {
-        return {}
+        return {};
       }
     }
-    return {}
+    return {};
   } catch {
-    return {}
+    return {};
   }
 }
 
 export function logApiError(scope: string, error: unknown) {
   try {
-    console.error(scope, error)
+    console.error(scope, error);
   } catch {}
 }

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
@@ -70,7 +69,10 @@ export function MarketChart({
                 <span
                   className={`w-2 h-2 rounded-full ${tradeOutcome === idx ? "bg-white shadow-sm" : ""}`}
                   style={{
-                    backgroundColor: tradeOutcome === idx ? undefined : outcome.color || (idx === 0 ? "#10b981" : "#ef4444"),
+                    backgroundColor:
+                      tradeOutcome === idx
+                        ? undefined
+                        : outcome.color || (idx === 0 ? "#10b981" : "#ef4444"),
                   }}
                 />
                 {outcome.label || `Outcome ${idx + 1}`}
@@ -107,21 +109,13 @@ export function MarketChart({
           onClick={() => setExpanded(!expanded)}
           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
         >
-          {expanded ? (
-            <Minimize2 className="w-4 h-4" />
-          ) : (
-            <Maximize2 className="w-4 h-4" />
-          )}
+          {expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Chart Body */}
       <div className="flex-1 w-full h-full min-h-0 bg-white">
-        <KlineChart
-          market={market.market}
-          chainId={market.chain_id}
-          outcomeIndex={tradeOutcome}
-        />
+        <KlineChart market={market.market} chainId={market.chain_id} outcomeIndex={tradeOutcome} />
       </div>
     </div>
   );

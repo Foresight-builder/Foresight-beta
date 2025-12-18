@@ -106,11 +106,7 @@ const fetchPredictions = async () => {
   return data.data;
 };
 
-export default function TrendingPage({
-  initialPredictions,
-}: {
-  initialPredictions?: any[];
-}) {
+export default function TrendingPage({ initialPredictions }: { initialPredictions?: any[] }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -137,9 +133,7 @@ export default function TrendingPage({
   const [displayCount, setDisplayCount] = useState(12);
   const [totalEventsCount, setTotalEventsCount] = useState(0);
   const productsSectionRef = useRef<HTMLElement | null>(null);
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
-    {}
-  );
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
   // 登录提示弹窗状态
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -162,8 +156,7 @@ export default function TrendingPage({
   useEffect(() => {
     let rafId = 0;
     const update = () => {
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
       setShowBackToTop(scrollTop > 300);
       rafId = 0;
     };
@@ -297,9 +290,7 @@ export default function TrendingPage({
     } catch (err) {
       console.error("关注/取消关注失败:", err);
       setFollowError(
-        (err as any)?.message
-          ? String((err as any).message)
-          : "关注操作失败，请稍后重试"
+        (err as any)?.message ? String((err as any).message) : "关注操作失败，请稍后重试"
       );
       setTimeout(() => setFollowError(null), 3000);
       // 回滚本地状态（按事件ID回滚）
@@ -349,8 +340,7 @@ export default function TrendingPage({
     const baseColor = "#8B5CF6";
 
     const sizeMultiplier = Math.max(0.8, Math.min(2.0, buttonSize / 50));
-    const rippleSize =
-      Math.max(rect.width, rect.height) * (1.5 + sizeMultiplier * 0.3);
+    const rippleSize = Math.max(rect.width, rect.height) * (1.5 + sizeMultiplier * 0.3);
     const glowSize = 1.5 + sizeMultiplier * 0.5;
 
     const glow = document.createElement("div");
@@ -398,10 +388,7 @@ export default function TrendingPage({
     }
     button.appendChild(ripple);
 
-    const rippleDuration = Math.max(
-      400,
-      Math.min(800, 500 + sizeMultiplier * 100)
-    );
+    const rippleDuration = Math.max(400, Math.min(800, 500 + sizeMultiplier * 100));
     ripple.animate(
       [
         { transform: "scale(0)", opacity: 0.8 },
@@ -416,10 +403,7 @@ export default function TrendingPage({
       button.style.position = originalPosition;
     }, rippleDuration);
 
-    let scaleAmount = Math.max(
-      0.85,
-      Math.min(0.98, 0.95 - sizeMultiplier * 0.03)
-    );
+    let scaleAmount = Math.max(0.85, Math.min(0.98, 0.95 - sizeMultiplier * 0.03));
     const bounceAmount = 1.05;
     button.style.transition = "transform 150ms ease-out";
     button.style.transform = `scale(${scaleAmount})`;
@@ -435,10 +419,7 @@ export default function TrendingPage({
   };
 
   // 创建爱心粒子效果
-  const createHeartParticles = (
-    button: HTMLElement,
-    isUnfollowing: boolean
-  ) => {
+  const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean) => {
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia &&
@@ -491,9 +472,7 @@ export default function TrendingPage({
             opacity: 1,
           },
           {
-            transform: `translate(${targetX - centerX}px, ${
-              targetY - centerY
-            }px) scale(0.5)`,
+            transform: `translate(${targetX - centerX}px, ${targetY - centerY}px) scale(0.5)`,
             opacity: 0,
           },
         ],
@@ -512,10 +491,7 @@ export default function TrendingPage({
   };
 
   // 卡片点击：在鼠标点击位置生成对应分类颜色的粒子（比分类按钮略大）
-  const createCategoryParticlesAtCardClick = (
-    event: React.MouseEvent,
-    category?: string
-  ) => {
+  const createCategoryParticlesAtCardClick = (event: React.MouseEvent, category?: string) => {
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia &&
@@ -529,12 +505,12 @@ export default function TrendingPage({
       category === "科技"
         ? "#3B82F6"
         : category === "娱乐"
-        ? "#EC4899"
-        : category === "时政"
-        ? "#8B5CF6"
-        : category === "天气"
-        ? "#10B981"
-        : "#8B5CF6";
+          ? "#EC4899"
+          : category === "时政"
+            ? "#8B5CF6"
+            : category === "天气"
+              ? "#10B981"
+              : "#8B5CF6";
 
     // 粒子容器
     const particlesContainer = document.createElement("div");
@@ -653,10 +629,9 @@ export default function TrendingPage({
       // OffscreenCanvas + Worker 路线（长期最佳）
       let worker: Worker | null = null;
       try {
-        worker = new Worker(
-          new URL("../../workers/particles.worker.ts", import.meta.url),
-          { type: "module" }
-        );
+        worker = new Worker(new URL("../../workers/particles.worker.ts", import.meta.url), {
+          type: "module",
+        });
       } catch (err) {
         console.warn("Worker 初始化失败，回退到主线程绘制:", err);
       }
@@ -675,10 +650,7 @@ export default function TrendingPage({
         try {
           offscreen = (canvasEl as any).transferControlToOffscreen();
         } catch (err) {
-          console.warn(
-            "transferControlToOffscreen 失败，回退到主线程绘制:",
-            err
-          );
+          console.warn("transferControlToOffscreen 失败，回退到主线程绘制:", err);
         }
         if (offscreen) {
           const init = () => {
@@ -748,10 +720,7 @@ export default function TrendingPage({
     try {
       context = canvasEl.getContext("2d");
     } catch (err) {
-      console.warn(
-        "主线程 fallback 获取 2D 上下文失败（可能已 Offscreen 接管）:",
-        err
-      );
+      console.warn("主线程 fallback 获取 2D 上下文失败（可能已 Offscreen 接管）:", err);
       return;
     }
     if (!context) return;
@@ -974,10 +943,7 @@ export default function TrendingPage({
 
     // 粒子数量更少：基础数量 60（按窗口大小可扩展）
     const baseCount = 60;
-    const scaleFactor = Math.min(
-      2,
-      (canvasEl.width * canvasEl.height) / (1280 * 720)
-    );
+    const scaleFactor = Math.min(2, (canvasEl.width * canvasEl.height) / (1280 * 720));
     const particleCount = Math.floor(baseCount * scaleFactor);
     for (let i = 0; i < particleCount; i++) {
       particles.push(new Particle());
@@ -1064,10 +1030,7 @@ export default function TrendingPage({
                 const dist = Math.hypot(dx, dy);
                 // 连线效果
                 if (dist < LINK_DISTANCE) {
-                  const alpha = Math.max(
-                    0.05,
-                    ((LINK_DISTANCE - dist) / LINK_DISTANCE) * 0.4
-                  );
+                  const alpha = Math.max(0.05, ((LINK_DISTANCE - dist) / LINK_DISTANCE) * 0.4);
                   ctx.save();
                   ctx.globalAlpha = alpha;
                   ctx.strokeStyle = "#c4b5fd"; // 薰衣草紫的连线
@@ -1224,9 +1187,7 @@ export default function TrendingPage({
         const res = await fetch(`/api/user-follows?address=${accountNorm}`);
         if (!res.ok) return;
         const data = await res.json();
-        const ids = new Set<number>(
-          (data?.follows || []).map((e: any) => Number(e.id))
-        );
+        const ids = new Set<number>((data?.follows || []).map((e: any) => Number(e.id)));
         setFollowedEvents(ids);
       } catch (err) {
         console.warn("同步关注状态失败:", err);
@@ -1254,9 +1215,7 @@ export default function TrendingPage({
         criteria: prediction.criteria,
         followers_count: Number(prediction?.followers_count || 0),
         type: prediction.type || "binary",
-        outcomes: Array.isArray(prediction?.outcomes)
-          ? prediction.outcomes
-          : [],
+        outcomes: Array.isArray(prediction?.outcomes) ? prediction.outcomes : [],
       })),
     [predictions]
   );
@@ -1283,9 +1242,9 @@ export default function TrendingPage({
     const q = searchQuery.toLowerCase();
     return allEvents.filter(
       (e: any) =>
-      (e.title || "").toLowerCase().includes(q) ||
-      (e.description || "").toLowerCase().includes(q) ||
-      (e.tag || "").toLowerCase().includes(q)
+        (e.title || "").toLowerCase().includes(q) ||
+        (e.description || "").toLowerCase().includes(q) ||
+        (e.tag || "").toLowerCase().includes(q)
     );
   }, [allEvents, searchQuery]);
 
@@ -1342,8 +1301,7 @@ export default function TrendingPage({
     setEditOpen(false);
     setEditTargetId(null);
   };
-  const setEditField = (k: string, v: any) =>
-    setEditForm((prev: any) => ({ ...prev, [k]: v }));
+  const setEditField = (k: string, v: any) => setEditForm((prev: any) => ({ ...prev, [k]: v }));
   const submitEdit = async () => {
     try {
       setSavingEdit(true);
@@ -1427,9 +1385,7 @@ export default function TrendingPage({
       const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
       return ta - tb;
     };
-    const tags = Array.from(
-      new Set(pool.map((e: any) => String(e.tag || "")).filter(Boolean))
-    );
+    const tags = Array.from(new Set(pool.map((e: any) => String(e.tag || "")).filter(Boolean)));
     const picks = tags
       .map((tag) => {
         const group = pool.filter((e: any) => String(e.tag || "") === tag);
@@ -1441,11 +1397,8 @@ export default function TrendingPage({
   }, [displayEvents]);
 
   const activeSlide =
-    heroSlideEvents.length > 0
-      ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length]
-      : null;
-  const fallbackIndex =
-    heroEvents.length > 0 ? currentHeroIndex % heroEvents.length : 0;
+    heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
+  const fallbackIndex = heroEvents.length > 0 ? currentHeroIndex % heroEvents.length : 0;
   const activeTitle = activeSlide
     ? String(activeSlide?.title || "")
     : String(heroEvents[fallbackIndex]?.title || "");
@@ -1533,10 +1486,7 @@ export default function TrendingPage({
                 p?.id === eid
                   ? {
                       ...p,
-                      followers_count: Math.max(
-                        0,
-                        Number(p?.followers_count || 0) - 1
-                      ),
+                      followers_count: Math.max(0, Number(p?.followers_count || 0) - 1),
                     }
                   : p
               )
@@ -1660,13 +1610,7 @@ export default function TrendingPage({
                 <span>热搜:</span>
               </div>
               <div className="flex items-center gap-2">
-                {[
-                  "#Bitcoin100k",
-                  "#GPT-5",
-                  "#WorldCup",
-                  "#SpaceX",
-                  "#Climate",
-                ].map((tag, i) => (
+                {["#Bitcoin100k", "#GPT-5", "#WorldCup", "#SpaceX", "#Climate"].map((tag, i) => (
                   <button
                     key={tag}
                     onClick={() => setSearchQuery(tag.replace(/^#/, ""))}
@@ -1689,15 +1633,12 @@ export default function TrendingPage({
                     activeSlide?.id ? "cursor-pointer hover:scale-[1.005]" : ""
                   }`}
                   onClick={() => {
-                    if (activeSlide?.id)
-                      router.push(`/prediction/${activeSlide.id}`);
+                    if (activeSlide?.id) router.push(`/prediction/${activeSlide.id}`);
                   }}
                 >
                   <motion.img
                     key={String(
-                      (activeSlide &&
-                        (activeSlide?.id || activeSlide?.title)) ||
-                        currentHeroIndex
+                      (activeSlide && (activeSlide?.id || activeSlide?.title)) || currentHeroIndex
                     )}
                     src={activeImage}
                     alt={activeTitle}
@@ -1782,8 +1723,7 @@ export default function TrendingPage({
                   style={{ ["overflowAnchor" as any]: "none" }}
                 >
                   {categories.map((category, index) => {
-                    const isActive =
-                      String(activeCategory || "") === category.name;
+                    const isActive = String(activeCategory || "") === category.name;
 
                     return (
                       <motion.div
@@ -1806,8 +1746,7 @@ export default function TrendingPage({
                             const fallbackIdx = heroEvents.findIndex(
                               (ev) => ev.category === category.name
                             );
-                            if (fallbackIdx >= 0)
-                              setCurrentHeroIndex(fallbackIdx);
+                            if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
                           }
                         }}
                       >
@@ -1835,10 +1774,7 @@ export default function TrendingPage({
                             isActive ? "text-white" : "text-purple-100"
                           }`}
                         >
-                          <svg
-                            viewBox="0 0 1440 320"
-                            className="w-full h-full preserve-3d"
-                          >
+                          <svg viewBox="0 0 1440 320" className="w-full h-full preserve-3d">
                             <path
                               fill="currentColor"
                               fillOpacity="1"
@@ -1897,15 +1833,11 @@ export default function TrendingPage({
                               >
                                 <Flame
                                   className={`w-3.5 h-3.5 ${
-                                    isActive
-                                      ? "text-white animate-pulse"
-                                      : "text-orange-500"
+                                    isActive ? "text-white animate-pulse" : "text-orange-500"
                                   }`}
                                 />
                               </div>
-                              <span>
-                                {categoryCounts[category.name] || 0} 个热门事件
-                              </span>
+                              <span>{categoryCounts[category.name] || 0} 个热门事件</span>
                             </div>
                           </div>
                         </div>
@@ -1938,10 +1870,7 @@ export default function TrendingPage({
 
                     {/* 底部装饰波纹 */}
                     <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30 text-purple-100">
-                      <svg
-                        viewBox="0 0 1440 320"
-                        className="w-full h-full preserve-3d"
-                      >
+                      <svg viewBox="0 0 1440 320" className="w-full h-full preserve-3d">
                         <path
                           fill="currentColor"
                           fillOpacity="1"
@@ -1994,9 +1923,7 @@ export default function TrendingPage({
                       <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/10 shadow-inner">
                         <TrendingUp className="w-5 h-5 text-green-300" />
                       </div>
-                      <h3 className="font-bold text-lg tracking-tight">
-                        市场风向标
-                      </h3>
+                      <h3 className="font-bold text-lg tracking-tight">市场风向标</h3>
                     </div>
 
                     <p className="text-blue-50 text-sm leading-relaxed mb-5 font-medium">
@@ -2044,9 +1971,7 @@ export default function TrendingPage({
         {error && (
           <div className="text-center py-12">
             <div className="text-red-500 text-lg mb-2">加载失败</div>
-            <p className="text-gray-600">
-              {(error as any)?.message || String(error)}
-            </p>
+            <p className="text-gray-600">{(error as any)?.message || String(error)}</p>
             <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
@@ -2060,9 +1985,7 @@ export default function TrendingPage({
         {!loading && !error && (
           <>
             {followError && (
-              <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded">
-                {followError}
-              </div>
+              <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded">{followError}</div>
             )}
             {sortedEvents.length === 0 ? (
               <div className="text-center py-12">
@@ -2085,9 +2008,7 @@ export default function TrendingPage({
                         }}
                       >
                         {/* 关注按钮 */}
-                        {Number.isFinite(
-                          Number(sortedEvents[globalIndex]?.id)
-                        ) && (
+                        {Number.isFinite(Number(sortedEvents[globalIndex]?.id)) && (
                           <motion.button
                             data-event-index={globalIndex}
                             onClick={(e) => {
@@ -2099,9 +2020,7 @@ export default function TrendingPage({
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             animate={
-                              followedEvents.has(
-                                Number(sortedEvents[globalIndex]?.id)
-                              )
+                              followedEvents.has(Number(sortedEvents[globalIndex]?.id))
                                 ? "liked"
                                 : "unliked"
                             }
@@ -2118,9 +2037,7 @@ export default function TrendingPage({
                           >
                             <motion.div
                               animate={
-                                followedEvents.has(
-                                  Number(sortedEvents[globalIndex]?.id)
-                                )
+                                followedEvents.has(Number(sortedEvents[globalIndex]?.id))
                                   ? "liked"
                                   : "unliked"
                               }
@@ -2140,9 +2057,7 @@ export default function TrendingPage({
                             >
                               <Heart
                                 className={`w-5 h-5 ${
-                                  followedEvents.has(
-                                    Number(sortedEvents[globalIndex]?.id)
-                                  )
+                                  followedEvents.has(Number(sortedEvents[globalIndex]?.id))
                                     ? "fill-red-500 text-red-500"
                                     : "text-gray-500"
                                 }`}
@@ -2151,49 +2066,37 @@ export default function TrendingPage({
                           </motion.button>
                         )}
 
-                        {isAdmin &&
-                          Number.isFinite(
-                            Number(sortedEvents[globalIndex]?.id)
-                          ) && (
-                            <div className="absolute top-3 right-3 z-10 flex gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  openEdit(sortedEvents[globalIndex]);
-                                }}
-                                className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
-                                aria-label="编辑"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  deleteEvent(
-                                    Number(sortedEvents[globalIndex]?.id)
-                                  );
-                                }}
-                                className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
-                                disabled={
-                                  deleteBusyId ===
-                                  Number(sortedEvents[globalIndex]?.id)
-                                }
-                                aria-label="删除"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
+                        {isAdmin && Number.isFinite(Number(sortedEvents[globalIndex]?.id)) && (
+                          <div className="absolute top-3 right-3 z-10 flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openEdit(sortedEvents[globalIndex]);
+                              }}
+                              className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
+                              aria-label="编辑"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteEvent(Number(sortedEvents[globalIndex]?.id));
+                              }}
+                              className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+                              disabled={deleteBusyId === Number(sortedEvents[globalIndex]?.id)}
+                              aria-label="删除"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
 
                         {/* 产品图片：仅在存在有效 id 时可点击跳转 */}
-                        {Number.isFinite(
-                          Number(sortedEvents[globalIndex]?.id)
-                        ) ? (
-                          <Link
-                            href={`/prediction/${sortedEvents[globalIndex]?.id}`}
-                          >
+                        {Number.isFinite(Number(sortedEvents[globalIndex]?.id)) ? (
+                          <Link href={`/prediction/${sortedEvents[globalIndex]?.id}`}>
                             <div className="relative h-40 overflow-hidden bg-gray-100">
                               <img
                                 src={product.image}
@@ -2204,8 +2107,7 @@ export default function TrendingPage({
                                 height={320}
                                 className="w-full h-full object-cover transition-opacity duration-300"
                                 onError={(e) => {
-                                  const img =
-                                    e.currentTarget as HTMLImageElement;
+                                  const img = e.currentTarget as HTMLImageElement;
                                   img.onerror = null;
                                   img.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
                                     product.title
@@ -2244,21 +2146,20 @@ export default function TrendingPage({
                           </div>
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
-                              成交 ${Number(sortedEvents[globalIndex]?.stats?.totalAmount || 0).toFixed(2)}
+                              成交 $
+                              {Number(sortedEvents[globalIndex]?.stats?.totalAmount || 0).toFixed(
+                                2
+                              )}
                             </span>
                             <div className="flex items-center text-gray-500 text-[10px] font-medium">
                               <Users className="w-3 h-3 mr-1" />
                               <span>
-                                {Number(
-                                  sortedEvents[globalIndex]?.stats?.participantCount || 0
-                                )}
+                                {Number(sortedEvents[globalIndex]?.stats?.participantCount || 0)}
                               </span>
                             </div>
                             <div className="flex items-center text-gray-500 text-[10px] font-medium">
                               <Heart className="w-3 h-3 mr-1" />
-                              <span>
-                                {sortedEvents[globalIndex]?.followers_count || 0}
-                              </span>
+                              <span>{sortedEvents[globalIndex]?.followers_count || 0}</span>
                             </div>
                           </div>
                           {/* 多元选项 chip 展示（最多 6 个） */}
@@ -2275,12 +2176,9 @@ export default function TrendingPage({
                                       {String(o?.label || `选项${oi}`)}
                                     </span>
                                   ))}
-                                {sortedEvents[globalIndex]?.outcomes.length >
-                                  4 && (
+                                {sortedEvents[globalIndex]?.outcomes.length > 4 && (
                                   <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-400 border border-gray-200/60">
-                                    +
-                                    {sortedEvents[globalIndex]?.outcomes
-                                      .length - 4}
+                                    +{sortedEvents[globalIndex]?.outcomes.length - 4}
                                   </span>
                                 )}
                               </div>
@@ -2358,10 +2256,7 @@ export default function TrendingPage({
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button
-                onClick={closeEdit}
-                className="px-4 py-2 rounded-lg border"
-              >
+              <button onClick={closeEdit} className="px-4 py-2 rounded-lg border">
                 取消
               </button>
               <button
@@ -2412,9 +2307,7 @@ export default function TrendingPage({
                   关注预测事件需要先连接钱包登录。请点击右上角的"连接钱包"按钮进行登录。
                 </p>
                 <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                    登录后您可以：
-                  </h4>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">登录后您可以：</h4>
                   <ul className="text-gray-600 space-y-2 text-left">
                     <li className="flex items-center">
                       <CheckCircle className="w-5 h-5 text-green-500 mr-2" />

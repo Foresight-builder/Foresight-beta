@@ -1,49 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getClient } from '@/lib/supabase';
+import { NextRequest, NextResponse } from "next/server";
+import { getClient } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   try {
     const client = getClient();
     if (!client) {
       return NextResponse.json(
-        { success: false, message: 'Supabase not configured' },
+        { success: false, message: "Supabase not configured" },
         { status: 500 }
       );
     }
 
     const url = new URL(req.url);
-    const contract = url.searchParams.get('contract');
-    const chainId = url.searchParams.get('chainId');
-    const outcome = url.searchParams.get('outcome');
-    const side = url.searchParams.get('side'); // 'true' for buy, 'false' for sell
-    const levels = Number(url.searchParams.get('levels') || 10);
+    const contract = url.searchParams.get("contract");
+    const chainId = url.searchParams.get("chainId");
+    const outcome = url.searchParams.get("outcome");
+    const side = url.searchParams.get("side"); // 'true' for buy, 'false' for sell
+    const levels = Number(url.searchParams.get("levels") || 10);
 
     if (!contract || !chainId || outcome === null || side === null) {
-      return NextResponse.json(
-        { success: false, message: 'Missing parameters' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Missing parameters" }, { status: 400 });
     }
 
-    const isBuy = side === 'true';
+    const isBuy = side === "true";
 
     // Query open orders
     const { data: orders, error } = await client
-      .from('orders')
-      .select('price, remaining')
-      .eq('verifying_contract', contract.toLowerCase())
-      .eq('chain_id', Number(chainId))
-      .eq('outcome_index', Number(outcome))
-      .eq('is_buy', isBuy)
-      .in('status', ['open', 'filled_partial'])
-      .order('price', { ascending: !isBuy }); // Buy: desc (high to low), Sell: asc (low to high)
+      .from("orders")
+      .select("price, remaining")
+      .eq("verifying_contract", contract.toLowerCase())
+      .eq("chain_id", Number(chainId))
+      .eq("outcome_index", Number(outcome))
+      .eq("is_buy", isBuy)
+      .in("status", ["open", "filled_partial"])
+      .order("price", { ascending: !isBuy }); // Buy: desc (high to low), Sell: asc (low to high)
 
     if (error) {
-      console.error('Error fetching depth:', error);
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      );
+      console.error("Error fetching depth:", error);
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 
     if (!orders || orders.length === 0) {
@@ -52,8 +46,8 @@ export async function GET(req: NextRequest) {
 
     // Aggregate orders by price
     const depthMap = new Map<string, bigint>();
-    
-    for (const order of (orders as any[])) {
+
+    for (const order of orders as any[]) {
       const priceStr = String(order.price);
       const currentQty = depthMap.get(priceStr) || BigInt(0);
       depthMap.set(priceStr, currentQty + BigInt(order.remaining));
@@ -80,12 +74,8 @@ export async function GET(req: NextRequest) {
       success: true,
       data: depthArray.slice(0, levels),
     });
-
   } catch (e: any) {
-    console.error('Depth API error:', e);
-    return NextResponse.json(
-      { success: false, message: e?.message || String(e) },
-      { status: 500 }
-    );
+    console.error("Depth API error:", e);
+    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
   }
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -24,12 +23,12 @@ const erc20Abi = [
 const marketAbi = [
   "function mintCompleteSet(uint256 amount) external",
   "function depositCompleteSet(uint256 amount) external",
-  "function outcomeToken() view returns (address)"
+  "function outcomeToken() view returns (address)",
 ];
 
 const erc1155Abi = [
   "function isApprovedForAll(address account, address operator) view returns (bool)",
-  "function setApprovalForAll(address operator, bool approved) external"
+  "function setApprovalForAll(address operator, bool approved) external",
 ];
 
 // 地址解析（基于 chainId）
@@ -37,9 +36,7 @@ function resolveAddresses(chainId: number): {
   foresight: string;
   usdc: string;
 } {
-  const defaultForesight = (
-    process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS || ""
-  ).trim();
+  const defaultForesight = (process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS || "").trim();
   const defaultUsdc = (process.env.NEXT_PUBLIC_USDC_ADDRESS || "").trim();
 
   const map: Record<number, { foresight?: string; usdc?: string }> = {
@@ -52,8 +49,7 @@ function resolveAddresses(chainId: number): {
         process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY ||
         "0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02",
       usdc:
-        process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
-        "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+        process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY || "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
     },
     11155111: {
       foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_SEPOLIA,
@@ -77,10 +73,7 @@ function resolveAddresses(chainId: number): {
 }
 
 // 将任意小数按指定 decimals 转为最小单位 BigInt
-function parseUnitsByDecimals(
-  value: number | string,
-  decimals: number
-): bigint {
+function parseUnitsByDecimals(value: number | string, decimals: number): bigint {
   const str = typeof value === "number" ? String(value) : value;
   try {
     return ethers.parseUnits(str, decimals);
@@ -92,10 +85,7 @@ function parseUnitsByDecimals(
     }
     const [intPart, fracRaw] = parts;
     const frac = (fracRaw || "").slice(0, decimals).padEnd(decimals, "0");
-    return (
-      BigInt(intPart || "0") * BigInt(10) ** BigInt(decimals) +
-      BigInt(frac || "0")
-    );
+    return BigInt(intPart || "0") * BigInt(10) ** BigInt(decimals) + BigInt(frac || "0");
   }
 }
 
@@ -135,9 +125,7 @@ export default function PredictionDetailClient() {
   const router = useRouter();
   const { account, provider: walletProvider, switchNetwork } = useWallet();
 
-  const [prediction, setPrediction] = useState<PredictionDetail | null>(
-    null
-  );
+  const [prediction, setPrediction] = useState<PredictionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -177,9 +165,7 @@ export default function PredictionDetailClient() {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `/api/predictions/${params.id}?includeStats=1&includeOutcomes=1`
-        );
+        const res = await fetch(`/api/predictions/${params.id}?includeStats=1&includeOutcomes=1`);
         const data = await res.json();
         if (!cancelled) {
           if (data.success) {
@@ -236,16 +222,16 @@ export default function PredictionDetailClient() {
         const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
         const qBuy = `contract=${market.market}&chainId=${market.chain_id}&outcome=${tradeOutcome}&side=true&levels=10`;
         const qSell = `contract=${market.market}&chainId=${market.chain_id}&outcome=${tradeOutcome}&side=false&levels=10`;
-        
+
         const [r1, r2] = await Promise.all([
-            fetch(`${base}/orderbook/depth?${qBuy}`),
-            fetch(`${base}/orderbook/depth?${qSell}`)
+          fetch(`${base}/orderbook/depth?${qBuy}`),
+          fetch(`${base}/orderbook/depth?${qSell}`),
         ]);
         const [j1, j2] = await Promise.all([r1.json(), r2.json()]);
-        
+
         const buys = j1.data || [];
         const sells = j2.data || [];
-        
+
         setDepthBuy(buys);
         setDepthSell(sells);
         setBestBid(buys.length > 0 ? buys[0].price : "");
@@ -260,26 +246,25 @@ export default function PredictionDetailClient() {
 
   // Effects: Poll User Orders
   useEffect(() => {
-      if (!market || !account) return;
-      const fetchOrders = async () => {
-          try {
-             const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-             const q = `contract=${market.market}&chainId=${market.chain_id}&maker=${account}&status=open`;
-             const res = await fetch(`${base}/orderbook/orders?${q}`);
-             const json = await res.json();
-             if (json.success && json.data) {
-                 setOpenOrders(json.data);
-             }
-          } catch (e) {
-              console.error("Fetch orders failed", e);
-          }
-      };
-      
-      fetchOrders();
-      const timer = setInterval(fetchOrders, 5000);
-      return () => clearInterval(timer);
-  }, [market, account]);
+    if (!market || !account) return;
+    const fetchOrders = async () => {
+      try {
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
+        const q = `contract=${market.market}&chainId=${market.chain_id}&maker=${account}&status=open`;
+        const res = await fetch(`${base}/orderbook/orders?${q}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setOpenOrders(json.data);
+        }
+      } catch (e) {
+        console.error("Fetch orders failed", e);
+      }
+    };
 
+    fetchOrders();
+    const timer = setInterval(fetchOrders, 5000);
+    return () => clearInterval(timer);
+  }, [market, account]);
 
   // Actions
   const handleFollow = async () => {
@@ -298,13 +283,13 @@ export default function PredictionDetailClient() {
     if (!account || !market) return;
     try {
       const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-      
+
       // 1. Sign cancellation message
       // Simple signature of the salt is usually enough for authentication of cancel
       // Or EIP-712 CancelOrder(uint256 salt)
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
-      
+
       // For simplicity in this demo, we assume the API accepts a signed message of the salt
       // Real implementation should match contract's cancel requirement or relayer's auth
       const message = `Cancel Order: ${salt}`;
@@ -317,15 +302,15 @@ export default function PredictionDetailClient() {
           salt,
           maker: account,
           signature,
-          message 
+          message,
         }),
       });
-      
+
       const json = await res.json();
       if (json.success) {
         setOrderMsg("订单已取消");
         // Optimistic update
-        setOpenOrders(prev => prev.filter(o => o.maker_salt !== salt));
+        setOpenOrders((prev) => prev.filter((o) => o.maker_salt !== salt));
       } else {
         throw new Error(json.message || "取消失败");
       }
@@ -338,22 +323,22 @@ export default function PredictionDetailClient() {
     try {
       if (!market || !account || !walletProvider) return;
       setOrderMsg("准备铸币...");
-      
+
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
-      
+
       // Check network
       const network = await provider.getNetwork();
       if (Number(network.chainId) !== market.chain_id) {
-         await switchNetwork(market.chain_id);
-         await new Promise(r => setTimeout(r, 1000));
+        await switchNetwork(market.chain_id);
+        await new Promise((r) => setTimeout(r, 1000));
       }
 
       // Resolve decimals
       const addresses = resolveAddresses(market.chain_id);
       const collateralToken = market.collateral_token || addresses.usdc;
       console.log("[Mint] Market:", market.market, "Collateral:", collateralToken);
-      
+
       const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
       const decimals = await tokenContract.decimals();
       const amountBN = parseUnitsByDecimals(amountStr, Number(decimals));
@@ -362,7 +347,7 @@ export default function PredictionDetailClient() {
       // Approve
       const allowance = await tokenContract.allowance(account, market.market);
       console.log("[Mint] Allowance:", allowance.toString());
-      
+
       if (allowance < amountBN) {
         setOrderMsg("请授权 USDC...");
         const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
@@ -373,7 +358,7 @@ export default function PredictionDetailClient() {
       // Mint
       setOrderMsg("正在铸币...");
       const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-      
+
       // Estimate gas to check for revert reasons early
       try {
         await marketContract.mintCompleteSet.estimateGas(amountBN);
@@ -385,7 +370,7 @@ export default function PredictionDetailClient() {
       const tx = await marketContract.mintCompleteSet(amountBN);
       console.log("[Mint] Tx sent:", tx.hash);
       await tx.wait();
-      
+
       setOrderMsg("铸币成功！您现在可以出售代币了。");
       // Refresh balance if possible
     } catch (e: any) {
@@ -398,15 +383,15 @@ export default function PredictionDetailClient() {
     try {
       if (!market || !account || !walletProvider) return;
       setOrderMsg("准备赎回...");
-      
+
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
-      
+
       // Check network
       const network = await provider.getNetwork();
       if (Number(network.chainId) !== market.chain_id) {
-         await switchNetwork(market.chain_id);
-         await new Promise(r => setTimeout(r, 1000));
+        await switchNetwork(market.chain_id);
+        await new Promise((r) => setTimeout(r, 1000));
       }
 
       // Resolve decimals (Collateral decimals used for amount)
@@ -420,19 +405,19 @@ export default function PredictionDetailClient() {
       const marketContract = new ethers.Contract(market.market, marketAbi, signer);
       const outcomeTokenAddress = await marketContract.outcomeToken();
       const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-      
+
       const isApproved = await outcome1155.isApprovedForAll(account, market.market);
       if (!isApproved) {
-         setOrderMsg("请授权预测代币...");
-         const txApp = await outcome1155.setApprovalForAll(market.market, true);
-         await txApp.wait();
+        setOrderMsg("请授权预测代币...");
+        const txApp = await outcome1155.setApprovalForAll(market.market, true);
+        await txApp.wait();
       }
 
       // Redeem (Deposit Complete Set)
       setOrderMsg("正在赎回...");
       const tx = await marketContract.depositCompleteSet(amountBN);
       await tx.wait();
-      
+
       setOrderMsg("赎回成功！USDC 已退回。");
     } catch (e: any) {
       console.error(e);
@@ -452,7 +437,7 @@ export default function PredictionDetailClient() {
 
       const price = parseFloat(priceInput);
       const amount = parseFloat(amountInput);
-      
+
       if (isNaN(price) || price <= 0 || price >= 1) throw new Error("价格无效 (0-1)");
       if (isNaN(amount) || amount <= 0) throw new Error("数量无效");
 
@@ -460,12 +445,12 @@ export default function PredictionDetailClient() {
       const provider = new ethers.BrowserProvider(walletProvider);
       const network = await provider.getNetwork();
       const currentChainId = Number(network.chainId);
-      
+
       if (currentChainId !== market.chain_id) {
         try {
           await switchNetwork(market.chain_id);
           // Wait a bit for network switch to settle
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 1000));
         } catch (e: any) {
           throw new Error(`请切换到正确网络 (Chain ID: ${market.chain_id})`);
         }
@@ -483,35 +468,35 @@ export default function PredictionDetailClient() {
       const amountInt = Math.floor(amount);
       if (amountInt <= 0) throw new Error("数量无效");
       const amountBN = BigInt(amountInt);
-      
+
       // 2. Check Allowance (only for Buy orders or if using collateral)
       // For Buy: User pays USDC (or collateral)
       // For Sell: User pays Conditional Tokens (CT)
       // Simplified: Assume USDC for Buy, CT for Sell.
-      if (tradeSide === 'buy') {
-          const cost = amountBN * priceBN;
-          
-          const allowance = await tokenContract.allowance(account, market.market);
-          if (allowance < cost) {
-             setOrderMsg("正在请求授权...");
-             const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
-             await tx.wait();
-             setOrderMsg("授权成功，正在下单...");
-          }
-       } else {
-          // For Sell: User needs to approve the Market to spend their Outcome Tokens
-          const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-          const outcomeTokenAddress = await marketContract.outcomeToken();
-          const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-          
-          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
-          if (!isApproved) {
-             setOrderMsg("请求预测代币授权...");
-             const tx = await outcome1155.setApprovalForAll(market.market, true);
-             await tx.wait();
-             setOrderMsg("授权成功，正在下单...");
-          }
-       }
+      if (tradeSide === "buy") {
+        const cost = amountBN * priceBN;
+
+        const allowance = await tokenContract.allowance(account, market.market);
+        if (allowance < cost) {
+          setOrderMsg("正在请求授权...");
+          const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
+          await tx.wait();
+          setOrderMsg("授权成功，正在下单...");
+        }
+      } else {
+        // For Sell: User needs to approve the Market to spend their Outcome Tokens
+        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+        const outcomeTokenAddress = await marketContract.outcomeToken();
+        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+
+        const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+        if (!isApproved) {
+          setOrderMsg("请求预测代币授权...");
+          const tx = await outcome1155.setApprovalForAll(market.market, true);
+          await tx.wait();
+          setOrderMsg("授权成功，正在下单...");
+        }
+      }
 
       // 3. Construct Order
       const salt = Math.floor(Math.random() * 1000000).toString();
@@ -564,7 +549,7 @@ export default function PredictionDetailClient() {
         },
         signature,
         chainId: market.chain_id,
-        contract: market.market
+        contract: market.market,
       };
 
       // Use /orders endpoint which handles POST
@@ -582,7 +567,6 @@ export default function PredictionDetailClient() {
       } else {
         throw new Error(json.message || "下单失败");
       }
-
     } catch (e: any) {
       console.error(e);
       setOrderMsg(e.message || "交易失败");
@@ -590,7 +574,6 @@ export default function PredictionDetailClient() {
       setIsSubmitting(false);
     }
   };
-
 
   if (loading) {
     return (
@@ -619,11 +602,10 @@ export default function PredictionDetailClient() {
         <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] bg-pink-200/40 rounded-full blur-[120px] mix-blend-multiply animate-blob animation-delay-4000"></div>
         <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] bg-emerald-100/40 rounded-full blur-[100px] mix-blend-multiply animate-blob animation-delay-6000"></div>
       </div>
-      
+
       <div className="fixed inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] pointer-events-none opacity-30 z-0"></div>
-      
+
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10">
-        
         {/* 1. Header Section */}
         <div className="mb-8">
           <MarketHeader
@@ -653,57 +635,57 @@ export default function PredictionDetailClient() {
 
           {/* 3. Trading Panel (Right, 4 cols) */}
           <div className="lg:col-span-4">
-             <div className="sticky top-24">
-                <TradingPanel 
-                    market={market}
-                    prediction={prediction}
-                    tradeSide={tradeSide}
-                    setTradeSide={setTradeSide}
-                    tradeOutcome={tradeOutcome}
-                    setTradeOutcome={setTradeOutcome}
-                    priceInput={priceInput}
-                    setPriceInput={setPriceInput}
-                    amountInput={amountInput}
-                    setAmountInput={setAmountInput}
-                    orderMode={orderMode}
-                    setOrderMode={setOrderMode}
-                    submitOrder={submitOrder}
-                    isSubmitting={isSubmitting}
-                    orderMsg={orderMsg}
-                    bestBid={bestBid}
-                    bestAsk={bestAsk}
-                    balance={balance}
-                    depthBuy={depthBuy}
-                    depthSell={depthSell}
-                    userOrders={openOrders}
-                    cancelOrder={cancelOrder}
-                    outcomes={outcomes}
-                />
-                <div className="mt-4 bg-white border border-purple-100 rounded-3xl p-4 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between text-sm font-medium text-gray-700">
-                    <span>铸币 (USDC → 预测份额)</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={mintInput}
-                      onChange={(e) => setMintInput(e.target.value)}
-                      placeholder="输入铸币数量 (USDC)"
-                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm text-gray-900 focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-2 focus:ring-purple-500/10"
-                    />
-                    <button
-                      onClick={() => mintInput && handleMint(mintInput)}
-                      disabled={!market || !account || !mintInput}
-                      className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      铸币
-                    </button>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    先用 USDC 铸造完整预测份额，再在上方交易面板中挂卖单。
-                  </div>
+            <div className="sticky top-24">
+              <TradingPanel
+                market={market}
+                prediction={prediction}
+                tradeSide={tradeSide}
+                setTradeSide={setTradeSide}
+                tradeOutcome={tradeOutcome}
+                setTradeOutcome={setTradeOutcome}
+                priceInput={priceInput}
+                setPriceInput={setPriceInput}
+                amountInput={amountInput}
+                setAmountInput={setAmountInput}
+                orderMode={orderMode}
+                setOrderMode={setOrderMode}
+                submitOrder={submitOrder}
+                isSubmitting={isSubmitting}
+                orderMsg={orderMsg}
+                bestBid={bestBid}
+                bestAsk={bestAsk}
+                balance={balance}
+                depthBuy={depthBuy}
+                depthSell={depthSell}
+                userOrders={openOrders}
+                cancelOrder={cancelOrder}
+                outcomes={outcomes}
+              />
+              <div className="mt-4 bg-white border border-purple-100 rounded-3xl p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between text-sm font-medium text-gray-700">
+                  <span>铸币 (USDC → 预测份额)</span>
                 </div>
-             </div>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={mintInput}
+                    onChange={(e) => setMintInput(e.target.value)}
+                    placeholder="输入铸币数量 (USDC)"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-3 text-sm text-gray-900 focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-2 focus:ring-purple-500/10"
+                  />
+                  <button
+                    onClick={() => mintInput && handleMint(mintInput)}
+                    disabled={!market || !account || !mintInput}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    铸币
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500">
+                  先用 USDC 铸造完整预测份额，再在上方交易面板中挂卖单。
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

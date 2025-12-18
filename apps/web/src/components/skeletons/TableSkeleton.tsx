@@ -14,11 +14,11 @@ export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; column
           ))}
         </div>
       </div>
-      
+
       {/* 表体 */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div 
-          key={i} 
+        <div
+          key={i}
           className="grid border-b border-gray-100 last:border-0"
           style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
         >
@@ -32,4 +32,3 @@ export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; column
     </div>
   );
 }
-

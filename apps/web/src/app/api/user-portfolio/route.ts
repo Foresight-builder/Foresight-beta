@@ -7,17 +7,11 @@ export async function GET(req: Request) {
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json(
-        { message: "Wallet address is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Wallet address is required" }, { status: 400 });
     }
 
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { message: "Supabase client not initialized" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
     }
 
     const { data: bets, error: betsError } = await supabaseAdmin
@@ -28,10 +22,7 @@ export async function GET(req: Request) {
 
     if (betsError) {
       console.error("Error fetching bets:", betsError);
-      return NextResponse.json(
-        { message: "Failed to fetch bets" },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Failed to fetch bets" }, { status: 500 });
     }
 
     const predictionIds = Array.from(
@@ -54,11 +45,10 @@ export async function GET(req: Request) {
     > = {};
 
     if (predictionIds.length > 0) {
-      const { data: predictionRows, error: predictionError } =
-        await supabaseAdmin
-          .from("predictions")
-          .select("id, title, image_url, status, min_stake, winning_outcome")
-          .in("id", predictionIds);
+      const { data: predictionRows, error: predictionError } = await supabaseAdmin
+        .from("predictions")
+        .select("id, title, image_url, status, min_stake, winning_outcome")
+        .in("id", predictionIds);
 
       if (predictionError) {
         console.error("Error fetching predictions:", predictionError);
@@ -94,9 +84,7 @@ export async function GET(req: Request) {
     if (predictionIds.length > 0) {
       const { data: statsRows, error: statsError } = await supabaseAdmin
         .from("prediction_stats")
-        .select(
-          "prediction_id, yes_amount, no_amount, total_amount, participant_count, bet_count"
-        )
+        .select("prediction_id, yes_amount, no_amount, total_amount, participant_count, bet_count")
         .in("prediction_id", predictionIds);
 
       if (!statsError && Array.isArray(statsRows)) {
@@ -184,12 +172,9 @@ export async function GET(req: Request) {
         noProbability = noAmount / totalAmount;
       }
 
-      const imageUrl =
-        meta?.image_url ||
-        `https://api.dicebear.com/7.x/shapes/svg?seed=${pid}`;
+      const imageUrl = meta?.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${pid}`;
 
-      const invested =
-        value.totalStake > 0 ? value.totalStake : meta?.min_stake || 0;
+      const invested = value.totalStake > 0 ? value.totalStake : meta?.min_stake || 0;
       totalInvested += invested;
 
       const winner = String(meta?.winning_outcome || "").toLowerCase();
@@ -200,12 +185,10 @@ export async function GET(req: Request) {
 
       if (resolved && totalAmount > 0) {
         if (winner === "yes" && yesAmount > 0) {
-          const payoutYes =
-            (value.stakeYes / yesAmount) * totalAmount;
+          const payoutYes = (value.stakeYes / yesAmount) * totalAmount;
           gross = payoutYes;
         } else if (winner === "no" && noAmount > 0) {
-          const payoutNo =
-            (value.stakeNo / noAmount) * totalAmount;
+          const payoutNo = (value.stakeNo / noAmount) * totalAmount;
           gross = payoutNo;
         }
         netPnl = gross - value.totalStake;
@@ -218,22 +201,19 @@ export async function GET(req: Request) {
         else if (netPnl < 0) lossCount += 1;
       }
 
-      const pnlPct =
-        invested > 0 ? (netPnl / invested) * 100 : 0;
+      const pnlPct = invested > 0 ? (netPnl / invested) * 100 : 0;
       const pnlPctRounded = Number(pnlPct.toFixed(1));
       const pnlLabel =
-        pnlPctRounded >= 0
-          ? `+${pnlPctRounded.toFixed(1)}%`
-          : `${pnlPctRounded.toFixed(1)}%`;
+        pnlPctRounded >= 0 ? `+${pnlPctRounded.toFixed(1)}%` : `${pnlPctRounded.toFixed(1)}%`;
 
       const mainOutcome =
         value.stakeYes >= value.stakeNo && value.stakeYes > 0
           ? "Yes"
           : value.stakeNo > 0
-          ? "No"
-          : value.stakeOther > 0
-          ? "Other"
-          : "Unknown";
+            ? "No"
+            : value.stakeOther > 0
+              ? "Other"
+              : "Unknown";
 
       return {
         id: pid,
@@ -262,9 +242,7 @@ export async function GET(req: Request) {
       return tb - ta;
     });
 
-    const activeCount = positions.filter(
-      (p: any) => String(p.status || "") === "active"
-    ).length;
+    const activeCount = positions.filter((p: any) => String(p.status || "") === "active").length;
 
     const winRate =
       winCount + lossCount > 0

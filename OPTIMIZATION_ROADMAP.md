@@ -10,38 +10,42 @@
 
 ### ✅ 已完成（70%）
 
-| 模块 | 状态 | 完成度 |
-|------|------|--------|
-| 基础功能 | ✅ | 90% |
-| 安全性 | ✅ | 85% |
-| 基础性能 | ✅ | 80% |
-| UI/UX | ✅ | 75% |
+| 模块     | 状态 | 完成度 |
+| -------- | ---- | ------ |
+| 基础功能 | ✅   | 90%    |
+| 安全性   | ✅   | 85%    |
+| 基础性能 | ✅   | 80%    |
+| UI/UX    | ✅   | 75%    |
 
 ### ⚠️ 待优化（30%）
 
-| 模块 | 状态 | 完成度 |
-|------|------|--------|
-| 测试覆盖 | ❌ | 15% |
-| CI/CD | ❌ | 0% |
-| 监控告警 | ❌ | 0% |
-| 文档规范 | ⚠️ | 40% |
-| SEO/可访问性 | ⚠️ | 30% |
-| 国际化 | ❌ | 0% |
+| 模块         | 状态 | 完成度 |
+| ------------ | ---- | ------ |
+| 测试覆盖     | ❌   | 15%    |
+| CI/CD        | ❌   | 0%     |
+| 监控告警     | ❌   | 0%     |
+| 文档规范     | ⚠️   | 40%    |
+| SEO/可访问性 | ⚠️   | 30%    |
+| 国际化       | ❌   | 0%     |
 
 ---
 
 ## 🎯 优化计划总览
 
 ### 第一阶段：质量保证（1-2周）
+
 🔴 **高优先级** - 确保代码质量和稳定性
 
 ### 第二阶段：开发体验（1周）
+
 🟡 **中优先级** - 提升团队效率
 
 ### 第三阶段：用户体验（1-2周）
+
 🟢 **中优先级** - 增强产品竞争力
 
 ### 第四阶段：运维监控（1周）
+
 🔵 **低优先级** - 保障生产稳定
 
 ---
@@ -51,6 +55,7 @@
 ### 🧪 1.1 测试体系搭建
 
 **当前问题**:
+
 - ❌ 前端测试覆盖率 < 5%
 - ❌ API 测试缺失
 - ❌ E2E 测试不完整
@@ -76,6 +81,7 @@ npm install --save-dev \
 ```
 
 **需要测试的模块**:
+
 - ✅ `lib/orderVerification.ts` - 订单签名验证
 - ✅ `lib/jwt.ts` - JWT Token 生成和验证
 - ✅ `lib/apiResponse.ts` - API 响应格式化
@@ -83,25 +89,22 @@ npm install --save-dev \
 - ✅ 关键组件（Sidebar, TopNavBar 等）
 
 **示例测试文件**:
+
 ```typescript
 // lib/__tests__/orderVerification.test.ts
-import { describe, it, expect } from 'vitest';
-import { validateOrder } from '../orderVerification';
+import { describe, it, expect } from "vitest";
+import { validateOrder } from "../orderVerification";
 
-describe('Order Verification', () => {
-  it('should reject invalid signature', async () => {
-    const result = await validateOrder(
-      mockOrder,
-      'invalid-signature',
-      11155111,
-      '0x123...'
-    );
+describe("Order Verification", () => {
+  it("should reject invalid signature", async () => {
+    const result = await validateOrder(mockOrder, "invalid-signature", 11155111, "0x123...");
     expect(result.valid).toBe(false);
   });
 });
 ```
 
 **产出**:
+
 - [ ] `vitest.config.ts` 配置文件
 - [ ] 至少 20 个单元测试文件
 - [ ] 测试覆盖率报告
@@ -120,30 +123,35 @@ npm install --save-dev supertest msw
 ```
 
 **需要测试的 API**:
+
 - [ ] `/api/orderbook/orders` - 订单 CRUD
 - [ ] `/api/siwe/verify` - SIWE 认证
 - [ ] `/api/predictions` - 预测事件
 - [ ] `/api/user-portfolio` - 用户投资组合
 
 **示例**:
+
 ```typescript
 // __tests__/api/orderbook.test.ts
-import { describe, it, expect } from 'vitest';
-import request from 'supertest';
+import { describe, it, expect } from "vitest";
+import request from "supertest";
 
-describe('POST /api/orderbook/orders', () => {
-  it('should reject invalid signature', async () => {
+describe("POST /api/orderbook/orders", () => {
+  it("should reject invalid signature", async () => {
     const response = await request(app)
-      .post('/api/orderbook/orders')
-      .send({ /* invalid order */ })
+      .post("/api/orderbook/orders")
+      .send({
+        /* invalid order */
+      })
       .expect(401);
-    
-    expect(response.body.error.code).toBe('INVALID_SIGNATURE');
+
+    expect(response.body.error.code).toBe("INVALID_SIGNATURE");
   });
 });
 ```
 
 **产出**:
+
 - [ ] 15+ API 集成测试
 - [ ] Mock 数据工厂
 
@@ -162,24 +170,27 @@ npx playwright install
 ```
 
 **关键用户流程**:
+
 1. 钱包连接 → SIWE 登录 → 查看个人中心
 2. 浏览预测 → 查看详情 → 创建订单
 3. 创建 Flag → 打卡 → 查看统计
 
 **示例**:
+
 ```typescript
 // e2e/wallet-connect.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('user can connect wallet and login', async ({ page }) => {
-  await page.goto('/');
-  await page.click('text=登录');
+test("user can connect wallet and login", async ({ page }) => {
+  await page.goto("/");
+  await page.click("text=登录");
   // ... MetaMask 交互
-  await expect(page.locator('.user-avatar')).toBeVisible();
+  await expect(page.locator(".user-avatar")).toBeVisible();
 });
 ```
 
 **产出**:
+
 - [ ] `playwright.config.ts` 配置
 - [ ] 10+ 关键流程测试
 - [ ] CI 集成
@@ -204,6 +215,7 @@ npm install --save-dev \
 ```
 
 **配置文件**: `.eslintrc.json`
+
 ```json
 {
   "extends": [
@@ -221,6 +233,7 @@ npm install --save-dev \
 ```
 
 **产出**:
+
 - [ ] 严格的 ESLint 规则
 - [ ] 自动修复脚本
 
@@ -237,6 +250,7 @@ npm install --save-dev prettier eslint-config-prettier
 ```
 
 **配置**: `.prettierrc`
+
 ```json
 {
   "semi": true,
@@ -248,6 +262,7 @@ npm install --save-dev prettier eslint-config-prettier
 ```
 
 **产出**:
+
 - [ ] Prettier 配置
 - [ ] VSCode 配置同步
 - [ ] Git pre-commit hook
@@ -266,23 +281,22 @@ npx husky install
 ```
 
 **配置**: `package.json`
+
 ```json
 {
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write",
-      "vitest related --run"
-    ]
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write", "vitest related --run"]
   }
 }
 ```
 
 **Git Hooks**:
+
 - `pre-commit`: Lint + Format + 相关测试
 - `pre-push`: 全量测试 + 类型检查
 
 **产出**:
+
 - [ ] Git hooks 配置
 - [ ] CI 脚本
 
@@ -297,12 +311,14 @@ npx husky install
 **预计时间**: 1 天
 
 **功能**:
+
 - 代码异味检测
 - 安全漏洞扫描
 - 技术债务追踪
 - 测试覆盖率可视化
 
 **产出**:
+
 - [ ] SonarQube 集成
 - [ ] 质量门控设置
 
@@ -321,6 +337,7 @@ npx husky install
 **2.1.1 测试工作流**
 
 **文件**: `.github/workflows/test.yml`
+
 ```yaml
 name: Test
 
@@ -329,28 +346,28 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run linter
         run: npm run lint
-      
+
       - name: Type check
         run: npm run typecheck
-      
+
       - name: Run unit tests
         run: npm run test
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -358,6 +375,7 @@ jobs:
 ```
 
 **产出**:
+
 - [ ] 自动化测试流程
 - [ ] 代码覆盖率报告
 - [ ] PR 状态检查
@@ -367,6 +385,7 @@ jobs:
 **2.1.2 部署工作流**
 
 **文件**: `.github/workflows/deploy.yml`
+
 ```yaml
 name: Deploy
 
@@ -377,13 +396,13 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Build
         run: npm run ws:build
-      
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v20
         with:
@@ -393,6 +412,7 @@ jobs:
 ```
 
 **产出**:
+
 - [ ] 自动部署流程
 - [ ] 环境变量管理
 - [ ] 部署通知
@@ -408,6 +428,7 @@ jobs:
 **2.2.1 Dockerfile 优化**
 
 **文件**: `Dockerfile`
+
 ```dockerfile
 # 多阶段构建
 FROM node:20-alpine AS builder
@@ -441,8 +462,9 @@ CMD ["node", "server.js"]
 **2.2.2 Docker Compose**
 
 **文件**: `docker-compose.yml`
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   web:
@@ -454,7 +476,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - relayer
-  
+
   relayer:
     build: ./services/relayer
     ports:
@@ -462,6 +484,7 @@ services:
 ```
 
 **产出**:
+
 - [ ] 优化的 Docker 镜像（< 200MB）
 - [ ] Docker Compose 配置
 - [ ] 部署文档
@@ -478,17 +501,17 @@ services:
 
 ```typescript
 // lib/analytics.ts
-import { onCLS, onFID, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { onCLS, onFID, onFCP, onLCP, onTTFB } from "web-vitals";
 
 function sendToAnalytics(metric: any) {
   const body = JSON.stringify(metric);
-  const url = '/api/analytics';
-  
+  const url = "/api/analytics";
+
   // 使用 sendBeacon 确保数据发送
   if (navigator.sendBeacon) {
     navigator.sendBeacon(url, body);
   } else {
-    fetch(url, { body, method: 'POST', keepalive: true });
+    fetch(url, { body, method: "POST", keepalive: true });
   }
 }
 
@@ -502,11 +525,13 @@ export function reportWebVitals() {
 ```
 
 **集成选项**:
+
 - Vercel Analytics（推荐）
 - Google Analytics 4
 - 自建 Plausible
 
 **产出**:
+
 - [ ] Web Vitals 监控
 - [ ] 性能仪表板
 
@@ -523,29 +548,32 @@ export function reportWebVitals() {
 **预计时间**: 2 天
 
 **需要优化的页面**:
+
 - [ ] 首页（Trending）- 平板/手机布局
 - [ ] 预测详情页 - 交易面板适配
 - [ ] 个人中心 - 图表响应式
 - [ ] 论坛页面 - 列表优化
 
 **断点策略**:
+
 ```typescript
 // tailwind.config.js
 module.exports = {
   theme: {
     screens: {
-      'xs': '375px',   // 小手机
-      'sm': '640px',   // 手机
-      'md': '768px',   // 平板
-      'lg': '1024px',  // 小笔记本
-      'xl': '1280px',  // 桌面
-      '2xl': '1536px', // 大屏
+      xs: "375px", // 小手机
+      sm: "640px", // 手机
+      md: "768px", // 平板
+      lg: "1024px", // 小笔记本
+      xl: "1280px", // 桌面
+      "2xl": "1536px", // 大屏
     },
   },
 };
 ```
 
 **产出**:
+
 - [ ] 移动端优化
 - [ ] 平板布局适配
 - [ ] 触摸交互优化
@@ -559,6 +587,7 @@ module.exports = {
 **预计时间**: 1 天
 
 **优化点**:
+
 - 使用 CSS transform 替代 left/top
 - 添加 will-change 优化
 - 减少 Framer Motion 重渲染
@@ -573,6 +602,7 @@ module.exports = {
 ```
 
 **产出**:
+
 - [ ] 60 FPS 流畅动画
 - [ ] 减少页面抖动
 
@@ -603,6 +633,7 @@ module.exports = {
 ```
 
 **检查清单**:
+
 - [ ] 所有交互元素有明确的 aria-label
 - [ ] 表单有关联的 label
 - [ ] 图片有 alt 文本
@@ -611,12 +642,14 @@ module.exports = {
 - [ ] 屏幕阅读器友好
 
 **工具**:
+
 ```bash
 npm install --save-dev @axe-core/react
 npm install --save-dev eslint-plugin-jsx-a11y
 ```
 
 **产出**:
+
 - [ ] WCAG 2.1 AA 级别合规
 - [ ] 可访问性测试报告
 
@@ -635,27 +668,30 @@ npm install next-intl
 ```
 
 **配置**:
+
 ```typescript
 // i18n.config.ts
 export default {
-  locales: ['zh-CN', 'en', 'ja'],
-  defaultLocale: 'zh-CN',
+  locales: ["zh-CN", "en", "ja"],
+  defaultLocale: "zh-CN",
   localeDetection: true,
 };
 ```
 
 **使用示例**:
+
 ```tsx
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
 export function WelcomeBanner() {
-  const t = useTranslations('home');
-  
-  return <h1>{t('welcome')}</h1>;
+  const t = useTranslations("home");
+
+  return <h1>{t("welcome")}</h1>;
 }
 ```
 
 **翻译文件结构**:
+
 ```
 messages/
   ├── zh-CN.json
@@ -664,6 +700,7 @@ messages/
 ```
 
 **产出**:
+
 - [ ] 多语言支持框架
 - [ ] 中英文翻译完成
 - [ ] 语言切换器
@@ -682,49 +719,49 @@ messages/
 // app/layout.tsx
 export const metadata: Metadata = {
   title: {
-    default: 'Foresight - 去中心化预测市场',
-    template: '%s | Foresight',
+    default: "Foresight - 去中心化预测市场",
+    template: "%s | Foresight",
   },
-  description: '基于区块链的去中心化预测市场平台',
-  keywords: ['预测市场', '区块链', 'Web3', 'DeFi', 'Polygon'],
-  authors: [{ name: 'Foresight Team' }],
-  creator: 'Foresight',
-  publisher: 'Foresight',
-  
+  description: "基于区块链的去中心化预测市场平台",
+  keywords: ["预测市场", "区块链", "Web3", "DeFi", "Polygon"],
+  authors: [{ name: "Foresight Team" }],
+  creator: "Foresight",
+  publisher: "Foresight",
+
   openGraph: {
-    type: 'website',
-    locale: 'zh_CN',
-    url: 'https://foresight.market',
-    title: 'Foresight - 去中心化预测市场',
-    description: '参与各种事件预测，赢取收益',
-    siteName: 'Foresight',
+    type: "website",
+    locale: "zh_CN",
+    url: "https://foresight.market",
+    title: "Foresight - 去中心化预测市场",
+    description: "参与各种事件预测，赢取收益",
+    siteName: "Foresight",
     images: [
       {
-        url: '/og-image.png',
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: 'Foresight Preview',
+        alt: "Foresight Preview",
       },
     ],
   },
-  
+
   twitter: {
-    card: 'summary_large_image',
-    title: 'Foresight - 去中心化预测市场',
-    description: '参与各种事件预测，赢取收益',
-    images: ['/twitter-image.png'],
-    creator: '@ForesightMarket',
+    card: "summary_large_image",
+    title: "Foresight - 去中心化预测市场",
+    description: "参与各种事件预测，赢取收益",
+    images: ["/twitter-image.png"],
+    creator: "@ForesightMarket",
   },
-  
+
   robots: {
     index: true,
     follow: true,
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
 };
@@ -737,15 +774,15 @@ export const metadata: Metadata = {
 const predictionSchema = {
   "@context": "https://schema.org",
   "@type": "Event",
-  "name": prediction.title,
-  "description": prediction.description,
-  "startDate": prediction.created_at,
-  "endDate": prediction.deadline,
-  "eventStatus": "https://schema.org/EventScheduled",
-  "offers": {
+  name: prediction.title,
+  description: prediction.description,
+  startDate: prediction.created_at,
+  endDate: prediction.deadline,
+  eventStatus: "https://schema.org/EventScheduled",
+  offers: {
     "@type": "Offer",
-    "price": prediction.min_stake,
-    "priceCurrency": "USD",
+    price: prediction.min_stake,
+    priceCurrency: "USD",
   },
 };
 ```
@@ -756,18 +793,18 @@ const predictionSchema = {
 // app/sitemap.ts
 export default async function sitemap() {
   const predictions = await getPredictions();
-  
+
   return [
     {
-      url: 'https://foresight.market',
+      url: "https://foresight.market",
       lastModified: new Date(),
-      changeFrequency: 'daily',
+      changeFrequency: "daily",
       priority: 1,
     },
     ...predictions.map((p) => ({
       url: `https://foresight.market/prediction/${p.id}`,
       lastModified: p.updated_at,
-      changeFrequency: 'daily',
+      changeFrequency: "daily",
       priority: 0.8,
     })),
   ];
@@ -775,6 +812,7 @@ export default async function sitemap() {
 ```
 
 **产出**:
+
 - [ ] 完整的 Meta 标签
 - [ ] 结构化数据
 - [ ] Sitemap 自动生成
@@ -798,23 +836,21 @@ npx @sentry/wizard@latest -i nextjs
 ```
 
 **配置**:
+
 ```typescript
 // sentry.client.config.ts
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  
+
   tracesSampleRate: 0.1,
-  
+
   replaysOnErrorSampleRate: 1.0,
   replaysSessionSampleRate: 0.1,
-  
-  integrations: [
-    new Sentry.BrowserTracing(),
-    new Sentry.Replay(),
-  ],
-  
+
+  integrations: [new Sentry.BrowserTracing(), new Sentry.Replay()],
+
   beforeSend(event, hint) {
     // 过滤敏感信息
     if (event.request) {
@@ -826,13 +862,14 @@ Sentry.init({
 ```
 
 **自定义错误追踪**:
+
 ```typescript
 try {
   await createOrder(orderData);
 } catch (error) {
   Sentry.captureException(error, {
     tags: {
-      feature: 'order-creation',
+      feature: "order-creation",
       chainId: orderData.chainId,
     },
     extra: {
@@ -843,6 +880,7 @@ try {
 ```
 
 **产出**:
+
 - [ ] Sentry 项目配置
 - [ ] 错误报警规则
 - [ ] Source map 上传
@@ -856,24 +894,27 @@ try {
 **预计时间**: 1 天
 
 **选项**:
+
 - Better Stack (原 Logtail)
 - Datadog
 - Elasticsearch + Kibana
 
 **日志库**:
+
 ```bash
 npm install pino pino-pretty
 ```
 
 **配置**:
+
 ```typescript
 // lib/logger.ts
-import pino from 'pino';
+import pino from "pino";
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   transport: {
-    target: 'pino-pretty',
+    target: "pino-pretty",
     options: {
       colorize: true,
     },
@@ -881,11 +922,12 @@ export const logger = pino({
 });
 
 // 使用
-logger.info({ orderId: 123 }, 'Order created successfully');
-logger.error({ error: err }, 'Order creation failed');
+logger.info({ orderId: 123 }, "Order created successfully");
+logger.error({ error: err }, "Order creation failed");
 ```
 
 **产出**:
+
 - [ ] 结构化日志
 - [ ] 日志聚合平台
 - [ ] 日志查询界面
@@ -901,6 +943,7 @@ logger.error({ error: err }, 'Order creation failed');
 **预计时间**: 2 天
 
 **监控指标**:
+
 - API 响应时间
 - 数据库查询性能
 - 内存使用情况
@@ -909,19 +952,20 @@ logger.error({ error: err }, 'Order creation failed');
 - 吞吐量
 
 **New Relic 配置**:
+
 ```bash
 npm install newrelic
 ```
 
 ```javascript
 // newrelic.js
-'use strict';
+"use strict";
 
 exports.config = {
-  app_name: ['Foresight Web'],
+  app_name: ["Foresight Web"],
   license_key: process.env.NEW_RELIC_LICENSE_KEY,
   logging: {
-    level: 'info',
+    level: "info",
   },
   distributed_tracing: {
     enabled: true,
@@ -930,18 +974,20 @@ exports.config = {
 ```
 
 **自定义指标**:
+
 ```typescript
-import newrelic from 'newrelic';
+import newrelic from "newrelic";
 
 // 追踪自定义事务
-newrelic.startWebTransaction('/api/orderbook/orders', async () => {
+newrelic.startWebTransaction("/api/orderbook/orders", async () => {
   const result = await createOrder(orderData);
-  newrelic.recordMetric('Order/Creation', 1);
+  newrelic.recordMetric("Order/Creation", 1);
   return result;
 });
 ```
 
 **产出**:
+
 - [ ] APM 仪表板
 - [ ] 性能基线
 - [ ] 告警规则
@@ -957,6 +1003,7 @@ newrelic.startWebTransaction('/api/orderbook/orders', async () => {
 **预计时间**: 1 天
 
 **告警场景**:
+
 1. **错误率告警**
    - 5分钟内错误率 > 5%
    - Severity: Critical
@@ -975,11 +1022,13 @@ newrelic.startWebTransaction('/api/orderbook/orders', async () => {
    - Severity: Warning
 
 **通知渠道**:
+
 - 📧 Email
 - 💬 Slack / Discord
 - 📱 PagerDuty（生产环境）
 
 **产出**:
+
 - [ ] 告警规则配置
 - [ ] 告警路由
 - [ ] On-call 轮值表
@@ -1003,22 +1052,22 @@ newrelic.startWebTransaction('/api/orderbook/orders', async () => {
 
 ```typescript
 // middleware.ts - Rate Limiting
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '10 s'),
+  limiter: Ratelimit.slidingWindow(10, "10 s"),
 });
 
 export async function middleware(request: Request) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
   const { success } = await ratelimit.limit(ip);
-  
+
   if (!success) {
-    return new Response('Too Many Requests', { status: 429 });
+    return new Response("Too Many Requests", { status: 429 });
   }
-  
+
   return NextResponse.next();
 }
 ```
@@ -1035,6 +1084,7 @@ npm install next-pwa
 ```
 
 **功能**:
+
 - [ ] Service Worker
 - [ ] 离线访问
 - [ ] 安装到主屏幕
@@ -1042,8 +1092,8 @@ npm install next-pwa
 
 ```javascript
 // next.config.js
-const withPWA = require('next-pwa')({
-  dest: 'public',
+const withPWA = require("next-pwa")({
+  dest: "public",
   register: true,
   skipWaiting: true,
 });
@@ -1061,24 +1111,28 @@ module.exports = withPWA({
 **预计时间**: 持续迭代
 
 #### 用户系统
+
 - [ ] 社交登录（Google, Twitter）
 - [ ] 邮箱验证流程
 - [ ] 密码重置
 - [ ] 双因素认证（2FA）
 
 #### 交易功能
+
 - [ ] 订单簿深度图
 - [ ] 历史成交记录
 - [ ] 交易手续费优化
 - [ ] 批量下单
 
 #### 社交功能
+
 - [ ] 用户关注/粉丝
 - [ ] 评论和点赞
 - [ ] 分享到社交媒体
 - [ ] 排行榜系统
 
 #### 数据分析
+
 - [ ] 用户行为分析
 - [ ] 漏斗分析
 - [ ] A/B 测试框架
@@ -1090,45 +1144,49 @@ module.exports = withPWA({
 
 ### 技术指标
 
-| 指标 | 当前 | 目标 | 提升 |
-|------|------|------|------|
-| 测试覆盖率 | 5% | 60%+ | **12倍** |
-| 首屏加载时间 | ~3s | <1.5s | **2倍** |
-| API 响应时间 | ~500ms | <200ms | **2.5倍** |
-| 错误率 | 未监控 | <0.1% | - |
-| Lighthouse 分数 | 65 | 90+ | **+25** |
+| 指标            | 当前   | 目标   | 提升      |
+| --------------- | ------ | ------ | --------- |
+| 测试覆盖率      | 5%     | 60%+   | **12倍**  |
+| 首屏加载时间    | ~3s    | <1.5s  | **2倍**   |
+| API 响应时间    | ~500ms | <200ms | **2.5倍** |
+| 错误率          | 未监控 | <0.1%  | -         |
+| Lighthouse 分数 | 65     | 90+    | **+25**   |
 
 ### 业务指标
 
-| 指标 | 当前 | 目标 |
-|------|------|------|
-| 部署频率 | 手动 | 自动化（每日） |
-| 故障恢复时间 | 未知 | <30分钟 |
-| 代码审查覆盖 | 部分 | 100% |
-| 文档完整度 | 40% | 90% |
+| 指标         | 当前 | 目标           |
+| ------------ | ---- | -------------- |
+| 部署频率     | 手动 | 自动化（每日） |
+| 故障恢复时间 | 未知 | <30分钟        |
+| 代码审查覆盖 | 部分 | 100%           |
+| 文档完整度   | 40%  | 90%            |
 
 ---
 
 ## 🎯 执行计划时间表
 
 ### Week 1-2: 质量保证 ✅
+
 - Day 1-3: 单元测试框架 + 核心模块测试
 - Day 4-5: API 集成测试
 - Day 6-8: E2E 测试 + 代码质量工具
 - Day 9-10: 测试报告 + 覆盖率优化
 
 ### Week 3: CI/CD 自动化 🚀
+
 - Day 1-2: GitHub Actions 配置
 - Day 3-4: Docker 容器化
 - Day 5: 性能监控集成
 
 ### Week 4-5: 用户体验 🎨
+
 - Day 1-3: UI/UX 优化 + 响应式
 - Day 4-5: 可访问性改进
 - Day 6-8: 国际化支持
 - Day 9-10: SEO 优化
 
 ### Week 6: 运维监控 📊
+
 - Day 1-2: Sentry + 日志系统
 - Day 3-4: APM 配置
 - Day 5: 告警系统
@@ -1140,13 +1198,13 @@ module.exports = withPWA({
 
 ### 工具成本（月）
 
-| 工具 | 免费额度 | 付费价格 | 推荐 |
-|------|----------|----------|------|
-| Sentry | 5K errors/月 | $26/月 | 免费版够用 |
-| Vercel | Hobby 免费 | $20/月 | 升级 Pro |
-| GitHub Actions | 2000分钟/月 | 按需付费 | 免费版够用 |
-| Codecov | 开源免费 | $10/月 | 免费版 |
-| Better Stack | 1GB/月 | $10/月 | 免费版 |
+| 工具           | 免费额度     | 付费价格 | 推荐       |
+| -------------- | ------------ | -------- | ---------- |
+| Sentry         | 5K errors/月 | $26/月   | 免费版够用 |
+| Vercel         | Hobby 免费   | $20/月   | 升级 Pro   |
+| GitHub Actions | 2000分钟/月  | 按需付费 | 免费版够用 |
+| Codecov        | 开源免费     | $10/月   | 免费版     |
+| Better Stack   | 1GB/月       | $10/月   | 免费版     |
 
 **月度成本**: $0 - $70（取决于流量）
 
@@ -1160,6 +1218,7 @@ module.exports = withPWA({
 ## 📚 相关资源
 
 ### 文档
+
 - [ ] 开发者文档（README 增强）
 - [ ] API 文档（Swagger）
 - [ ] 部署文档（更新）
@@ -1167,6 +1226,7 @@ module.exports = withPWA({
 - [ ] 架构设计文档
 
 ### 培训
+
 - [ ] 新人 Onboarding 流程
 - [ ] 代码规范培训
 - [ ] 测试编写指南
@@ -1189,9 +1249,8 @@ module.exports = withPWA({
 
 **最后更新**: 2024-12-17  
 **负责人**: [您的名字]  
-**审核人**: [团队Lead]  
+**审核人**: [团队Lead]
 
 **需要帮助？**  
 📧 Email: dev-team@foresight.com  
 💬 Slack: #foresight-dev
-
