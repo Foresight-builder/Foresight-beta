@@ -1,6 +1,67 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-export interface UseInfiniteScrollOptions {
+/**
+ * 简化版无限滚动选项（Phase 2 版本）
+ */
+interface UseInfiniteScrollOptions {
+  loading: boolean;
+  hasNextPage: boolean;
+  onLoadMore: () => void;
+  threshold?: number;
+  disabled?: boolean;
+}
+
+/**
+ * 简化版无限滚动 Hook（Phase 2 版本）
+ * 
+ * 用于已有数据加载逻辑的场景，仅提供 IntersectionObserver 触发器
+ */
+export function useInfiniteScroll({
+  loading,
+  hasNextPage,
+  onLoadMore,
+  threshold = 0.1,
+  disabled = false,
+}: UseInfiniteScrollOptions) {
+  const observerTargetRef = useRef<HTMLDivElement>(null);
+
+  const handleIntersection = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !loading && !disabled) {
+        onLoadMore();
+      }
+    },
+    [hasNextPage, loading, onLoadMore, disabled]
+  );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleIntersection, {
+      rootMargin: "0px",
+      threshold,
+    });
+
+    const currentTarget = observerTargetRef.current;
+
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+      observer.disconnect();
+    };
+  }, [threshold, handleIntersection]);
+
+  return observerTargetRef;
+}
+
+/**
+ * 完整版无限滚动选项（Phase 3 版本）
+ */
+export interface UseInfiniteScrollFullOptions {
   /**
    * IntersectionObserver 触发阈值
    * @default 0.8
@@ -18,7 +79,7 @@ export interface UseInfiniteScrollOptions {
   enabled?: boolean;
 }
 
-export interface UseInfiniteScrollResult<T> {
+export interface UseInfiniteScrollFullResult<T> {
   /**
    * 当前加载的所有数据
    */
@@ -58,13 +119,13 @@ export interface UseInfiniteScrollResult<T> {
 }
 
 /**
- * 无限滚动 Hook
+ * 完整版无限滚动 Hook（Phase 3 版本）
  * 
- * 使用 IntersectionObserver 实现高性能无限滚动
+ * 使用 IntersectionObserver 实现高性能无限滚动，包含完整的数据管理
  * 
  * @example
  * ```tsx
- * const { data, loading, hasMore, loadMoreRef } = useInfiniteScroll(
+ * const { data, loading, hasMore, loadMoreRef } = useInfiniteScrollFull(
  *   async (page) => {
  *     const res = await fetch(`/api/items?page=${page}&limit=20`);
  *     return res.json();
@@ -83,10 +144,10 @@ export interface UseInfiniteScrollResult<T> {
  * );
  * ```
  */
-export function useInfiniteScroll<T>(
+export function useInfiniteScrollFull<T>(
   fetchFn: (page: number) => Promise<T[]>,
-  options: UseInfiniteScrollOptions = {}
-): UseInfiniteScrollResult<T> {
+  options: UseInfiniteScrollFullOptions = {}
+): UseInfiniteScrollFullResult<T> {
   const {
     threshold = 0.8,
     rootMargin = "200px",
@@ -181,14 +242,14 @@ export function useInfiniteScroll<T>(
 }
 
 /**
- * 简化版无限滚动 Hook（基于窗口滚动）
+ * 基于窗口滚动的无限滚动 Hook
  * 
- * @deprecated 推荐使用 useInfiniteScroll，性能更好
+ * @deprecated 推荐使用 useInfiniteScrollFull，性能更好
  */
 export function useWindowInfiniteScroll<T>(
   fetchFn: (page: number) => Promise<T[]>,
   options: { distance?: number; enabled?: boolean } = {}
-): Omit<UseInfiniteScrollResult<T>, "loadMoreRef"> {
+): Omit<UseInfiniteScrollFullResult<T>, "loadMoreRef"> {
   const { distance = 300, enabled = true } = options;
 
   const [data, setData] = useState<T[]>([]);
