@@ -58,12 +58,12 @@ export default function PerformanceDashboard() {
       goodThreshold: 2500,
     },
     {
-      name: "FID",
-      label: "首次输入延迟",
+      name: "INP",
+      label: "交互到下一次绘制",
       icon: Zap,
       color: "blue",
       unit: "ms",
-      goodThreshold: 100,
+      goodThreshold: 200,
     },
     {
       name: "CLS",

@@ -1,4 +1,4 @@
-import { onCLS, onFID, onFCP, onLCP, onTTFB, type Metric } from "web-vitals";
+import { onCLS, onINP, onFCP, onLCP, onTTFB, type Metric } from "web-vitals";
 
 export type PerformanceMetric = {
   id: string;
@@ -18,7 +18,7 @@ export type PerformanceMetric = {
  * 
  * 指标说明：
  * - LCP (Largest Contentful Paint): 最大内容绘制
- * - FID (First Input Delay): 首次输入延迟
+ * - INP (Interaction to Next Paint): 交互到下一次绘制 (替代 FID)
  * - CLS (Cumulative Layout Shift): 累积布局偏移
  * - FCP (First Contentful Paint): 首次内容绘制
  * - TTFB (Time to First Byte): 首字节时间
@@ -37,7 +37,7 @@ function getRating(name: string, value: number): "good" | "needs-improvement" | 
   // 根据 Google 标准评级
   const thresholds: Record<string, [number, number]> = {
     LCP: [2500, 4000],
-    FID: [100, 300],
+    INP: [200, 500], // 替代 FID
     CLS: [0.1, 0.25],
     FCP: [1800, 3000],
     TTFB: [800, 1800],
@@ -68,7 +68,7 @@ export function reportWebVitals(onReport: (metric: PerformanceMetric) => void) {
   };
 
   onCLS(reportMetric);
-  onFID(reportMetric);
+  onINP(reportMetric);
   onFCP(reportMetric);
   onLCP(reportMetric);
   onTTFB(reportMetric);
