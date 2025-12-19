@@ -1,5 +1,12 @@
 import { z } from "zod";
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "..", "..", "..");
+dotenv.config({ path: path.join(repoRoot, ".env") });
+dotenv.config({ path: path.join(repoRoot, ".env.local") });
 
 // 环境变量校验与读取
 const EnvSchema = z.object({
@@ -14,6 +21,12 @@ const EnvSchema = z.object({
     )
     .optional(),
   RPC_URL: z.string().url().optional(),
+  RELAYER_PORT: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
+      z.number().int().positive()
+    )
+    .optional(),
   PORT: z
     .preprocess(
       (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
@@ -29,6 +42,7 @@ const maybePriv =
 const rawEnv = {
   BUNDLER_PRIVATE_KEY: maybePriv,
   RPC_URL: process.env.RPC_URL,
+  RELAYER_PORT: process.env.RELAYER_PORT,
   PORT: process.env.PORT,
 };
 
@@ -40,7 +54,8 @@ if (!parsed.success) {
 export const BUNDLER_PRIVATE_KEY = parsed.success ? parsed.data.BUNDLER_PRIVATE_KEY : undefined;
 export const RPC_URL =
   (parsed.success ? parsed.data.RPC_URL : undefined) || "http://127.0.0.1:8545";
-export const RELAYER_PORT = (parsed.success ? parsed.data.PORT : undefined) ?? 3000;
+export const RELAYER_PORT =
+  (parsed.success ? (parsed.data.RELAYER_PORT ?? parsed.data.PORT) : undefined) ?? 3000;
 import express from "express";
 import cors from "cors";
 import { ethers, Contract } from "ethers";
@@ -60,7 +75,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || RELAYER_PORT;
+const PORT = RELAYER_PORT;
 
 let provider: ethers.JsonRpcProvider | null = null;
 let bundlerWallet: ethers.Wallet | null = null;
@@ -111,44 +126,62 @@ app.post("/", async (req, res) => {
 // Off-chain orderbook API
 app.post("/orderbook/orders", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const body = req.body || {};
     const data = await placeSignedOrder(body);
-    res.json({ message: "ok", data });
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(400).json({ message: "place order failed", detail: String(e?.message || e) });
+    res
+      .status(400)
+      .json({ success: false, message: "place order failed", detail: String(e?.message || e) });
   }
 });
 
 app.post("/orderbook/cancel-salt", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const body = req.body || {};
     const data = await cancelSalt(body);
-    res.json({ message: "ok", data });
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(400).json({ message: "cancel salt failed", detail: String(e?.message || e) });
+    res.status(400).json({
+      success: false,
+      message: "cancel salt failed",
+      detail: String(e?.message || e),
+    });
   }
 });
 
 app.get("/orderbook/depth", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const vc = String(req.query.contract || "");
     const chainId = Number(req.query.chainId || 0);
     const outcome = Number(req.query.outcome || 0);
     const side = String(req.query.side || "buy").toLowerCase() === "buy";
     const levels = Math.max(1, Math.min(50, Number(req.query.levels || 10)));
-    const data = await getDepth(vc, chainId, outcome, side, levels);
-    res.json({ message: "ok", data });
+    const marketKey =
+      typeof req.query.marketKey === "string"
+        ? req.query.marketKey
+        : typeof req.query.market_key === "string"
+          ? req.query.market_key
+          : undefined;
+    const data = await getDepth(vc, chainId, outcome, side, levels, marketKey);
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(400).json({ message: "depth query failed", detail: String(e?.message || e) });
+    res
+      .status(400)
+      .json({ success: false, message: "depth query failed", detail: String(e?.message || e) });
   }
 });
 
 app.get("/orderbook/queue", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const vc = String(req.query.contract || "");
     const chainId = Number(req.query.chainId || 0);
     const outcome = Number(req.query.outcome || 0);
@@ -156,44 +189,62 @@ app.get("/orderbook/queue", async (req, res) => {
     const price = BigInt(String(req.query.price || "0"));
     const limit = Math.max(1, Math.min(200, Number(req.query.limit || 50)));
     const offset = Math.max(0, Number(req.query.offset || 0));
-    const data = await getQueue(vc, chainId, outcome, side, price, limit, offset);
-    res.json({ message: "ok", data });
+    const marketKey =
+      typeof req.query.marketKey === "string"
+        ? req.query.marketKey
+        : typeof req.query.market_key === "string"
+          ? req.query.market_key
+          : undefined;
+    const data = await getQueue(vc, chainId, outcome, side, price, limit, offset, marketKey);
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(400).json({ message: "queue query failed", detail: String(e?.message || e) });
+    res
+      .status(400)
+      .json({ success: false, message: "queue query failed", detail: String(e?.message || e) });
   }
 });
 
 app.post("/orderbook/report-trade", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const chainId = Number(req.body.chainId);
     const txHash = String(req.body.txHash);
     if (!chainId || !txHash) throw new Error("Missing chainId or txHash");
     const data = await ingestTrade(chainId, txHash);
-    res.json({ message: "ok", data });
+    res.json({ success: true, data });
   } catch (e: any) {
     console.error(e);
-    res.status(400).json({ message: "trade report failed", detail: String(e?.message || e) });
+    res.status(400).json({
+      success: false,
+      message: "trade report failed",
+      detail: String(e?.message || e),
+    });
   }
 });
 
 app.get("/orderbook/candles", async (req, res) => {
   try {
-    if (!supabaseAdmin) return res.status(500).json({ message: "Supabase not configured" });
+    if (!supabaseAdmin)
+      return res.status(500).json({ success: false, message: "Supabase not configured" });
     const market = String(req.query.market || "");
     const chainId = Number(req.query.chainId || 0);
     const outcome = Number(req.query.outcome || 0);
     const resolution = String(req.query.resolution || "15m");
     const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 100)));
     const data = await getCandles(market, chainId, outcome, resolution, limit);
-    res.json({ message: "ok", data });
+    res.json({ success: true, data });
   } catch (e: any) {
-    res.status(400).json({ message: "candles query failed", detail: String(e?.message || e) });
+    res.status(400).json({
+      success: false,
+      message: "candles query failed",
+      detail: String(e?.message || e),
+    });
   }
 });
 
 app.get("/orderbook/types", (req, res) => {
-  res.json({ types: getOrderTypes() });
+  res.json({ success: true, types: getOrderTypes() });
 });
 
 app.listen(PORT, () => {

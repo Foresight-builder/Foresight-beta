@@ -23,6 +23,10 @@ export const InputSchemaPlace = z.object({
   verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   order: OrderSchema,
   signature: z.string(),
+  marketKey: z.string().optional(),
+  market_key: z.string().optional(),
+  eventId: z.number().int().positive().optional(),
+  event_id: z.number().int().positive().optional(),
 });
 
 export const InputSchemaCancelSalt = z.object({
@@ -38,24 +42,31 @@ function normalizeAddr(a: string) {
 }
 
 function domainFor(chainId: number, verifyingContract: string) {
-  return { name: "CLOBMarket", version: "1", chainId, verifyingContract };
+  return { name: "Foresight Market", version: "1", chainId, verifyingContract };
 }
 
 const Types = {
-  OrderRequest: [
+  Order: [
     { name: "maker", type: "address" },
     { name: "outcomeIndex", type: "uint256" },
     { name: "isBuy", type: "bool" },
     { name: "price", type: "uint256" },
     { name: "amount", type: "uint256" },
-    { name: "expiry", type: "uint256" },
     { name: "salt", type: "uint256" },
+    { name: "expiry", type: "uint256" },
   ],
   CancelSaltRequest: [
     { name: "maker", type: "address" },
     { name: "salt", type: "uint256" },
   ],
 };
+
+const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+
+const clobIface = new ethers.Interface([
+  "event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt)",
+]);
 
 export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) {
   if (!supabaseAdmin) throw new Error("Supabase not configured");
@@ -66,17 +77,34 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
   const vc = normalizeAddr(parsed.verifyingContract);
   const chainId = parsed.chainId;
 
+  const mkRaw =
+    (parsed as any).marketKey && typeof (parsed as any).marketKey === "string"
+      ? (parsed as any).marketKey
+      : (parsed as any).market_key && typeof (parsed as any).market_key === "string"
+        ? (parsed as any).market_key
+        : "";
+  const eidRaw =
+    typeof (parsed as any).eventId === "number"
+      ? (parsed as any).eventId
+      : typeof (parsed as any).event_id === "number"
+        ? (parsed as any).event_id
+        : undefined;
+  const eid =
+    typeof eidRaw === "number" && Number.isFinite(eidRaw) && eidRaw > 0 ? eidRaw : undefined;
+  const derivedMk = eid ? `${chainId}:${eid}` : "";
+  const marketKey = (mkRaw && mkRaw.trim()) || (derivedMk && derivedMk.trim()) || undefined;
+
   const recovered = ethers.verifyTypedData(
     domainFor(chainId, vc),
-    { OrderRequest: [...Types.OrderRequest] },
+    { Order: [...Types.Order] },
     {
       maker: maker,
       outcomeIndex: order.outcomeIndex,
       isBuy: order.isBuy,
       price: order.price,
       amount: order.amount,
-      expiry: order.expiry ?? 0n,
       salt: order.salt,
+      expiry: order.expiry ?? 0n,
     },
     sig
   );
@@ -86,25 +114,27 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
   const expSec = order.expiry ?? 0n;
   if (expSec !== 0n && expSec <= nowSec) throw new Error("Order expired");
 
+  const upsertRow: Record<string, any> = {
+    verifying_contract: vc,
+    chain_id: chainId,
+    maker_address: maker,
+    maker_salt: order.salt.toString(),
+    outcome_index: order.outcomeIndex,
+    is_buy: order.isBuy,
+    price: order.price.toString(),
+    amount: order.amount.toString(),
+    remaining: order.amount.toString(),
+    expiry: expSec === 0n ? null : new Date(Number(expSec) * 1000).toISOString(),
+    signature: sig,
+    status: "open",
+  };
+  if (marketKey) upsertRow.market_key = marketKey;
+
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .upsert(
-      {
-        verifying_contract: vc,
-        chain_id: chainId,
-        maker_address: maker,
-        maker_salt: order.salt.toString(),
-        outcome_index: order.outcomeIndex,
-        is_buy: order.isBuy,
-        price: order.price.toString(),
-        amount: order.amount.toString(),
-        remaining: order.amount.toString(),
-        expiry: expSec === 0n ? null : new Date(Number(expSec) * 1000).toISOString(),
-        signature: sig,
-        status: "open",
-      },
-      { onConflict: "verifying_contract,chain_id,maker_address,maker_salt" }
-    )
+    .upsert(upsertRow, {
+      onConflict: "verifying_contract,chain_id,maker_address,maker_salt",
+    })
     .select()
     .maybeSingle();
 
@@ -125,7 +155,7 @@ export async function cancelSalt(input: z.infer<typeof InputSchemaCancelSalt>) {
 
   const recovered = ethers.verifyTypedData(
     domainFor(chainId, vc),
-    { CancelSaltRequest: [...Types.CancelSaltRequest] },
+    { Order: [...Types.Order] },
     {
       maker,
       salt: parsed.salt,
@@ -151,29 +181,58 @@ export async function getDepth(
   chainId: number,
   outcomeIndex: number,
   isBuy: boolean,
-  limit: number
+  limit: number,
+  marketKey?: string
 ) {
   if (!supabaseAdmin) throw new Error("Supabase not configured");
+  const client = supabaseAdmin!;
   const vc = normalizeAddr(verifyingContract);
-  const view = await supabaseAdmin
-    .from("depth_levels")
-    .select("price, qty")
-    .eq("verifying_contract", vc)
-    .eq("chain_id", chainId)
-    .eq("outcome_index", outcomeIndex)
-    .eq("is_buy", isBuy)
-    .order(isBuy ? "price" : "price", { ascending: !isBuy })
-    .limit(limit);
+
+  const runView = async (useMarketKey: boolean) => {
+    let q = client
+      .from("depth_levels")
+      .select("price, qty")
+      .eq("verifying_contract", vc)
+      .eq("chain_id", chainId)
+      .eq("outcome_index", outcomeIndex)
+      .eq("is_buy", isBuy);
+    if (useMarketKey && marketKey) q = q.eq("market_key", marketKey);
+    return q.order("price", { ascending: !isBuy }).limit(limit);
+  };
+
+  let view = await runView(true);
+  if (view.error && marketKey) {
+    const code = (view.error as any).code;
+    const msg = String((view.error as any).message || "");
+    if (code === "42703" || /market_key/i.test(msg)) {
+      view = await runView(false);
+    }
+  }
   if (!view.error && view.data && view.data.length > 0) return view.data;
-  const agg = await supabaseAdmin
-    .from("orders")
-    .select("price, remaining")
-    .eq("verifying_contract", vc)
-    .eq("chain_id", chainId)
-    .eq("outcome_index", outcomeIndex)
-    .eq("is_buy", isBuy)
-    .in("status", ["open", "filled_partial"]);
+
+  const runAgg = async (useMarketKey: boolean) => {
+    let q = client
+      .from("orders")
+      .select("price, remaining")
+      .eq("verifying_contract", vc)
+      .eq("chain_id", chainId)
+      .eq("outcome_index", outcomeIndex)
+      .eq("is_buy", isBuy)
+      .in("status", ["open", "filled_partial"]);
+    if (useMarketKey && marketKey) q = q.eq("market_key", marketKey);
+    return q;
+  };
+
+  let agg = await runAgg(true);
+  if (agg.error && marketKey) {
+    const code = (agg.error as any).code;
+    const msg = String((agg.error as any).message || "");
+    if (code === "42703" || /market_key/i.test(msg)) {
+      agg = await runAgg(false);
+    }
+  }
   if (agg.error) throw new Error(agg.error.message);
+
   const map = new Map<string, bigint>();
   for (const row of agg.data || []) {
     const p = String((row as any).price);
@@ -182,8 +241,8 @@ export async function getDepth(
   }
   const entries = Array.from(map.entries()).map(([price, qty]) => ({ price, qty: qty.toString() }));
   entries.sort((a, b) => {
-    const pa = BigInt(a.price),
-      pb = BigInt(b.price);
+    const pa = BigInt(a.price);
+    const pb = BigInt(b.price);
     return isBuy ? Number(pb - pa) : Number(pa - pb);
   });
   return entries.slice(0, limit);
@@ -196,25 +255,128 @@ export async function getQueue(
   isBuy: boolean,
   price: bigint,
   limit: number,
-  offset: number
+  offset: number,
+  marketKey?: string
 ) {
   if (!supabaseAdmin) throw new Error("Supabase not configured");
+  const client = supabaseAdmin!;
   const vc = normalizeAddr(verifyingContract);
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .select("id, maker_address, maker_salt, remaining, created_at, sequence")
-    .eq("verifying_contract", vc)
-    .eq("chain_id", chainId)
-    .eq("outcome_index", outcomeIndex)
-    .eq("is_buy", isBuy)
-    .eq("price", price.toString())
-    .in("status", ["open", "filled_partial"])
-    .order("sequence", { ascending: true })
-    .range(offset, offset + limit - 1);
+  const run = async (useMarketKey: boolean) => {
+    let q = client
+      .from("orders")
+      .select("id, maker_address, maker_salt, remaining, created_at, sequence")
+      .eq("verifying_contract", vc)
+      .eq("chain_id", chainId)
+      .eq("outcome_index", outcomeIndex)
+      .eq("is_buy", isBuy)
+      .eq("price", price.toString())
+      .in("status", ["open", "filled_partial"])
+      .order("sequence", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (useMarketKey && marketKey) q = q.eq("market_key", marketKey);
+    return q;
+  };
+
+  let { data, error } = await run(true);
+  if (error && marketKey) {
+    const code = (error as any).code;
+    const msg = String((error as any).message || "");
+    if (code === "42703" || /market_key/i.test(msg)) {
+      ({ data, error } = await run(false));
+    }
+  }
   if (error) throw new Error(error.message);
   return data;
 }
 
 export function getOrderTypes() {
   return Types;
+}
+
+export async function ingestTrade(chainId: number, txHash: string) {
+  if (!supabaseAdmin) throw new Error("Supabase not configured");
+
+  const receipt = await rpcProvider.getTransactionReceipt(txHash);
+  if (!receipt) throw new Error("Transaction not found");
+
+  const block = await rpcProvider.getBlock(receipt.blockNumber);
+  if (!block) throw new Error("Block not found for trade tx");
+
+  const trades: {
+    network_id: number;
+    market_address: string;
+    outcome_index: number;
+    price: string;
+    amount: string;
+    taker_address: string;
+    maker_address: string;
+    is_buy: boolean;
+    tx_hash: string;
+    block_number: bigint;
+    block_timestamp: string;
+  }[] = [];
+
+  for (const log of receipt.logs) {
+    try {
+      const parsed = clobIface.parseLog(log);
+      if (!parsed || parsed.name !== "OrderFilledSigned") continue;
+
+      const maker = normalizeAddr(String((parsed.args as any).maker));
+      const taker = normalizeAddr(String((parsed.args as any).taker));
+      const outcomeIndex = Number((parsed.args as any).outcomeIndex);
+      const isBuy = Boolean((parsed.args as any).isBuy);
+      const price = BigInt((parsed.args as any).price).toString();
+      const amount = BigInt((parsed.args as any).amount).toString();
+
+      trades.push({
+        network_id: chainId,
+        market_address: normalizeAddr(log.address),
+        outcome_index: outcomeIndex,
+        price,
+        amount,
+        taker_address: taker,
+        maker_address: maker,
+        is_buy: isBuy,
+        tx_hash: txHash,
+        block_number: BigInt(receipt.blockNumber),
+        block_timestamp: new Date(Number(block.timestamp) * 1000).toISOString(),
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  if (trades.length === 0) {
+    throw new Error("No OrderFilledSigned events found in transaction");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("trades")
+    .upsert(trades[0], { onConflict: "tx_hash" })
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function getCandles(
+  market: string,
+  chainId: number,
+  outcomeIndex: number,
+  resolution: string,
+  limit: number
+) {
+  if (!supabaseAdmin) throw new Error("Supabase not configured");
+  const { data, error } = await supabaseAdmin
+    .from("candles")
+    .select("open,high,low,close,volume,time")
+    .eq("network_id", chainId)
+    .eq("market_address", normalizeAddr(market))
+    .eq("outcome_index", outcomeIndex)
+    .eq("resolution", resolution)
+    .order("time", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data;
 }

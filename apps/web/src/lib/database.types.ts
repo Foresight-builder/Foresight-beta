@@ -153,6 +153,7 @@ export interface Database {
           id: number;
           verifying_contract: string;
           chain_id: number;
+          market_key: string | null;
           maker_address: string;
           maker_salt: string;
           outcome_index: number;
@@ -170,6 +171,7 @@ export interface Database {
           id?: number;
           verifying_contract: string;
           chain_id: number;
+          market_key?: string | null;
           maker_address: string;
           maker_salt: string;
           outcome_index: number;
@@ -187,6 +189,7 @@ export interface Database {
           id?: number;
           verifying_contract?: string;
           chain_id?: number;
+          market_key?: string | null;
           maker_address?: string;
           maker_salt?: string;
           outcome_index?: number;

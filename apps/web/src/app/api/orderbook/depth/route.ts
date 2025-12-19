@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     const chainId = url.searchParams.get("chainId");
     const outcome = url.searchParams.get("outcome");
     const side = url.searchParams.get("side"); // 'true' for buy, 'false' for sell
+    const marketKey = url.searchParams.get("marketKey") || url.searchParams.get("market_key");
     const levels = Number(url.searchParams.get("levels") || 10);
 
     if (!contract || !chainId || outcome === null || side === null) {
@@ -25,15 +26,36 @@ export async function GET(req: NextRequest) {
     const isBuy = side === "true";
 
     // Query open orders
-    const { data: orders, error } = await client
+    let query = client
       .from("orders")
       .select("price, remaining")
       .eq("verifying_contract", contract.toLowerCase())
       .eq("chain_id", Number(chainId))
       .eq("outcome_index", Number(outcome))
       .eq("is_buy", isBuy)
-      .in("status", ["open", "filled_partial"])
-      .order("price", { ascending: !isBuy }); // Buy: desc (high to low), Sell: asc (low to high)
+      .in("status", ["open", "filled_partial"]);
+
+    if (marketKey) {
+      query = query.eq("market_key", marketKey);
+    }
+
+    let { data: orders, error } = await query.order("price", { ascending: !isBuy }); // Buy: desc (high to low), Sell: asc (low to high)
+
+    // 兼容旧版本数据库（没有 market_key 列时回退为不按 marketKey 过滤）
+    if (error && (error as any).code === "42703" && marketKey) {
+      const fallbackQuery = client
+        .from("orders")
+        .select("price, remaining")
+        .eq("verifying_contract", contract.toLowerCase())
+        .eq("chain_id", Number(chainId))
+        .eq("outcome_index", Number(outcome))
+        .eq("is_buy", isBuy)
+        .in("status", ["open", "filled_partial"]);
+
+      const fallback = await fallbackQuery.order("price", { ascending: !isBuy });
+      orders = fallback.data || [];
+      error = fallback.error as any;
+    }
 
     if (error) {
       console.error("Error fetching depth:", error);

@@ -6,6 +6,8 @@ import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
 import { toast } from "@/lib/toast";
+import { createOrderDomain } from "@/lib/orderVerification";
+import { ORDER_TYPES } from "@/types/market";
 
 // Components
 import { MarketHeader } from "@/components/market/MarketHeader";
@@ -220,9 +222,14 @@ export default function PredictionDetailClient() {
     if (!market) return;
     const fetchDepth = async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-        const qBuy = `contract=${market.market}&chainId=${market.chain_id}&outcome=${tradeOutcome}&side=true&levels=10`;
-        const qSell = `contract=${market.market}&chainId=${market.chain_id}&outcome=${tradeOutcome}&side=false&levels=10`;
+        const base = "/api";
+        const mk = `${market.chain_id}:${params.id}`;
+        const qBuy = `contract=${market.market}&chainId=${
+          market.chain_id
+        }&marketKey=${encodeURIComponent(mk)}&outcome=${tradeOutcome}&side=true&levels=10`;
+        const qSell = `contract=${market.market}&chainId=${
+          market.chain_id
+        }&marketKey=${encodeURIComponent(mk)}&outcome=${tradeOutcome}&side=false&levels=10`;
 
         const [r1, r2] = await Promise.all([
           fetch(`${base}/orderbook/depth?${qBuy}`),
@@ -250,8 +257,11 @@ export default function PredictionDetailClient() {
     if (!market || !account) return;
     const fetchOrders = async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-        const q = `contract=${market.market}&chainId=${market.chain_id}&maker=${account}&status=open`;
+        const base = "/api";
+        const mk = `${market.chain_id}:${params.id}`;
+        const q = `contract=${market.market}&chainId=${
+          market.chain_id
+        }&marketKey=${encodeURIComponent(mk)}&maker=${account}&status=open`;
         const res = await fetch(`${base}/orderbook/orders?${q}`);
         const json = await res.json();
         if (json.success && json.data) {
@@ -283,27 +293,36 @@ export default function PredictionDetailClient() {
   const cancelOrder = async (salt: string) => {
     if (!account || !market) return;
     try {
-      const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-
-      // 1. Sign cancellation message
-      // Simple signature of the salt is usually enough for authentication of cancel
-      // Or EIP-712 CancelOrder(uint256 salt)
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
 
-      // For simplicity in this demo, we assume the API accepts a signed message of the salt
-      // Real implementation should match contract's cancel requirement or relayer's auth
-      const message = `Cancel Order: ${salt}`;
-      const signature = await signer.signMessage(message);
+      const domain = createOrderDomain(market.chain_id, market.market);
+      const types = {
+        CancelSaltRequest: [
+          { name: "maker", type: "address" },
+          { name: "salt", type: "uint256" },
+        ],
+      } as const;
+      const value = {
+        maker: account,
+        salt: BigInt(salt),
+      };
+      const signature = await signer.signTypedData(domain as any, types as any, value as any);
+
+      const base = "/api";
+      const mk = `${market.chain_id}:${params.id}`;
 
       const res = await fetch(`${base}/orderbook/cancel-salt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          chainId: market.chain_id,
+          verifyingContract: market.market,
+          contract: market.market,
+          marketKey: mk,
           salt,
           maker: account,
           signature,
-          message,
         }),
       });
 
@@ -504,54 +523,39 @@ export default function PredictionDetailClient() {
       const salt = Math.floor(Math.random() * 1000000).toString();
       const expiry = Math.floor(Date.now() / 1000) + 3600 * 24; // 24h expiry
 
-      const domain = {
-        name: "Foresight",
-        version: "1",
-        chainId: market.chain_id,
-        verifyingContract: market.market,
-      };
-
-      const types = {
-        Order: [
-          { name: "salt", type: "uint256" },
-          { name: "maker", type: "address" },
-          { name: "isBuy", type: "bool" },
-          { name: "outcomeIndex", type: "uint256" }, // Use uint256 to match common solidity patterns for index
-          { name: "amount", type: "uint256" },
-          { name: "price", type: "uint256" },
-          { name: "expiry", type: "uint256" },
-        ],
-      };
-
       const value = {
-        salt: BigInt(salt),
         maker: account,
-        isBuy: tradeSide === "buy",
         outcomeIndex: BigInt(tradeOutcome),
-        amount: amountBN,
         price: priceBN,
+        amount: amountBN,
+        isBuy: tradeSide === "buy",
+        salt: BigInt(salt),
         expiry: BigInt(expiry),
       };
 
       // 4. Sign Order
-      const signature = await signer.signTypedData(domain, types, value);
+      const domain = createOrderDomain(market.chain_id, market.market);
+      const signature = await signer.signTypedData(domain as any, ORDER_TYPES as any, value as any);
 
       // 5. Submit to Relayer
-      const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
+      const base = "/api";
+      const mk = `${market.chain_id}:${params.id}`;
       const payload = {
         order: {
-          ...value,
-          salt: salt, // Send as string to avoid JSON BigInt issues
-          outcomeIndex: tradeOutcome, // Send as number for JSON
-          amount: amountBN.toString(),
+          maker: account,
+          outcomeIndex: tradeOutcome,
+          isBuy: tradeSide === "buy",
           price: priceBN.toString(),
-          expiry: expiry.toString(),
-          // Ensure BigInts are stringified if needed, but value has them.
-          // We override specific fields for JSON serialization
+          amount: amountBN.toString(),
+          salt,
+          expiry,
         },
         signature,
         chainId: market.chain_id,
         contract: market.market,
+        verifyingContract: market.market,
+        marketKey: mk,
+        eventId: Number(params.id),
       };
 
       // Use /orders endpoint which handles POST
@@ -571,7 +575,22 @@ export default function PredictionDetailClient() {
       }
     } catch (e: any) {
       console.error(e);
-      setOrderMsg(e.message || "交易失败");
+      let msg = e?.message || "交易失败";
+      if (tradeSide === "sell") {
+        const lower = msg.toLowerCase();
+        const looksLikeNoBalance =
+          lower.includes("insufficient") ||
+          lower.includes("balance") ||
+          lower.includes("no tokens") ||
+          lower.includes("not enough");
+        if (looksLikeNoBalance) {
+          msg = "卖单失败：您的可卖预测代币数量不足，请先在下方完成铸币后再尝试挂卖单。";
+        } else {
+          msg =
+            msg + "。如果尚未在下方完成铸币，可能是因为当前没有可卖的预测代币，请先铸币再试一次。";
+        }
+      }
+      setOrderMsg(msg);
     } finally {
       setIsSubmitting(false);
     }

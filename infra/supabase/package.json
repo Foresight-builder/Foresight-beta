@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "db:init": "node ./scripts/run-sql-file.cjs ./sql/supabase-init.sql",
+    "db:patch-orders-market-key": "node ./scripts/run-sql-file.cjs ./sql/patch-orders-market-key.sql",
     "db:fix-follows": "node ./scripts/fix-event-follows-user-id-text.cjs",
     "db:fix-follows:sql": "node ./scripts/run-sql-file.cjs ./sql/fix-event-follows.sql",
     "db:follows:check": "node ./scripts/run-sql-file.cjs ./sql/check-event-follows-index.sql",

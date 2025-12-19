@@ -42,16 +42,26 @@ export default function KlineChart({
       },
     });
 
-    // 使用 try-catch 包裹以防 API 变更或运行时错误
     try {
-      const candlestickSeries = (chart as any).addCandlestickSeries({
-        upColor: "#26a69a",
-        downColor: "#ef5350",
-        borderVisible: false,
-        wickUpColor: "#26a69a",
-        wickDownColor: "#ef5350",
-      });
-      seriesRef.current = candlestickSeries;
+      const anyChart = chart as any;
+      if (typeof anyChart.addCandlestickSeries === "function") {
+        const candlestickSeries = anyChart.addCandlestickSeries({
+          upColor: "#26a69a",
+          downColor: "#ef5350",
+          borderVisible: false,
+          wickUpColor: "#26a69a",
+          wickDownColor: "#ef5350",
+        });
+        seriesRef.current = candlestickSeries;
+      } else if (typeof anyChart.addLineSeries === "function") {
+        const lineSeries = anyChart.addLineSeries({
+          color: "#6b21a8",
+          lineWidth: 2,
+        });
+        seriesRef.current = lineSeries;
+      } else {
+        console.error("Chart instance does not support candlestick or line series", anyChart);
+      }
     } catch (e) {
       console.error("Failed to create candlestick series:", e);
     }
