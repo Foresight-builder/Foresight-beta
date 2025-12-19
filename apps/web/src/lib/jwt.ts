@@ -11,6 +11,7 @@ export interface JWTPayload {
   address: string;
   chainId?: number;
   issuedAt: number;
+  [key: string]: unknown;
 }
 
 /**

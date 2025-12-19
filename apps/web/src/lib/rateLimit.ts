@@ -1,6 +1,8 @@
 /**
  * Rate Limiting 工具
- * 基于内存的简单限流实现（生产环境建议使用 Redis）
+ * 基于内存的简单限流实现
+ * 注意：由于构建环境限制（Edge Runtime 兼容性），暂时移除 Upstash Redis 依赖，回退到内存实现。
+ * 生产环境建议迁移到 Redis。
  */
 
 import type { NextRequest } from "next/server";
@@ -25,14 +27,16 @@ interface RateLimitEntry {
 const store = new Map<string, RateLimitEntry>();
 
 // 定期清理过期记录（每分钟）
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (entry.resetAt < now) {
-      store.delete(key);
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of store.entries()) {
+      if (entry.resetAt < now) {
+        store.delete(key);
+      }
     }
-  }
-}, 60 * 1000);
+  }, 60 * 1000);
+}
 
 /**
  * 检查请求是否超出限流
@@ -40,10 +44,10 @@ setInterval(() => {
  * @param config 限流配置
  * @returns 是否允许通过
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig = { interval: 60 * 1000, limit: 60 }
-): { success: boolean; remaining: number; resetAt: number } {
+): Promise<{ success: boolean; remaining: number; resetAt: number }> {
   const now = Date.now();
   const key = `ratelimit:${identifier}`;
 
@@ -78,102 +82,17 @@ export function checkRateLimit(
   };
 }
 
-/**
- * Next.js API Route 中间件包装器
- */
-export function withRateLimit(
-  handler: (req: Request) => Promise<Response>,
-  config?: RateLimitConfig
-) {
-  return async (req: Request): Promise<Response> => {
-    // 获取客户端 IP
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      req.headers.get("x-real-ip") ||
-      "unknown";
-
-    const result = checkRateLimit(ip, config);
-
-    // 添加 Rate Limit Headers
-    const headers = new Headers({
-      "X-RateLimit-Limit": String(config?.limit || 60),
-      "X-RateLimit-Remaining": String(result.remaining),
-      "X-RateLimit-Reset": String(result.resetAt),
-    });
-
-    if (!result.success) {
-      return new Response(
-        JSON.stringify({
-          error: "Too Many Requests",
-          message: "请求过于频繁，请稍后再试",
-          retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            ...Object.fromEntries(headers.entries()),
-            "Content-Type": "application/json",
-            "Retry-After": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
-          },
-        }
-      );
-    }
-
-    // 执行原始处理器
-    const response = await handler(req);
-
-    // 添加 Rate Limit Headers 到响应
-    for (const [key, value] of headers.entries()) {
-      response.headers.set(key, value);
-    }
-
-    return response;
-  };
-}
-
-/**
- * 预定义的限流配置
- */
-export const rateLimitPresets = {
-  /** 严格限制（登录、注册等敏感操作）*/
-  strict: { interval: 15 * 60 * 1000, limit: 5 }, // 15分钟5次
-  /** 一般限制（API 调用）*/
-  normal: { interval: 60 * 1000, limit: 60 }, // 1分钟60次
-  /** 宽松限制（查询操作）*/
-  relaxed: { interval: 60 * 1000, limit: 120 }, // 1分钟120次
-};
-
-/**
- * 从 NextRequest 中获取客户端 IP 地址
- */
-export function getIP(req: NextRequest): string {
-  // 尝试多种方式获取真实 IP
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
-
-  // Vercel 特定的 IP 头
-  const vercelIp = req.headers.get("x-vercel-forwarded-for");
-  if (vercelIp) {
-    return vercelIp.split(",")[0].trim();
-  }
-
-  // 回退到 unknown
-  return "unknown";
-}
-
-/**
- * 导出 middleware 使用的限流配置别名
- */
 export const RateLimits = {
-  strict: { interval: 15 * 60 * 1000, limit: 5 }, // 认证相关 - 15分钟5次
-  moderate: { interval: 60 * 1000, limit: 30 }, // 写操作 - 1分钟30次
-  relaxed: { interval: 60 * 1000, limit: 120 }, // 读操作 - 1分钟120次
-  lenient: { interval: 60 * 1000, limit: 300 }, // 健康检查 - 1分钟300次
+  strict: { interval: 60 * 1000, limit: 5 }, // 5 req/min
+  moderate: { interval: 60 * 1000, limit: 20 }, // 20 req/min
+  relaxed: { interval: 60 * 1000, limit: 60 }, // 60 req/min
+  lenient: { interval: 60 * 1000, limit: 120 }, // 120 req/min
 };
+
+export function getIP(req: NextRequest | Request): string {
+  if ("ip" in req && req.ip) return req.ip as string;
+  const headers = "headers" in req ? req.headers : new Headers();
+  return (
+    headers.get("x-forwarded-for")?.split(",")[0].trim() || headers.get("x-real-ip") || "unknown"
+  );
+}

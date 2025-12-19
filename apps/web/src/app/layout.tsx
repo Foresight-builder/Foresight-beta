@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import React, { Suspense } from "react";
 import "./globals.css";
 import "./nprogress.css";
 import { WalletProvider } from "@/contexts/WalletContext";
@@ -94,7 +95,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <ProgressBar />
+        <Suspense fallback={null}>
+          <ProgressBar />
+        </Suspense>
         <WebVitalsReporter />
         <ErrorBoundary level="page">
           <ReactQueryProvider>
@@ -114,9 +117,7 @@ export default function RootLayout({
                         <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
                           <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
                           <div className="relative z-10">
-                            <ErrorBoundary level="section">
-                              {children}
-                            </ErrorBoundary>
+                            <ErrorBoundary level="section">{children}</ErrorBoundary>
                           </div>
                         </div>
                       </div>

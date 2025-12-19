@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
       if (client) {
         // 记录到错误日志表（需要先创建此表）
-        await client
+        await (client as any)
           .from("error_logs")
           .insert({
             error_message: error || "Unknown error",
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
             component_stack: componentStack,
             created_at: new Date().toISOString(),
           })
-          .catch((err) => {
+          .catch((err: any) => {
             // 如果表不存在，只在控制台记录
             console.error("Error logging to database:", err);
           });

@@ -2,18 +2,18 @@
  * 前端分析和性能监控工具
  */
 
-import { onCLS, onFCP, onFID, onLCP, onTTFB, type Metric } from "web-vitals";
+import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from "web-vitals";
 
 /**
  * 获取设备信息
  */
 function getDeviceInfo() {
   return {
-    type: /mobile/i.test(navigator.userAgent) 
-      ? 'mobile' 
-      : /tablet|ipad/i.test(navigator.userAgent) 
-      ? 'tablet' 
-      : 'desktop',
+    type: /mobile/i.test(navigator.userAgent)
+      ? "mobile"
+      : /tablet|ipad/i.test(navigator.userAgent)
+        ? "tablet"
+        : "desktop",
   };
 }
 
@@ -23,7 +23,7 @@ function getDeviceInfo() {
 function getConnectionInfo() {
   // @ts-ignore - Navigator.connection 是实验性 API
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  
+
   if (!connection) {
     return {
       type: null,
@@ -91,7 +91,7 @@ export function initWebVitals() {
   if (typeof window === "undefined") return;
 
   onCLS(sendToAnalytics); // Cumulative Layout Shift
-  onFID(sendToAnalytics); // First Input Delay
+  onINP(sendToAnalytics); // Interaction to Next Paint
   onFCP(sendToAnalytics); // First Contentful Paint
   onLCP(sendToAnalytics); // Largest Contentful Paint
   onTTFB(sendToAnalytics); // Time to First Byte

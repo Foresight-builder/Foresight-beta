@@ -3,42 +3,42 @@ import { getClient } from "@/lib/supabase";
 
 // 获取设备类型
 function getDeviceType(userAgent: string): string {
-  if (/mobile/i.test(userAgent)) return 'mobile';
-  if (/tablet|ipad/i.test(userAgent)) return 'tablet';
-  return 'desktop';
+  if (/mobile/i.test(userAgent)) return "mobile";
+  if (/tablet|ipad/i.test(userAgent)) return "tablet";
+  return "desktop";
 }
 
 // 获取浏览器信息
 function getBrowser(userAgent: string): string {
-  if (userAgent.includes('Chrome')) return 'Chrome';
-  if (userAgent.includes('Firefox')) return 'Firefox';
-  if (userAgent.includes('Safari')) return 'Safari';
-  if (userAgent.includes('Edge')) return 'Edge';
-  return 'Unknown';
+  if (userAgent.includes("Chrome")) return "Chrome";
+  if (userAgent.includes("Firefox")) return "Firefox";
+  if (userAgent.includes("Safari")) return "Safari";
+  if (userAgent.includes("Edge")) return "Edge";
+  return "Unknown";
 }
 
 // 获取操作系统
 function getOS(userAgent: string): string {
-  if (userAgent.includes('Win')) return 'Windows';
-  if (userAgent.includes('Mac')) return 'macOS';
-  if (userAgent.includes('Linux')) return 'Linux';
-  if (userAgent.includes('Android')) return 'Android';
-  if (userAgent.includes('iOS')) return 'iOS';
-  return 'Unknown';
+  if (userAgent.includes("Win")) return "Windows";
+  if (userAgent.includes("Mac")) return "macOS";
+  if (userAgent.includes("Linux")) return "Linux";
+  if (userAgent.includes("Android")) return "Android";
+  if (userAgent.includes("iOS")) return "iOS";
+  return "Unknown";
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { 
-      name, 
-      value, 
-      rating, 
-      delta, 
-      id, 
-      navigationType, 
-      url, 
+    const {
+      name,
+      value,
+      rating,
+      delta,
+      id,
+      navigationType,
+      url,
       timestamp,
       device,
       connection,
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // 获取用户信息
-    const userAgent = req.headers.get('user-agent') || '';
+    const userAgent = req.headers.get("user-agent") || "";
     const deviceType = device?.type || getDeviceType(userAgent);
     const browser = getBrowser(userAgent);
     const os = getOS(userAgent);
@@ -56,9 +56,11 @@ export async function POST(req: NextRequest) {
       const client = getClient();
       if (client) {
         // 尝试获取当前用户 ID
-        const { data: { session } } = await client.auth.getSession();
-        
-        await client
+        const {
+          data: { session },
+        } = await client.auth.getSession();
+
+        await (client as any)
           .from("web_vitals")
           .insert({
             metric_name: name,
@@ -72,16 +74,15 @@ export async function POST(req: NextRequest) {
             device_type: deviceType,
             browser,
             os,
-            screen_resolution: viewport?.width && viewport?.height 
-              ? `${viewport.width}x${viewport.height}` 
-              : null,
+            screen_resolution:
+              viewport?.width && viewport?.height ? `${viewport.width}x${viewport.height}` : null,
             connection_type: connection?.type || null,
             connection_effective_type: connection?.effectiveType || null,
             created_at: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
           })
-          .catch((error) => {
+          .catch((error: any) => {
             // 静默失败，但记录错误
-            console.error('Failed to insert web_vitals:', error);
+            console.error("Failed to insert web_vitals:", error);
           });
       }
 

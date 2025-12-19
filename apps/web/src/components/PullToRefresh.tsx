@@ -14,14 +14,14 @@ interface PullToRefreshProps {
 
 /**
  * 下拉刷新组件
- * 
+ *
  * 特性：
  * - 原生触感的下拉刷新
  * - 平滑动画过渡
  * - 可自定义触发阈值
  * - 加载状态提示
  * - 防止过度下拉
- * 
+ *
  * @example
  * ```tsx
  * <PullToRefresh onRefresh={fetchData}>
@@ -49,7 +49,7 @@ export default function PullToRefresh({
 
       // 检查是否在顶部
       const isAtTop = containerRef.current ? containerRef.current.scrollTop === 0 : true;
-      
+
       // 只有在顶部且向下拉才响应
       if (!isAtTop || dy < 0) {
         cancel();
@@ -107,13 +107,13 @@ export default function PullToRefresh({
           {isRefreshing ? (
             <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
           ) : (
-            <animated.div style={{ rotate: iconRotation }}>
-              <RefreshCw
-                className="w-6 h-6 text-purple-600"
-                style={{
-                  opacity: pullProgress.to((p) => p),
-                }}
-              />
+            <animated.div
+              style={{
+                rotate: iconRotation,
+                opacity: pullProgress.to((p) => p),
+              }}
+            >
+              <RefreshCw className="w-6 h-6 text-purple-600" />
             </animated.div>
           )}
           <animated.span
@@ -138,4 +138,3 @@ export default function PullToRefresh({
     </div>
   );
 }
-

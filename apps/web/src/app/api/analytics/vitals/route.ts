@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Web Vitals 数据收集 API
- * 
+ *
  * 接收前端发送的性能指标并存储到数据库
  */
 export async function POST(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 存储到性能监控表
-    const { error } = await client.from("performance_metrics").insert({
+    const { error } = await (client as any).from("performance_metrics").insert({
       metric_id: metric.id,
       metric_name: metric.name,
       value: metric.value,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    let query = client
+    let query = (client as any)
       .from("performance_metrics")
       .select("*")
       .gte("created_at", startDate.toISOString())
@@ -81,11 +81,14 @@ export async function GET(request: NextRequest) {
     // 计算统计数据
     const stats = calculateStats(data || []);
 
-    return NextResponse.json({
-      success: true,
-      data,
-      stats,
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+        stats,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Analytics vitals GET error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -132,4 +135,3 @@ function percentile(values: number[], p: number): number {
   const index = Math.ceil(sorted.length * p) - 1;
   return sorted[Math.max(0, index)];
 }
-

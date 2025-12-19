@@ -14,11 +14,12 @@ const nextConfig: NextConfig = {
 
   // 生产环境自动移除 console.log
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' 
-      ? {
-          exclude: ['error', 'warn'], // 保留 error 和 warn
-        }
-      : false,
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? {
+            exclude: ["error", "warn"], // 保留 error 和 warn
+          }
+        : false,
   },
 
   images: {
@@ -122,8 +123,6 @@ const nextConfig: NextConfig = {
   // 实验性特性
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
-    // 优化字体加载
-    optimizeFonts: true,
   },
 
   // Webpack 优化

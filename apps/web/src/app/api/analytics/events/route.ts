@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       // 可以发送到分析服务或记录到数据库
       const client = getClient();
       if (client) {
-        await client
+        await (client as any)
           .from("analytics_events")
           .insert({
             event_name: event,

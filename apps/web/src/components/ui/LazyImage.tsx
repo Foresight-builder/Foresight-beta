@@ -35,14 +35,14 @@ interface LazyImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src"
 
 /**
  * 高性能图片懒加载组件
- * 
+ *
  * 特性：
  * - 使用 IntersectionObserver 实现真正的懒加载
  * - 支持渐入动画
  * - 支持加载失败降级
  * - 支持自定义占位图
  * - 自动清理资源
- * 
+ *
  * @example
  * ```tsx
  * <LazyImage
@@ -118,9 +118,7 @@ export default function LazyImage({
     <div ref={imgRef} className={`relative overflow-hidden ${className}`}>
       {/* 占位图或加载动画 */}
       {showPlaceholder && (
-        <div
-          className={`absolute inset-0 ${placeholderClassName || defaultPlaceholderClass}`}
-        >
+        <div className={`absolute inset-0 ${placeholderClassName || defaultPlaceholderClass}`}>
           {placeholderSrc ? (
             <img
               src={placeholderSrc}
@@ -149,7 +147,7 @@ export default function LazyImage({
               transition={{ duration: 0.3, ease: "easeOut" }}
               className={className}
               loading="lazy" // 浏览器原生懒加载作为后备
-              {...props}
+              {...(props as any)}
             />
           ) : (
             <img
@@ -239,4 +237,3 @@ export function LazyCardCover({
     </div>
   );
 }
-

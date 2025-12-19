@@ -107,7 +107,7 @@ export function useScreenReaderAnnouncement() {
  * ARIA ID 生成 Hook
  */
 export function useAriaId(prefix?: string) {
-  const idRef = useRef<string>();
+  const idRef = useRef<string | undefined>(undefined);
 
   if (!idRef.current) {
     idRef.current = generateAriaId(prefix);

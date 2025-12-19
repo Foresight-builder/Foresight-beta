@@ -4,13 +4,13 @@ import { afterEach, beforeAll, vi } from "vitest";
 
 // 设置测试环境变量
 beforeAll(() => {
-  process.env.JWT_SECRET = 'test-secret-key-for-testing-only-do-not-use-in-production';
-  process.env.NODE_ENV = 'test';
-  process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+  process.env.JWT_SECRET = "test-secret-key-for-testing-only-do-not-use-in-production";
+  // process.env.NODE_ENV = 'test'; // Read-only property
+  process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 });
 
 // Mock Sentry
-vi.mock('@sentry/nextjs', () => ({
+vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
   captureMessage: vi.fn(),
   captureEvent: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('@sentry/nextjs', () => ({
 Object.assign(navigator, {
   clipboard: {
     writeText: vi.fn().mockResolvedValue(undefined),
-    readText: vi.fn().mockResolvedValue(''),
+    readText: vi.fn().mockResolvedValue(""),
   },
 });
 

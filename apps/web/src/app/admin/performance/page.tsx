@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Clock, Zap, BarChart3, RefreshCw } from "lucide-react";
 
@@ -19,12 +19,22 @@ interface PerformanceStats {
   };
 }
 
+export default function PerformanceDashboard() {
+  return (
+    <Suspense
+      fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}
+    >
+      <PerformanceDashboardContent />
+    </Suspense>
+  );
+}
+
 /**
  * 性能监控仪表板页面
- * 
+ *
  * 展示 Web Vitals 和性能指标统计
  */
-export default function PerformanceDashboard() {
+function PerformanceDashboardContent() {
   const [stats, setStats] = useState<PerformanceStats>({});
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
@@ -152,11 +162,15 @@ export default function PerformanceDashboard() {
                     <div className={`p-3 rounded-xl bg-${metric.color}-50`}>
                       <Icon className={`w-6 h-6 text-${metric.color}-600`} />
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      isGood ? "bg-green-50 text-green-700" :
-                      isOk ? "bg-yellow-50 text-yellow-700" :
-                      "bg-red-50 text-red-700"
-                    }`}>
+                    <div
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        isGood
+                          ? "bg-green-50 text-green-700"
+                          : isOk
+                            ? "bg-yellow-50 text-yellow-700"
+                            : "bg-red-50 text-red-700"
+                      }`}
+                    >
                       {score.toFixed(0)}% 良好
                     </div>
                   </div>
@@ -246,13 +260,10 @@ export default function PerformanceDashboard() {
         {!loading && Object.keys(stats).length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-600">暂无数据</p>
-            <p className="text-sm text-gray-500 mt-2">
-              请稍后再试或确保前端已正确集成 Web Vitals
-            </p>
+            <p className="text-sm text-gray-500 mt-2">请稍后再试或确保前端已正确集成 Web Vitals</p>
           </div>
         )}
       </div>
     </div>
   );
 }
-

@@ -2,7 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Menu, Home, Search, TrendingUp, MessageSquare, User, Settings, LogOut } from "lucide-react";
+import {
+  X,
+  Menu,
+  Home,
+  Search,
+  TrendingUp,
+  MessageSquare,
+  User,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
@@ -13,7 +23,7 @@ interface MobileMenuProps {
 
 /**
  * 移动端汉堡菜单组件
- * 
+ *
  * 特性：
  * - 从左侧滑入的抽屉式菜单
  * - 响应式设计（仅在移动端显示）
@@ -25,7 +35,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { account, disconnect } = useWallet();
+  const { account, disconnectWallet } = useWallet();
 
   // 路由变化时自动关闭菜单
   useEffect(() => {
@@ -144,7 +154,9 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                           : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${isActive ? "text-purple-600" : "text-gray-500"}`} />
+                      <Icon
+                        className={`w-5 h-5 ${isActive ? "text-purple-600" : "text-gray-500"}`}
+                      />
                       <span>{item.label}</span>
                       {isActive && (
                         <motion.div
@@ -162,7 +174,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                 {account ? (
                   <button
                     onClick={() => {
-                      disconnect();
+                      disconnectWallet();
                       setIsOpen(false);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
@@ -179,9 +191,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     <span>连接钱包</span>
                   </Link>
                 )}
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  Version 1.0.0 Beta
-                </p>
+                <p className="text-xs text-gray-400 text-center mt-3">Version 1.0.0 Beta</p>
               </div>
             </motion.div>
           </>
@@ -190,4 +200,3 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
     </>
   );
 }
-

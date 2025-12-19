@@ -36,7 +36,7 @@ export async function verifyOrderSignature(
     const domain = createOrderDomain(chainId, normalizedContract);
 
     // 验证签名并恢复地址
-    const recoveredAddress = ethers.verifyTypedData(domain, ORDER_TYPES, order, signature);
+    const recoveredAddress = ethers.verifyTypedData(domain, ORDER_TYPES as any, order, signature);
 
     // 检查恢复的地址是否与 maker 匹配
     const valid = recoveredAddress.toLowerCase() === normalizedMaker;

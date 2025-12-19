@@ -3,13 +3,13 @@ import { progress } from "@/components/ProgressBar";
 
 /**
  * API 请求包装器 - 自动显示加载反馈
- * 
+ *
  * 特性：
  * - 自动显示进度条
  * - 自动显示 Toast 加载提示
  * - 成功/失败自动反馈
  * - 错误处理
- * 
+ *
  * @example
  * ```tsx
  * const data = await apiWithFeedback(
@@ -68,9 +68,7 @@ export async function apiWithFeedback<T>(
     if (showToast && toastId) {
       toast.dismiss(toastId);
       const message =
-        typeof errorMessage === "function"
-          ? errorMessage(error as Error)
-          : errorMessage;
+        typeof errorMessage === "function" ? errorMessage(error as Error) : errorMessage;
       toast.error(message, error instanceof Error ? error.message : undefined);
     }
 
@@ -102,17 +100,14 @@ export async function apiWithErrorToast<T>(
     return result;
   } catch (error) {
     progress.done();
-    toast.error(
-      errorMessage || "操作失败",
-      error instanceof Error ? error.message : undefined
-    );
+    toast.error(errorMessage || "操作失败", error instanceof Error ? error.message : undefined);
     throw error;
   }
 }
 
 /**
  * React Query 集成 - 用于 mutation
- * 
+ *
  * @example
  * ```tsx
  * const mutation = useMutation({
@@ -161,7 +156,7 @@ export function reactQueryFeedback(options: {
 
 /**
  * 批量操作反馈
- * 
+ *
  * @example
  * ```tsx
  * await batchApiWithFeedback(
@@ -183,9 +178,9 @@ export async function batchApiWithFeedback<T>(
   }
 ): Promise<{ successes: T[]; failures: Error[] }> {
   const {
-    loadingMessage = (current, total) => `处理中 (${current}/${total})`,
-    successMessage = (count) => `成功处理 ${count} 项`,
-    errorMessage = (failedCount) => `${failedCount} 项处理失败`,
+    loadingMessage = (current: number, total: number) => `处理中 (${current}/${total})`,
+    successMessage = (count: number) => `成功处理 ${count} 项`,
+    errorMessage = (failedCount: number) => `${failedCount} 项处理失败`,
   } = options || {};
 
   const total = apiFns.length;
@@ -218,12 +213,8 @@ export async function batchApiWithFeedback<T>(
   } else if (successes.length === 0) {
     toast.error(errorMessage(failures.length));
   } else {
-    toast.warning(
-      `部分完成`,
-      `成功 ${successes.length} 项，失败 ${failures.length} 项`
-    );
+    toast.warning(`部分完成`, `成功 ${successes.length} 项，失败 ${failures.length} 项`);
   }
 
   return { successes, failures };
 }
-

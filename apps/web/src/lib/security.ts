@@ -8,7 +8,7 @@ import { JSDOM } from "jsdom";
 
 // 创建 DOM 环境（服务端）
 const window = new JSDOM("").window;
-const purify = DOMPurify(window as unknown as Window);
+const purify = DOMPurify(window as any);
 
 /**
  * 清理 HTML 字符串，防止 XSS 攻击

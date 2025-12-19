@@ -13,7 +13,7 @@ interface UseInfiniteScrollOptions {
 
 /**
  * 简化版无限滚动 Hook（Phase 2 版本）
- * 
+ *
  * 用于已有数据加载逻辑的场景，仅提供 IntersectionObserver 触发器
  */
 export function useInfiniteScroll({
@@ -120,9 +120,9 @@ export interface UseInfiniteScrollFullResult<T> {
 
 /**
  * 完整版无限滚动 Hook（Phase 3 版本）
- * 
+ *
  * 使用 IntersectionObserver 实现高性能无限滚动，包含完整的数据管理
- * 
+ *
  * @example
  * ```tsx
  * const { data, loading, hasMore, loadMoreRef } = useInfiniteScrollFull(
@@ -132,7 +132,7 @@ export interface UseInfiniteScrollFullResult<T> {
  *   },
  *   { threshold: 0.5, rootMargin: "100px" }
  * );
- * 
+ *
  * return (
  *   <div>
  *     {data.map(item => <ItemCard key={item.id} item={item} />)}
@@ -148,11 +148,7 @@ export function useInfiniteScrollFull<T>(
   fetchFn: (page: number) => Promise<T[]>,
   options: UseInfiniteScrollFullOptions = {}
 ): UseInfiniteScrollFullResult<T> {
-  const {
-    threshold = 0.8,
-    rootMargin = "200px",
-    enabled = true,
-  } = options;
+  const { threshold = 0.8, rootMargin = "200px", enabled = true } = options;
 
   const [data, setData] = useState<T[]>([]);
   const [page, setPage] = useState(1);
@@ -174,7 +170,7 @@ export function useInfiniteScrollFull<T>(
 
     try {
       const newData = await fetchFn(page);
-      
+
       if (!newData || newData.length === 0) {
         setHasMore(false);
       } else {
@@ -234,7 +230,7 @@ export function useInfiniteScrollFull<T>(
     hasMore,
     page,
     error,
-    loadMoreRef,
+    loadMoreRef: loadMoreRef as any,
     loadMore,
     reset,
     setData,
@@ -243,7 +239,7 @@ export function useInfiniteScrollFull<T>(
 
 /**
  * 基于窗口滚动的无限滚动 Hook
- * 
+ *
  * @deprecated 推荐使用 useInfiniteScrollFull，性能更好
  */
 export function useWindowInfiniteScroll<T>(
@@ -257,7 +253,7 @@ export function useWindowInfiniteScroll<T>(
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  
+
   const isLoadingRef = useRef(false);
 
   const loadMore = useCallback(async () => {
@@ -269,7 +265,7 @@ export function useWindowInfiniteScroll<T>(
 
     try {
       const newData = await fetchFn(page);
-      
+
       if (!newData || newData.length === 0) {
         setHasMore(false);
       } else {
@@ -319,7 +315,5 @@ export function useWindowInfiniteScroll<T>(
     loadMore,
     reset,
     setData,
-    loadMoreRef: { current: null } as any, // 占位符
   };
 }
-

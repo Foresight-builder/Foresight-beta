@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { checkRateLimit, getIP, RateLimits } from "./lib/rateLimit";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 仅对 API 路由应用限流
@@ -29,7 +29,7 @@ export function middleware(request: NextRequest) {
       rateLimitConfig = RateLimits.relaxed; // 读操作 - 宽松限制
     }
 
-    const result = checkRateLimit(ip, rateLimitConfig);
+    const result = await checkRateLimit(ip, rateLimitConfig);
 
     if (!result.success) {
       return NextResponse.json(

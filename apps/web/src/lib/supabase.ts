@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
+export type { Database };
+
 const isServer = typeof window === "undefined";
 
 // 从环境变量获取Supabase配置
@@ -23,7 +25,7 @@ export const supabaseAdmin =
 
 // 数据库表类型定义
 export type Prediction = Database["public"]["Tables"]["predictions"]["Row"] & {
-  outcomes?: any[]; // 扩展字段，用于关联查询
+  outcomes?: Database["public"]["Tables"]["prediction_outcomes"]["Row"][]; // 扩展字段，用于关联查询
 };
 
 export type Category = Database["public"]["Tables"]["categories"]["Row"];
