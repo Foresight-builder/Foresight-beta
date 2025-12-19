@@ -30,7 +30,7 @@ type PredictionItem = {
   followers_count?: number;
 };
 
-const ALLOWED_CATEGORIES = ["体育", "娱乐", "时政", "天气", "科技"] as const;
+const ALLOWED_CATEGORIES = ["体育", "娱乐", "时政", "天气", "科技", "商业", "加密货币"] as const;
 const CATEGORIES = [{ id: "all", name: "All Topics", icon: Globe }].concat(
   ALLOWED_CATEGORIES.map((c) => ({ id: c, name: c, icon: Activity }))
 );
@@ -59,6 +59,8 @@ function normalizeCategory(raw?: string): string {
     return "时政";
   if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
   if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
+  if (["business", "商业", "finance", "biz"].includes(s)) return "商业";
+  if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3"].includes(s)) return "加密货币";
   return "科技";
 }
 

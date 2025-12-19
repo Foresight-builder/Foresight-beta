@@ -19,6 +19,11 @@ import {
   Globe,
   BarChart3,
   Search,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Target,
+  Flag,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -103,7 +108,30 @@ const TRENDING_CATEGORIES = [
   { name: "时政", icon: "🏛️", color: "from-purple-400 to-indigo-400" },
   { name: "天气", icon: "🌤️", color: "from-green-400 to-emerald-400" },
   { name: "体育", icon: "⚽", color: "from-orange-400 to-red-400" },
+  { name: "商业", icon: "💼", color: "from-slate-400 to-gray-500" },
+  { name: "加密货币", icon: "🪙", color: "from-yellow-400 to-amber-500" },
+  { name: "更多", icon: "⋯", color: "from-gray-200 to-gray-300" },
 ];
+
+const CATEGORY_MAPPING: Record<string, string> = {
+  科技: "tech",
+  娱乐: "entertainment",
+  时政: "politics",
+  天气: "weather",
+  体育: "sports",
+  商业: "business",
+  加密货币: "crypto",
+};
+
+const ID_TO_CATEGORY_NAME: Record<string, string> = {
+  tech: "科技",
+  entertainment: "娱乐",
+  politics: "时政",
+  weather: "天气",
+  sports: "体育",
+  crypto: "加密货币",
+  business: "商业",
+};
 
 const fetchPredictions = async () => {
   const res = await fetch("/api/predictions");
@@ -584,7 +612,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentHeroIndex((prevIndex) => prevIndex + 1);
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -596,7 +624,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
   const handleLoadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
-    
+
     setLoadingMore(true);
     // 模拟加载延迟，实际项目中这里可能是 API 调用
     setTimeout(() => {
@@ -1199,6 +1227,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
         insured: `${prediction.min_stake} USDC`,
         minInvestment: `${prediction.min_stake} USDC`,
         tag: prediction.category,
+        category: prediction.category,
         image:
           prediction.image_url ||
           `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
@@ -1251,11 +1280,19 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     let events = [...displayEvents];
 
     // 1. 筛选分类
-    if (filters.category) {
+    if (filters.category && filters.category !== "all") {
       events = events.filter((e: any) => {
-        const category = String(e?.category || "").toLowerCase();
-        const filterCategory = filters.category?.toLowerCase();
-        return category === filterCategory || category.includes(filterCategory || "");
+        const eventCategory = String(e?.category || e?.tag || "").toLowerCase();
+        const filterId = filters.category?.toLowerCase() || "";
+
+        // 尝试匹配英文ID
+        if (eventCategory === filterId) return true;
+
+        // 尝试匹配中文名
+        const categoryName = ID_TO_CATEGORY_NAME[filterId];
+        if (categoryName && eventCategory.includes(categoryName.toLowerCase())) return true;
+
+        return false;
       });
     }
 
@@ -1404,7 +1441,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     const pool = displayEvents;
     if (pool.length === 0) return [] as any[];
     const now = Date.now();
-    const sorter = (a: any, b: any) => {
+
+    // 组内排序：按热度
+    const popularitySorter = (a: any, b: any) => {
       const fa = Number(a?.followers_count || 0);
       const fb = Number(b?.followers_count || 0);
       if (fb !== fa) return fb - fa;
@@ -1414,16 +1453,32 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
       return ta - tb;
     };
+
     const tags = Array.from(new Set(pool.map((e: any) => String(e.tag || "")).filter(Boolean)));
     const picks = tags
       .map((tag) => {
         const group = pool.filter((e: any) => String(e.tag || "") === tag);
         if (group.length === 0) return null as any;
-        return [...group].sort(sorter)[0];
+        return [...group].sort(popularitySorter)[0];
       })
       .filter(Boolean);
-    return [...picks].sort(sorter);
-  }, [displayEvents]);
+
+    // 最终排序：按分类固定顺序
+    return [...picks].sort((a, b) => {
+      const tagA = String(a.tag || "");
+      const tagB = String(b.tag || "");
+      const indexA = categories.findIndex((c) => c.name === tagA);
+      const indexB = categories.findIndex((c) => c.name === tagB);
+
+      // 如果都在列表中，按列表顺序
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // 如果只有一个在列表中，在列表中的排前面
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      // 都不在列表中，按热度
+      return popularitySorter(a, b);
+    });
+  }, [displayEvents, categories]);
 
   const activeSlide =
     heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
@@ -1540,7 +1595,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     // 清理函数
     return () => {
       isSubscribed = false;
-      
+
       if (channel) {
         try {
           // 先取消订阅
@@ -1549,7 +1604,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           (supabase as any).removeChannel(channel);
           channel = null;
         } catch (error) {
-          console.error('Failed to cleanup WebSocket channel:', error);
+          console.error("Failed to cleanup WebSocket channel:", error);
         }
       }
     };
@@ -1563,434 +1618,300 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           canvasReady ? "opacity-40" : "opacity-0"
         }`}
       />
-      {/* 背景装饰，与首页一致 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[800px] h-[800px] bg-gradient-to-b from-violet-300/30 to-fuchsia-300/30 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/30 to-orange-200/30 rounded-full blur-[100px]" />
-        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/20 rounded-full blur-[80px]" />
-      </div>
-
-      {/* 修改后的英雄区 - 轮播显示 */}
-      <section className="relative z-10 py-6 lg:py-8 overflow-hidden">
-        {/* 背景装饰元素 - 增强版 */}
-        <div className="absolute inset-0 pointer-events-none">
-          {/* 细微的点阵纹理 */}
-          <div
-            className="absolute inset-0 opacity-[0.15]"
-            style={{
-              backgroundImage: "radial-gradient(#8b5cf6 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          ></div>
-
-          {/* 动态光斑 */}
-          <motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.3, 0.5, 0.3],
-              x: [0, 20, 0],
-            }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-10%] left-[-5%] w-[700px] h-[700px] bg-purple-400/20 rounded-full blur-[120px] mix-blend-screen"
-          />
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.2, 0.4, 0.2],
-              y: [0, -30, 0],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1,
-            }}
-            className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-fuchsia-400/20 rounded-full blur-[120px] mix-blend-screen"
-          />
-          <motion.div
-            animate={{
-              scale: [1, 0.9, 1],
-              opacity: [0.2, 0.3, 0.2],
-              x: [0, -20, 0],
-            }}
-            transition={{
-              duration: 12,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2,
-            }}
-            className="absolute top-[40%] left-[60%] w-[400px] h-[400px] bg-pink-300/20 rounded-full blur-[100px] mix-blend-screen"
-          />
+      {/* 现代清新科技风 Hero 区域 - Light & Airy Tech Style */}
+      <section className="relative w-full pt-4 pb-8 lg:pt-8 lg:pb-12 flex flex-col justify-center overflow-hidden">
+        {/* 背景装饰：柔和的渐变与光晕 */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-br from-purple-200/40 to-blue-200/40 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
+          <div className="absolute bottom-[-10%] left-[-20%] w-[600px] h-[600px] bg-gradient-to-tr from-pink-200/40 to-orange-100/40 rounded-full blur-[100px] mix-blend-multiply opacity-70" />
         </div>
 
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 relative z-10">
-          {/* 探索与热搜栏 */}
-          <div className="w-full mb-8 glass-card rounded-2xl p-2 flex flex-col md:flex-row items-center gap-2 md:gap-4">
-            {/* 搜索框 */}
-            <div className="relative flex-1 w-full group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-brand transition-colors" />
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 w-full relative z-10">
+          {/* 顶部导航与 Ticker */}
+          <div className="flex flex-col xl:flex-row items-center justify-between gap-4 mb-2 lg:mb-4">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full xl:w-auto">
+              {/* 市场数据 - 静态展示 */}
+              <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/40 shadow-sm">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-100/50 px-2 py-0.5 rounded-md cursor-default">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Market Vol:</span> $2.4M
+                </span>
+                <div className="w-px h-4 bg-gray-300" />
+                <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-md cursor-default">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Greed:</span> 76
+                </span>
+              </div>
+
+              {/* 功能入口 - 强引流区域 */}
+              <Link href="/leaderboard">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 hover:from-amber-200 hover:to-yellow-200 backdrop-blur-md px-4 py-2 rounded-full border border-amber-200/60 shadow-sm transition-all hover:scale-105 hover:shadow-amber-500/20 group">
+                  <div className="bg-white rounded-full p-1 shadow-sm">
+                    <Trophy className="w-3.5 h-3.5 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-bold text-amber-900">Leaderboard</span>
+                </button>
+              </Link>
+
+              <Link href="/flags">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-purple-100/80 to-pink-100/80 hover:from-purple-200 hover:to-pink-200 backdrop-blur-md px-4 py-2 rounded-full border border-purple-200/60 shadow-sm transition-all hover:scale-105 hover:shadow-purple-500/20 group">
+                  <div className="bg-white rounded-full p-1 shadow-sm">
+                    <Flag className="w-3.5 h-3.5 text-purple-600" />
+                  </div>
+                  <span className="text-xs font-bold text-purple-900">My Flags</span>
+                </button>
+              </Link>
+            </div>
+
+            {/* 搜索框 - 悬浮胶囊样式 */}
+            <div className="relative group w-full md:w-auto flex justify-center md:justify-end">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
               </div>
               <input
                 type="text"
+                placeholder="Search events..."
+                className="w-full md:w-64 pl-10 pr-4 py-2 bg-white/80 backdrop-blur-xl border border-white/60 rounded-full text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:bg-white transition-all hover:shadow-md"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索感兴趣的预测事件、话题..."
-                className="input-base pl-11"
               />
-              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                <button className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
-                  <kbd className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-purple-500 bg-purple-50 border-2 border-purple-200 rounded-xl shadow-[0_2px_0_#E9D5FF] hover:translate-y-[1px] hover:shadow-[0_1px_0_#E9D5FF] transition-all">
-                    <span className="text-xs">⌘</span> K
-                  </kbd>
-                </button>
-              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+            {/* 左侧：内容排版 (Typography & Content) */}
+            <div className="flex-1 w-full lg:w-1/2 space-y-8 min-h-[420px] flex flex-col justify-center">
+              <motion.div
+                key={`text-${activeSlide?.id || currentHeroIndex}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="space-y-6"
+              >
+                {/* 标签 */}
+                <div className="flex flex-wrap gap-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Daily Pick
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-wider shadow-sm">
+                    {activeCategory || "Trending"}
+                  </span>
+                </div>
+
+                {/* 标题 */}
+                <h1 className="text-4xl md:text-6xl font-black text-gray-900 leading-[1.1] tracking-tight line-clamp-2 h-[2.2em]">
+                  {activeTitle}
+                </h1>
+
+                {/* 描述 */}
+                <p className="text-lg text-gray-600 leading-relaxed max-w-xl line-clamp-2 h-[3.5em]">
+                  {activeDescription}
+                </p>
+
+                {/* 数据指标 */}
+                <div className="flex items-center gap-8 py-4 border-t border-b border-gray-200/60">
+                  <div>
+                    <div className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
+                      Pool Size
+                    </div>
+                    <div className="text-2xl font-black text-gray-900 font-mono tracking-tight">
+                      ${(activeFollowers * 12.5).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="w-px h-10 bg-gray-200" />
+                  <div>
+                    <div className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
+                      Participants
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3].map((i) => (
+                          <div
+                            key={i}
+                            className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white"
+                          />
+                        ))}
+                      </div>
+                      <span className="text-lg font-black text-gray-900 font-mono">
+                        +{activeFollowers.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 按钮组 */}
+                <div className="flex items-center gap-4 pt-2">
+                  <button
+                    onClick={() => activeSlide?.id && router.push(`/prediction/${activeSlide.id}`)}
+                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-lg shadow-gray-900/20 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2 group"
+                  >
+                    Place Prediction
+                    <ArrowRightCircle className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                  <button className="px-8 py-4 bg-white text-gray-900 border border-gray-200 rounded-2xl font-bold text-sm shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all">
+                    View Details
+                  </button>
+                </div>
+              </motion.div>
             </div>
 
-            {/* 分隔线 */}
-            <div className="hidden md:block w-px h-8 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+            {/* 右侧：视觉焦点 (Visual Focus - 3D Card Stack) */}
+            <div className="w-full lg:w-1/2 relative h-[400px] md:h-[500px] flex items-center justify-center lg:justify-end">
+              {/* 装饰背景元素 */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-tr from-purple-100 to-blue-50 rounded-[3rem] rotate-6 opacity-60 pointer-events-none" />
 
-            {/* 热门标签 */}
-            <div className="w-full md:w-auto flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 px-1 md:px-0 scrollbar-hide">
-              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700 whitespace-nowrap shrink-0">
-                <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                <span>热搜:</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {["#Bitcoin100k", "#GPT-5", "#WorldCup", "#SpaceX", "#Climate"].map((tag, i) => (
-                  <button
-                    key={tag}
-                    onClick={() => setSearchQuery(tag.replace(/^#/, ""))}
-                    className="px-3 py-1.5 rounded-lg bg-white/40 hover:bg-white text-xs font-medium text-gray-600 hover:text-purple-600 border border-white/40 hover:border-purple-200 shadow-sm hover:shadow-md transition-all whitespace-nowrap active:scale-95"
+              <motion.div
+                key={`img-${activeSlide?.id || currentHeroIndex}`}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="relative z-10 w-full max-w-lg aspect-[4/3] rounded-[2rem] shadow-2xl shadow-purple-900/10 bg-white p-3 cursor-pointer group"
+                onClick={() => activeSlide?.id && router.push(`/prediction/${activeSlide.id}`)}
+                whileHover={{ y: -5, rotate: -1 }}
+              >
+                <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden">
+                  <img
+                    src={activeImage}
+                    alt={activeTitle}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  {/* 图片内渐变遮罩 */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
+
+                  {/* 切换箭头 - 移至卡片内部右下角 */}
+                  <div
+                    className="absolute bottom-6 right-6 flex gap-3 z-20"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {tag}
-                  </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentHeroIndex((prev) =>
+                          prev === 0 ? (heroSlideEvents.length || heroEvents.length) - 1 : prev - 1
+                        );
+                      }}
+                      className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentHeroIndex((prev) => prev + 1);
+                      }}
+                      className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 悬浮的数据卡片装饰 */}
+                <motion.div
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="absolute -bottom-6 -left-6 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 flex items-center gap-4 max-w-[200px]"
+                >
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 font-bold">Success Rate</div>
+                    <div className="text-lg font-black text-gray-900">84.5%</div>
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* 轮播控制条 - 垂直排列在右侧 */}
+              <div className="absolute right-[-20px] lg:right-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-3">
+                {heroEvents.slice(0, 5).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentHeroIndex(idx)}
+                    className={`w-1.5 rounded-full transition-all duration-300 ${
+                      currentHeroIndex === idx
+                        ? "h-8 bg-purple-600"
+                        : "h-2 bg-gray-300 hover:bg-purple-300"
+                    }`}
+                  />
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-            {/* 左侧主要内容区域：轮播图 + 专题板块 */}
-            <div className="w-full lg:w-2/3 flex flex-col gap-8">
-              {/* 上半部分：大卡片展示区 */}
-              <div className="w-full relative group">
-                <div
-                  className={`relative h-[400px] md:h-[480px] w-full rounded-[2rem] shadow-2xl shadow-purple-500/10 overflow-hidden border border-white/60 transition-transform duration-500 ${
-                    activeSlide?.id ? "cursor-pointer hover:scale-[1.005]" : ""
-                  }`}
-                  onClick={() => {
-                    if (activeSlide?.id) router.push(`/prediction/${activeSlide.id}`);
-                  }}
-                >
-                  <motion.img
-                    key={String(
-                      (activeSlide && (activeSlide?.id || activeSlide?.title)) || currentHeroIndex
-                    )}
-                    src={activeImage}
-                    alt={activeTitle}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    initial={{ opacity: 0, scale: 1.1 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6 }}
-                  />
-                  {/* 渐变遮罩 - 增强对比度 */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-                  {/* 顶部标签 */}
-                  <div className="absolute top-6 left-6 flex gap-3">
-                    <div className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-2 shadow-lg">
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                      每日精选
-                    </div>
-                    <div className="px-4 py-2 rounded-full bg-red-500/20 backdrop-blur-md border border-red-400/30 text-white text-xs font-bold flex items-center gap-2 shadow-lg">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                      LIVE
-                    </div>
-                  </div>
-
-                  {/* 内容信息 */}
-                  <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
-                      <div className="max-w-2xl space-y-5">
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 rounded-lg bg-purple-600/90 backdrop-blur-md text-white text-xs font-bold shadow-lg">
-                            {activeCategory || "热门预测"}
-                          </span>
-                          <span className="text-white/90 text-xs font-medium flex items-center gap-1.5 bg-black/30 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10">
-                            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-                            {activeFollowers.toLocaleString()} 人正在关注
-                          </span>
-                          <span className="text-white/90 text-xs font-medium flex items-center gap-1.5 bg-black/30 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10">
-                            <Wallet className="w-3.5 h-3.5 text-blue-400" />
-                            奖池 ${(activeFollowers * 12.5).toLocaleString()}
-                          </span>
-                        </div>
-
-                        <h3 className="font-bold text-white text-3xl md:text-5xl leading-tight drop-shadow-xl tracking-tight">
-                          {activeTitle}
-                        </h3>
-
-                        <p className="text-white/80 text-base md:text-lg line-clamp-2 font-medium drop-shadow-md max-w-xl leading-relaxed">
-                          {activeDescription}
-                        </p>
-                      </div>
-
-                      <button className="shrink-0 px-8 py-4 bg-white text-purple-900 hover:bg-purple-50 rounded-2xl text-sm font-bold transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transform hover:-translate-y-1 flex items-center gap-3 group/btn border border-purple-100">
-                        <span>立即参与</span>
-                        <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center group-hover/btn:bg-purple-200 transition-colors">
-                          <ArrowRightCircle className="w-4 h-4 text-purple-600 group-hover/btn:translate-x-0.5 transition-transform" />
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 下半部分：热门专题 Grid */}
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-                      <Flame className="w-5 h-5" />
-                    </div>
-                    热门专题
-                  </h2>
-                  <button className="text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1">
-                    查看全部
-                    <ArrowRightCircle className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div
-                  className="grid grid-cols-2 md:grid-cols-3 gap-5"
-                  style={{ ["overflowAnchor" as any]: "none" }}
-                >
-                  {categories.map((category, index) => {
-                    const isActive = String(activeCategory || "") === category.name;
-
-                    return (
-                      <motion.div
-                        key={category.name}
-                        className={`relative h-[180px] rounded-[2rem] cursor-pointer overflow-hidden group transition-all duration-500 ${
-                          isActive
-                            ? "shadow-2xl shadow-purple-500/30 ring-4 ring-purple-400/30 ring-offset-2"
-                            : "hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-2"
-                        }`}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const idx = heroSlideEvents.findIndex(
-                            (ev: any) => String(ev?.tag || "") === category.name
-                          );
-                          if (idx >= 0) {
-                            setCurrentHeroIndex(idx);
-                          } else {
-                            const fallbackIdx = heroEvents.findIndex(
-                              (ev) => ev.category === category.name
-                            );
-                            if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
-                          }
-                        }}
-                      >
-                        {/* 背景层 - 玻璃拟态增强 */}
-                        <div
-                          className={`absolute inset-0 transition-colors duration-500 ${
-                            isActive
-                              ? "bg-gradient-to-br " + category.color
-                              : "bg-white/80 backdrop-blur-2xl group-hover:bg-white"
-                          }`}
-                        />
-
-                        {/* 动态流光边框 */}
-                        <div
-                          className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${
-                            isActive ? "opacity-100" : ""
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:animate-shine" />
-                        </div>
-
-                        {/* 底部装饰波纹 */}
-                        <div
-                          className={`absolute bottom-0 left-0 right-0 h-24 opacity-30 ${
-                            isActive ? "text-white" : "text-purple-100"
-                          }`}
-                        >
-                          <svg viewBox="0 0 1440 320" className="w-full h-full preserve-3d">
-                            <path
-                              fill="currentColor"
-                              fillOpacity="1"
-                              d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-                            ></path>
-                          </svg>
-                        </div>
-
-                        {/* 内容容器 */}
-                        <div className="absolute inset-0 p-7 flex flex-col justify-between z-10">
-                          <div className="flex justify-between items-start">
-                            {/* 图标容器 - 悬浮3D效果 */}
-                            <div
-                              className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-lg transition-all duration-500 transform ${
-                                isActive
-                                  ? "bg-white/20 text-white backdrop-blur-md rotate-6 scale-110 ring-1 ring-white/30"
-                                  : "bg-gradient-to-br from-white to-purple-50 text-gray-700 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl ring-1 ring-purple-100"
-                              }`}
-                            >
-                              {category.icon}
-                            </div>
-
-                            {/* 活跃指示点 - 脉冲效果 */}
-                            {isActive && (
-                              <div className="relative">
-                                <span className="absolute inline-flex h-3 w-3 rounded-full bg-white opacity-75 animate-ping"></span>
-                                <motion.div
-                                  layoutId="active-dot"
-                                  className="relative inline-flex w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <h3
-                              className={`text-2xl font-black mb-2 tracking-tight transition-colors ${
-                                isActive
-                                  ? "text-white drop-shadow-sm"
-                                  : "text-gray-800 group-hover:text-purple-900"
-                              }`}
-                            >
-                              {category.name}
-                            </h3>
-                            <div
-                              className={`text-sm font-bold flex items-center gap-2 ${
-                                isActive
-                                  ? "text-white/90"
-                                  : "text-gray-500 group-hover:text-purple-600"
-                              }`}
-                            >
-                              <div
-                                className={`p-1 rounded-full ${
-                                  isActive ? "bg-white/20" : "bg-orange-100"
-                                }`}
-                              >
-                                <Flame
-                                  className={`w-3.5 h-3.5 ${
-                                    isActive ? "text-white animate-pulse" : "text-orange-500"
-                                  }`}
-                                />
-                              </div>
-                              <span>{categoryCounts[category.name] || 0} 个热门事件</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 悬浮箭头 - 交互增强 */}
-                        <div
-                          className={`absolute top-6 right-6 transition-all duration-500 transform ${
-                            isActive
-                              ? "text-white opacity-100 rotate-[-45deg]"
-                              : "text-purple-400 opacity-0 -translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 group-hover:rotate-[-45deg]"
-                          }`}
-                        >
-                          <ArrowRightCircle className="w-8 h-8" />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-
-                  {/* 更多分类卡片 */}
-                  <motion.div
-                    className="relative h-[180px] rounded-[2rem] cursor-pointer overflow-hidden group transition-all duration-500 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-2"
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-2xl group-hover:bg-white transition-colors duration-500" />
-
-                    {/* 动态流光边框 */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:animate-shine" />
-                    </div>
-
-                    {/* 底部装饰波纹 */}
-                    <div className="absolute bottom-0 left-0 right-0 h-24 opacity-30 text-purple-100">
-                      <svg viewBox="0 0 1440 320" className="w-full h-full preserve-3d">
-                        <path
-                          fill="currentColor"
-                          fillOpacity="1"
-                          d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-                        ></path>
-                      </svg>
-                    </div>
-
-                    <div className="absolute inset-0 p-7 flex flex-col justify-between z-10">
-                      <div className="flex justify-between items-start">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white to-purple-50 flex items-center justify-center text-4xl shadow-lg text-gray-700 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl ring-1 ring-purple-100 transition-all duration-500">
-                          ✨
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-2xl font-black mb-2 tracking-tight text-gray-800 group-hover:text-purple-900 transition-colors">
-                          更多
-                        </h3>
-                        <div className="text-sm font-bold text-gray-500 group-hover:text-purple-600 flex items-center gap-2">
-                          <div className="p-1 rounded-full bg-orange-100">
-                            <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-                          </div>
-                          <span>探索更多</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="absolute top-6 right-6 text-purple-400 opacity-0 -translate-x-4 group-hover:translate-x-0 group-hover:opacity-100 group-hover:rotate-[-45deg] transition-all duration-500">
-                      <ArrowRightCircle className="w-8 h-8" />
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
+          {/* 分类导航 - 悬浮胶囊栏 */}
+          <div className="mt-2">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+                Popular Categories
+              </h3>
+              <button
+                onClick={() => {
+                  setFilters((prev) => ({ ...prev, category: "all" }));
+                  productsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="text-sm font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              >
+                View All <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* 右侧排行榜 */}
-            <div className="w-full lg:w-1/3 lg:pl-4">
-              <div className="sticky top-24">
-                <Leaderboard />
-
-                {/* 额外的信息卡片 */}
-                <div className="mt-6 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-1">
-                  <div className="absolute -right-8 -top-8 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
-                    <BarChart3 className="w-40 h-40 transform rotate-12" />
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/10 shadow-inner">
-                        <TrendingUp className="w-5 h-5 text-green-300" />
+            <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {categories.map((category) => {
+                const isActive = String(activeCategory || "") === category.name;
+                return (
+                  <button
+                    key={category.name}
+                    onClick={() => {
+                      const idx = heroSlideEvents.findIndex(
+                        (ev: any) => String(ev?.tag || "") === category.name
+                      );
+                      if (idx >= 0) setCurrentHeroIndex(idx);
+                      else {
+                        const fallbackIdx = heroEvents.findIndex(
+                          (ev) => ev.category === category.name
+                        );
+                        if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
+                      }
+                      const categoryId = CATEGORY_MAPPING[category.name];
+                      if (categoryId) {
+                        setFilters((prev) => ({ ...prev, category: categoryId }));
+                        // 移除自动滚动，避免打断用户在 Hero 区域的浏览体验
+                        // productsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    className={`
+                        group flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 shrink-0
+                        ${
+                          isActive
+                            ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20 transform -translate-y-1"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-purple-200 hover:shadow-md hover:-translate-y-0.5"
+                        }
+                      `}
+                  >
+                    <span
+                      className={`text-xl ${isActive ? "grayscale-0" : "grayscale group-hover:grayscale-0 transition-all"}`}
+                    >
+                      {category.icon}
+                    </span>
+                    <div className="text-left">
+                      <div
+                        className={`text-sm font-bold ${isActive ? "text-white" : "text-gray-900"}`}
+                      >
+                        {category.name}
                       </div>
-                      <h3 className="font-bold text-lg tracking-tight">市场风向标</h3>
-                    </div>
-
-                    <p className="text-blue-50 text-sm leading-relaxed mb-5 font-medium">
-                      科技板块今日交易量激增{" "}
-                      <span className="text-white font-bold text-lg">240%</span>
-                      ，AI 相关预测持续升温。
-                    </p>
-
-                    <div className="flex items-center justify-between text-xs font-medium">
-                      <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                        <span className="text-blue-100">情绪：极度贪婪</span>
+                      <div
+                        className={`text-[10px] font-medium ${isActive ? "text-gray-400" : "text-gray-400"}`}
+                      >
+                        {categoryCounts[category.name] || 0} Events
                       </div>
-                      <span className="flex items-center gap-1 hover:gap-2 transition-all text-white/90">
-                        查看详情 <ArrowRightCircle className="w-3.5 h-3.5" />
-                      </span>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -2002,17 +1923,14 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       >
         <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
           <span className="w-2 h-2 rounded-full bg-purple-500" />
-          加密货币保险产品
+          热门预测事件
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
 
         {/* 筛选排序 */}
         {!loading && !error && (
           <div className="mb-8">
-            <FilterSort
-              onFilterChange={setFilters}
-              initialFilters={filters}
-            />
+            <FilterSort onFilterChange={setFilters} initialFilters={filters} />
           </div>
         )}
 

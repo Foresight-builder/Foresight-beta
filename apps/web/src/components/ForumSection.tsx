@@ -355,6 +355,9 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
                   <option value="娱乐">娱乐</option>
                   <option value="时政">时政</option>
                   <option value="天气">天气</option>
+                  <option value="体育">体育</option>
+                  <option value="商业">商业</option>
+                  <option value="加密货币">加密货币</option>
                 </select>
               </div>
               <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">

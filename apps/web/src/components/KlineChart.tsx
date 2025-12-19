@@ -1,6 +1,6 @@
 "use client";
 
-import { createChart, ColorType, UTCTimestamp } from "lightweight-charts";
+import { createChart, ColorType, UTCTimestamp, CandlestickSeries } from "lightweight-charts";
 import React, { useEffect, useRef } from "react";
 
 interface KlineChartProps {
@@ -43,25 +43,15 @@ export default function KlineChart({
     });
 
     try {
-      const anyChart = chart as any;
-      if (typeof anyChart.addCandlestickSeries === "function") {
-        const candlestickSeries = anyChart.addCandlestickSeries({
-          upColor: "#26a69a",
-          downColor: "#ef5350",
-          borderVisible: false,
-          wickUpColor: "#26a69a",
-          wickDownColor: "#ef5350",
-        });
-        seriesRef.current = candlestickSeries;
-      } else if (typeof anyChart.addLineSeries === "function") {
-        const lineSeries = anyChart.addLineSeries({
-          color: "#6b21a8",
-          lineWidth: 2,
-        });
-        seriesRef.current = lineSeries;
-      } else {
-        console.error("Chart instance does not support candlestick or line series", anyChart);
-      }
+      // Use v4+ API with addSeries
+      const candlestickSeries = chart.addSeries(CandlestickSeries, {
+        upColor: "#26a69a",
+        downColor: "#ef5350",
+        borderVisible: false,
+        wickUpColor: "#26a69a",
+        wickDownColor: "#ef5350",
+      });
+      seriesRef.current = candlestickSeries;
     } catch (e) {
       console.error("Failed to create candlestick series:", e);
     }

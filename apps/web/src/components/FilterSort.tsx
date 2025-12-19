@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Filter,
-  ArrowUpDown,
-  Calendar,
-  TrendingUp,
-  Clock,
-  X,
-  ChevronDown,
-} from "lucide-react";
+import { Filter, ArrowUpDown, Calendar, TrendingUp, Clock, X, ChevronDown } from "lucide-react";
 
 export interface FilterSortState {
   category: string | null;
@@ -27,14 +19,14 @@ interface FilterSortProps {
 
 /**
  * 筛选和排序组件
- * 
+ *
  * 特性：
  * - 分类筛选
  * - 多种排序方式
  * - 状态筛选
  * - 响应式设计
  * - 状态持久化
- * 
+ *
  * @example
  * ```tsx
  * <FilterSort
@@ -50,14 +42,12 @@ export default function FilterSort({
   className = "",
 }: FilterSortProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(
-    initialFilters.category
+    initialFilters.category || null
   );
   const [sortBy, setSortBy] = useState<FilterSortState["sortBy"]>(
-    initialFilters.sortBy
+    initialFilters.sortBy || "trending"
   );
-  const [status, setStatus] = useState<FilterSortState["status"]>(
-    initialFilters.status || null
-  );
+  const [status, setStatus] = useState<FilterSortState["status"]>(initialFilters.status || null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
@@ -89,12 +79,22 @@ export default function FilterSort({
     { id: "ended", label: "已结束", color: "bg-gray-100 text-gray-500" },
   ];
 
+  // 监听外部筛选条件变化
+  useEffect(() => {
+    if (initialFilters) {
+      // 只有当值有定义时才更新，避免重置为 undefined
+      if (initialFilters.category !== undefined) setActiveCategory(initialFilters.category);
+      if (initialFilters.sortBy) setSortBy(initialFilters.sortBy);
+      if (initialFilters.status !== undefined) setStatus(initialFilters.status);
+    }
+  }, [initialFilters]);
+
   // 更新父组件
   useEffect(() => {
     onFilterChange({
       category: activeCategory === "all" ? null : activeCategory,
       sortBy,
-      status: status === "all" ? null : status,
+      status: status,
     });
   }, [activeCategory, sortBy, status, onFilterChange]);
 
@@ -102,7 +102,7 @@ export default function FilterSort({
   const activeFiltersCount = [
     activeCategory && activeCategory !== "all",
     sortBy !== "trending",
-    status && status !== "all",
+    status,
   ].filter(Boolean).length;
 
   return (
@@ -152,9 +152,9 @@ export default function FilterSort({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             onClick={() => {
-              setActiveCategory("all");
+              setActiveCategory(null);
               setSortBy("trending");
-              setStatus("all");
+              setStatus(null);
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
@@ -198,7 +198,7 @@ export default function FilterSort({
                           className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-100`}
                         />
                       )}
-                      
+
                       <span className="relative flex items-center gap-2">
                         <span className="text-lg">{cat.icon}</span>
                         <span>{cat.label}</span>
@@ -216,7 +216,7 @@ export default function FilterSort({
                     {statusOptions.map((opt) => (
                       <button
                         key={opt.id}
-                        onClick={() => setStatus(opt.id as any)}
+                        onClick={() => setStatus(opt.id === "all" ? null : (opt.id as any))}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                           (opt.id === "all" && !status) || status === opt.id
                             ? "ring-2 ring-purple-500 ring-offset-2"
@@ -258,11 +258,15 @@ export default function FilterSort({
                       : "hover:bg-gray-50"
                   }`}
                 >
-                  <div className={`p-2 rounded-lg ${sortBy === id ? "bg-purple-600" : "bg-gray-100"}`}>
+                  <div
+                    className={`p-2 rounded-lg ${sortBy === id ? "bg-purple-600" : "bg-gray-100"}`}
+                  >
                     <Icon className={`w-4 h-4 ${sortBy === id ? "text-white" : "text-gray-600"}`} />
                   </div>
                   <div className="flex-1">
-                    <div className={`font-medium ${sortBy === id ? "text-purple-900" : "text-gray-900"}`}>
+                    <div
+                      className={`font-medium ${sortBy === id ? "text-purple-900" : "text-gray-900"}`}
+                    >
                       {label}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">{description}</div>
@@ -280,7 +284,7 @@ export default function FilterSort({
       </AnimatePresence>
 
       {/* 当前筛选标签 */}
-      {(activeCategory && activeCategory !== "all") && (
+      {activeCategory && activeCategory !== "all" && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gray-500">当前筛选:</span>
           <motion.div
@@ -302,4 +306,3 @@ export default function FilterSort({
     </div>
   );
 }
-
