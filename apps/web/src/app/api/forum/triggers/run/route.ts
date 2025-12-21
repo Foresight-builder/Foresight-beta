@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = toNum(body?.eventId ?? searchParams.get("eventId"));
-    if (!eventId) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
+    if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
     const client = getClient() as any;
     if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
     const { data: rawThreads, error: tErr } = await client

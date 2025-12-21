@@ -57,6 +57,14 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   return data.data;
 }
 
+export function useCategories() {
+  return useQuery({
+    queryKey: QueryKeys.categories,
+    queryFn: () => fetcher<any[]>("/api/categories"),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 /**
  * 获取预测列表
  */

@@ -114,7 +114,7 @@ function toNum(v: unknown): number | null {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const eventId = toNum(searchParams.get("eventId"));
-  if (!eventId) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
+  if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
   try {
     const client = getClient();
     const { data: threads, error: tErr } = await client
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
     const title = String(body?.title || "");
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");
-    if (!eventId || !title.trim()) {
+    if (eventId === null || !title.trim()) {
       return NextResponse.json({ message: "eventId、title 必填" }, { status: 400 });
     }
     const client = (supabaseAdmin || getClient()) as any;

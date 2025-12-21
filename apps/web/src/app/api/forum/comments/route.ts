@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const parentId = body?.parentId == null ? null : toNum(body?.parentId);
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");
-    if (!eventId || !threadId || !content.trim()) {
+    if (eventId === null || !threadId || !content.trim()) {
       return NextResponse.json({ message: "eventId、threadId、content 必填" }, { status: 400 });
     }
     const client = (supabaseAdmin || getClient()) as any;

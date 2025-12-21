@@ -17,9 +17,10 @@ export async function GET(req: NextRequest) {
   try {
     const address = getSessionAddressFromCookie(req);
     const { searchParams } = new URL(req.url);
-    const eventId = Number(searchParams.get("eventId") || "0");
+    const rawEventId = searchParams.get("eventId");
+    const eventId = rawEventId == null ? null : Number(rawEventId);
     if (!address) return NextResponse.json({ votes: [] }, { status: 200 });
-    if (!Number.isFinite(eventId) || eventId <= 0)
+    if (eventId === null || !Number.isFinite(eventId))
       return NextResponse.json({ votes: [] }, { status: 200 });
     if (!supabaseAdmin) return NextResponse.json({ votes: [] }, { status: 200 });
 

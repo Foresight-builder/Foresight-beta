@@ -10,6 +10,7 @@ import {
   Send,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
+import { useCategories } from "@/hooks/useQueries";
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -31,6 +32,21 @@ export default function CreateProposalModal({
     category: "General",
     deadline: "",
   });
+  const { data: categoriesData } = useCategories();
+
+  const categoryNames = React.useMemo(() => {
+    if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+      const names: string[] = [];
+      (categoriesData as any[]).forEach((item) => {
+        const name = String((item as any).name || "").trim();
+        if (name && !names.includes(name)) {
+          names.push(name);
+        }
+      });
+      return names;
+    }
+    return ["General", "Tech", "Business", "Crypto", "Sports", "Politics", "Other"];
+  }, [categoriesData]);
 
   const handleSubmit = async () => {
     if (!account) {
@@ -167,7 +183,7 @@ export default function CreateProposalModal({
                   Select Category
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {["General", "Tech", "Crypto", "Sports", "Politics"].map((cat) => (
+                  {categoryNames.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setForm({ ...form, category: cat })}
@@ -177,7 +193,7 @@ export default function CreateProposalModal({
                           : "border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50"
                       }`}
                     >
-                      r/{cat}
+                      {cat}
                     </button>
                   ))}
                 </div>

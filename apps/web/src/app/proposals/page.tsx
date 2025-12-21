@@ -25,10 +25,12 @@ import {
   CheckCircle2,
   ExternalLink,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import ProposalCard from "./ProposalCard";
 import CreateProposalModal from "./CreateProposalModal";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCategories } from "@/hooks/useQueries";
 
 // Fetch proposals (threads with eventId=0)
 const fetchProposals = async () => {
@@ -80,6 +82,8 @@ export default function ProposalsPage() {
   const { account, connectWallet } = useWallet();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { data: categoriesData } = useCategories();
 
   // Inspiration Widget State
   const [inspiration, setInspiration] = useState(INSPIRATIONS[0]);
@@ -101,6 +105,27 @@ export default function ProposalsPage() {
   const { data: proposals = [], isLoading } = useQuery({
     queryKey: ["proposals"],
     queryFn: fetchProposals,
+  });
+
+  const { data: userVotesData } = useQuery({
+    queryKey: ["proposalUserVotes", account],
+    queryFn: async () => {
+      const res = await fetch("/api/forum/user-votes?eventId=0");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to load votes");
+      return Array.isArray(data.votes) ? data.votes : [];
+    },
+    enabled: !!account,
+  });
+
+  const userVotesMap: Record<number, "up" | "down"> = {};
+  (userVotesData || []).forEach((v: any) => {
+    if (v?.content_type === "thread" && v?.content_id != null) {
+      const idNum = Number(v.content_id);
+      if (Number.isFinite(idNum)) {
+        userVotesMap[idNum] = String(v.vote_type) === "down" ? "down" : "up";
+      }
+    }
   });
 
   const voteMutation = useMutation({
@@ -128,7 +153,12 @@ export default function ProposalsPage() {
     },
   });
 
-  const filteredProposals = proposals.filter(
+  const proposalsWithUserVote = proposals.map((p: any) => ({
+    ...p,
+    userVote: userVotesMap[p.id] || p.userVote,
+  }));
+
+  const filteredProposals = proposalsWithUserVote.filter(
     (p: any) => category === "All" || p.category === category
   );
 
@@ -147,14 +177,30 @@ export default function ProposalsPage() {
     return 0;
   });
 
-  const categories = [
-    { id: "All", label: "Overview", icon: LayoutGrid },
-    { id: "General", label: "General", icon: MessageCircle },
-    { id: "Tech", label: "Tech", icon: Zap },
-    { id: "Crypto", label: "Crypto", icon: Sparkles },
-    { id: "Sports", label: "Sports", icon: Trophy },
-    { id: "Politics", label: "Politics", icon: Shield },
-  ];
+  const categories = React.useMemo(() => {
+    const base = [{ id: "All", label: "Overview", icon: LayoutGrid }];
+    if (!Array.isArray(categoriesData) || categoriesData.length === 0) {
+      return base;
+    }
+    const seen = new Set<string>();
+    const items =
+      (categoriesData as any[]).map((item) => {
+        const name = String((item as any).name || "").trim();
+        if (!name || seen.has(name)) {
+          return null;
+        }
+        seen.add(name);
+        let icon = Hash;
+        if (name === "General") icon = MessageCircle;
+        else if (name === "Tech") icon = Zap;
+        else if (name === "Business") icon = Target;
+        else if (name === "Crypto") icon = Sparkles;
+        else if (name === "Sports") icon = Trophy;
+        else if (name === "Politics") icon = Shield;
+        return { id: name, label: name, icon };
+      }) || [];
+    return base.concat(items.filter((x): x is { id: string; label: string; icon: any } => !!x));
+  }, [categoriesData]);
 
   const activeProposalsCount = proposals.filter(
     (p: any) => (p.upvotes || 0) + (p.downvotes || 0) > 10
@@ -353,7 +399,7 @@ export default function ProposalsPage() {
                       <ProposalCard
                         proposal={proposal}
                         onVote={(id, type) => voteMutation.mutate({ id, type })}
-                        onClick={(id) => {}}
+                        onClick={(id) => router.push(`/proposals/${id}`)}
                       />
                     </div>
                   </motion.div>

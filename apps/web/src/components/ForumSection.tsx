@@ -7,6 +7,8 @@ import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 
 interface ForumSectionProps {
   eventId: number;
+  threadId?: number;
+  hideCreate?: boolean;
 }
 
 interface ThreadView {
@@ -33,7 +35,7 @@ interface CommentView {
   parent_id?: number | null;
 }
 
-export default function ForumSection({ eventId }: ForumSectionProps) {
+export default function ForumSection({ eventId, threadId, hideCreate }: ForumSectionProps) {
   const {
     account,
     connectWallet,
@@ -105,13 +107,20 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
     try {
       const res = await fetch(`/api/forum?eventId=${eventId}`);
       const data = await res.json();
-      setThreads(Array.isArray(data?.threads) ? data.threads : []);
+      let list = Array.isArray(data?.threads) ? data.threads : [];
+      if (threadId != null) {
+        const idNum = Number(threadId);
+        if (Number.isFinite(idNum)) {
+          list = list.filter((t: any) => Number(t.id) === idNum);
+        }
+      }
+      setThreads(list);
     } catch (e: any) {
       setError(e?.message || "加载失败");
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, threadId]);
 
   useEffect(() => {
     load();
@@ -296,91 +305,93 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
       </div>
 
       <div className="p-4 space-y-6">
-        <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
-          {!account ? (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600 font-medium">发帖需连接钱包</div>
-              <Button
-                size="sm"
-                variant="cta"
-                onClick={async () => {
-                  await connectWallet();
-                  await requestWalletPermissions();
-                  await siweLogin();
-                  await multisigSign();
-                }}
-              >
-                连接并签名
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  value={subjectName}
-                  onChange={(e) => setSubjectName(e.target.value)}
-                  placeholder="主体名称"
-                  className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                />
-                <select
-                  value={actionVerb}
-                  onChange={(e) => setActionVerb(e.target.value)}
-                  className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                >
-                  <option value="价格达到">价格达到</option>
-                  <option value="将会赢得">将会赢得</option>
-                  <option value="将会发生">将会发生</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  value={targetValue}
-                  onChange={(e) => setTargetValue(e.target.value)}
-                  placeholder="目标值/条件"
-                  className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                />
-                <DatePicker
-                  value={deadline}
-                  onChange={setDeadline}
-                  includeTime={true}
-                  placeholder="截止时间"
-                  className="w-full"
-                />
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                >
-                  <option value="科技">科技</option>
-                  <option value="娱乐">娱乐</option>
-                  <option value="时政">时政</option>
-                  <option value="天气">天气</option>
-                  <option value="体育">体育</option>
-                  <option value="商业">商业</option>
-                  <option value="加密货币">加密货币</option>
-                  <option value="更多">更多</option>
-                </select>
-              </div>
-              <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">
-                <div className="font-medium text-indigo-700">标题预览</div>
-                <div className="mt-1">{titlePreview || "请完善表单以生成标题"}</div>
-                <div className="font-medium text-indigo-700 mt-3">结算标准</div>
-                <div className="mt-1">{criteriaPreview || "请完善表单以生成结算标准"}</div>
-              </div>
+        {!hideCreate && (
+          <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
+            {!account ? (
               <div className="flex items-center justify-between">
-                <div className="text-xs text-gray-600">{formError || ""}</div>
+                <div className="text-sm text-gray-600 font-medium">发帖需连接钱包</div>
                 <Button
-                  onClick={postThread}
-                  disabled={posting || !canSubmit}
-                  size="md"
+                  size="sm"
                   variant="cta"
+                  onClick={async () => {
+                    await connectWallet();
+                    await requestWalletPermissions();
+                    await siweLogin();
+                    await multisigSign();
+                  }}
                 >
-                  {posting ? "发布中…" : "发布主题"}
+                  连接并签名
                 </Button>
               </div>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    value={subjectName}
+                    onChange={(e) => setSubjectName(e.target.value)}
+                    placeholder="主体名称"
+                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
+                  />
+                  <select
+                    value={actionVerb}
+                    onChange={(e) => setActionVerb(e.target.value)}
+                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
+                  >
+                    <option value="价格达到">价格达到</option>
+                    <option value="将会赢得">将会赢得</option>
+                    <option value="将会发生">将会发生</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    value={targetValue}
+                    onChange={(e) => setTargetValue(e.target.value)}
+                    placeholder="目标值/条件"
+                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
+                  />
+                  <DatePicker
+                    value={deadline}
+                    onChange={setDeadline}
+                    includeTime={true}
+                    placeholder="截止时间"
+                    className="w-full"
+                  />
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
+                  >
+                    <option value="科技">科技</option>
+                    <option value="娱乐">娱乐</option>
+                    <option value="时政">时政</option>
+                    <option value="天气">天气</option>
+                    <option value="体育">体育</option>
+                    <option value="商业">商业</option>
+                    <option value="加密货币">加密货币</option>
+                    <option value="更多">更多</option>
+                  </select>
+                </div>
+                <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">
+                  <div className="font-medium text-indigo-700">标题预览</div>
+                  <div className="mt-1">{titlePreview || "请完善表单以生成标题"}</div>
+                  <div className="font-medium text-indigo-700 mt-3">结算标准</div>
+                  <div className="mt-1">{criteriaPreview || "请完善表单以生成结算标准"}</div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-gray-600">{formError || ""}</div>
+                  <Button
+                    onClick={postThread}
+                    disabled={posting || !canSubmit}
+                    size="md"
+                    variant="cta"
+                  >
+                    {posting ? "发布中…" : "发布主题"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 主题列表 */}
         <div className="space-y-4">
