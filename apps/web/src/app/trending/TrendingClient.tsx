@@ -1,296 +1,33 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
-import { followPrediction, unfollowPrediction } from "@/lib/follows";
-import { supabase } from "@/lib/supabase";
-import { toast } from "@/lib/toast";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useTranslations } from "@/lib/i18n";
 import {
   HERO_EVENTS,
   TRENDING_CATEGORIES,
   CATEGORY_MAPPING,
-  ID_TO_CATEGORY_NAME,
   type Prediction,
-  type TrendingEvent,
   fetchPredictions,
-  mapPredictionToEvent,
-  filterEventsByCategory,
-  filterEventsByStatus,
-  sortEvents,
 } from "./trendingModel";
-import {
-  createSmartClickEffect,
-  createHeartParticles,
-  createCategoryParticlesAtCardClick,
-} from "./trendingAnimations";
+import { createSmartClickEffect, createCategoryParticlesAtCardClick } from "./trendingAnimations";
 import { useTrendingCanvas } from "./useTrendingCanvas";
 import { TrendingHero } from "./TrendingHero";
 import { TrendingEditModal } from "./TrendingEditModal";
 import { TrendingLoginModal } from "./TrendingLoginModal";
 import { TrendingEventsSection } from "./TrendingEventsSection";
-
-const useTrendingFollowState = (
-  accountNorm: string | undefined,
-  setShowLoginModal: (open: boolean) => void,
-  tErrors: (key: string) => string,
-  queryClient: QueryClient,
-  visibleEvents: TrendingEvent[]
-) => {
-  const [followedEvents, setFollowedEvents] = useState<Set<number>>(new Set());
-  const [followError, setFollowError] = useState<string | null>(null);
-
-  const toggleFollow = useCallback(
-    async (predictionId: number, event: React.MouseEvent) => {
-      if (!accountNorm) {
-        setShowLoginModal(true);
-        return;
-      }
-
-      if (!Number.isFinite(Number(predictionId))) return;
-
-      const normalizedId = Number(predictionId);
-      const wasFollowing = followedEvents.has(normalizedId);
-
-      createSmartClickEffect(event);
-      createHeartParticles(event.currentTarget as HTMLElement, wasFollowing);
-
-      setFollowedEvents((prev) => {
-        const next = new Set(prev);
-        if (next.has(normalizedId)) {
-          next.delete(normalizedId);
-        } else {
-          next.add(normalizedId);
-        }
-        return next;
-      });
-
-      try {
-        if (wasFollowing) {
-          await unfollowPrediction(normalizedId, accountNorm);
-        } else {
-          await followPrediction(normalizedId, accountNorm);
-        }
-      } catch (err) {
-        console.error("关注/取消关注失败:", err);
-        setFollowError(
-          (err as any)?.message ? String((err as any).message) : tErrors("followActionFailed")
-        );
-        setTimeout(() => setFollowError(null), 3000);
-        setFollowedEvents((prev) => {
-          const rollback = new Set(prev);
-          if (wasFollowing) {
-            rollback.add(normalizedId);
-          } else {
-            rollback.delete(normalizedId);
-          }
-          return rollback;
-        });
-      }
-    },
-    [accountNorm, followedEvents, setShowLoginModal, tErrors]
-  );
-
-  useEffect(() => {
-    if (!accountNorm) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/user-follows?address=${accountNorm}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const ids = new Set<number>((data?.follows || []).map((e: any) => Number(e.id)));
-        setFollowedEvents(ids);
-      } catch (err) {
-        console.warn("同步关注状态失败:", err);
-      }
-    })();
-  }, [accountNorm]);
-
-  useEffect(() => {
-    let windowIds: number[] = [];
-    windowIds = visibleEvents.map((e) => Number(e?.id)).filter(Number.isFinite) as number[];
-    const ids = Array.from(new Set(windowIds));
-    if (ids.length === 0) return;
-    if (!supabase || typeof (supabase as any).channel !== "function") {
-      return;
-    }
-
-    let channel: any = null;
-    let isSubscribed = true;
-
-    const filterIn = `event_id=in.(${ids.join(",")})`;
-    channel = (supabase as any).channel("event_follows_trending");
-
-    channel
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "event_follows",
-          filter: filterIn,
-        },
-        (payload: any) => {
-          if (!isSubscribed) return;
-          const row = payload?.new || {};
-          const eid = Number(row?.event_id);
-          const uid = String(row?.user_id || "");
-          if (!Number.isFinite(eid)) return;
-          if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
-            queryClient.setQueryData(["predictions"], (old: any[]) =>
-              old?.map((p: any) =>
-                p?.id === eid
-                  ? {
-                      ...p,
-                      followers_count: Number(p?.followers_count || 0) + 1,
-                    }
-                  : p
-              )
-            );
-          }
-          if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
-            setFollowedEvents((prev) => {
-              const s = new Set(prev);
-              s.add(eid);
-              return s;
-            });
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "event_follows",
-          filter: filterIn,
-        },
-        (payload: any) => {
-          if (!isSubscribed) return;
-          const row = payload?.old || {};
-          const eid = Number(row?.event_id);
-          const uid = String(row?.user_id || "");
-          if (!Number.isFinite(eid)) return;
-          if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
-            queryClient.setQueryData(["predictions"], (old: any[]) =>
-              old?.map((p: any) =>
-                p?.id === eid
-                  ? {
-                      ...p,
-                      followers_count: Math.max(0, Number(p?.followers_count || 0) - 1),
-                    }
-                  : p
-              )
-            );
-          }
-          if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
-            setFollowedEvents((prev) => {
-              const s = new Set(prev);
-              s.delete(eid);
-              return s;
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      isSubscribed = false;
-
-      if (channel) {
-        try {
-          channel.unsubscribe();
-          (supabase as any).removeChannel(channel);
-          channel = null;
-        } catch (error) {
-          console.error("Failed to cleanup WebSocket channel:", error);
-        }
-      }
-    };
-  }, [visibleEvents, accountNorm, queryClient]);
-
-  return { followedEvents, followError, toggleFollow };
-};
-
-const useTrendingEventList = (predictions: Prediction[], filters: FilterSortState) => {
-  const [displayCount, setDisplayCount] = useState(12);
-  const [totalEventsCount, setTotalEventsCount] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  const allEvents: TrendingEvent[] = useMemo(
-    () => predictions.map((prediction) => mapPredictionToEvent(prediction as Prediction)),
-    [predictions]
-  );
-
-  const displayEvents = useMemo(() => {
-    if (!searchQuery.trim()) return allEvents;
-    const q = searchQuery.toLowerCase();
-    return allEvents.filter(
-      (e: any) =>
-        (e.title || "").toLowerCase().includes(q) ||
-        (e.description || "").toLowerCase().includes(q) ||
-        (e.tag || "").toLowerCase().includes(q)
-    );
-  }, [allEvents, searchQuery]);
-
-  useEffect(() => {
-    setTotalEventsCount(displayEvents.length);
-  }, [displayEvents]);
-
-  const sortedEvents: TrendingEvent[] = useMemo(() => {
-    const filteredByCategory = filterEventsByCategory(
-      displayEvents as TrendingEvent[],
-      filters.category || null
-    );
-    const filteredByStatus = filterEventsByStatus(filteredByCategory, filters.status || null);
-    return sortEvents(filteredByStatus, filters.sortBy);
-  }, [displayEvents, filters.category, filters.sortBy, filters.status]) as TrendingEvent[];
-
-  const visibleEvents = useMemo(
-    () => sortedEvents.slice(0, Math.max(0, displayCount)),
-    [sortedEvents, displayCount]
-  );
-
-  const hasMore = displayCount < totalEventsCount;
-
-  const handleLoadMore = useCallback(() => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    setTimeout(() => {
-      setDisplayCount((prev) => Math.min(prev + 6, totalEventsCount));
-      setLoadingMore(false);
-    }, 300);
-  }, [loadingMore, hasMore, totalEventsCount]);
-
-  const observerTargetRef = useInfiniteScroll({
-    loading: loadingMore,
-    hasNextPage: hasMore,
-    onLoadMore: handleLoadMore,
-    threshold: 0.1,
-  });
-
-  return {
-    searchQuery,
-    setSearchQuery,
-    allEvents,
-    displayEvents,
-    sortedEvents,
-    visibleEvents,
-    totalEventsCount,
-    loadingMore,
-    hasMore,
-    observerTargetRef,
-  };
-};
+import { useTrendingEvents } from "./hooks/useTrendingEvents";
+import { useTrendingFollowState } from "./hooks/useTrendingFollowState";
+import { useTrendingAdminEvents } from "./hooks/useTrendingAdminEvents";
+import { useTrendingHero } from "./hooks/useTrendingHero";
+import { useCategoryCounts } from "./hooks/useCategoryCounts";
 
 export default function TrendingPage({
   initialPredictions,
@@ -325,10 +62,7 @@ export default function TrendingPage({
   const tTrendingAdmin = useTranslations("trending.admin");
   const tNav = useTranslations("nav");
   const tEvents = useTranslations();
-
-  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const productsSectionRef = useRef<HTMLElement | null>(null);
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
   // 筛选排序状态（持久化）
   const [filters, setFilters] = usePersistedState<FilterSortState>("trending_filters", {
@@ -352,43 +86,9 @@ export default function TrendingPage({
     loadingMore,
     hasMore,
     observerTargetRef,
-  } = useTrendingEventList(predictions, filters);
+  } = useTrendingEvents(predictions, filters);
 
-  useEffect(() => {
-    const fetchCategoryCounts = async () => {
-      try {
-        const controller = new AbortController();
-        const response = await fetch("/api/categories/counts", {
-          signal: controller.signal,
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            // 将数组转换为对象，方便查找
-            const countsObj: Record<string, number> = {};
-            data.data.forEach((item: { category: string; count: number }) => {
-              countsObj[item.category] = item.count;
-            });
-            setCategoryCounts(countsObj);
-          }
-        }
-      } catch (error) {
-        // 忽略主动中止与热更新导致的网络中断
-        if ((error as any)?.name !== "AbortError") {
-          console.error("获取分类热点数量失败:", error);
-        }
-      }
-    };
-
-    fetchCategoryCounts();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentHeroIndex((prevIndex) => prevIndex + 1);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const categoryCounts = useCategoryCounts();
 
   // 从API获取预测事件数据
   /*
@@ -474,19 +174,6 @@ export default function TrendingPage({
   }, []);
   */
 
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({
-    title: "",
-    category: "",
-    status: "active",
-    deadline: "",
-    minStake: 0,
-  });
-  const [editTargetId, setEditTargetId] = useState<number | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
-
   const { followedEvents, followError, toggleFollow } = useTrendingFollowState(
     accountNorm,
     setShowLoginModal,
@@ -494,111 +181,25 @@ export default function TrendingPage({
     queryClient,
     visibleEvents
   );
-
-  useEffect(() => {
-    if (!accountNorm) {
-      setIsAdmin(false);
-      return;
-    }
-    setIsAdmin(!!profileCtx?.isAdmin);
-  }, [accountNorm, profileCtx?.isAdmin]);
-
-  const openEdit = (p: any) => {
-    setEditTargetId(Number(p?.id));
-    const rawCategory = String(p?.tag || p?.category || "");
-    const categoryId = rawCategory ? CATEGORY_MAPPING[rawCategory] || rawCategory : "";
-    setEditForm({
-      title: String(p?.title || ""),
-      category: categoryId,
-      status: String(p?.status || "active"),
-      deadline: String(p?.deadline || ""),
-      minStake: Number(p?.min_stake || 0),
-    });
-    setEditOpen(true);
-  };
-  const closeEdit = () => {
-    setEditOpen(false);
-    setEditTargetId(null);
-  };
-  const setEditField = (k: string, v: any) => setEditForm((prev: any) => ({ ...prev, [k]: v }));
-  const submitEdit = async () => {
-    try {
-      setSavingEdit(true);
-      if (!accountNorm) return;
-      try {
-        await siweLogin();
-      } catch {}
-      const id = Number(editTargetId);
-      const categoryId = String(editForm.category || "");
-      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
-      const payload: any = {
-        title: editForm.title,
-        category: categoryName,
-        status: editForm.status,
-        deadline: editForm.deadline,
-        minStake: Number(editForm.minStake),
-        walletAddress: accountNorm,
-      };
-      const res = await fetch(`/api/predictions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || tTrendingAdmin("updateFailed")));
-      }
-      queryClient.setQueryData(["predictions"], (old: any[]) =>
-        old?.map((p: any) =>
-          p?.id === id
-            ? {
-                ...p,
-                title: payload.title,
-                category: payload.category,
-                status: payload.status,
-                deadline: payload.deadline,
-                min_stake: payload.minStake,
-              }
-            : p
-        )
-      );
-      toast.success(tTrendingAdmin("updateSuccessTitle"), tTrendingAdmin("updateSuccessDesc"));
-      setEditOpen(false);
-    } catch (e: any) {
-      toast.error(
-        tTrendingAdmin("updateFailed"),
-        String(e?.message || e || tTrendingAdmin("retryLater"))
-      );
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-  const deleteEvent = async (id: number) => {
-    try {
-      if (!confirm(tTrendingAdmin("confirmDelete"))) return;
-      setDeleteBusyId(id);
-      if (!accountNorm) return;
-      try {
-        await siweLogin();
-      } catch {}
-      const res = await fetch(`/api/predictions/${id}`, { method: "DELETE" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || tTrendingAdmin("deleteFailed")));
-      }
-      queryClient.setQueryData(["predictions"], (old: any[]) =>
-        old?.filter((p: any) => p?.id !== id)
-      );
-      toast.success(tTrendingAdmin("deleteSuccessTitle"), tTrendingAdmin("deleteSuccessDesc"));
-    } catch (e: any) {
-      toast.error(
-        tTrendingAdmin("deleteFailed"),
-        String(e?.message || e || tTrendingAdmin("retryLater"))
-      );
-    } finally {
-      setDeleteBusyId(null);
-    }
-  };
+  const {
+    isAdmin,
+    editOpen,
+    editForm,
+    savingEdit,
+    deleteBusyId,
+    openEdit,
+    closeEdit,
+    setEditField,
+    submitEdit,
+    deleteEvent,
+  } = useTrendingAdminEvents({
+    accountNorm,
+    profileIsAdmin: profileCtx?.isAdmin,
+    siweLogin,
+    queryClient,
+    tTrendingAdmin,
+    tTrending,
+  });
 
   const categories = useMemo(
     () =>
@@ -609,49 +210,16 @@ export default function TrendingPage({
       }),
     [tTrending]
   );
-
-  const heroSlideEvents = useMemo(() => {
-    const pool = displayEvents;
-    if (pool.length === 0) return [] as any[];
-    const now = Date.now();
-
-    // 组内排序：按热度
-    const popularitySorter = (a: any, b: any) => {
-      const fa = Number(a?.followers_count || 0);
-      const fb = Number(b?.followers_count || 0);
-      if (fb !== fa) return fb - fa;
-      const da = new Date(String(a?.deadline || 0)).getTime() - now;
-      const db = new Date(String(b?.deadline || 0)).getTime() - now;
-      const ta = da <= 0 ? Number.POSITIVE_INFINITY : da;
-      const tb = db <= 0 ? Number.POSITIVE_INFINITY : db;
-      return ta - tb;
-    };
-
-    const tags = Array.from(new Set(pool.map((e: any) => String(e.tag || "")).filter(Boolean)));
-    const picks = tags
-      .map((tag) => {
-        const group = pool.filter((e: any) => String(e.tag || "") === tag);
-        if (group.length === 0) return null as any;
-        return [...group].sort(popularitySorter)[0];
-      })
-      .filter(Boolean);
-
-    // 最终排序：按分类固定顺序
-    return [...picks].sort((a, b) => {
-      const tagA = String(a.tag || "");
-      const tagB = String(b.tag || "");
-      const indexA = categories.findIndex((c) => c.name === tagA);
-      const indexB = categories.findIndex((c) => c.name === tagB);
-
-      // 如果都在列表中，按列表顺序
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      // 如果只有一个在列表中，在列表中的排前面
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      // 都不在列表中，按热度
-      return popularitySorter(a, b);
-    });
-  }, [displayEvents, categories]);
+  const {
+    currentHeroIndex,
+    heroSlideEvents,
+    heroSlideLength,
+    handlePrevHero,
+    handleNextHero,
+    handleHeroBulletClick,
+    handleViewAllCategories,
+    handleCategoryClick,
+  } = useTrendingHero(displayEvents, categories, setFilters);
 
   const activeSlide =
     heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
@@ -673,40 +241,9 @@ export default function TrendingPage({
     ? Number(activeSlide?.followers_count || 0)
     : Number(HERO_EVENTS[fallbackIndex]?.followers || 0);
   const activeSlideId = activeSlide ? Number(activeSlide.id) : null;
-
-  const heroSlideLength = heroSlideEvents.length || HERO_EVENTS.length;
-
-  const handlePrevHero = useCallback(() => {
-    setCurrentHeroIndex((prev) =>
-      prev === 0 ? (heroSlideEvents.length || HERO_EVENTS.length) - 1 : prev - 1
-    );
-  }, [heroSlideEvents]);
-
-  const handleNextHero = useCallback(() => {
-    setCurrentHeroIndex((prev) => prev + 1);
-  }, []);
-
-  const handleHeroBulletClick = (idx: number) => {
-    setCurrentHeroIndex(idx);
-  };
-
-  const handleViewAllCategories = () => {
-    setFilters((prev) => ({ ...prev, category: "all" }));
+  const handleViewAllCategoriesWithScroll = () => {
+    handleViewAllCategories();
     productsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleCategoryClick = (categoryName: string) => {
-    const idx = heroSlideEvents.findIndex((ev: any) => String(ev?.tag || "") === categoryName);
-    if (idx >= 0) {
-      setCurrentHeroIndex(idx);
-    } else {
-      const fallbackIdx = HERO_EVENTS.findIndex((ev) => ev.category === categoryName);
-      if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
-    }
-    const categoryId = CATEGORY_MAPPING[categoryName as keyof typeof CATEGORY_MAPPING];
-    if (categoryId) {
-      setFilters((prev) => ({ ...prev, category: categoryId }));
-    }
   };
 
   return (
@@ -733,7 +270,7 @@ export default function TrendingPage({
         onPrevHero={handlePrevHero}
         onNextHero={handleNextHero}
         onHeroBulletClick={handleHeroBulletClick}
-        onViewAllCategories={handleViewAllCategories}
+        onViewAllCategories={handleViewAllCategoriesWithScroll}
         onCategoryClick={handleCategoryClick}
         tTrending={tTrending}
         tNav={tNav}

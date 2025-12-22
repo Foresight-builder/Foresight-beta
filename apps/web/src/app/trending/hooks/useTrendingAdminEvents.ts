@@ -1,0 +1,163 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { QueryClient } from "@tanstack/react-query";
+import { toast } from "@/lib/toast";
+import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "../trendingModel";
+
+interface UseTrendingAdminEventsParams {
+  accountNorm: string | undefined;
+  profileIsAdmin: boolean | undefined;
+  siweLogin: () => Promise<any>;
+  queryClient: QueryClient;
+  tTrendingAdmin: (key: string) => string;
+  tTrending: (key: string) => string;
+}
+
+export function useTrendingAdminEvents({
+  accountNorm,
+  profileIsAdmin,
+  siweLogin,
+  queryClient,
+  tTrendingAdmin,
+  tTrending,
+}: UseTrendingAdminEventsParams) {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<any>({
+    title: "",
+    category: "",
+    status: "active",
+    deadline: "",
+    minStake: 0,
+  });
+  const [editTargetId, setEditTargetId] = useState<number | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!accountNorm) {
+      setIsAdmin(false);
+      return;
+    }
+    setIsAdmin(!!profileIsAdmin);
+  }, [accountNorm, profileIsAdmin]);
+
+  const openEdit = (p: any) => {
+    setEditTargetId(Number(p?.id));
+    const rawCategory = String(p?.tag || p?.category || "");
+    const categoryId = rawCategory ? CATEGORY_MAPPING[rawCategory] || rawCategory : "";
+    setEditForm({
+      title: String(p?.title || ""),
+      category: categoryId,
+      status: String(p?.status || "active"),
+      deadline: String(p?.deadline || ""),
+      minStake: Number(p?.min_stake || 0),
+    });
+    setEditOpen(true);
+  };
+
+  const closeEdit = () => {
+    setEditOpen(false);
+    setEditTargetId(null);
+  };
+
+  const setEditField = (k: string, v: any) =>
+    setEditForm((prev: any) => ({
+      ...prev,
+      [k]: v,
+    }));
+
+  const submitEdit = async () => {
+    try {
+      setSavingEdit(true);
+      if (!accountNorm) return;
+      try {
+        await siweLogin();
+      } catch {}
+      const id = Number(editTargetId);
+      const categoryId = String(editForm.category || "");
+      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
+      const payload: any = {
+        title: editForm.title,
+        category: categoryName,
+        status: editForm.status,
+        deadline: editForm.deadline,
+        minStake: Number(editForm.minStake),
+        walletAddress: accountNorm,
+      };
+      const res = await fetch(`/api/predictions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        throw new Error(String(j?.message || tTrendingAdmin("updateFailed")));
+      }
+      queryClient.setQueryData(["predictions"], (old: any[]) =>
+        old?.map((p: any) =>
+          p?.id === id
+            ? {
+                ...p,
+                title: payload.title,
+                category: payload.category,
+                status: payload.status,
+                deadline: payload.deadline,
+                min_stake: payload.minStake,
+              }
+            : p
+        )
+      );
+      toast.success(tTrendingAdmin("updateSuccessTitle"), tTrendingAdmin("updateSuccessDesc"));
+      setEditOpen(false);
+    } catch (e: any) {
+      toast.error(
+        tTrendingAdmin("updateFailed"),
+        String(e?.message || e || tTrendingAdmin("retryLater"))
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const deleteEvent = async (id: number) => {
+    try {
+      if (!confirm(tTrendingAdmin("confirmDelete"))) return;
+      setDeleteBusyId(id);
+      if (!accountNorm) return;
+      try {
+        await siweLogin();
+      } catch {}
+      const res = await fetch(`/api/predictions/${id}`, { method: "DELETE" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        throw new Error(String(j?.message || tTrendingAdmin("deleteFailed")));
+      }
+      queryClient.setQueryData(["predictions"], (old: any[]) =>
+        old?.filter((p: any) => p?.id !== id)
+      );
+      toast.success(tTrendingAdmin("deleteSuccessTitle"), tTrendingAdmin("deleteSuccessDesc"));
+    } catch (e: any) {
+      toast.error(
+        tTrendingAdmin("deleteFailed"),
+        String(e?.message || e || tTrendingAdmin("retryLater"))
+      );
+    } finally {
+      setDeleteBusyId(null);
+    }
+  };
+
+  return {
+    isAdmin,
+    editOpen,
+    editForm,
+    savingEdit,
+    deleteBusyId,
+    openEdit,
+    closeEdit,
+    setEditField,
+    submitEdit,
+    deleteEvent,
+  };
+}
