@@ -6,18 +6,10 @@ export const useTrendingCanvas = (
   offscreenActiveRef: React.MutableRefObject<boolean>
 ) => {
   const [canvasReady, setCanvasReady] = useState(false);
-  const [showBackToTop, setShowBackToTop] = useState(false);
   const isScrollingRef = useRef(false);
   const scrollStopTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let rafId = 0;
-    const update = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      setShowBackToTop(scrollTop > 300);
-      rafId = 0;
-    };
-
     const handleScroll = () => {
       isScrollingRef.current = true;
       if (scrollStopTimerRef.current) {
@@ -35,17 +27,12 @@ export const useTrendingCanvas = (
         type: "scrolling",
         isScrolling: true,
       });
-      if (!rafId) {
-        rafId = requestAnimationFrame(update);
-      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    update();
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      if (rafId) cancelAnimationFrame(rafId);
       if (scrollStopTimerRef.current) clearTimeout(scrollStopTimerRef.current);
     };
   }, [canvasWorkerRef]);
@@ -500,6 +487,37 @@ export const useTrendingCanvas = (
     };
   }, [canvasRef, canvasWorkerRef, offscreenActiveRef]);
 
+  return { canvasReady };
+};
+
+export const useBackToTop = () => {
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    let rafId = 0;
+    const updateVisibility = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setShowBackToTop(scrollTop > 300);
+      rafId = 0;
+    };
+
+    const handleScroll = () => {
+      if (!rafId) {
+        rafId = window.requestAnimationFrame(updateVisibility);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    updateVisibility();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, []);
+
   const scrollToTop = useCallback(() => {
     window.scrollTo({
       top: 0,
@@ -507,5 +525,5 @@ export const useTrendingCanvas = (
     });
   }, []);
 
-  return { canvasReady, showBackToTop, scrollToTop };
+  return { showBackToTop, scrollToTop };
 };

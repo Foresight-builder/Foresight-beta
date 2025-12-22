@@ -4,6 +4,103 @@ import Link from "next/link";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import type { TrendingEvent } from "./trendingModel";
 
+type FollowButtonProps = {
+  eventId: number | null;
+  isFollowed: boolean;
+  onToggleFollow: (event: React.MouseEvent, eventId: number) => void;
+};
+
+function FollowButton({ eventId, isFollowed, onToggleFollow }: FollowButtonProps) {
+  if (eventId == null || !Number.isFinite(eventId)) return null;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleFollow(e, eventId);
+  };
+
+  return (
+    <motion.button
+      data-event-index={eventId}
+      onClick={handleClick}
+      className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      animate={isFollowed ? "liked" : "unliked"}
+      variants={{
+        liked: {
+          backgroundColor: "rgba(239, 68, 68, 0.1)",
+          transition: { duration: 0.3 },
+        },
+        unliked: {
+          backgroundColor: "rgba(255, 255, 255, 0.9)",
+          transition: { duration: 0.3 },
+        },
+      }}
+    >
+      <motion.div
+        animate={isFollowed ? "liked" : "unliked"}
+        variants={{
+          liked: {
+            scale: [1, 1.2, 1],
+            transition: {
+              duration: 0.6,
+              ease: "easeInOut",
+            },
+          },
+          unliked: {
+            scale: 1,
+            transition: { duration: 0.3 },
+          },
+        }}
+      >
+        <Heart
+          className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
+        />
+      </motion.div>
+    </motion.button>
+  );
+}
+
+type AdminActionsProps = {
+  eventId: number | null;
+  deleteBusyId: number | null;
+  onEdit: (event: React.MouseEvent) => void;
+  onDelete: (event: React.MouseEvent) => void;
+  editAriaLabel: string;
+  deleteAriaLabel: string;
+};
+
+function AdminActions({
+  eventId,
+  deleteBusyId,
+  onEdit,
+  onDelete,
+  editAriaLabel,
+  deleteAriaLabel,
+}: AdminActionsProps) {
+  if (eventId == null || !Number.isFinite(eventId)) return null;
+
+  return (
+    <div className="absolute top-3 right-3 z-10 flex gap-2">
+      <button
+        onClick={onEdit}
+        className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
+        aria-label={editAriaLabel}
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+      <button
+        onClick={onDelete}
+        className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
+        disabled={deleteBusyId === eventId}
+        aria-label={deleteAriaLabel}
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
 type TrendingEventCardProps = {
   product: TrendingEvent;
   eventId: number | null;
@@ -33,30 +130,20 @@ export function TrendingEventCard({
   tTrendingAdmin,
   tEvents,
 }: TrendingEventCardProps) {
-  const isValidId = typeof eventId === "number" && Number.isFinite(eventId);
-
   const handleCardClick = (e: React.MouseEvent) => {
     onCardClick(e, product.tag);
   };
 
-  const handleToggleFollow = (e: React.MouseEvent) => {
-    if (!isValidId || eventId == null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    onToggleFollow(e, eventId);
-  };
-
   const handleEdit = (e: React.MouseEvent) => {
-    if (!isValidId || eventId == null) return;
     e.preventDefault();
     e.stopPropagation();
     onEdit(e, product);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
-    if (!isValidId || eventId == null) return;
     e.preventDefault();
     e.stopPropagation();
+    if (eventId == null || !Number.isFinite(eventId)) return;
     onDelete(e, eventId);
   };
 
@@ -88,69 +175,24 @@ export function TrendingEventCard({
       whileTap={{ scale: 0.99 }}
       onClick={handleCardClick}
     >
-      {isValidId && (
-        <motion.button
-          data-event-index={eventId}
-          onClick={handleToggleFollow}
-          className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          animate={isFollowed ? "liked" : "unliked"}
-          variants={{
-            liked: {
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              transition: { duration: 0.3 },
-            },
-            unliked: {
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              transition: { duration: 0.3 },
-            },
-          }}
-        >
-          <motion.div
-            animate={isFollowed ? "liked" : "unliked"}
-            variants={{
-              liked: {
-                scale: [1, 1.2, 1],
-                transition: {
-                  duration: 0.6,
-                  ease: "easeInOut",
-                },
-              },
-              unliked: {
-                scale: 1,
-                transition: { duration: 0.3 },
-              },
-            }}
-          >
-            <Heart
-              className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
-            />
-          </motion.div>
-        </motion.button>
+      <FollowButton eventId={eventId} isFollowed={isFollowed} onToggleFollow={onToggleFollow} />
+
+      {isAdmin && (
+        <AdminActions
+          eventId={eventId}
+          deleteBusyId={deleteBusyId}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          editAriaLabel={tTrendingAdmin("editAria")}
+          deleteAriaLabel={tTrendingAdmin("deleteAria")}
+        />
       )}
 
-      {isAdmin && isValidId && (
-        <div className="absolute top-3 right-3 z-10 flex gap-2">
-          <button
-            onClick={handleEdit}
-            className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
-            aria-label={tTrendingAdmin("editAria")}
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
-            disabled={deleteBusyId === eventId}
-            aria-label={tTrendingAdmin("deleteAria")}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+      {typeof eventId === "number" && Number.isFinite(eventId) ? (
+        <Link href={`/prediction/${eventId}`}>{imageElement}</Link>
+      ) : (
+        imageElement
       )}
-
-      {isValidId ? <Link href={`/prediction/${eventId}`}>{imageElement}</Link> : imageElement}
 
       <div className="p-4 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-2">

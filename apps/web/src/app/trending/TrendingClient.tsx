@@ -18,7 +18,7 @@ import {
   fetchPredictions,
 } from "./trendingModel";
 import { createSmartClickEffect, createCategoryParticlesAtCardClick } from "./trendingAnimations";
-import { useTrendingCanvas } from "./useTrendingCanvas";
+import { useTrendingCanvas, useBackToTop } from "./useTrendingCanvas";
 import { TrendingHero } from "./TrendingHero";
 import { TrendingEditModal } from "./TrendingEditModal";
 import { TrendingLoginModal } from "./TrendingLoginModal";
@@ -28,6 +28,124 @@ import { useTrendingFollowState } from "./hooks/useTrendingFollowState";
 import { useTrendingAdminEvents } from "./hooks/useTrendingAdminEvents";
 import { useTrendingHero } from "./hooks/useTrendingHero";
 import { useCategoryCounts } from "./hooks/useCategoryCounts";
+
+type ActiveHeroSlideData = {
+  activeTitle: string;
+  activeDescription: string;
+  activeImage: string;
+  activeCategory: string;
+  activeFollowers: number;
+  activeSlideId: number | null;
+};
+
+function getActiveHeroSlideData(
+  heroSlideEvents: any[],
+  currentHeroIndex: number,
+  tTrending: (key: string) => string,
+  tEvents: (key: string) => string
+): ActiveHeroSlideData {
+  const hasHeroEvents = heroSlideEvents.length > 0;
+  const activeSlide = hasHeroEvents
+    ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length]
+    : null;
+  const hasFallbackEvents = HERO_EVENTS.length > 0;
+  const fallbackIndex = hasFallbackEvents ? currentHeroIndex % HERO_EVENTS.length : 0;
+  const fallbackEvent = hasFallbackEvents ? HERO_EVENTS[fallbackIndex] : null;
+
+  const rawActiveTitle = activeSlide
+    ? String(activeSlide.title || "")
+    : fallbackEvent
+      ? tTrending(`hero.${fallbackEvent.id}.title`)
+      : "";
+  const activeTitle = activeSlide ? tEvents(rawActiveTitle) : rawActiveTitle;
+
+  const activeDescription = activeSlide
+    ? String(activeSlide.description || "")
+    : fallbackEvent
+      ? tTrending(`hero.${fallbackEvent.id}.description`)
+      : "";
+
+  const activeImage = activeSlide
+    ? String(activeSlide.image || "")
+    : fallbackEvent
+      ? String(fallbackEvent.image || "")
+      : "";
+
+  const activeCategory = activeSlide
+    ? String(activeSlide.tag || "")
+    : fallbackEvent
+      ? String(fallbackEvent.category || "")
+      : "";
+
+  const activeFollowers = activeSlide
+    ? Number(activeSlide.followers_count || 0)
+    : fallbackEvent
+      ? Number(fallbackEvent.followers || 0)
+      : 0;
+
+  const activeSlideId = activeSlide ? Number(activeSlide.id) : null;
+
+  return {
+    activeTitle,
+    activeDescription,
+    activeImage,
+    activeCategory,
+    activeFollowers,
+    activeSlideId,
+  };
+}
+
+type BackToTopButtonProps = {
+  show: boolean;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  label: string;
+};
+
+function BackToTopButton({ show, onClick, label }: BackToTopButtonProps) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          onClick={onClick}
+          className="fixed bottom-8 right-8 z-50 w-10 h-10 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
+          whileHover={{
+            scale: 1.1,
+            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.15)",
+          }}
+          whileTap={{ scale: 0.95 }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 17,
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-pink-100/40 group-hover:from-white/60 group-hover:to-pink-100/60 transition-all duration-300" />
+          <div className="relative z-10 flex items-center justify-center w-full h-full">
+            <div className="animate-bounce">
+              <svg
+                className="w-4 h-4 text-gray-700"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+            {label}
+          </div>
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function TrendingPage({
   initialPredictions,
@@ -39,11 +157,8 @@ export default function TrendingPage({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWorkerRef = useRef<Worker | null>(null);
   const offscreenActiveRef = useRef<boolean>(false);
-  const { canvasReady, showBackToTop, scrollToTop } = useTrendingCanvas(
-    canvasRef,
-    canvasWorkerRef,
-    offscreenActiveRef
-  );
+  const { canvasReady } = useTrendingCanvas(canvasRef, canvasWorkerRef, offscreenActiveRef);
+  const { showBackToTop, scrollToTop } = useBackToTop();
 
   const {
     data: predictions = [],
@@ -221,26 +336,14 @@ export default function TrendingPage({
     handleCategoryClick,
   } = useTrendingHero(displayEvents, categories, setFilters);
 
-  const activeSlide =
-    heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
-  const fallbackIndex = HERO_EVENTS.length > 0 ? currentHeroIndex % HERO_EVENTS.length : 0;
-  const rawActiveTitle = activeSlide
-    ? String(activeSlide?.title || "")
-    : tTrending(`hero.${HERO_EVENTS[fallbackIndex].id}.title`);
-  const activeTitle = activeSlide ? tEvents(rawActiveTitle) : rawActiveTitle;
-  const activeDescription = activeSlide
-    ? String(activeSlide?.description || "")
-    : tTrending(`hero.${HERO_EVENTS[fallbackIndex].id}.description`);
-  const activeImage = activeSlide
-    ? String(activeSlide?.image || "")
-    : String(HERO_EVENTS[fallbackIndex]?.image || "");
-  const activeCategory = activeSlide
-    ? String(activeSlide?.tag || "")
-    : String(HERO_EVENTS[fallbackIndex]?.category || "");
-  const activeFollowers = activeSlide
-    ? Number(activeSlide?.followers_count || 0)
-    : Number(HERO_EVENTS[fallbackIndex]?.followers || 0);
-  const activeSlideId = activeSlide ? Number(activeSlide.id) : null;
+  const {
+    activeTitle,
+    activeDescription,
+    activeImage,
+    activeCategory,
+    activeFollowers,
+    activeSlideId,
+  } = getActiveHeroSlideData(heroSlideEvents, currentHeroIndex, tTrending, tEvents);
   const handleViewAllCategoriesWithScroll = () => {
     handleViewAllCategories();
     productsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -332,55 +435,14 @@ export default function TrendingPage({
       </footer>
 
       {/* 返回顶部按钮 */}
-      <AnimatePresence>
-        {showBackToTop && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            onClick={(e) => {
-              scrollToTop();
-              createSmartClickEffect(e);
-            }}
-            className="fixed bottom-8 right-8 z-50 w-10 h-10 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
-            whileHover={{
-              scale: 1.1,
-              boxShadow: "0 8px 20px rgba(0, 0, 0, 0.15)",
-            }}
-            whileTap={{ scale: 0.95 }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 17,
-            }}
-          >
-            {/* 背景质感效果 */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-pink-100/40 group-hover:from-white/60 group-hover:to-pink-100/60 transition-all duration-300"></div>
-
-            {/* 箭头图标 */}
-            <div className="relative z-10 flex items-center justify-center w-full h-full">
-              <div className="animate-bounce">
-                <svg
-                  className="w-4 h-4 text-gray-700"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="18 15 12 9 6 15" />
-                </svg>
-              </div>
-            </div>
-
-            {/* 悬浮提示 */}
-            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-              返回顶部
-            </div>
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <BackToTopButton
+        show={showBackToTop}
+        onClick={(e) => {
+          scrollToTop();
+          createSmartClickEffect(e);
+        }}
+        label="返回顶部"
+      />
     </div>
   );
 }
