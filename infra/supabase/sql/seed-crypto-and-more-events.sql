@@ -45,6 +45,57 @@ SELECT new_event.id, v.outcome_index, v.label
 FROM new_event
 JOIN (VALUES (0, 'Yes'), (1, 'No')) AS v(outcome_index, label) ON TRUE;
 
+INSERT INTO public.trades (
+  network_id,
+  market_address,
+  outcome_index,
+  price,
+  amount,
+  taker_address,
+  maker_address,
+  is_buy,
+  tx_hash,
+  block_number,
+  block_timestamp,
+  created_at
+)
+SELECT
+  m.chain_id AS network_id,
+  m.market AS market_address,
+  o.outcome_index,
+  CASE p.idx
+    WHEN 0 THEN 0.45
+    WHEN 1 THEN 0.5
+    ELSE 0.55
+  END AS price,
+  CASE p.idx
+    WHEN 0 THEN 2.5
+    WHEN 1 THEN 1.0
+    ELSE 3.0
+  END AS amount,
+  CASE ((m.event_id + o.outcome_index + p.idx) % 3)
+    WHEN 0 THEN '0x1111111111111111111111111111111111111111'
+    WHEN 1 THEN '0x2222222222222222222222222222222222222222'
+    ELSE '0x3333333333333333333333333333333333333333'
+  END AS taker_address,
+  CASE ((m.event_id + o.outcome_index + p.idx + 1) % 3)
+    WHEN 0 THEN '0x1111111111111111111111111111111111111111'
+    WHEN 1 THEN '0x2222222222222222222222222222222222222222'
+    ELSE '0x3333333333333333333333333333333333333333'
+  END AS maker_address,
+  CASE p.idx
+    WHEN 2 THEN false
+    ELSE true
+  END AS is_buy,
+  '0xseed' || lpad(m.event_id::text, 4, '0') || '-' || o.outcome_index::text || '-' || p.idx::text AS tx_hash,
+  1000000 + m.event_id * 10 + p.idx AS block_number,
+  NOW() - ((m.event_id % 24)::text || ' hours')::interval AS block_timestamp,
+  NOW() AS created_at
+FROM public.markets_map m
+JOIN public.prediction_outcomes o ON o.prediction_id = m.event_id
+JOIN (VALUES (0), (1), (2)) AS p(idx) ON TRUE
+ON CONFLICT (tx_hash) DO NOTHING;
+
 WITH new_event AS (
   INSERT INTO public.predictions (
     title,

@@ -358,9 +358,11 @@ export function TradingPanel({
                       className="flex justify-between text-xs cursor-pointer hover:bg-emerald-50 p-2 rounded-lg transition-colors group"
                     >
                       <span className="text-emerald-600 font-medium group-hover:text-emerald-700">
-                        {row.price}
+                        {formatPrice(row.price)}
                       </span>
-                      <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
+                      <span className="text-gray-500 group-hover:text-gray-700">
+                        {formatAmount(row.qty)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -384,9 +386,11 @@ export function TradingPanel({
                       className="flex justify-between text-xs cursor-pointer hover:bg-rose-50 p-2 rounded-lg transition-colors group"
                     >
                       <span className="text-rose-600 font-medium group-hover:text-rose-700">
-                        {row.price}
+                        {formatPrice(row.price)}
                       </span>
-                      <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
+                      <span className="text-gray-500 group-hover:text-gray-700">
+                        {formatAmount(row.qty)}
+                      </span>
                     </div>
                   ))}
                 </div>
