@@ -1370,9 +1370,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
   const openEdit = (p: any) => {
     setEditTargetId(Number(p?.id));
+    const rawCategory = String(p?.tag || p?.category || "");
+    const categoryId = rawCategory ? CATEGORY_MAPPING[rawCategory] || rawCategory : "";
     setEditForm({
       title: String(p?.title || ""),
-      category: String(p?.tag || p?.category || ""),
+      category: categoryId,
       status: String(p?.status || "active"),
       deadline: String(p?.deadline || ""),
       minStake: Number(p?.min_stake || 0),
@@ -1392,9 +1394,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
         await siweLogin();
       } catch {}
       const id = Number(editTargetId);
+      const categoryId = String(editForm.category || "");
+      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
       const payload: any = {
         title: editForm.title,
-        category: editForm.category,
+        category: categoryName,
         status: editForm.status,
         deadline: editForm.deadline,
         minStake: Number(editForm.minStake),
@@ -2259,11 +2263,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   onChange={(e) => setEditField("category", e.target.value)}
                   className="w-full rounded-lg border px-3 py-2"
                 >
-                  <option value="科技">科技</option>
-                  <option value="娱乐">娱乐</option>
-                  <option value="时政">时政</option>
-                  <option value="天气">天气</option>
-                  <option value="体育">体育</option>
+                  <option value="tech">{tTrending("category.tech")}</option>
+                  <option value="entertainment">{tTrending("category.entertainment")}</option>
+                  <option value="politics">{tTrending("category.politics")}</option>
+                  <option value="weather">{tTrending("category.weather")}</option>
+                  <option value="sports">{tTrending("category.sports")}</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">

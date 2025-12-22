@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const flagId = toNum(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const body = await parseRequestBody(req as any);
-    const settler_id = String(body?.settler_id || "").trim();
+    const settler_id = String(body?.settler_id || body?.user_id || "").trim();
     const minDays = Math.max(1, Number(body?.min_days || 10));
     const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)));
 
@@ -34,7 +34,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
     if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
     const owner = String(flag.user_id || "");
-    if (!settler_id || settler_id.toLowerCase() !== owner.toLowerCase())
+    if (!settler_id)
+      return NextResponse.json({ message: "settler_id is required" }, { status: 400 });
+    if (settler_id.toLowerCase() !== owner.toLowerCase())
       return NextResponse.json({ message: "Only the owner can settle this flag" }, { status: 403 });
 
     const end = new Date(String(flag.deadline));

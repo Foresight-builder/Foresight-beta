@@ -23,6 +23,8 @@ export async function middleware(request: NextRequest) {
       (pathname.includes("/predictions") && request.method === "POST")
     ) {
       rateLimitConfig = RateLimits.moderate; // 写操作 - 中等限制
+    } else if (pathname.startsWith("/api/flags")) {
+      rateLimitConfig = request.method === "GET" ? RateLimits.lenient : RateLimits.moderate;
     } else if (pathname === "/api/health") {
       rateLimitConfig = RateLimits.lenient; // 健康检查 - 极宽松
     } else {

@@ -3,10 +3,15 @@ import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
+function toNum(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const flagId = Number(id);
+    const flagId = toNum(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
 
     const body = await parseRequestBody(req as any);
@@ -36,6 +41,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ message: "Only the owner can check in" }, { status: 403 });
 
     const now = new Date();
+    const deadline = new Date(String(flag.deadline));
+    if (Number.isNaN(deadline.getTime()))
+      return NextResponse.json({ message: "Invalid flag deadline" }, { status: 500 });
+    if (now > deadline)
+      return NextResponse.json(
+        { message: "Flag deadline has passed, cannot check in" },
+        { status: 400 }
+      );
+
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const next = new Date(start.getTime() + 86400000);
     const startIso = start.toISOString();

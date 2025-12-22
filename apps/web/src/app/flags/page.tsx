@@ -257,32 +257,25 @@ export default function FlagsPage() {
     try {
       setLoading(true);
       const me = account || user?.id || "";
-      console.log("[Flag Debug] 🔍 开始加载 Flags，用户ID:", me);
 
       if (!me) {
-        console.log("[Flag Debug] ⚠️ 用户未登录，无法加载数据");
         setFlags([]);
         return;
       }
 
       const url = `/api/flags?viewer_id=${encodeURIComponent(me)}`;
-      console.log("[Flag Debug] 📡 请求 URL:", url);
 
       const res = await fetch(url, { cache: "no-store" });
-      console.log("[Flag Debug] 📥 API 响应状态:", res.status, res.statusText);
 
       if (!res.ok) {
-        console.error("[Flag Debug] ❌ API 请求失败");
         toast.error(tFlags("toast.loadFailedTitle"), `HTTP ${res.status}: ${res.statusText}`);
         setFlags([]);
         return;
       }
 
       const payload = await res.json().catch(() => ({ flags: [] }));
-      console.log("[Flag Debug] 📦 返回的数据:", payload);
 
       const list = Array.isArray(payload?.flags) ? payload.flags : [];
-      console.log("[Flag Debug] ✅ 成功加载", list.length, "个 Flags");
 
       setFlags(list as FlagItem[]);
 
@@ -290,12 +283,12 @@ export default function FlagsPage() {
         toast.info(tFlags("toast.noDataTitle"), tFlags("toast.noDataDesc"));
       }
     } catch (e) {
-      console.error("[Flag Debug] 💥 加载出错:", e);
+      console.error(e);
       toast.error(tFlags("toast.loadFailedTitle"), String(e));
     } finally {
       setLoading(false);
     }
-  }, [account, user?.id]);
+  }, [account, user?.id, tFlags]);
 
   const loadCollectedStickers = useCallback(async () => {
     try {
@@ -378,6 +371,12 @@ export default function FlagsPage() {
   };
 
   const openCheckin = (flag: FlagItem) => {
+    const deadline = new Date(flag.deadline);
+    const now = new Date();
+    if (!Number.isNaN(deadline.getTime()) && now > deadline) {
+      toast.info(tFlags("toast.checkinExpiredTitle"), tFlags("toast.checkinExpiredDesc"));
+      return;
+    }
     setCheckinFlag(flag);
     setCheckinNote("");
     setCheckinImage("");
@@ -454,13 +453,16 @@ export default function FlagsPage() {
     try {
       setReviewSubmittingId(checkinId);
       const me = account || user?.id || "";
+      const reasonKey =
+        action === "reject" ? "history.reviewReason.rejected" : "history.reviewReason.approved";
+      const reason = tFlags(reasonKey);
       const res = await fetch(`/api/checkins/${checkinId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reviewer_id: me,
           action,
-          reason: action === "reject" ? "Witness rejected" : "Looks good",
+          reason,
         }),
       });
       if (!res.ok) throw new Error("Review failed");
@@ -534,27 +536,6 @@ export default function FlagsPage() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [flags, statusFilter, filterMine, account, user?.id]
   );
-
-  // 调试信息
-  useEffect(() => {
-    console.log("[Flag Debug] 📊 数据状态汇总:");
-    console.log("  - 原始 Flags 数量:", flags.length);
-    console.log("  - 过滤后数量:", filteredFlags.length);
-    console.log("  - 当前状态过滤:", statusFilter);
-    console.log("  - 仅显示我的:", filterMine);
-    console.log("  - 用户ID:", account || user?.id);
-    console.log("  - Active Flags:", activeFlags.length);
-    console.log("  - Completed Flags:", completedFlags.length);
-  }, [
-    flags,
-    filteredFlags,
-    statusFilter,
-    filterMine,
-    account,
-    user?.id,
-    activeFlags,
-    completedFlags,
-  ]);
 
   const viewerId = String(account || user?.id || "").toLowerCase();
 

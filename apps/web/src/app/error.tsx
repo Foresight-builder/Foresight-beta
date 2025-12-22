@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AlertCircle, RefreshCcw, Home } from "lucide-react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
+import { useTranslations } from "@/lib/i18n";
 
 export default function Error({
   error,
@@ -12,6 +13,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const tErrors = useTranslations("errors");
   useEffect(() => {
     // 记录错误到监控服务
     console.error("Application Error:", error);
@@ -65,10 +67,12 @@ export default function Error({
         </div>
 
         {/* 标题 */}
-        <h1 className="text-3xl font-bold text-gray-900 text-center mb-4">哎呀，出错了！</h1>
+        <h1 className="text-3xl font-bold text-gray-900 text-center mb-4">
+          {tErrors("somethingWrong")}
+        </h1>
 
         {/* 错误信息 */}
-        <p className="text-gray-600 text-center mb-2">应用程序遇到了一个意外错误</p>
+        <p className="text-gray-600 text-center mb-2">{tErrors("serverError")}</p>
 
         {/* 错误详情（开发环境） */}
         {process.env.NODE_ENV === "development" && error.message && (
@@ -81,8 +85,8 @@ export default function Error({
         {/* 生产环境友好提示 */}
         {process.env.NODE_ENV === "production" && (
           <p className="text-sm text-gray-500 text-center mt-4">
-            我们已经记录了这个问题，会尽快修复
-            {error.digest && ` (错误 ID: ${error.digest})`}
+            {tErrors("networkError")}
+            {error.digest && ` (ID: ${error.digest})`}
           </p>
         )}
 
@@ -93,19 +97,19 @@ export default function Error({
             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all"
           >
             <RefreshCcw className="w-4 h-4" />
-            重试
+            {tErrors("tryAgain")}
           </button>
           <Link
             href="/trending"
             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
           >
             <Home className="w-4 h-4" />
-            返回首页
+            {tErrors("goHome")}
           </Link>
         </div>
 
         {/* 帮助文本 */}
-        <p className="text-xs text-gray-400 text-center mt-6">如果问题持续存在，请联系技术支持</p>
+        <p className="text-xs text-gray-400 text-center mt-6">{tErrors("contactSupport")}</p>
       </div>
     </div>
   );

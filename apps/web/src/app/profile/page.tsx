@@ -20,7 +20,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import Link from "next/link";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 // Mock data for browsing history (in a real app this would come from local storage or API)
 const MOCK_HISTORY = [
@@ -75,9 +75,10 @@ export default function ProfilePage() {
   const { account, disconnectWallet: disconnect } = useWallet();
   const { user } = useAuth();
   const profileCtx = useUserProfileOptional();
+  const tProfile = useTranslations("profile");
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [history, setHistory] = useState(MOCK_HISTORY);
-  const [username, setUsername] = useState("匿名用户");
+  const [username, setUsername] = useState("");
   const [portfolioStats, setPortfolioStats] = useState<{
     total_invested: number;
     active_count: number;
@@ -140,7 +141,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!account) {
-      setUsername("匿名用户");
+      setUsername(tProfile("username.anonymous"));
       return;
     }
     const p = profileCtx?.profile;
@@ -157,13 +158,13 @@ export default function ProfilePage() {
       return;
     }
     setUsername(`User ${account.slice(0, 4)}`);
-  }, [account, user, profileCtx?.profile]);
+  }, [account, user, profileCtx?.profile, tProfile]);
 
   const tabs = [
-    { id: "overview", label: "总览", icon: User },
-    { id: "predictions", label: "我的预测", icon: TrendingUp },
-    { id: "history", label: "浏览历史", icon: History },
-    { id: "following", label: "我的关注", icon: Heart },
+    { id: "overview", label: tProfile("sidebar.tabs.overview"), icon: User },
+    { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
+    { id: "history", label: tProfile("sidebar.tabs.history"), icon: History },
+    { id: "following", label: tProfile("sidebar.tabs.following"), icon: Heart },
   ];
 
   return (
@@ -197,26 +198,28 @@ export default function ProfilePage() {
                 </h2>
                 <div className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono text-purple-600 mb-6 shadow-sm">
                   <Wallet className="w-3.5 h-3.5" />
-                  {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "未连接钱包"}
+                  {account
+                    ? `${account.slice(0, 6)}...${account.slice(-4)}`
+                    : tProfile("username.walletDisconnected")}
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 w-full mb-2">
                   <div className="text-center p-3 bg-violet-50/80 rounded-2xl border border-violet-100 hover:bg-violet-100/80 transition-colors">
                     <div className="text-xl font-black text-violet-600">{positionsCount}</div>
                     <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wide">
-                      预测
+                      {tProfile("sidebar.stats.predictions")}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-fuchsia-50/80 rounded-2xl border border-fuchsia-100 hover:bg-fuchsia-100/80 transition-colors">
                     <div className="text-xl font-black text-fuchsia-600">{followingCount}</div>
                     <div className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wide">
-                      关注
+                      {tProfile("sidebar.stats.following")}
                     </div>
                   </div>
                   <div className="text-center p-3 bg-cyan-50/80 rounded-2xl border border-cyan-100 hover:bg-cyan-100/80 transition-colors">
                     <div className="text-xl font-black text-cyan-600">{history.length}</div>
                     <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-wide">
-                      浏览
+                      {tProfile("sidebar.stats.history")}
                     </div>
                   </div>
                 </div>
@@ -251,7 +254,7 @@ export default function ProfilePage() {
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm">
                   <Settings className="w-5 h-5" />
-                  设置
+                  {tProfile("sidebar.settings")}
                 </button>
                 {account && (
                   <button
@@ -259,7 +262,7 @@ export default function ProfilePage() {
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
                   >
                     <LogOut className="w-5 h-5" />
-                    断开连接
+                    {tProfile("sidebar.disconnect")}
                   </button>
                 )}
               </div>
@@ -312,6 +315,7 @@ function OverviewTab({
       : 0;
   const clampedWinRate = Math.max(0, Math.min(100, winRateValue));
   const activeCount = portfolioStats?.active_count ?? 0;
+  const tProfile = useTranslations("profile");
 
   return (
     <div className="space-y-8">
@@ -320,17 +324,25 @@ function OverviewTab({
         <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-500/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
           <div className="relative z-10">
-            <div className="text-purple-200 text-sm font-bold mb-1">总押注</div>
+            <div className="text-purple-200 text-sm font-bold mb-1">
+              {tProfile("overview.cards.totalInvested")}
+            </div>
             <div className="text-3xl font-black mb-4">${totalInvested.toFixed(2)}</div>
             <div className="flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-md">
               <TrendingUp className="w-3 h-3" />
-              <span>共参与 {positionsCount} 场预测</span>
+              <span>
+                {formatTranslation(tProfile("overview.cards.eventsSummary"), {
+                  count: positionsCount,
+                })}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
-          <div className="text-gray-400 text-sm font-bold mb-1">累计收益</div>
+          <div className="text-gray-400 text-sm font-bold mb-1">
+            {tProfile("overview.cards.totalPnl")}
+          </div>
           <div className="text-3xl font-black text-gray-900 mb-4">
             {realizedPnl >= 0 ? "+" : ""}
             {realizedPnl.toFixed(2)}
@@ -352,7 +364,9 @@ function OverviewTab({
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
-          <div className="text-gray-400 text-sm font-bold mb-1">胜率</div>
+          <div className="text-gray-400 text-sm font-bold mb-1">
+            {tProfile("overview.cards.winRate")}
+          </div>
           <div className="text-3xl font-black text-gray-900 mb-4">{winRate}</div>
           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -363,7 +377,9 @@ function OverviewTab({
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
-          <div className="text-gray-400 text-sm font-bold mb-1">参与场次</div>
+          <div className="text-gray-400 text-sm font-bold mb-1">
+            {tProfile("overview.cards.eventsCount")}
+          </div>
           <div className="text-3xl font-black text-gray-900 mb-4">
             {positionsCount || activeCount}
           </div>
@@ -379,7 +395,7 @@ function OverviewTab({
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-purple-500" />
-          最近动态
+          {tProfile("overview.activity.title")}
         </h3>
         <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
           {[1, 2, 3].map((_, i) => (
@@ -388,17 +404,23 @@ function OverviewTab({
               className="p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors flex items-center gap-4"
             >
               <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 font-bold text-xs">
-                {i === 0 ? "买入" : i === 1 ? "结算" : "浏览"}
+                {i === 0
+                  ? tProfile("overview.activity.type.buy")
+                  : i === 1
+                    ? tProfile("overview.activity.type.settle")
+                    : tProfile("overview.activity.type.view")}
               </div>
               <div className="flex-1">
                 <div className="text-sm font-bold text-gray-900">
                   {i === 0
-                    ? "买入 Yes - Bitcoin 100k"
+                    ? tProfile("overview.activity.item.buy")
                     : i === 1
-                      ? "结算收益 +$50"
-                      : "浏览了 SpaceX 话题"}
+                      ? tProfile("overview.activity.item.settle")
+                      : tProfile("overview.activity.item.view")}
                 </div>
-                <div className="text-xs text-gray-400">2小时前</div>
+                <div className="text-xs text-gray-400">
+                  {tProfile("overview.activity.timeExample")}
+                </div>
               </div>
               <ArrowRight className="w-4 h-4 text-gray-300" />
             </div>
@@ -415,6 +437,7 @@ function PredictionsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const tEvents = useTranslations();
+  const tProfile = useTranslations("profile");
 
   useEffect(() => {
     if (!account) {
@@ -429,7 +452,7 @@ function PredictionsTab() {
         const data = await res.json();
         setPredictions(data.positions || []);
       } catch (err) {
-        setError("无法加载预测数据");
+        setError(tProfile("predictions.errors.loadFailed"));
         console.error(err);
       } finally {
         setLoading(false);
@@ -437,7 +460,7 @@ function PredictionsTab() {
     };
 
     fetchPortfolio();
-  }, [account]);
+  }, [account, tProfile]);
 
   if (loading) {
     return (
@@ -457,8 +480,8 @@ function PredictionsTab() {
         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <TrendingUp className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-gray-900 font-bold text-lg">暂无预测记录</h3>
-        <p className="text-gray-500 text-sm">快去参与你的第一个预测吧！</p>
+        <h3 className="text-gray-900 font-bold text-lg">{tProfile("predictions.empty.title")}</h3>
+        <p className="text-gray-500 text-sm">{tProfile("predictions.empty.description")}</p>
       </div>
     );
   }
@@ -467,7 +490,7 @@ function PredictionsTab() {
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-purple-500" />
-        我的预测
+        {tProfile("predictions.header")}
       </h3>
       <div className="grid gap-4">
         {predictions.map((pred) => {
@@ -485,7 +508,7 @@ function PredictionsTab() {
               <div className="bg-white rounded-[1.5rem] p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
                 <img
                   src={pred.image_url}
-                  alt={pred.title || "预测封面"}
+                  alt={pred.title || tProfile("predictions.alt.cover")}
                   className="w-12 h-12 rounded-xl bg-gray-100 object-cover"
                 />
                 <div className="flex-1">
@@ -500,7 +523,9 @@ function PredictionsTab() {
                     >
                       {pred.outcome}
                     </span>
-                    <span>投入 ${pred.stake}</span>
+                    <span>
+                      {tProfile("predictions.labels.stake")} ${pred.stake}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-1">
                     <span className="flex items-center gap-1">
@@ -509,11 +534,15 @@ function PredictionsTab() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="w-3 h-3 text-gray-400" />
-                      <span>{Number(pred.stats?.participantCount || 0)} 人参与</span>
+                      <span>
+                        {formatTranslation(tProfile("predictions.labels.participants"), {
+                          count: Number(pred.stats?.participantCount || 0),
+                        })}
+                      </span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
-                    <span>你选择方向的当前市场概率</span>
+                    <span>{tProfile("predictions.labels.yourSideProbability")}</span>
                     <span className="font-bold text-gray-700">{probPercent.toFixed(1)}%</span>
                   </div>
                 </div>
@@ -540,6 +569,7 @@ function HistoryTab() {
   const { account } = useWallet();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const tProfile = useTranslations("profile");
 
   useEffect(() => {
     if (!account) {
@@ -577,8 +607,8 @@ function HistoryTab() {
         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <History className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-gray-900 font-bold text-lg">暂无浏览记录</h3>
-        <p className="text-gray-500 text-sm">去探索更多有趣的预测吧！</p>
+        <h3 className="text-gray-900 font-bold text-lg">{tProfile("history.empty.title")}</h3>
+        <p className="text-gray-500 text-sm">{tProfile("history.empty.description")}</p>
       </div>
     );
   }
@@ -588,7 +618,7 @@ function HistoryTab() {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <History className="w-5 h-5 text-purple-500" />
-          浏览足迹
+          {tProfile("history.title")}
         </h3>
         {/* <button className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors">
           清空记录
@@ -601,7 +631,7 @@ function HistoryTab() {
               <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                 <img
                   src={item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`}
-                  alt={item.title || "浏览记录封面"}
+                  alt={item.title || tProfile("history.alt.cover")}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
@@ -635,6 +665,7 @@ function FollowingTab() {
   const [following, setFollowing] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const tEvents = useTranslations();
+  const tProfile = useTranslations("profile");
 
   useEffect(() => {
     if (!account) {
@@ -672,8 +703,8 @@ function FollowingTab() {
         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Heart className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-gray-900 font-bold text-lg">暂无关注</h3>
-        <p className="text-gray-500 text-sm">去发现一些感兴趣的预测事件吧！</p>
+        <h3 className="text-gray-900 font-bold text-lg">{tProfile("following.empty.title")}</h3>
+        <p className="text-gray-500 text-sm">{tProfile("following.empty.description")}</p>
       </div>
     );
   }
@@ -682,7 +713,7 @@ function FollowingTab() {
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <Heart className="w-5 h-5 text-purple-500" />
-        我的关注
+        {tProfile("following.title")}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {following.map((item) => (
@@ -691,7 +722,7 @@ function FollowingTab() {
               <div className="flex justify-between items-start mb-4">
                 <img
                   src={item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`}
-                  alt={item.title || "关注事件封面"}
+                  alt={item.title || tProfile("following.alt.cover")}
                   className="w-10 h-10 rounded-full bg-gray-100 object-cover"
                 />
                 <button className="p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
@@ -703,10 +734,16 @@ function FollowingTab() {
               </h4>
               <div className="mt-auto text-xs text-gray-500 flex items-center gap-2">
                 <span className="bg-gray-100 px-2 py-1 rounded-md">
-                  {item.followers_count} 人关注
+                  {formatTranslation(tProfile("following.labels.followers"), {
+                    count: item.followers_count,
+                  })}
                 </span>
                 {item.deadline && (
-                  <span>• {new Date(item.deadline).toLocaleDateString()} 截止</span>
+                  <span>
+                    {formatTranslation(tProfile("following.labels.deadline"), {
+                      date: new Date(item.deadline).toLocaleDateString(),
+                    })}
+                  </span>
                 )}
               </div>
             </div>

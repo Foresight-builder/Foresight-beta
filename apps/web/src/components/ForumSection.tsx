@@ -54,10 +54,14 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
 
   const [subjectName, setSubjectName] = useState("");
-  const [actionVerb, setActionVerb] = useState("价格达到");
+  const [actionVerb, setActionVerb] = useState<"priceReach" | "willWin" | "willHappen">(
+    "priceReach"
+  );
   const [targetValue, setTargetValue] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [category, setCategory] = useState("科技");
+  const [category, setCategory] = useState<
+    "tech" | "entertainment" | "politics" | "weather" | "sports" | "business" | "crypto" | "more"
+  >("tech");
 
   const titlePreview = useMemo(() => {
     const name = String(subjectName || "").trim();
@@ -68,9 +72,9 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     const when = new Date(dl);
     const iso = when.toISOString().replace(".000Z", "Z");
     let key = "preview.title.default";
-    if (act === "价格达到") key = "preview.title.priceReach";
-    else if (act === "将会赢得") key = "preview.title.willWin";
-    else if (act === "将会发生") key = "preview.title.willHappen";
+    if (act === "priceReach") key = "preview.title.priceReach";
+    else if (act === "willWin") key = "preview.title.willWin";
+    else if (act === "willHappen") key = "preview.title.willHappen";
     const template = tForum(key);
     return template
       .replace("{subjectName}", name)
@@ -81,9 +85,9 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   const criteriaPreview = useMemo(() => {
     const act = String(actionVerb || "").trim();
     let key = "preview.criteria.default";
-    if (act === "价格达到") key = "preview.criteria.priceReach";
-    else if (act === "将会赢得") key = "preview.criteria.willWin";
-    else if (act === "将会发生") key = "preview.criteria.willHappen";
+    if (act === "priceReach") key = "preview.criteria.priceReach";
+    else if (act === "willWin") key = "preview.criteria.willWin";
+    else if (act === "willHappen") key = "preview.criteria.willHappen";
     const template = tForum(key);
     return template.replace("{action}", act);
   }, [actionVerb, tForum]);
@@ -344,12 +348,14 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                   />
                   <select
                     value={actionVerb}
-                    onChange={(e) => setActionVerb(e.target.value)}
+                    onChange={(e) =>
+                      setActionVerb(e.target.value as "priceReach" | "willWin" | "willHappen")
+                    }
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   >
-                    <option value="价格达到">{tForum("form.action.priceReach")}</option>
-                    <option value="将会赢得">{tForum("form.action.willWin")}</option>
-                    <option value="将会发生">{tForum("form.action.willHappen")}</option>
+                    <option value="priceReach">{tForum("form.action.priceReach")}</option>
+                    <option value="willWin">{tForum("form.action.willWin")}</option>
+                    <option value="willHappen">{tForum("form.action.willHappen")}</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -368,17 +374,29 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                   />
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) =>
+                      setCategory(
+                        e.target.value as
+                          | "tech"
+                          | "entertainment"
+                          | "politics"
+                          | "weather"
+                          | "sports"
+                          | "business"
+                          | "crypto"
+                          | "more"
+                      )
+                    }
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   >
-                    <option value="科技">{tForum("form.category.tech")}</option>
-                    <option value="娱乐">{tForum("form.category.entertainment")}</option>
-                    <option value="时政">{tForum("form.category.politics")}</option>
-                    <option value="天气">{tForum("form.category.weather")}</option>
-                    <option value="体育">{tForum("form.category.sports")}</option>
-                    <option value="商业">{tForum("form.category.business")}</option>
-                    <option value="加密货币">{tForum("form.category.crypto")}</option>
-                    <option value="更多">{tForum("form.category.more")}</option>
+                    <option value="tech">{tForum("form.category.tech")}</option>
+                    <option value="entertainment">{tForum("form.category.entertainment")}</option>
+                    <option value="politics">{tForum("form.category.politics")}</option>
+                    <option value="weather">{tForum("form.category.weather")}</option>
+                    <option value="sports">{tForum("form.category.sports")}</option>
+                    <option value="business">{tForum("form.category.business")}</option>
+                    <option value="crypto">{tForum("form.category.crypto")}</option>
+                    <option value="more">{tForum("form.category.more")}</option>
                   </select>
                 </div>
                 <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">

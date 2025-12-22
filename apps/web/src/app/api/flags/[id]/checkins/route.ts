@@ -16,11 +16,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { searchParams } = new URL(req.url);
     const viewer = String(searchParams.get("viewer_id") || "").trim();
     if (!viewer) return NextResponse.json({ message: "viewer_id is required" }, { status: 400 });
-    const limit = Math.max(1, Math.min(200, Number(searchParams.get("limit") || 50)));
-    const offset = Math.max(0, Number(searchParams.get("offset") || 0));
+
+    const rawLimit = Number(searchParams.get("limit") || 50);
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(200, rawLimit)) : 50;
+
+    const rawOffset = Number(searchParams.get("offset") || 0);
+    const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
     const client = supabaseAdmin || getClient();
-    if (!client)
-      return NextResponse.json({ message: "Supabase client not configured" }, { status: 500 });
+    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const f = await client
       .from("flags")

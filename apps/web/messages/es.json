@@ -579,6 +579,8 @@
       "noDataDesc": "Todavía no has creado ningún Flag.",
       "checkinFailedTitle": "Error en el check-in",
       "checkinFailedDesc": "Error de red, inténtalo de nuevo más tarde.",
+      "checkinExpiredTitle": "¡Tiempo agotado!",
+      "checkinExpiredDesc": "Este Flag ya terminó; es momento de empezar un nuevo reto ✨",
       "reviewFailedTitle": "Error en la revisión",
       "reviewFailedDesc": "Revisa tu conexión de red e inténtalo de nuevo.",
       "settleConfirmMessage": "¿Liquidar este Flag ahora? Los reembolsos dependerán del nivel de cumplimiento.",
@@ -646,6 +648,92 @@
           "title": "Ordenar la habitación {minutes} minutos",
           "desc": "Objetivo: Ordenar al menos {minutes} minutos\\nPrueba: Fotos de antes y después"
         }
+      }
+    }
+  },
+  "profile": {
+    "username": {
+      "anonymous": "Usuario anónimo",
+      "walletDisconnected": "Billetera no conectada"
+    },
+    "sidebar": {
+      "tabs": {
+        "overview": "Resumen",
+        "predictions": "Mis predicciones",
+        "history": "Historial de navegación",
+        "following": "Siguiendo"
+      },
+      "stats": {
+        "predictions": "Predicciones",
+        "following": "Siguiendo",
+        "history": "Vistas"
+      },
+      "settings": "Configuración",
+      "disconnect": "Desconectar"
+    },
+    "overview": {
+      "cards": {
+        "totalInvested": "Apuesta total",
+        "totalPnl": "Beneficio total",
+        "winRate": "Tasa de acierto",
+        "eventsCount": "Eventos participados",
+        "eventsSummary": "Has participado en {count} predicciones"
+      },
+      "activity": {
+        "title": "Actividad reciente",
+        "type": {
+          "buy": "Compra",
+          "settle": "Liquidación",
+          "view": "Vista"
+        },
+        "item": {
+          "buy": "Compró Yes - Bitcoin 100k",
+          "settle": "Liquidó beneficio +$50",
+          "view": "Vio el tema de SpaceX"
+        },
+        "timeExample": "hace 2 horas"
+      }
+    },
+    "predictions": {
+      "errors": {
+        "loadFailed": "No se pudieron cargar las predicciones"
+      },
+      "empty": {
+        "title": "Aún no hay predicciones",
+        "description": "Participa en tu primera predicción"
+      },
+      "header": "Mis predicciones",
+      "alt": {
+        "cover": "Portada de la predicción"
+      },
+      "labels": {
+        "stake": "Apuesta",
+        "participants": "{count} participantes",
+        "yourSideProbability": "Probabilidad de mercado de tu lado elegido"
+      }
+    },
+    "history": {
+      "empty": {
+        "title": "Aún no hay historial de navegación",
+        "description": "Explora más predicciones interesantes"
+      },
+      "title": "Historial de navegación",
+      "alt": {
+        "cover": "Portada del historial"
+      }
+    },
+    "following": {
+      "empty": {
+        "title": "Aún no sigues nada",
+        "description": "Descubre eventos de predicción que te interesen"
+      },
+      "title": "Siguiendo",
+      "alt": {
+        "cover": "Portada del evento seguido"
+      },
+      "labels": {
+        "followers": "{count} seguidores",
+        "deadline": "Finaliza el {date}"
       }
     }
   }

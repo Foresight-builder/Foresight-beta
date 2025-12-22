@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
@@ -57,6 +57,17 @@ export function t(key: string, locale?: Locale): string {
   return value || key;
 }
 
+export function formatTranslation(
+  template: string,
+  params?: Record<string, string | number | undefined>
+): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, rawKey: string) => {
+    const v = params[rawKey];
+    return v === undefined ? `{${rawKey}}` : String(v);
+  });
+}
+
 export function useTranslations(namespace?: string) {
   const [locale, setLocale] = useState<Locale>("zh-CN");
 
@@ -88,8 +99,13 @@ export function useTranslations(namespace?: string) {
     };
   }, []);
 
-  return (key: string) => {
-    const fullKey = namespace ? `${namespace}.${key}` : key;
-    return t(fullKey, locale);
-  };
+  const translate = useCallback(
+    (key: string) => {
+      const fullKey = namespace ? `${namespace}.${key}` : key;
+      return t(fullKey, locale);
+    },
+    [locale, namespace]
+  );
+
+  return translate;
 }

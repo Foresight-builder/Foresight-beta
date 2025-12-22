@@ -33,19 +33,45 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
+import { useCategories } from "@/hooks/useQueries";
+
+const CATEGORY_ID_MAP: Record<string, string> = {
+  科技: "tech",
+  娱乐: "entertainment",
+  时政: "politics",
+  天气: "weather",
+  体育: "sports",
+  商业: "business",
+  加密货币: "crypto",
+  更多: "more",
+};
+
+const CATEGORY_NAME_MAP: Record<string, string> = {
+  tech: "科技",
+  entertainment: "娱乐",
+  politics: "时政",
+  weather: "天气",
+  sports: "体育",
+  crypto: "加密货币",
+  business: "商业",
+  more: "更多",
+};
 
 const DRAFT_KEY = "admin_prediction_new_draft_v1";
-import { useCategories } from "@/hooks/useQueries";
 
 export default function AdminCreatePredictionPage() {
   const router = useRouter();
   const { account, siweLogin } = useWallet();
   const profileCtx = useUserProfileOptional();
   const { data: categoriesData } = useCategories();
+  const tTrending = useTranslations("trending");
+  const tTrendingAdmin = useTranslations("trending.admin");
+  const tCommon = useTranslations("common");
   const [form, setForm] = useState<any>({
     title: "",
     description: "",
-    category: "科技",
+    category: "tech",
     deadline: "",
     minStake: 1,
     criteria: "",
@@ -63,8 +89,8 @@ export default function AdminCreatePredictionPage() {
     const payload = { form, outcomes, ts: Date.now() };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     setLastSaved(new Date());
-    setMsg("草稿已保存");
-    toast.success("已保存草稿", "您的进度已安全存储到本地");
+    setMsg(tTrendingAdmin("draft.savedMsg"));
+    toast.success(tTrendingAdmin("draft.savedToastTitle"), tTrendingAdmin("draft.savedToastDesc"));
     setShowDraftMenu(false);
   };
 
@@ -76,11 +102,22 @@ export default function AdminCreatePredictionPage() {
         const data = JSON.parse(saved);
         // 使用 setTimeout 确保 UI 渲染后再弹出 confirm，避免 React 严格模式下的双重调用干扰
         setTimeout(() => {
-          if (window.confirm("检测到上次未完成的草稿，是否继续？")) {
-            if (data.form) setForm((prev: any) => ({ ...prev, ...data.form }));
+          if (window.confirm(tTrendingAdmin("draft.restoreConfirm"))) {
+            if (data.form)
+              setForm((prev: any) => {
+                const next = { ...prev, ...data.form };
+                const rawCategory = String(next.category || "");
+                if (rawCategory) {
+                  next.category = CATEGORY_ID_MAP[rawCategory] || rawCategory;
+                }
+                return next;
+              });
             if (data.outcomes) setOutcomes(data.outcomes);
             if (data.ts) setLastSaved(new Date(data.ts));
-            toast.success("已恢复草稿", "您可以继续编辑上次的内容");
+            toast.success(
+              tTrendingAdmin("draft.restoredToastTitle"),
+              tTrendingAdmin("draft.restoredToastDesc")
+            );
           }
         }, 100);
       } catch (e) {
@@ -106,12 +143,12 @@ export default function AdminCreatePredictionPage() {
 
   // 4. 一键重置
   const clearDraft = () => {
-    if (!window.confirm("确定要清空当前草稿吗？此操作无法撤销，所有内容将丢失。")) return;
+    if (!window.confirm(tTrendingAdmin("draft.clearConfirm"))) return;
     localStorage.removeItem(DRAFT_KEY);
     setForm({
       title: "",
       description: "",
-      category: "科技",
+      category: "tech",
       deadline: "",
       minStake: 1,
       criteria: "",
@@ -119,7 +156,7 @@ export default function AdminCreatePredictionPage() {
     });
     setOutcomes([{ label: "Yes" }, { label: "No" }]);
     setLastSaved(null);
-    setMsg("草稿已清空");
+    setMsg(tTrendingAdmin("draft.clearedMsg"));
   };
 
   const setField = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -133,16 +170,18 @@ export default function AdminCreatePredictionPage() {
       setSubmitting(true);
       setMsg(null);
       if (!account) {
-        setMsg("请先连接钱包");
+        setMsg(tCommon("connectWallet"));
         return;
       }
       try {
         await siweLogin();
       } catch {}
+      const categoryId = String(form.category || "");
+      const categoryName = CATEGORY_NAME_MAP[categoryId] || categoryId;
       const payload: any = {
         title: form.title,
         description: form.description,
-        category: form.category,
+        category: categoryName,
         deadline: form.deadline,
         minStake: Number(form.minStake),
         criteria: form.criteria,
@@ -157,14 +196,14 @@ export default function AdminCreatePredictionPage() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.success) {
-        setMsg(String(j?.message || "创建失败"));
+        setMsg(String(j?.message || tTrendingAdmin("createFailed")));
         return;
       }
-      setMsg("创建成功");
+      setMsg(tTrendingAdmin("createSuccess"));
       const id = Number(j?.data?.id);
       if (Number.isFinite(id)) router.push(`/prediction/${id}`);
     } catch (e: any) {
-      setMsg(String(e?.message || e || "创建失败"));
+      setMsg(String(e?.message || e || tTrendingAdmin("createFailed")));
     } finally {
       setSubmitting(false);
     }
@@ -189,21 +228,25 @@ export default function AdminCreatePredictionPage() {
                 <Sparkles className="w-6 h-6" />
               </div>
               <div className="px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-[10px] font-black text-brand uppercase tracking-widest">
-                Admin Console
+                {tTrendingAdmin("page.badge")}
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <h1 className="text-4xl font-black text-slate-800 tracking-tight">创建预测事件</h1>
+              <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+                {tTrending("actions.createPrediction")}
+              </h1>
               {/* 3. 状态反馈 */}
               {lastSaved && (
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white/50 px-3 py-1.5 rounded-full border border-white shadow-sm animate-in fade-in duration-500">
                   <Save className="w-3.5 h-3.5 text-brand" />
-                  <span>自动保存于 {lastSaved.toLocaleTimeString()}</span>
+                  <span>
+                    {tTrendingAdmin("draft.autoSavedPrefix")} {lastSaved.toLocaleTimeString()}
+                  </span>
                 </div>
               )}
             </div>
             <p className="text-slate-500 mt-2 font-bold max-w-md leading-relaxed">
-              在这里配置全球预测市场的核心数据。请确保规则描述准确且无歧义。
+              {tTrendingAdmin("page.description")}
             </p>
           </div>
           <Button
@@ -211,7 +254,7 @@ export default function AdminCreatePredictionPage() {
             onClick={() => router.push("/trending")}
             className="rounded-2xl shadow-soft"
           >
-            返回列表
+            {tTrendingAdmin("page.backToList")}
           </Button>
         </div>
 
@@ -236,19 +279,19 @@ export default function AdminCreatePredictionPage() {
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    <Type className="w-3.5 h-3.5" /> 预测标题
+                    <Type className="w-3.5 h-3.5" /> {tTrendingAdmin("fieldTitle")}
                   </label>
                   <input
                     value={form.title}
                     onChange={(e) => setField("title", e.target.value)}
                     className="input-base !bg-white/60 font-bold text-lg"
-                    placeholder="例如：2025年比特币价格是否会突破15万美元？"
+                    placeholder={tTrendingAdmin("fieldTitlePlaceholder")}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5" /> 领域分类
+                    <Layers className="w-3.5 h-3.5" /> {tTrendingAdmin("fieldCategory")}
                   </label>
                   <div className="relative">
                     <select
@@ -262,22 +305,30 @@ export default function AdminCreatePredictionPage() {
                           if (!name) {
                             return null;
                           }
+                          const id = CATEGORY_ID_MAP[name] || name;
+                          const labelKey = String(id || "");
+                          const label =
+                            labelKey && labelKey !== name
+                              ? tTrending(`category.${labelKey}`)
+                              : name;
                           return (
-                            <option key={name} value={name}>
-                              {name}
+                            <option key={id} value={id}>
+                              {label}
                             </option>
                           );
                         })
                       ) : (
                         <>
-                          <option value="科技">科技 Technology</option>
-                          <option value="娱乐">娱乐 Entertainment</option>
-                          <option value="时政">时政 Politics</option>
-                          <option value="天气">天气 Weather</option>
-                          <option value="体育">体育 Sports</option>
-                          <option value="商业">商业 Business</option>
-                          <option value="加密货币">加密货币 Crypto</option>
-                          <option value="更多">更多 More</option>
+                          <option value="tech">{tTrending("category.tech")}</option>
+                          <option value="entertainment">
+                            {tTrending("category.entertainment")}
+                          </option>
+                          <option value="politics">{tTrending("category.politics")}</option>
+                          <option value="weather">{tTrending("category.weather")}</option>
+                          <option value="sports">{tTrending("category.sports")}</option>
+                          <option value="business">{tTrending("category.business")}</option>
+                          <option value="crypto">{tTrending("category.crypto")}</option>
+                          <option value="more">{tTrending("category.more")}</option>
                         </>
                       )}
                     </select>
@@ -289,18 +340,18 @@ export default function AdminCreatePredictionPage() {
 
                 <div className="space-y-2">
                   <DatePicker
-                    label="截止时间"
+                    label={tTrendingAdmin("fieldDeadline")}
                     value={form.deadline}
                     onChange={(val) => setField("deadline", val)}
                     includeTime={true}
-                    placeholder="选择预测截止时间"
+                    placeholder={tTrendingAdmin("deadlinePlaceholder")}
                     className="w-full"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    <Coins className="w-3.5 h-3.5" /> 最小参与金额 (USDC)
+                    <Coins className="w-3.5 h-3.5" /> {tTrendingAdmin("fieldMinStakeLabel")}
                   </label>
                   <input
                     type="number"
@@ -319,33 +370,37 @@ export default function AdminCreatePredictionPage() {
                   <AlignLeft className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">详细规则</h3>
-                  <p className="text-xs font-bold text-slate-400">描述预测背景与判定准则</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {tTrendingAdmin("section.detailsTitle")}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400">
+                    {tTrendingAdmin("section.detailsSubtitle")}
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1">
-                    事件背景描述
+                    {tTrendingAdmin("fieldDescription")}
                   </label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setField("description", e.target.value)}
                     className="input-base !bg-white/60 min-h-[120px] resize-none leading-relaxed font-medium"
-                    placeholder="请详细描述预测事件的背景、范围以及其他重要信息..."
+                    placeholder={tTrendingAdmin("fieldDescriptionPlaceholder")}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    <Scale className="w-3.5 h-3.5" /> 判定标准 (Oracle Criteria)
+                    <Scale className="w-3.5 h-3.5" /> {tTrendingAdmin("fieldCriteria")}
                   </label>
                   <input
                     value={form.criteria}
                     onChange={(e) => setField("criteria", e.target.value)}
                     className="input-base !bg-white/60 font-bold"
-                    placeholder="例如：以 CoinMarketCap 在截止时刻的收盘价格为准"
+                    placeholder={tTrendingAdmin("fieldCriteriaPlaceholder")}
                   />
                 </div>
               </div>
@@ -358,8 +413,12 @@ export default function AdminCreatePredictionPage() {
                   <Settings2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">预测类型与选项</h3>
-                  <p className="text-xs font-bold text-slate-400">配置用户可以选择的预测结果</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {tTrendingAdmin("section.typeTitle")}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400">
+                    {tTrendingAdmin("section.typeSubtitle")}
+                  </p>
                 </div>
               </div>
 
@@ -373,7 +432,7 @@ export default function AdminCreatePredictionPage() {
                         : "text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    二元预测 (Binary)
+                    {tTrendingAdmin("type.binary")}
                   </button>
                   <button
                     onClick={() => setField("type", "multi")}
@@ -383,20 +442,22 @@ export default function AdminCreatePredictionPage() {
                         : "text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    多元预测 (Multi)
+                    {tTrendingAdmin("type.multi")}
                   </button>
                 </div>
 
                 {form.type === "multi" && (
                   <div className="bg-slate-50/50 rounded-[2rem] p-8 border border-slate-200/60 space-y-6">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-black text-slate-800">选项列表管理</div>
+                      <div className="text-sm font-black text-slate-800">
+                        {tTrendingAdmin("multi.optionsTitle")}
+                      </div>
                       <button
                         type="button"
                         onClick={onAddOutcome}
                         className="px-4 py-2 bg-brand/10 text-brand font-black rounded-xl text-[10px] uppercase tracking-wider hover:bg-brand/20 transition-all flex items-center gap-2 border border-brand/10"
                       >
-                        <Plus className="w-3.5 h-3.5" /> 添加选项
+                        <Plus className="w-3.5 h-3.5" /> {tTrendingAdmin("multi.addOption")}
                       </button>
                     </div>
 
@@ -431,7 +492,7 @@ export default function AdminCreatePredictionPage() {
                               <input
                                 value={o.description || ""}
                                 onChange={(e) => onOutcomeChange(i, "description", e.target.value)}
-                                placeholder="补充描述"
+                                placeholder={tTrendingAdmin("multi.optionDescriptionPlaceholder")}
                                 className="w-full bg-transparent border-none focus:ring-0 text-xs text-slate-600 p-0 placeholder:text-slate-400 font-medium"
                               />
                             </div>
@@ -455,7 +516,7 @@ export default function AdminCreatePredictionPage() {
                               <input
                                 value={o.image_url || ""}
                                 onChange={(e) => onOutcomeChange(i, "image_url", e.target.value)}
-                                placeholder="图片链接"
+                                placeholder={tTrendingAdmin("multi.optionImagePlaceholder")}
                                 className="w-full bg-transparent border-none focus:ring-0 text-xs text-slate-600 p-0 placeholder:text-slate-400 font-medium"
                               />
                             </div>
@@ -473,7 +534,7 @@ export default function AdminCreatePredictionPage() {
               <div className="flex flex-col gap-2 relative">
                 <div className="flex items-center gap-3 text-xs font-bold text-slate-400 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
                   <AlertCircle className="w-4 h-4 text-amber-500" />
-                  <span>重要：发布后部分关键信息（如标题、截止日期）将无法修改。</span>
+                  <span>{tTrendingAdmin("page.immutableWarning")}</span>
                 </div>
 
                 {msg && (
@@ -500,7 +561,7 @@ export default function AdminCreatePredictionPage() {
                     className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-brand transition-colors px-3 py-2 rounded-lg hover:bg-brand/5 border border-transparent hover:border-brand/10"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    草稿操作
+                    {tTrendingAdmin("draft.menuLabel")}
                     <ChevronUp
                       className={`w-3.5 h-3.5 transition-transform ${showDraftMenu ? "rotate-180" : ""}`}
                     />
@@ -509,7 +570,7 @@ export default function AdminCreatePredictionPage() {
                   {showDraftMenu && (
                     <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
                       <div className="text-[10px] font-black text-slate-400 px-2 py-1 uppercase tracking-wider mb-1">
-                        草稿箱管理
+                        {tTrendingAdmin("draft.menuTitle")}
                       </div>
                       <button
                         type="button"
@@ -517,7 +578,7 @@ export default function AdminCreatePredictionPage() {
                         className="w-full flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-brand px-2 py-2 rounded-lg hover:bg-brand/5 transition-colors text-left"
                       >
                         <Save className="w-3.5 h-3.5" />
-                        保存当前草稿
+                        {tTrendingAdmin("draft.saveCurrent")}
                       </button>
 
                       {lastSaved && (
@@ -530,7 +591,7 @@ export default function AdminCreatePredictionPage() {
                           className="w-full flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-red-500 px-2 py-2 rounded-lg hover:bg-red-50 transition-colors text-left mt-1"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          放弃并重置
+                          {tTrendingAdmin("draft.reset")}
                         </button>
                       )}
                     </div>
@@ -547,7 +608,7 @@ export default function AdminCreatePredictionPage() {
                     <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
                     <>
-                      立即创建 <ArrowRight className="w-5 h-5 ml-2" />
+                      {tTrendingAdmin("page.submit")} <ArrowRight className="w-5 h-5 ml-2" />
                     </>
                   )}
                 </Button>
