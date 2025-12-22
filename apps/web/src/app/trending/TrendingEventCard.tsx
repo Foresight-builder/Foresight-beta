@@ -2,65 +2,8 @@ import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
+import { FollowButton } from "@/components/ui/FollowButton";
 import type { TrendingEvent } from "./trendingModel";
-
-type FollowButtonProps = {
-  eventId: number | null;
-  isFollowed: boolean;
-  onToggleFollow: (event: React.MouseEvent, eventId: number) => void;
-};
-
-function FollowButton({ eventId, isFollowed, onToggleFollow }: FollowButtonProps) {
-  if (eventId == null || !Number.isFinite(eventId)) return null;
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onToggleFollow(e, eventId);
-  };
-
-  return (
-    <motion.button
-      data-event-index={eventId}
-      onClick={handleClick}
-      className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      animate={isFollowed ? "liked" : "unliked"}
-      variants={{
-        liked: {
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          transition: { duration: 0.3 },
-        },
-        unliked: {
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          transition: { duration: 0.3 },
-        },
-      }}
-    >
-      <motion.div
-        animate={isFollowed ? "liked" : "unliked"}
-        variants={{
-          liked: {
-            scale: [1, 1.2, 1],
-            transition: {
-              duration: 0.6,
-              ease: "easeInOut",
-            },
-          },
-          unliked: {
-            scale: 1,
-            transition: { duration: 0.3 },
-          },
-        }}
-      >
-        <Heart
-          className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
-        />
-      </motion.div>
-    </motion.button>
-  );
-}
 
 type AdminActionsProps = {
   eventId: number | null;
@@ -175,7 +118,18 @@ export function TrendingEventCard({
       whileTap={{ scale: 0.99 }}
       onClick={handleCardClick}
     >
-      <FollowButton eventId={eventId} isFollowed={isFollowed} onToggleFollow={onToggleFollow} />
+      {eventId != null && Number.isFinite(eventId) && (
+        <FollowButton
+          isFollowed={isFollowed}
+          dataEventId={eventId}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFollow(e, eventId);
+          }}
+          className="absolute top-3 left-3 z-10"
+        />
+      )}
 
       {isAdmin && (
         <AdminActions

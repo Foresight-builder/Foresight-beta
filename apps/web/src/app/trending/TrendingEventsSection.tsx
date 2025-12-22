@@ -1,7 +1,13 @@
 import React from "react";
-import { CheckCircle, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
+import {
+  AllLoadedNotice,
+  InfiniteScrollSentinel,
+  ListError,
+  ListLoading,
+} from "@/components/ui/ListStates";
 import type { TrendingEvent } from "./trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
 
@@ -28,40 +34,6 @@ type TrendingEventsSectionProps = {
   tTrendingAdmin: (key: string) => string;
   tEvents: (key: string) => string;
 };
-
-type TrendingEventsLoadingProps = {
-  message: string;
-};
-
-function TrendingEventsLoading({ message }: TrendingEventsLoadingProps) {
-  return (
-    <div className="text-center py-12">
-      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
-      <p className="mt-4 text-gray-600">{message}</p>
-    </div>
-  );
-}
-
-type TrendingEventsErrorProps = {
-  error: unknown;
-  title: string;
-  reloadLabel: string;
-};
-
-function TrendingEventsError({ error, title, reloadLabel }: TrendingEventsErrorProps) {
-  return (
-    <div className="text-center py-12">
-      <div className="text-red-500 text-lg mb-2">{title}</div>
-      <p className="text-gray-600">{(error as any)?.message || String(error)}</p>
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
-      >
-        {reloadLabel}
-      </button>
-    </div>
-  );
-}
 
 type TrendingEventsEmptyProps = {
   title: string;
@@ -153,64 +125,6 @@ function TrendingEventsGrid({
   );
 }
 
-type TrendingEventsLoadMoreSentinelProps = {
-  hasMore: boolean;
-  loadingMore: boolean;
-  observerTargetRef: React.Ref<HTMLDivElement>;
-  loadMoreLabel: string;
-  scrollHintLabel: string;
-};
-
-function TrendingEventsLoadMoreSentinel({
-  hasMore,
-  loadingMore,
-  observerTargetRef,
-  loadMoreLabel,
-  scrollHintLabel,
-}: TrendingEventsLoadMoreSentinelProps) {
-  if (!hasMore) return null;
-
-  return (
-    <div ref={observerTargetRef} className="flex justify-center py-8">
-      {loadingMore ? (
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-gray-600 text-sm font-medium">{loadMoreLabel}</span>
-        </div>
-      ) : (
-        <div className="text-gray-400 text-sm">{scrollHintLabel}</div>
-      )}
-    </div>
-  );
-}
-
-type TrendingEventsAllLoadedNoticeProps = {
-  totalCount: number;
-  prefixLabel: string;
-  suffixLabel: string;
-};
-
-function TrendingEventsAllLoadedNotice({
-  totalCount,
-  prefixLabel,
-  suffixLabel,
-}: TrendingEventsAllLoadedNoticeProps) {
-  if (totalCount <= 0) return null;
-
-  return (
-    <div className="text-center py-8">
-      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm">
-        <CheckCircle className="w-4 h-4" />
-        <span>
-          {prefixLabel}
-          {totalCount}
-          {suffixLabel}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function TrendingEventsSection({
   loading,
   error,
@@ -242,10 +156,10 @@ export function TrendingEventsSection({
         </div>
       )}
 
-      {loading && <TrendingEventsLoading message={tTrending("state.loading")} />}
+      {loading && <ListLoading message={tTrending("state.loading")} />}
 
       {error && (
-        <TrendingEventsError
+        <ListError
           error={error}
           title={tTrending("state.errorTitle")}
           reloadLabel={tTrending("state.reload")}
@@ -280,7 +194,7 @@ export function TrendingEventsSection({
                 tEvents={tEvents}
               />
 
-              <TrendingEventsLoadMoreSentinel
+              <InfiniteScrollSentinel
                 hasMore={hasMore}
                 loadingMore={loadingMore}
                 observerTargetRef={observerTargetRef}
@@ -289,7 +203,7 @@ export function TrendingEventsSection({
               />
 
               {!hasMore && sortedEvents.length > 0 && (
-                <TrendingEventsAllLoadedNotice
+                <AllLoadedNotice
                   totalCount={sortedEvents.length}
                   prefixLabel={tTrending("state.allLoadedPrefix")}
                   suffixLabel={tTrending("state.allLoadedSuffix")}

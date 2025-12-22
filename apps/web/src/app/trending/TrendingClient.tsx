@@ -1,21 +1,21 @@
 "use client";
 
 import React, { useRef, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
-import FilterSort, { type FilterSortState } from "@/components/FilterSort";
+import type { FilterSortState } from "@/components/FilterSort";
+import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { usePredictions } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
 import {
   HERO_EVENTS,
   TRENDING_CATEGORIES,
   CATEGORY_MAPPING,
   type Prediction,
-  fetchPredictions,
 } from "./trendingModel";
 import { createSmartClickEffect, createCategoryParticlesAtCardClick } from "./trendingAnimations";
 import { useTrendingCanvas, useBackToTop } from "./useTrendingCanvas";
@@ -95,58 +95,6 @@ function getActiveHeroSlideData(
   };
 }
 
-type BackToTopButtonProps = {
-  show: boolean;
-  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  label: string;
-};
-
-function BackToTopButton({ show, onClick, label }: BackToTopButtonProps) {
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0, opacity: 0 }}
-          onClick={onClick}
-          className="fixed bottom-8 right-8 z-50 w-10 h-10 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
-          whileHover={{
-            scale: 1.1,
-            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.15)",
-          }}
-          whileTap={{ scale: 0.95 }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 17,
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-pink-100/40 group-hover:from-white/60 group-hover:to-pink-100/60 transition-all duration-300" />
-          <div className="relative z-10 flex items-center justify-center w-full h-full">
-            <div className="animate-bounce">
-              <svg
-                className="w-4 h-4 text-gray-700"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="18 15 12 9 6 15" />
-              </svg>
-            </div>
-          </div>
-          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-            {label}
-          </div>
-        </motion.button>
-      )}
-    </AnimatePresence>
-  );
-}
-
 export default function TrendingPage({
   initialPredictions,
 }: {
@@ -164,13 +112,7 @@ export default function TrendingPage({
     data: predictions = [],
     isLoading: loading,
     error,
-  } = useQuery<Prediction[]>({
-    queryKey: ["predictions"],
-    queryFn: fetchPredictions,
-    initialData: initialPredictions,
-    staleTime: 1000 * 60,
-    enabled: !initialPredictions,
-  });
+  } = usePredictions(undefined, { initialData: initialPredictions as Prediction[] | undefined });
 
   const tErrors = useTranslations("errors");
   const tTrending = useTranslations("trending");
@@ -193,11 +135,9 @@ export default function TrendingPage({
   const {
     searchQuery,
     setSearchQuery,
-    allEvents,
     displayEvents,
     sortedEvents,
     visibleEvents,
-    totalEventsCount,
     loadingMore,
     hasMore,
     observerTargetRef,

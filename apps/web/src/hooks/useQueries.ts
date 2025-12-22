@@ -73,7 +73,10 @@ export function useCategories() {
 /**
  * 获取预测列表
  */
-export function usePredictions(params?: { category?: string; status?: string; limit?: number }) {
+export function usePredictions(
+  params?: { category?: string; status?: string; limit?: number },
+  options?: { initialData?: any[] }
+) {
   const query = new URLSearchParams();
   if (params?.category) query.set("category", params.category);
   if (params?.status) query.set("status", params.status);
@@ -83,6 +86,7 @@ export function usePredictions(params?: { category?: string; status?: string; li
     queryKey: [...QueryKeys.predictions, params],
     queryFn: () => fetcher<any[]>(`/api/predictions?${query.toString()}`),
     staleTime: 3 * 60 * 1000, // 3分钟
+    initialData: options?.initialData,
   });
 }
 

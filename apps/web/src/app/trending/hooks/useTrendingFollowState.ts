@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { MouseEvent } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { followPrediction, unfollowPrediction } from "@/lib/follows";
+import { toggleFollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 import { createSmartClickEffect, createHeartParticles } from "../trendingAnimations";
 import type { TrendingEvent } from "../trendingModel";
@@ -44,11 +44,7 @@ export function useTrendingFollowState(
       });
 
       try {
-        if (wasFollowing) {
-          await unfollowPrediction(normalizedId, accountNorm);
-        } else {
-          await followPrediction(normalizedId, accountNorm);
-        }
+        await toggleFollowPrediction(wasFollowing, normalizedId, accountNorm);
       } catch (err) {
         setFollowError(
           (err as any)?.message ? String((err as any).message) : tErrors("followActionFailed")

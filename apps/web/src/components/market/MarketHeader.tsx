@@ -10,11 +10,11 @@ import {
   Clock,
   Info,
   Layers,
-  Star,
   TrendingUp,
   User,
   Users,
 } from "lucide-react";
+import { FollowButton } from "@/components/ui/FollowButton";
 import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
 import Link from "next/link";
 import { useTranslations } from "@/lib/i18n";
@@ -25,6 +25,7 @@ interface MarketHeaderProps {
   following: boolean;
   onFollow: () => void;
   followLoading: boolean;
+  followError?: string | null;
 }
 
 export function MarketHeader({
@@ -33,6 +34,7 @@ export function MarketHeader({
   following,
   onFollow,
   followLoading,
+  followError,
 }: MarketHeaderProps) {
   const t = useTranslations();
   const tMarketHeader = useTranslations("market.header");
@@ -107,20 +109,25 @@ export function MarketHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onFollow}
-            disabled={followLoading}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
-              following
-                ? "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
-                : "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-200"
-            }`}
-          >
-            <Star className={`w-4 h-4 ${following ? "fill-current" : ""}`} />
-            {following ? tMarketHeader("following") : tMarketHeader("follow")}
-            <span className="ml-1 opacity-80 text-xs">{followersCount}</span>
-          </button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/80 border border-gray-100 shadow-sm">
+              <FollowButton
+                isFollowed={following}
+                onClick={onFollow as any}
+                dataEventId={prediction.id}
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-700">
+                  {following ? tMarketHeader("following") : tMarketHeader("follow")}
+                </span>
+                <span className="text-[11px] text-gray-400">{followersCount}</span>
+              </div>
+            </div>
+          </div>
+          {followError && (
+            <div className="text-[11px] text-red-500 mt-1 max-w-xs text-right">{followError}</div>
+          )}
         </div>
       </div>
 

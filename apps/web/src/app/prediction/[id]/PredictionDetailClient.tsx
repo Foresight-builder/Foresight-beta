@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
-import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
+import { useFollowPrediction } from "@/hooks/useFollowPrediction";
 import { toast } from "@/lib/toast";
 import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
@@ -158,9 +158,11 @@ export default function PredictionDetailClient() {
   // User State
   const [balance, setBalance] = useState<string>("0.00"); // Mock or fetch real balance
   const [mintInput, setMintInput] = useState<string>("");
-  const [following, setFollowing] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followLoading, setFollowLoading] = useState(false);
+
+  const predictionId = params.id ? Number(params.id) : undefined;
+
+  const { following, followersCount, followLoading, followError, toggleFollow } =
+    useFollowPrediction(predictionId, account || undefined);
 
   const refreshUserOrders = useCallback(async () => {
     if (!market || !account) return;
@@ -226,15 +228,6 @@ export default function PredictionDetailClient() {
     loadMarket();
   }, [params.id]);
 
-  // Effects: Fetch Follow Status
-  useEffect(() => {
-    if (!account || !params.id) return;
-    getFollowStatus(Number(params.id), account).then((res) => {
-      setFollowing(res.following);
-      setFollowersCount(res.followersCount);
-    });
-  }, [params.id, account]);
-
   // Effects: Poll OrderBook
   useEffect(() => {
     if (!market) return;
@@ -277,19 +270,6 @@ export default function PredictionDetailClient() {
     const timer = setInterval(refreshUserOrders, 5000);
     return () => clearInterval(timer);
   }, [market, account, params.id, refreshUserOrders]);
-
-  // Actions
-  const handleFollow = async () => {
-    if (!account) return; // Trigger login
-    setFollowLoading(true);
-    try {
-      const newStatus = await toggleFollowPrediction(following, Number(params.id), account);
-      setFollowing(newStatus);
-      setFollowersCount((p) => (newStatus ? p + 1 : p - 1));
-    } finally {
-      setFollowLoading(false);
-    }
-  };
 
   const cancelOrder = async (salt: string) => {
     if (!account || !market) return;
@@ -634,8 +614,9 @@ export default function PredictionDetailClient() {
             prediction={prediction}
             followersCount={followersCount}
             following={following}
-            onFollow={handleFollow}
+            onFollow={toggleFollow}
             followLoading={followLoading}
+            followError={followError}
           />
         </div>
 
