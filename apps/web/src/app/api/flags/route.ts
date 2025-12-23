@@ -3,11 +3,6 @@ import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const client = getClient();

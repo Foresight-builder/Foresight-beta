@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
-
-function toNum(v: any): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 // POST /api/forum/vote  body: { type: 'thread'|'comment', id: number, dir: 'up'|'down' }
 function getSessionAddressFromCookie(req: NextRequest): string | null {
@@ -24,7 +20,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as any;
     const type = body?.type === "comment" ? "comment" : "thread";
     const dir = body?.dir === "down" ? "down" : "up";
-    const id = toNum(body?.id);
+    const id = normalizeId(body?.id);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
     const userAddr = getSessionAddressFromCookie(req);
     if (!userAddr) return NextResponse.json({ message: "未登录或会话失效" }, { status: 401 });

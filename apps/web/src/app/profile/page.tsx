@@ -21,27 +21,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import Link from "next/link";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { buildDiceBearUrl } from "@/lib/dicebear";
 
 // Mock data for browsing history (in a real app this would come from local storage or API)
 const MOCK_HISTORY = [
   {
     id: "1",
     title: "Bitcoin 会在 2024 年底突破 10 万美元吗？",
-    image_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bitcoin",
+    image_url: buildDiceBearUrl("Bitcoin"),
     viewed_at: "10分钟前",
     category: "科技",
   },
   {
     id: "2",
     title: "SpaceX 星舰第五次试飞能否成功回收？",
-    image_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=SpaceX",
+    image_url: buildDiceBearUrl("SpaceX"),
     viewed_at: "2小时前",
     category: "科技",
   },
   {
     id: "3",
     title: "2024 欧洲杯冠军预测",
-    image_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Euro2024",
+    image_url: buildDiceBearUrl("Euro2024"),
     viewed_at: "昨天",
     category: "体育",
   },
@@ -187,7 +188,7 @@ export default function ProfilePage() {
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 p-[3px] mb-4 shadow-lg shadow-fuchsia-500/30 hover:scale-105 transition-transform duration-300">
                   <div className="w-full h-full rounded-full bg-white p-1 flex items-center justify-center overflow-hidden">
                     <img
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${account || "User"}`}
+                      src={buildDiceBearUrl(account || "User")}
                       alt="Avatar"
                       className="w-full h-full object-cover rounded-full bg-gray-50"
                     />

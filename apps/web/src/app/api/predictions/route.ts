@@ -1,6 +1,7 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabase, type Database } from "@/lib/supabase";
+import { buildDiceBearUrl } from "@/lib/dicebear";
 import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 
 // 预测列表可以短暂缓存
@@ -331,18 +332,15 @@ export async function POST(request: NextRequest) {
       } else if (body.imageUrl.startsWith("https://")) {
         imageUrl = body.imageUrl;
       } else {
-        // 生成基于标题的图片URL
         const seed = body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
-        imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-          seed
-        )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+        imageUrl = buildDiceBearUrl(
+          seed,
+          "&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20"
+        );
       }
     } else {
-      // 如果没有提供图片URL，根据标题生成图片
       const seed = body.title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "prediction";
-      imageUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-        seed
-      )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+      imageUrl = buildDiceBearUrl(seed, "&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20");
     }
 
     // 插入新的预测事件到Supabase数据库

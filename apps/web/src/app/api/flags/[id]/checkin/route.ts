@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const flagId = toNum(id);
+    const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
 
     const body = await parseRequestBody(req as any);

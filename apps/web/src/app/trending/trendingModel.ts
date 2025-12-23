@@ -1,4 +1,6 @@
 import { type FilterSortState } from "@/components/FilterSort";
+import { buildDiceBearUrl } from "@/lib/dicebear";
+import { normalizeId, isValidId } from "@/lib/ids";
 
 export type HeroEvent = {
   id: string;
@@ -144,6 +146,13 @@ export const ID_TO_CATEGORY_NAME: Record<string, string> = {
   more: "更多",
 };
 
+export const getFallbackEventImage = (title: string) =>
+  buildDiceBearUrl(title, "&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20");
+
+export const normalizeEventId = (value: unknown): number | null => normalizeId(value);
+
+export const isValidEventId = (id: number | null): id is number => isValidId(id);
+
 export const fetchPredictions = async () => {
   const res = await fetch("/api/predictions");
   const data = await res.json();
@@ -154,11 +163,7 @@ export const fetchPredictions = async () => {
 export const mapPredictionToEvent = (prediction: Prediction): TrendingEvent => {
   const minStake = Number(prediction.min_stake || 0);
   const insured = `${minStake} USDC`;
-  const image =
-    prediction.image_url ||
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-      prediction.title
-    )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+  const image = prediction.image_url || getFallbackEventImage(prediction.title);
 
   return {
     id: Number(prediction.id),

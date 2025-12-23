@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { parseRequestBody } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 // POST /api/forum/comments  body: { eventId, threadId, content, walletAddress, parentId? }
 export async function POST(req: Request) {
   try {
     const body = await parseRequestBody(req);
-    const eventId = toNum(body?.eventId);
-    const threadId = toNum(body?.threadId);
-    const parentId = body?.parentId == null ? null : toNum(body?.parentId);
+    const eventId = normalizeId(body?.eventId);
+    const threadId = normalizeId(body?.threadId);
+    const parentId = body?.parentId == null ? null : normalizeId(body?.parentId);
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");
     if (eventId === null || !threadId || !content.trim()) {

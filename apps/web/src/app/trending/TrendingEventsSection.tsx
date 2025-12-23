@@ -9,6 +9,7 @@ import {
   ListLoading,
 } from "@/components/ui/ListStates";
 import type { TrendingEvent } from "./trendingModel";
+import { normalizeEventId, isValidEventId } from "./trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
 
 type TrendingEventsSectionProps = {
@@ -91,8 +92,8 @@ function TrendingEventsGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {visibleEvents.map((product) => {
-        const eventId = Number(product.id);
-        const isValidId = Number.isFinite(eventId);
+        const eventId = normalizeEventId(product.id);
+        const isValidId = isValidEventId(eventId);
         const isFollowed = isValidId && followedEvents.has(eventId);
 
         return (

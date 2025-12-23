@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { parseRequestBody } from "@/lib/serverUtils";
+import { normalizeId } from "@/lib/ids";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -105,15 +106,10 @@ async function maybeAutoCreatePrediction(
       .eq("id", top.id);
 }
 
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
 // GET /api/forum?eventId=1
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const eventId = toNum(searchParams.get("eventId"));
+  const eventId = normalizeId(searchParams.get("eventId"));
   if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
   try {
     const client = getClient();
@@ -179,7 +175,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await parseRequestBody(req);
-    const eventId = toNum(body?.eventId);
+    const eventId = normalizeId(body?.eventId);
     const title = String(body?.title || "");
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");

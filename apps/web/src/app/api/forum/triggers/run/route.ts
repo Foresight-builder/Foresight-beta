@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
-
-function toNum(v: any): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 function actionLabel(v: string): string {
   const s = String(v || "");
   if (s === "价格达到") return "价格是否会达到";
@@ -18,7 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
-    const eventId = toNum(body?.eventId ?? searchParams.get("eventId"));
+    const eventId = normalizeId(body?.eventId ?? searchParams.get("eventId"));
     if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
     const client = getClient() as any;
     if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });

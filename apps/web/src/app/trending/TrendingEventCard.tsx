@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
+import { getFallbackEventImage, isValidEventId } from "./trendingModel";
 import type { TrendingEvent } from "./trendingModel";
 
 type AdminActionsProps = {
@@ -22,7 +23,7 @@ function AdminActions({
   editAriaLabel,
   deleteAriaLabel,
 }: AdminActionsProps) {
-  if (eventId == null || !Number.isFinite(eventId)) return null;
+  if (!isValidEventId(eventId)) return null;
 
   return (
     <div className="absolute top-3 right-3 z-10 flex gap-2">
@@ -73,20 +74,23 @@ export function TrendingEventCard({
   tTrendingAdmin,
   tEvents,
 }: TrendingEventCardProps) {
+  const stopClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     onCardClick(e, product.tag);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    stopClick(e);
     onEdit(e, product);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (eventId == null || !Number.isFinite(eventId)) return;
+    stopClick(e);
+    if (!isValidEventId(eventId)) return;
     onDelete(e, eventId);
   };
 
@@ -103,9 +107,7 @@ export function TrendingEventCard({
         onError={(e) => {
           const img = e.currentTarget as HTMLImageElement;
           img.onerror = null;
-          img.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-            product.title
-          )}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+          img.src = getFallbackEventImage(product.title);
         }}
       />
     </div>
@@ -118,13 +120,13 @@ export function TrendingEventCard({
       whileTap={{ scale: 0.99 }}
       onClick={handleCardClick}
     >
-      {eventId != null && Number.isFinite(eventId) && (
+      {isValidEventId(eventId) && (
         <FollowButton
           isFollowed={isFollowed}
           dataEventId={eventId}
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            stopClick(e);
+            if (!isValidEventId(eventId)) return;
             onToggleFollow(e, eventId);
           }}
           className="absolute top-3 left-3 z-10"
@@ -142,7 +144,7 @@ export function TrendingEventCard({
         />
       )}
 
-      {typeof eventId === "number" && Number.isFinite(eventId) ? (
+      {isValidEventId(eventId) ? (
         <Link href={`/prediction/${eventId}`}>{imageElement}</Link>
       ) : (
         imageElement

@@ -1,5 +1,3 @@
-// 关注功能的数据访问层封装
-
 export interface FollowStatus {
   following: boolean;
   followersCount: number;
@@ -92,6 +90,8 @@ export async function toggleFollowPrediction(
   return true;
 }
 
+import { normalizeId } from "@/lib/ids";
+
 export async function getFollowersCountsBatch(eventIds: number[]): Promise<Record<number, number>> {
   const res = await fetch("/api/follows/counts", {
     method: "POST",
@@ -105,8 +105,8 @@ export async function getFollowersCountsBatch(eventIds: number[]): Promise<Recor
   const data = await parseJson<{ counts?: Record<string, number> } & ApiErrorBody>(res);
   const counts: Record<number, number> = {};
   Object.entries(data.counts || {}).forEach(([k, v]) => {
-    const id = Number(k);
-    if (Number.isFinite(id)) counts[id] = Number(v || 0);
+    const id = normalizeId(k);
+    if (id != null) counts[id] = Number(v || 0);
   });
   return counts;
 }

@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
+import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 
 interface ProposalDetailPageProps {
   params: Promise<{
@@ -14,8 +15,8 @@ interface ProposalDetailPageProps {
 export default function ProposalDetailPage({ params }: ProposalDetailPageProps) {
   const router = useRouter();
   const resolvedParams = React.use(params);
-  const idNum = Number(resolvedParams.id);
-  const isValidId = Number.isFinite(idNum) && idNum > 0;
+  const idNum = normalizePositiveId(resolvedParams.id);
+  const isValidId = isValidPositiveId(idNum);
 
   if (!isValidId) {
     return (
@@ -59,7 +60,7 @@ export default function ProposalDetailPage({ params }: ProposalDetailPageProps) 
         </div>
 
         <div className="flex-1 overflow-y-auto pb-8 scrollbar-hide">
-          <ForumSection eventId={0} threadId={idNum} hideCreate />
+          <ForumSection eventId={0} threadId={idNum || 0} hideCreate />
         </div>
       </div>
     </div>

@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const proposalId = toNum(searchParams.get("proposalId"));
+    const proposalId = normalizeId(searchParams.get("proposalId"));
     if (!proposalId) return NextResponse.json({ message: "proposalId 必填" }, { status: 400 });
     const client = getClient();
     if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
@@ -35,7 +31,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req);
-    const proposalId = toNum(body?.proposalId);
+    const proposalId = normalizeId(body?.proposalId);
     const content = String(body?.content || "");
     const userId = String(body?.userId || "");
     if (!proposalId || !content.trim() || !userId.trim()) {

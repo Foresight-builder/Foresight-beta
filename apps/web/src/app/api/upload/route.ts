@@ -1,6 +1,7 @@
 // 图片上传API路由
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { buildDiceBearUrl } from "@/lib/dicebear";
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,10 +107,8 @@ export async function POST(request: NextRequest) {
 
       publicUrl = publicUrlData.publicUrl;
     } catch (storageError) {
-      // 备用方案：使用基于钱包地址和时间的确定性图片
       const seed = `${walletAddress}-${Date.now()}`;
-      // 使用DiceBear API生成头像风格的图片
-      publicUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&size=256&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+      publicUrl = buildDiceBearUrl(seed, "&size=256&backgroundColor=b6e3f4,c0aede,d1d4f9");
     }
 
     // 返回成功响应

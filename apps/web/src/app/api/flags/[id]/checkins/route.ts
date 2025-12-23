@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { logApiError } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const flagId = toNum(id);
+    const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const { searchParams } = new URL(req.url);
     const viewer = String(searchParams.get("viewer_id") || "").trim();

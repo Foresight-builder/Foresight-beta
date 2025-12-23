@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { parseRequestBody } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: pid } = await context.params;
-    const id = toNum(pid);
+    const id = normalizeId(pid);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
     const body = await parseRequestBody(req);
     const content = String(body?.content || "");
@@ -36,7 +32,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: pid } = await context.params;
-    const id = toNum(pid);
+    const id = normalizeId(pid);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
     const client = (supabaseAdmin || getClient()) as any;
     const { error } = await client.from("discussions").delete().eq("id", id);

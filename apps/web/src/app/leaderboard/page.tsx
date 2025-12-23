@@ -17,6 +17,8 @@ import {
   BarChart2,
 } from "lucide-react";
 
+import { buildDiceBearUrl } from "@/lib/dicebear";
+
 // Enhanced Mock Data with History for Sparklines
 const leaderboardData = [
   {
@@ -25,8 +27,7 @@ const leaderboardData = [
     profit: "+8,240",
     winRate: "82%",
     trades: 142,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=YangZ&backgroundColor=FFD700&clothing=blazerAndShirt",
+    avatar: buildDiceBearUrl("YangZ", "&backgroundColor=FFD700&clothing=blazerAndShirt"),
     badge: "🏆 预言家",
     trend: "+12%",
     tags: ["High Volume", "Sniper"],
@@ -39,8 +40,7 @@ const leaderboardData = [
     profit: "+5,120",
     winRate: "75%",
     trades: 98,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=lkbhua24&backgroundColor=C0C0C0&clothing=hoodie",
+    avatar: buildDiceBearUrl("lkbhua24", "&backgroundColor=C0C0C0&clothing=hoodie"),
     badge: "🥈 策略家",
     trend: "+8%",
     tags: ["Consistent", "Macro"],
@@ -53,8 +53,7 @@ const leaderboardData = [
     profit: "+3,450",
     winRate: "68%",
     trades: 112,
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Dave_DeFi&backgroundColor=CD7F32&clothing=graphicShirt",
+    avatar: buildDiceBearUrl("Dave_DeFi", "&backgroundColor=CD7F32&clothing=graphicShirt"),
     badge: "🥉 新星",
     trend: "+15%",
     tags: ["Aggressive"],
@@ -67,7 +66,7 @@ const leaderboardData = [
     profit: "+2,890",
     winRate: "65%",
     trades: 87,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Eve_NFT&backgroundColor=b6e3f4",
+    avatar: buildDiceBearUrl("Eve_NFT", "&backgroundColor=b6e3f4"),
     trend: "+5%",
     tags: ["NFT Degen"],
     history: [45, 42, 48, 40, 38, 42, 45, 28],
@@ -78,7 +77,7 @@ const leaderboardData = [
     profit: "+1,920",
     winRate: "59%",
     trades: 65,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Frank_Whale&backgroundColor=c0aede",
+    avatar: buildDiceBearUrl("Frank_Whale", "&backgroundColor=c0aede"),
     trend: "-2%",
     tags: ["Whale"],
     history: [60, 58, 55, 52, 50, 48, 45, 19],
@@ -89,7 +88,7 @@ const leaderboardData = [
     profit: "+1,240",
     winRate: "62%",
     trades: 45,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Grace_Yield&backgroundColor=ffdfbf",
+    avatar: buildDiceBearUrl("Grace_Yield", "&backgroundColor=ffdfbf"),
     trend: "+3%",
     tags: ["Yield Farmer"],
     history: [20, 22, 25, 24, 26, 28, 30, 12],
@@ -100,7 +99,7 @@ const leaderboardData = [
     profit: "+980",
     winRate: "55%",
     trades: 32,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Helen_Stake&backgroundColor=d1d4f9",
+    avatar: buildDiceBearUrl("Helen_Stake", "&backgroundColor=d1d4f9"),
     trend: "+1%",
     tags: ["Staker"],
     history: [15, 16, 15, 17, 16, 18, 17, 9],
@@ -111,7 +110,7 @@ const leaderboardData = [
     profit: "+850",
     winRate: "51%",
     trades: 28,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ivan_Invest&backgroundColor=ffd5dc",
+    avatar: buildDiceBearUrl("Ivan_Invest", "&backgroundColor=ffd5dc"),
     trend: "+4%",
     tags: ["Investor"],
     history: [10, 12, 11, 13, 12, 14, 13, 8],
@@ -122,7 +121,7 @@ const leaderboardData = [
     profit: "+720",
     winRate: "48%",
     trades: 22,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack_Trade&backgroundColor=c0aede",
+    avatar: buildDiceBearUrl("Jack_Trade", "&backgroundColor=c0aede"),
     trend: "0%",
     tags: ["Trader"],
     history: [8, 8, 8, 9, 8, 9, 8, 7],
@@ -133,7 +132,7 @@ const leaderboardData = [
     profit: "+540",
     winRate: "45%",
     trades: 18,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kate_Hold&backgroundColor=b6e3f4",
+    avatar: buildDiceBearUrl("Kate_Hold", "&backgroundColor=b6e3f4"),
     trend: "-1%",
     tags: ["Hodler"],
     history: [10, 9, 8, 7, 6, 5, 6, 5],

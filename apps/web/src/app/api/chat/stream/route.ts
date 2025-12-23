@@ -1,14 +1,10 @@
 import { getMessagesByEvent } from "@/lib/localChatStore";
 import { logApiError } from "@/lib/serverUtils";
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
+import { normalizeId } from "@/lib/ids";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const eventId = toNum(searchParams.get("eventId"));
+  const eventId = normalizeId(searchParams.get("eventId"));
   if (!eventId) {
     return new Response("eventId required", { status: 400 });
   }

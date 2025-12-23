@@ -32,6 +32,7 @@ import CreateProposalModal from "./CreateProposalModal";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useQueries";
+import { normalizeId } from "@/lib/ids";
 
 // Fetch proposals (threads with eventId=0)
 const fetchProposals = async () => {
@@ -123,8 +124,8 @@ export default function ProposalsPage() {
   const userVotesMap: Record<number, "up" | "down"> = {};
   (userVotesData || []).forEach((v: any) => {
     if (v?.content_type === "thread" && v?.content_id != null) {
-      const idNum = Number(v.content_id);
-      if (Number.isFinite(idNum)) {
+      const idNum = normalizeId(v.content_id);
+      if (idNum != null) {
         userVotesMap[idNum] = String(v.vote_type) === "down" ? "down" : "up";
       }
     }

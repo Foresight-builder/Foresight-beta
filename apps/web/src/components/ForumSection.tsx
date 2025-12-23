@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
+import { normalizeId } from "@/lib/ids";
 
 interface ForumSectionProps {
   eventId: number;
@@ -120,9 +121,9 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       const data = await res.json();
       let list = Array.isArray(data?.threads) ? data.threads : [];
       if (threadId != null) {
-        const idNum = Number(threadId);
-        if (Number.isFinite(idNum)) {
-          list = list.filter((t: any) => Number(t.id) === idNum);
+        const idNum = normalizeId(threadId);
+        if (idNum != null) {
+          list = list.filter((t: any) => normalizeId(t.id) === idNum);
         }
       }
       setThreads(list);
