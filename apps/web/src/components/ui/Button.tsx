@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { cn } from "@/lib/cn";
 
 type Variant =
   | "primary"
@@ -11,10 +12,6 @@ type Variant =
   | "subtle"
   | "cta";
 type Size = "sm" | "md" | "lg";
-
-function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
