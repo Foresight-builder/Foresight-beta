@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   ArrowRightCircle,
@@ -65,9 +65,10 @@ export type HeroSearchInputProps = {
   value: string;
   placeholder: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 };
 
-export function HeroSearchInput({ value, placeholder, onChange }: HeroSearchInputProps) {
+export function HeroSearchInput({ value, placeholder, onChange, onKeyDown }: HeroSearchInputProps) {
   return (
     <div className="relative group w-full md:w-auto flex justify-center md:justify-end">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -79,6 +80,7 @@ export function HeroSearchInput({ value, placeholder, onChange }: HeroSearchInpu
         className="w-full md:w-64 pl-10 pr-4 py-2 bg-white/80 backdrop-blur-xl border border-white/60 rounded-full text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:bg-white transition-all hover:shadow-md"
         value={value}
         onChange={onChange}
+        onKeyDown={onKeyDown}
       />
     </div>
   );
@@ -199,12 +201,13 @@ export function HeroMainInfo({
   poolSizeLabel,
   participantsLabel,
 }: HeroMainInfoProps) {
+  const shouldReduceMotion = useReducedMotion();
   return (
     <div className="flex-1 w-full lg:w-1/2 space-y-8 min-h-[420px] flex flex-col justify-center">
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5 }}
+        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: shouldReduceMotion ? 0 : 0 }}
+        transition={{ duration: shouldReduceMotion ? 0.2 : 0.5 }}
         className="space-y-6"
       >
         <HeroBadges
@@ -262,6 +265,7 @@ export function HeroPreviewCard({
   onOpenPrediction,
   successRateLabel,
 }: HeroPreviewCardProps) {
+  const shouldReduceMotion = useReducedMotion();
   const canOpenPrediction = typeof activeSlideId === "number" && Number.isFinite(activeSlideId);
   const hasMultipleSlides = heroSlideLength > 1;
 
@@ -270,11 +274,11 @@ export function HeroPreviewCard({
       <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-tr from-purple-100 to-blue-50 rounded-[3rem] rotate-6 opacity-60 pointer-events-none" />
 
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: shouldReduceMotion ? 0.25 : 0.6, ease: "easeOut" }}
         className="relative z-10 w-full max-w-lg aspect-[4/3] rounded-[2rem] shadow-2xl shadow-purple-900/10 bg-white p-3 cursor-pointer group"
-        whileHover={{ y: -5, rotate: -1 }}
+        whileHover={shouldReduceMotion ? undefined : { y: -5, rotate: -1 }}
         onClick={() => {
           if (!canOpenPrediction) return;
           onOpenPrediction();
@@ -294,20 +298,24 @@ export function HeroPreviewCard({
               onClick={(e) => e.stopPropagation()}
             >
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onPrevHero();
                 }}
                 className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+                aria-label="Previous hero slide"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNextHero();
                 }}
                 className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+                aria-label="Next hero slide"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -316,9 +324,9 @@ export function HeroPreviewCard({
         </div>
 
         <motion.div
-          initial={{ x: 20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          initial={shouldReduceMotion ? { opacity: 0 } : { x: 20, opacity: 0 }}
+          animate={shouldReduceMotion ? { opacity: 1 } : { x: 0, opacity: 1 }}
+          transition={{ delay: shouldReduceMotion ? 0 : 0.3 }}
           className="absolute -bottom-6 -left-6 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 flex items-center gap-4 max-w-[200px]"
         >
           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
@@ -336,12 +344,15 @@ export function HeroPreviewCard({
           {Array.from({ length: Math.min(heroSlideLength, 5) }).map((_, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => onHeroBulletClick(idx)}
               className={`w-1.5 rounded-full transition-all duration-300 ${
                 currentHeroIndex === idx
                   ? "h-8 bg-purple-600"
                   : "h-2 bg-gray-300 hover:bg-purple-300"
               }`}
+              aria-label={`Go to slide ${idx + 1}`}
+              aria-current={currentHeroIndex === idx ? "true" : undefined}
             />
           ))}
         </div>

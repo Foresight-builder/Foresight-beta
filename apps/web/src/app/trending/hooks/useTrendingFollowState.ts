@@ -20,6 +20,7 @@ export function useTrendingFollowState(
 ) {
   const [followedEvents, setFollowedEvents] = useState<Set<number>>(new Set());
   const [followError, setFollowError] = useState<string | null>(null);
+  const [pendingFollows, setPendingFollows] = useState<Set<number>>(new Set());
 
   const toggleFollow = useCallback(
     async (predictionId: number, event: MouseEvent) => {
@@ -31,10 +32,17 @@ export function useTrendingFollowState(
       if (!Number.isFinite(Number(predictionId))) return;
 
       const normalizedId = Number(predictionId);
+      if (pendingFollows.has(normalizedId)) return;
       const wasFollowing = followedEvents.has(normalizedId);
 
       createSmartClickEffect(event);
       createHeartParticles(event.currentTarget as HTMLElement, wasFollowing);
+
+      setPendingFollows((prev) => {
+        const next = new Set(prev);
+        next.add(normalizedId);
+        return next;
+      });
 
       setFollowedEvents((prev) => {
         const next = new Set(prev);
@@ -54,17 +62,23 @@ export function useTrendingFollowState(
         setFollowError(message);
         setTimeout(() => setFollowError(null), 3000);
         setFollowedEvents((prev) => {
-          const rollback = new Set(prev);
+          const next = new Set(prev);
           if (wasFollowing) {
-            rollback.add(normalizedId);
+            next.add(normalizedId);
           } else {
-            rollback.delete(normalizedId);
+            next.delete(normalizedId);
           }
-          return rollback;
+          return next;
+        });
+      } finally {
+        setPendingFollows((prev) => {
+          const next = new Set(prev);
+          next.delete(normalizedId);
+          return next;
         });
       }
     },
-    [accountNorm, followedEvents, requireLogin, tErrors]
+    [accountNorm, followedEvents, pendingFollows, requireLogin, tErrors]
   );
 
   useEffect(() => {
@@ -209,5 +223,5 @@ export function useTrendingFollowState(
     };
   }, [visibleEvents, accountNorm, queryClient]);
 
-  return { followedEvents, followError, toggleFollow };
+  return { followedEvents, followError, pendingFollows, toggleFollow };
 }

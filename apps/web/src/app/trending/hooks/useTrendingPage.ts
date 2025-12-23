@@ -71,7 +71,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
 
   const categoryCounts = useCategoryCounts();
 
-  const { followedEvents, followError, toggleFollow } = useTrendingFollowState(
+  const { followedEvents, followError, pendingFollows, toggleFollow } = useTrendingFollowState(
     accountNorm,
     () => setShowLoginModal(true),
     tErrors,
@@ -124,6 +124,16 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
       targetRef: eventsSectionRef,
     });
   }, [handleViewAllCategories, eventsSectionRef]);
+
+  const handleCategoryClickWithScroll = useCallback(
+    (categoryName: string) => {
+      handleCategoryClick(categoryName);
+      scrollToSectionWithBehavior({
+        targetRef: eventsSectionRef,
+      });
+    },
+    [handleCategoryClick, eventsSectionRef]
+  );
 
   const handleBackToTopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -181,6 +191,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
       categoryCounts,
       followedEvents,
       followError,
+      pendingFollows,
       toggleFollow,
     },
     admin: {
@@ -210,7 +221,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
       handleNextHero,
       handleHeroBulletClick,
       handleViewAllCategoriesWithScroll,
-      handleCategoryClick,
+      handleCategoryClick: handleCategoryClickWithScroll,
       handleHeroMouseEnter,
       handleHeroMouseLeave,
     },

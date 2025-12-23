@@ -54,8 +54,12 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
       <section
         ref={list.eventsSectionRef}
         className="relative z-10 px-4 sm:px-6 lg:px-10 py-10 sm:py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"
+        aria-labelledby="trending-events-heading"
       >
-        <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
+        <h3
+          id="trending-events-heading"
+          className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3"
+        >
           <span className="w-2 h-2 rounded-full bg-purple-500" />
           {i18n.tTrending("sections.hotEvents")}
           <span className="w-2 h-2 rounded-full bg-purple-500" />
@@ -68,7 +72,11 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
           followError={follow.followError}
           sortedEvents={list.sortedEvents}
           visibleEvents={list.visibleEvents}
+          searchQuery={list.searchQuery}
+          totalEvents={list.displayEvents.length}
+          onClearSearch={() => list.setSearchQuery("")}
           followedEvents={follow.followedEvents}
+          pendingFollows={follow.pendingFollows}
           isAdmin={admin.isAdmin}
           deleteBusyId={admin.deleteBusyId}
           hasMore={list.hasMore}

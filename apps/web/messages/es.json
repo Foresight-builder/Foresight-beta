@@ -499,11 +499,17 @@
       "createPrediction": "Crear predicción"
     },
     "search": {
-      "placeholder": "Buscar eventos..."
+      "placeholder": "Buscar eventos...",
+      "activeLabel": "Búsqueda:",
+      "clear": "Borrar búsqueda"
     },
     "empty": {
       "title": "Aún no hay predicciones",
-      "description": "No hay eventos de predicción disponibles. Prueba cambiar de categoría o crea uno nuevo."
+      "description": "No hay eventos de predicción disponibles. Prueba cambiar de categoría o crea uno nuevo.",
+      "searchTitle": "Sin resultados para esta búsqueda",
+      "searchDescription": "Prueba con otra palabra clave o borra la búsqueda de arriba.",
+      "filteredTitle": "Ningún evento coincide con tus filtros",
+      "filteredDescription": "Ajusta los filtros o restáuralos para ver más eventos."
     },
     "footer": {
       "copyright": "© 2025 Foresight. Todos los derechos reservados."

@@ -49,6 +49,7 @@ type TrendingEventCardProps = {
   product: TrendingEvent;
   eventId: number | null;
   isFollowed: boolean;
+  isFollowPending?: boolean;
   isAdmin: boolean;
   deleteBusyId: number | null;
   onCardClick: (event: React.MouseEvent, category?: string) => void;
@@ -64,6 +65,7 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
   product,
   eventId,
   isFollowed,
+  isFollowPending,
   isAdmin,
   deleteBusyId,
   onCardClick,
@@ -142,6 +144,7 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
             if (!isValidEventId(eventId)) return;
             onToggleFollow(e, eventId);
           }}
+          disabled={isFollowPending}
           className="absolute top-3 left-3 z-10"
         />
       )}

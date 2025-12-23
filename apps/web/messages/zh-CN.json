@@ -499,11 +499,17 @@
       "createPrediction": "创建预测"
     },
     "search": {
-      "placeholder": "搜索预测事件..."
+      "placeholder": "搜索预测事件...",
+      "activeLabel": "搜索：",
+      "clear": "清空搜索"
     },
     "empty": {
       "title": "暂无预测",
-      "description": "当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！"
+      "description": "当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！",
+      "searchTitle": "没有找到匹配的搜索结果",
+      "searchDescription": "请尝试换个关键词，或在上方清空搜索。",
+      "filteredTitle": "没有符合当前筛选条件的事件",
+      "filteredDescription": "可以调整筛选条件，或重置筛选以查看更多事件。"
     },
     "footer": {
       "copyright": "© 2025 Foresight. 保留所有权利。"

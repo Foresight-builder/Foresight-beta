@@ -182,12 +182,16 @@ export default function FilterSort({
       <div className="flex items-center gap-3 flex-wrap">
         {/* 筛选按钮 */}
         <button
+          type="button"
           onClick={() => setIsFilterOpen(!isFilterOpen)}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             isFilterOpen || activeFiltersCount > 0
               ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
               : "bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:shadow-md"
           }`}
+          aria-expanded={isFilterOpen}
+          aria-controls="trending-filter-panel"
+          aria-pressed={isFilterOpen || activeFiltersCount > 0}
         >
           <Filter className="w-4 h-4" />
           <span>{t("filters.actions.filter")}</span>
@@ -203,12 +207,16 @@ export default function FilterSort({
 
         {/* 排序按钮 */}
         <button
+          type="button"
           onClick={() => setIsSortOpen(!isSortOpen)}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             isSortOpen
               ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
               : "bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:shadow-md"
           }`}
+          aria-expanded={isSortOpen}
+          aria-controls="trending-sort-panel"
+          aria-pressed={isSortOpen}
         >
           <ArrowUpDown className="w-4 h-4" />
           <span>{sortOptions.find((o) => o.id === sortBy)?.label}</span>
@@ -239,11 +247,14 @@ export default function FilterSort({
       <AnimatePresence>
         {isFilterOpen && (
           <motion.div
+            id="trending-filter-panel"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
+            role="region"
+            aria-hidden={!isFilterOpen}
           >
             <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 space-y-5">
               {/* 分类筛选 */}
@@ -255,6 +266,7 @@ export default function FilterSort({
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     <button
+                      type="button"
                       key={cat.id}
                       onClick={() => setActiveCategory(cat.id)}
                       className={`group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden ${
@@ -262,6 +274,9 @@ export default function FilterSort({
                           ? "text-white shadow-lg scale-105"
                           : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                       }`}
+                      aria-pressed={
+                        (cat.id === "all" && !activeCategory) || activeCategory === cat.id
+                      }
                     >
                       {/* 渐变背景（选中时） */}
                       {((cat.id === "all" && !activeCategory) || activeCategory === cat.id) && (
@@ -288,6 +303,7 @@ export default function FilterSort({
                   <div className="flex gap-2">
                     {statusOptions.map((opt) => (
                       <button
+                        type="button"
                         key={opt.id}
                         onClick={() => setStatus(opt.id === "all" ? null : (opt.id as any))}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -295,6 +311,7 @@ export default function FilterSort({
                             ? "ring-2 ring-purple-500 ring-offset-2"
                             : ""
                         } ${opt.color}`}
+                        aria-pressed={(opt.id === "all" && !status) || status === opt.id}
                       >
                         {opt.label}
                       </button>
@@ -311,11 +328,14 @@ export default function FilterSort({
       <AnimatePresence>
         {isSortOpen && (
           <motion.div
+            id="trending-sort-panel"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
+            role="region"
+            aria-hidden={!isSortOpen}
           >
             <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 space-y-2">
               {sortOptions.map(({ id, label, icon: Icon, description }) => (

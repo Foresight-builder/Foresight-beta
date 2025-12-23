@@ -35,7 +35,7 @@ export function ListError({ error, title, reloadLabel, onReload }: ListErrorProp
   };
 
   return (
-    <div className="text-center py-12">
+    <div className="text-center py-12" role="alert" aria-live="assertive" aria-atomic="true">
       <div className="text-red-500 text-lg mb-2">{title}</div>
       <p className="text-gray-600">{(error as any)?.message || String(error)}</p>
       <button

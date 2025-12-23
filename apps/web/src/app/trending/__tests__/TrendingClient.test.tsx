@@ -26,6 +26,7 @@ vi.mock("../hooks/useTrendingPage", () => {
         error: null,
         filters: { category: null, sortBy: "trending" as const },
         setFilters: vi.fn(),
+        displayEvents: [],
         sortedEvents: [],
         visibleEvents: [],
         hasMore: false,
@@ -36,6 +37,7 @@ vi.mock("../hooks/useTrendingPage", () => {
         categoryCounts: {},
         followError: null as string | null,
         followedEvents: new Set<number>(),
+        pendingFollows: new Set<number>(),
         toggleFollow: vi.fn(),
       },
       admin: {

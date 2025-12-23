@@ -21,6 +21,28 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
       if (e.key === "Escape") {
         onClose();
       }
+      if (e.key === "Tab" && dialogRef.current) {
+        const root = dialogRef.current;
+        const focusable = root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        const isInside = active && root.contains(active);
+        if (e.shiftKey) {
+          if (!isInside || active === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (!isInside || active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);

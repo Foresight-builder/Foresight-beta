@@ -499,11 +499,17 @@
       "createPrediction": "Create Prediction"
     },
     "search": {
-      "placeholder": "Search events..."
+      "placeholder": "Search events...",
+      "activeLabel": "Search:",
+      "clear": "Clear search"
     },
     "empty": {
       "title": "No predictions yet",
-      "description": "There are no prediction events available. Try switching categories or create a new one!"
+      "description": "There are no prediction events available. Try switching categories or create a new one!",
+      "searchTitle": "No results for this search",
+      "searchDescription": "Try a different keyword, or clear the search above.",
+      "filteredTitle": "No events match your filters",
+      "filteredDescription": "Try adjusting filters or resetting them to see more events."
     },
     "footer": {
       "copyright": "© 2025 Foresight. All rights reserved."

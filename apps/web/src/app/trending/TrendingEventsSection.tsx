@@ -13,10 +13,14 @@ type TrendingEventsSectionProps = {
   error: unknown;
   filters: FilterSortState;
   onFilterChange: (state: FilterSortState) => void;
+  searchQuery: string;
+  totalEvents: number;
+  onClearSearch: () => void;
   followError: string | null;
   sortedEvents: TrendingEvent[];
   visibleEvents: TrendingEvent[];
   followedEvents: Set<number>;
+  pendingFollows: Set<number>;
   isAdmin: boolean;
   deleteBusyId: number | null;
   hasMore: boolean;
@@ -61,6 +65,7 @@ function TrendingEventsEmpty({
 type TrendingEventsGridProps = {
   visibleEvents: TrendingEvent[];
   followedEvents: Set<number>;
+  pendingFollows: Set<number>;
   isAdmin: boolean;
   deleteBusyId: number | null;
   createCategoryParticlesAtCardClick: (event: React.MouseEvent, category?: string) => void;
@@ -75,6 +80,7 @@ type TrendingEventsGridProps = {
 const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   visibleEvents,
   followedEvents,
+  pendingFollows,
   isAdmin,
   deleteBusyId,
   createCategoryParticlesAtCardClick,
@@ -97,6 +103,7 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
         const eventId = normalizeEventId(product.id);
         const isValidId = isValidEventId(eventId);
         const isFollowed = isValidId && followedEvents.has(eventId);
+        const isFollowPending = isValidId && pendingFollows.has(eventId);
 
         return (
           <TrendingEventCard
@@ -104,6 +111,7 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
             product={product}
             eventId={isValidId ? eventId : null}
             isFollowed={isFollowed}
+            isFollowPending={isFollowPending}
             isAdmin={isAdmin}
             deleteBusyId={deleteBusyId}
             onCardClick={(e, category) => {
@@ -161,10 +169,14 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
     error,
     filters,
     onFilterChange,
+    searchQuery,
+    totalEvents,
+    onClearSearch,
     followError,
     sortedEvents,
     visibleEvents,
     followedEvents,
+    pendingFollows,
     isAdmin,
     deleteBusyId,
     hasMore,
@@ -179,11 +191,62 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
     tTrendingAdmin,
     tEvents,
   } = props;
+
+  const activeFiltersCount = [
+    filters.category && filters.category !== "all",
+    filters.sortBy !== "trending",
+    filters.status,
+  ].filter(Boolean).length;
+
+  const isSearchActive = searchQuery.trim().length > 0;
+  const isFilterActive = activeFiltersCount > 0;
+
+  const emptyTitleKey =
+    isSearchActive && !isFilterActive
+      ? "empty.searchTitle"
+      : isFilterActive
+        ? "empty.filteredTitle"
+        : "empty.title";
+
+  const emptyDescriptionKey =
+    isSearchActive && !isFilterActive
+      ? "empty.searchDescription"
+      : isFilterActive
+        ? "empty.filteredDescription"
+        : "empty.description";
+
   return (
     <>
       {!loading && !error && (
-        <div className="mb-8">
+        <div className="mb-8 space-y-3">
           <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                {tTrending("metrics.events")}: {visibleEvents.length} / {sortedEvents.length || 0}
+              </span>
+              {typeof totalEvents === "number" && totalEvents > sortedEvents.length && (
+                <span>
+                  ({sortedEvents.length} / {totalEvents})
+                </span>
+              )}
+              {activeFiltersCount > 0 && <span>· {activeFiltersCount}</span>}
+            </div>
+            {searchQuery.trim() && (
+              <div className="flex items-center gap-2 max-w-full">
+                <span className="truncate max-w-[160px] sm:max-w-[260px]">
+                  {tTrending("search.activeLabel")} {searchQuery}
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearSearch}
+                  className="text-xs font-medium text-purple-600 hover:text-purple-800"
+                >
+                  {tTrending("search.clear")}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -211,8 +274,8 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
           )}
           {sortedEvents.length === 0 || visibleEvents.length === 0 ? (
             <TrendingEventsEmpty
-              title={tTrending("empty.title")}
-              description={tTrending("empty.description")}
+              title={tTrending(emptyTitleKey)}
+              description={tTrending(emptyDescriptionKey)}
               actionLabel={tTrending("actions.createPrediction")}
               onCreatePrediction={onCreatePrediction}
             />
@@ -221,6 +284,7 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
               <TrendingEventsGrid
                 visibleEvents={visibleEvents}
                 followedEvents={followedEvents}
+                pendingFollows={pendingFollows}
                 isAdmin={isAdmin}
                 deleteBusyId={deleteBusyId}
                 createCategoryParticlesAtCardClick={createCategoryParticlesAtCardClick}

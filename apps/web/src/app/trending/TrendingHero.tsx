@@ -79,6 +79,12 @@ function TrendingHeroView({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     search.onChange(e.target.value);
   };
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      actions.onViewAllCategories();
+    }
+  };
 
   return (
     <section
@@ -87,6 +93,16 @@ function TrendingHeroView({
       tabIndex={-1}
       onMouseEnter={actions.onHeroMouseEnter}
       onMouseLeave={actions.onHeroMouseLeave}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          actions.onPrevHero();
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          actions.onNextHero();
+        }
+      }}
     >
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-br from-purple-200/40 to-blue-200/40 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
@@ -100,6 +116,7 @@ function TrendingHeroView({
             value={search.query}
             placeholder={tTrending("search.placeholder")}
             onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
 

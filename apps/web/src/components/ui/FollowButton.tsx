@@ -9,14 +9,25 @@ type FollowButtonProps = {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   dataEventId?: number | string;
   className?: string;
+  disabled?: boolean;
 };
 
-export function FollowButton({ isFollowed, onClick, dataEventId, className }: FollowButtonProps) {
+export function FollowButton({
+  isFollowed,
+  onClick,
+  dataEventId,
+  className,
+  disabled,
+}: FollowButtonProps) {
   return (
     <motion.button
       data-event-index={dataEventId}
       onClick={onClick}
-      className={`p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden ${className || ""}`}
+      disabled={disabled}
+      aria-busy={disabled || undefined}
+      className={`p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden ${
+        disabled ? "opacity-60 cursor-not-allowed" : ""
+      } ${className || ""}`}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       animate={isFollowed ? "liked" : "unliked"}

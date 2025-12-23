@@ -16,9 +16,9 @@ interface EmptyStateProps {
 
 /**
  * 统一的空状态组件
- * 
+ *
  * 提供一致的视觉体验和用户引导
- * 
+ *
  * @example
  * ```tsx
  * <EmptyState
@@ -46,6 +46,9 @@ export default function EmptyState({
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
       className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className}`}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
       {/* 图标容器 */}
       <motion.div
@@ -56,7 +59,7 @@ export default function EmptyState({
       >
         {/* 背景光晕 */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-200/40 to-pink-200/40 rounded-2xl blur-xl" />
-        
+
         {/* 图标 */}
         <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center shadow-lg border border-white/60">
           <Icon className="w-10 h-10 text-purple-600" strokeWidth={1.5} />
@@ -122,12 +125,7 @@ export default function EmptyState({
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all"
         >
           {action.label}
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -180,15 +178,17 @@ export function SimpleEmptyState({
   className = "",
 }: EmptyStateProps) {
   return (
-    <div className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className}`}>
+    <div
+      className={`flex flex-col items-center justify-center py-12 px-4 text-center ${className}`}
+    >
       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mb-4">
         <Icon className="w-8 h-8 text-gray-400" />
       </div>
-      
+
       <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
-      
+
       <p className="text-sm text-gray-500 max-w-sm mb-6">{description}</p>
-      
+
       {action && (
         <button
           onClick={action.onClick}
@@ -200,4 +200,3 @@ export function SimpleEmptyState({
     </div>
   );
 }
-
