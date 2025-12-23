@@ -40,6 +40,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useQueries";
 import { normalizeId } from "@/lib/ids";
+import { reactQueryFeedback } from "@/lib/apiWithFeedback";
 
 // Fetch proposals (threads with eventId=0)
 const fetchProposals = async () => {
@@ -90,6 +91,13 @@ function useProposalsList(account: string | null | undefined, connectWallet: () 
   const [filter, setFilter] = useState<ProposalFilter>("hot");
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [pendingVoteId, setPendingVoteId] = useState<number | null>(null);
+
+  const voteFeedback = reactQueryFeedback({
+    loadingMessage: "Submitting vote...",
+    successMessage: "Vote recorded",
+    errorMessage: "Vote failed",
+  });
 
   const { data: proposals = [], isLoading } = useQuery({
     queryKey: ["proposals"],
@@ -137,8 +145,20 @@ function useProposalsList(account: string | null | undefined, connectWallet: () 
       if (!res.ok) throw new Error("Vote failed");
       return res.json();
     },
+    onMutate: ({ id }) => {
+      voteFeedback.onMutate();
+      setPendingVoteId(id);
+    },
     onSuccess: () => {
+      voteFeedback.onSuccess();
       queryClient.invalidateQueries({ queryKey: ["proposals"] });
+    },
+    onError: (error) => {
+      const err = error instanceof Error ? error : new Error(String(error));
+      voteFeedback.onError(err);
+    },
+    onSettled: () => {
+      setPendingVoteId(null);
     },
   });
 
@@ -162,6 +182,7 @@ function useProposalsList(account: string | null | undefined, connectWallet: () 
     categories,
     isLoading,
     voteMutation,
+    pendingVoteId,
   };
 }
 
@@ -183,6 +204,7 @@ export default function ProposalsPage() {
     categories,
     isLoading,
     voteMutation,
+    pendingVoteId,
   } = useProposalsList(account, connectWallet);
 
   // Inspiration Widget State
@@ -207,7 +229,7 @@ export default function ProposalsPage() {
   ).length;
 
   return (
-    <div className="h-[calc(100vh-64px)] w-full relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
+    <div className="min-h-[calc(100vh-64px)] w-full relative overflow-x-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
       {/* Decorative Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" />
@@ -222,7 +244,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* LEFT SIDEBAR: Dashboard Control (Fixed Width) */}
-      <div className="hidden lg:flex flex-col w-64 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
+      <div className="hidden lg:flex flex-col w-64 shrink-0 gap-6 z-10 pb-20">
         {/* User Stats - Minimalist with Tape */}
         <div className="bg-white border border-gray-200 rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4 relative">
           {/* Tape Effect */}
@@ -300,7 +322,9 @@ export default function ProposalsPage() {
           ].map((item) => (
             <button
               key={item.id}
+              type="button"
               onClick={() => setFilter(item.id as any)}
+              aria-pressed={filter === item.id}
               className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all relative overflow-hidden ${
                 filter === item.id
                   ? "bg-white text-gray-900 shadow-sm border border-gray-100"
@@ -324,7 +348,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* MAIN CONTENT AREA: List View */}
-      <div className="flex-1 flex flex-col min-w-0 z-10 h-full">
+      <div className="flex-1 flex flex-col min-w-0 z-10">
         {/* Header (Mobile Only) */}
         <div className="lg:hidden flex items-center justify-between mb-6">
           <h1 className="text-2xl font-black text-slate-900">Proposals</h1>
@@ -339,8 +363,7 @@ export default function ProposalsPage() {
           </button>
         </div>
 
-        {/* Scrollable List Container */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
+        <div className="flex flex-col">
           <div className="flex-none mb-6 sticky top-0 z-20 backdrop-blur-sm py-2 -mx-2 px-2">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3">
@@ -350,6 +373,7 @@ export default function ProposalsPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search proposals..."
+                    aria-label="Search proposals"
                     className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400"
                   />
                 </div>
@@ -358,11 +382,14 @@ export default function ProposalsPage() {
                   <span>{sortedProposals.length}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+              385→{" "}
+              <div className="flex flex-wrap items-center gap-2">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
+                    type="button"
                     onClick={() => setCategory(cat.id)}
+                    aria-pressed={category === cat.id}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                       category === cat.id
                         ? "bg-slate-900 text-white shadow-slate-900/10 scale-105"
@@ -420,6 +447,7 @@ export default function ProposalsPage() {
                     <div className="h-[200px]">
                       <ProposalCard
                         proposal={proposal}
+                        isVoting={pendingVoteId === proposal.id}
                         onVote={(id, type) => voteMutation.mutate({ id, type })}
                         onClick={(id) => router.push(`/proposals/${id}`)}
                       />
@@ -433,7 +461,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* RIGHT SIDEBAR: Widgets */}
-      <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
+      <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 pb-20">
         {/* Official Featured Widget (New) */}
         <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
           <div className="flex items-center justify-between mb-4">

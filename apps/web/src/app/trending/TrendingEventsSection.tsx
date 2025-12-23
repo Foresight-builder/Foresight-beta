@@ -201,6 +201,24 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
   const isSearchActive = searchQuery.trim().length > 0;
   const isFilterActive = activeFiltersCount > 0;
 
+  const [highlightFilters, setHighlightFilters] = React.useState(false);
+  const hasInitializedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      return;
+    }
+    if (!isSearchActive && !isFilterActive) return;
+    setHighlightFilters(true);
+    const timer = window.setTimeout(() => {
+      setHighlightFilters(false);
+    }, 400);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isSearchActive, isFilterActive, filters, searchQuery]);
+
   const emptyTitleKey =
     isSearchActive && !isFilterActive
       ? "empty.searchTitle"
@@ -218,7 +236,11 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
   return (
     <>
       {!loading && !error && (
-        <div className="mb-8 space-y-3">
+        <div
+          className={`mb-8 space-y-3 transition-shadow duration-300 ${
+            highlightFilters ? "shadow-[0_0_0_2px_rgba(129,140,248,0.45)] rounded-2xl" : ""
+          }`}
+        >
           <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
             <div className="flex flex-wrap items-center gap-2">

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 
 type FollowButtonProps = {
   isFollowed: boolean;
@@ -58,9 +58,15 @@ export function FollowButton({
           },
         }}
       >
-        <Heart
-          className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
-        />
+        {disabled ? (
+          <Loader2
+            className={`w-4 h-4 animate-spin ${isFollowed ? "text-red-500" : "text-gray-400"}`}
+          />
+        ) : (
+          <Heart
+            className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
+          />
+        )}
       </motion.div>
     </motion.button>
   );

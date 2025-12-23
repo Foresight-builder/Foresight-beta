@@ -94,7 +94,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>
+      <body className="overflow-x-hidden">
         <Suspense fallback={null}>
           <ProgressBar />
         </Suspense>

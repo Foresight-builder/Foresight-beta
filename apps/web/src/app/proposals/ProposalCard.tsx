@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { MessageCircle, Share2, MoreHorizontal, ArrowUp, ArrowDown } from "lucide-react";
+import { MessageCircle, Share2, MoreHorizontal, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 
 interface ProposalCardProps {
@@ -9,7 +9,12 @@ interface ProposalCardProps {
   onClick: (id: number) => void;
 }
 
-export default function ProposalCard({ proposal, onVote, onClick }: ProposalCardProps) {
+export default function ProposalCard({
+  proposal,
+  onVote,
+  onClick,
+  isVoting,
+}: ProposalCardProps & { isVoting?: boolean }) {
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
   const score = upvotes - downvotes;
@@ -28,6 +33,24 @@ export default function ProposalCard({ proposal, onVote, onClick }: ProposalCard
   const cat = categoryConfig[proposal.category] || categoryConfig.General;
   const author = String(proposal.user_id || "").trim();
   const authorLabel = author ? `${author.slice(0, 6)}...${author.slice(-4)}` : "Anonymous";
+  const createdAt = new Date(proposal.created_at);
+  const now = new Date();
+  const diffMs = now.getTime() - createdAt.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  let timeAgo: string;
+  if (diffMinutes < 1) {
+    timeAgo = "just now";
+  } else if (diffMinutes < 60) {
+    timeAgo = `${diffMinutes} min ago`;
+  } else if (diffHours < 24) {
+    timeAgo = `${diffHours} h ago`;
+  } else if (diffDays < 7) {
+    timeAgo = `${diffDays} d ago`;
+  } else {
+    timeAgo = createdAt.toLocaleDateString();
+  }
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const url = `${window.location.origin}/proposals/${proposal.id}`;
@@ -45,22 +68,29 @@ export default function ProposalCard({ proposal, onVote, onClick }: ProposalCard
 
   return (
     <div className="relative group cursor-pointer" onClick={() => onClick(proposal.id)}>
-      <div className="rounded-2xl bg-white border border-gray-100 hover:border-purple-300 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.06)] transition-all duration-300 flex overflow-hidden">
-        {/* Left: Voting Column (Forum Style) */}
-        <div className="w-12 bg-gray-50/50 border-r border-gray-100 flex flex-col items-center py-4 gap-1 shrink-0">
+      <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50/80 shadow-[0_8px_24px_rgba(15,23,42,0.03)] hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)] transition-all duration-300 flex overflow-hidden hover:-translate-y-0.5">
+        <div className="w-12 bg-slate-50/80 border-r border-slate-200/80 flex flex-col items-center py-4 gap-1 shrink-0">
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onVote(proposal.id, "up");
-            }}
-            className={`p-1.5 rounded-lg transition-colors ${
+            type="button"
+            aria-pressed={proposal.userVote === "up"}
+            aria-label={proposal.userVote === "up" ? "取消赞成该提案" : "赞成该提案"}
+            disabled={isVoting}
+            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               proposal.userVote === "up"
                 ? "bg-purple-100 text-purple-600"
                 : "text-gray-400 hover:bg-purple-50 hover:text-purple-500"
             }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onVote(proposal.id, "up");
+            }}
           >
-            <ArrowUp className="w-5 h-5" />
+            {isVoting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <ArrowUp className="w-5 h-5" />
+            )}
           </motion.button>
 
           <span
@@ -77,65 +107,71 @@ export default function ProposalCard({ proposal, onVote, onClick }: ProposalCard
 
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onVote(proposal.id, "down");
-            }}
-            className={`p-1.5 rounded-lg transition-colors ${
+            type="button"
+            aria-pressed={proposal.userVote === "down"}
+            aria-label={proposal.userVote === "down" ? "取消反对该提案" : "反对该提案"}
+            disabled={isVoting}
+            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               proposal.userVote === "down"
                 ? "bg-gray-200 text-gray-700"
                 : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onVote(proposal.id, "down");
+            }}
           >
-            <ArrowDown className="w-5 h-5" />
+            {isVoting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <ArrowDown className="w-5 h-5" />
+            )}
           </motion.button>
         </div>
 
-        {/* Right: Main Content */}
-        <div className="flex-1 p-5 flex flex-col">
-          {/* Header Metadata */}
-          <div className="flex items-center gap-2 mb-2 text-xs">
-            {/* Category Pill */}
-            <div
-              className={`px-2 py-0.5 rounded-md font-bold ${cat.bg} ${cat.color} border ${cat.border} flex items-center gap-1`}
-            >
-              {proposal.category || "General"}
+        <div className="flex-1 px-5 py-4 flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-500">
+                {authorLabel.slice(0, 2)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-slate-800 truncate">{authorLabel}</span>
+                <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <span className="truncate max-w-[120px]">{timeAgo}</span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300" />
+                  <span className="truncate max-w-[120px]">{proposal.category || "General"}</span>
+                </div>
+              </div>
             </div>
-
-            <span className="text-gray-300">•</span>
-
-            <span className="text-gray-400 font-medium">
-              Posted by <span className="text-gray-600 hover:underline">{authorLabel}</span>
-            </span>
-
-            <span className="text-gray-300">•</span>
-
-            <span className="text-gray-400">
-              {new Date(proposal.created_at).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-
             {isHot && (
-              <div className="ml-auto flex items-center gap-1 text-orange-500 font-bold px-2 py-0.5 bg-orange-50 rounded-full text-[10px]">
+              <div className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 shadow-sm">
                 <FlameIcon className="w-3 h-3" />
                 HOT
               </div>
             )}
           </div>
 
-          {/* Title & Preview */}
-          <div className="mb-3">
-            <h3 className="text-lg font-bold text-gray-900 leading-snug group-hover:text-purple-700 transition-colors mb-1.5">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug group-hover:text-purple-700 transition-colors mb-1">
               {proposal.title}
             </h3>
-            <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{proposal.content}</p>
+            <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
+              {proposal.content}
+            </p>
           </div>
 
-          {/* Footer Actions */}
-          <div className="mt-auto flex items-center gap-4">
-            <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold hover:bg-gray-50 px-2 py-1 -ml-2 rounded-lg transition-colors">
+          <div className="mt-auto flex items-center gap-3 pt-2">
+            <div
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                cat.bg
+              } ${cat.color} ${cat.border}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+              <span className="truncate max-w-[100px]">{proposal.category || "General"}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold hover:bg-slate-50 px-2 py-1 rounded-lg transition-colors">
               <MessageCircle className="w-4 h-4" />
               <span>{proposal.comments?.length || 0} Comments</span>
             </div>
