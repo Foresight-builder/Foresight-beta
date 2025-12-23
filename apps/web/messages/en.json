@@ -36,7 +36,8 @@
     "proposals": "Proposals",
     "profile": "Profile",
     "admin": "Admin Center",
-    "myFollows": "My follows"
+    "myFollows": "My follows",
+    "backToTop": "Back to top"
   },
   "forum": {
     "title": "Community discussions",
@@ -503,6 +504,9 @@
     "empty": {
       "title": "No predictions yet",
       "description": "There are no prediction events available. Try switching categories or create a new one!"
+    },
+    "footer": {
+      "copyright": "© 2025 Foresight. All rights reserved."
     },
     "state": {
       "loading": "Loading data...",

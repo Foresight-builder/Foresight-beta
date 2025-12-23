@@ -36,7 +36,8 @@
     "proposals": "提案频道",
     "profile": "个人中心",
     "admin": "管理员中心",
-    "myFollows": "我的关注"
+    "myFollows": "我的关注",
+    "backToTop": "返回顶部"
   },
   "forum": {
     "title": "社区讨论",
@@ -503,6 +504,9 @@
     "empty": {
       "title": "暂无预测",
       "description": "当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！"
+    },
+    "footer": {
+      "copyright": "© 2025 Foresight. 保留所有权利。"
     },
     "state": {
       "loading": "正在加载数据...",

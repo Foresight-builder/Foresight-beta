@@ -36,7 +36,8 @@
     "proposals": "Propuestas",
     "profile": "Perfil",
     "admin": "Centro de administración",
-    "myFollows": "Mis seguimientos"
+    "myFollows": "Mis seguimientos",
+    "backToTop": "Volver arriba"
   },
   "forum": {
     "title": "Debates de la comunidad",
@@ -503,6 +504,9 @@
     "empty": {
       "title": "Aún no hay predicciones",
       "description": "No hay eventos de predicción disponibles. Prueba cambiar de categoría o crea uno nuevo."
+    },
+    "footer": {
+      "copyright": "© 2025 Foresight. Todos los derechos reservados."
     },
     "state": {
       "loading": "Cargando datos...",

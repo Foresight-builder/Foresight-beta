@@ -2,12 +2,7 @@ import React from "react";
 import { TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
-import {
-  AllLoadedNotice,
-  InfiniteScrollSentinel,
-  ListError,
-  ListLoading,
-} from "@/components/ui/ListStates";
+import { AllLoadedNotice, InfiniteScrollSentinel, ListError } from "@/components/ui/ListStates";
 import type { TrendingEvent } from "./trendingModel";
 import { normalizeEventId, isValidEventId } from "./trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
@@ -126,7 +121,34 @@ function TrendingEventsGrid({
   );
 }
 
-export function TrendingEventsSection(props: TrendingEventsSectionProps) {
+type TrendingEventsSkeletonGridProps = {
+  count?: number;
+};
+
+function TrendingEventsSkeletonGrid({ count = 8 }: TrendingEventsSkeletonGridProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {Array.from({ length: count }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-3xl border border-gray-100 bg-white/60 shadow-sm p-4 animate-pulse space-y-4"
+        >
+          <div className="h-40 rounded-2xl bg-gray-200" />
+          <div className="h-4 rounded-full bg-gray-200 w-3/4" />
+          <div className="h-3 rounded-full bg-gray-200 w-5/6" />
+          <div className="flex items-center justify-between pt-2">
+            <div className="h-3 rounded-full bg-gray-200 w-1/3" />
+            <div className="h-8 rounded-full bg-gray-200 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export const TrendingEventsSection = React.memo(function TrendingEventsSection(
+  props: TrendingEventsSectionProps
+) {
   const {
     loading,
     error,
@@ -158,7 +180,12 @@ export function TrendingEventsSection(props: TrendingEventsSectionProps) {
         </div>
       )}
 
-      {loading && <ListLoading message={tTrending("state.loading")} />}
+      {loading && (
+        <div className="mb-8">
+          <TrendingEventsSkeletonGrid />
+          <p className="mt-6 text-center text-sm text-gray-500">{tTrending("state.loading")}</p>
+        </div>
+      )}
 
       {error && (
         <ListError
@@ -217,4 +244,4 @@ export function TrendingEventsSection(props: TrendingEventsSectionProps) {
       )}
     </>
   );
-}
+});

@@ -14,7 +14,6 @@ import {
 
 export function useTrendingEvents(predictions: Prediction[], filters: FilterSortState) {
   const [displayCount, setDisplayCount] = useState(12);
-  const [totalEventsCount, setTotalEventsCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -34,10 +33,6 @@ export function useTrendingEvents(predictions: Prediction[], filters: FilterSort
     });
   }, [allEvents, searchQuery]);
 
-  useEffect(() => {
-    setTotalEventsCount(displayEvents.length);
-  }, [displayEvents]);
-
   const sortedEvents: TrendingEvent[] = useMemo(() => {
     const filteredByCategory = filterEventsByCategory(displayEvents, filters.category || null);
     const filteredByStatus = filterEventsByStatus(filteredByCategory, filters.status || null);
@@ -49,7 +44,12 @@ export function useTrendingEvents(predictions: Prediction[], filters: FilterSort
     [sortedEvents, displayCount]
   );
 
+  const totalEventsCount = displayEvents.length;
   const hasMore = displayCount < totalEventsCount;
+
+  useEffect(() => {
+    setDisplayCount(12);
+  }, [filters.category, filters.sortBy, filters.status, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;

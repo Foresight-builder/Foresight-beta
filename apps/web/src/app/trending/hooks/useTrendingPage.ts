@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import type React from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -112,21 +112,24 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
     handleCategoryClick,
   } = useTrendingHero(displayEvents, categories, setFilters, tTrending, tEvents);
 
-  const handleViewAllCategoriesWithScroll = () => {
+  const handleViewAllCategoriesWithScroll = useCallback(() => {
     scrollToSectionWithBehavior({
       onBeforeScroll: handleViewAllCategories,
       targetRef: productsSectionRef,
     });
-  };
+  }, [handleViewAllCategories, productsSectionRef]);
 
-  const handleBackToTopClick = (e: React.MouseEvent) => {
-    scrollToTop();
-    createSmartClickEffect(e);
-  };
+  const handleBackToTopClick = useCallback(
+    (e: React.MouseEvent) => {
+      scrollToTop();
+      createSmartClickEffect(e);
+    },
+    [scrollToTop]
+  );
 
-  const handleCreatePrediction = () => {
+  const handleCreatePrediction = useCallback(() => {
     router.push("/prediction/new");
-  };
+  }, [router]);
 
   return {
     canvasRef,
@@ -183,3 +186,5 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
     handleCreatePrediction,
   };
 }
+
+export type TrendingPageViewModel = ReturnType<typeof useTrendingPage>;

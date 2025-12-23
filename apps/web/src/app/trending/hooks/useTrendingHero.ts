@@ -24,13 +24,6 @@ export function useTrendingHero(
 ) {
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentHeroIndex((prevIndex) => prevIndex + 1);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   const heroSlideEvents = useMemo<TrendingEvent[]>(() => {
     const pool = displayEvents;
     if (pool.length === 0) return [];
@@ -70,6 +63,14 @@ export function useTrendingHero(
 
   const heroSlideLength = heroSlideEvents.length || HERO_EVENTS.length;
 
+  useEffect(() => {
+    if (!heroSlideLength) {
+      setCurrentHeroIndex(0);
+      return;
+    }
+    setCurrentHeroIndex((prev) => prev % heroSlideLength);
+  }, [heroSlideLength]);
+
   const {
     activeTitle,
     activeDescription,
@@ -82,37 +83,48 @@ export function useTrendingHero(
     [heroSlideEvents, currentHeroIndex, tTrending, tEvents]
   );
 
+  useEffect(() => {
+    if (!heroSlideLength) return;
+    const interval = setInterval(() => {
+      setCurrentHeroIndex((prevIndex) => (prevIndex + 1) % heroSlideLength);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [heroSlideLength]);
+
   const handlePrevHero = useCallback(() => {
-    setCurrentHeroIndex((prev) =>
-      prev === 0 ? (heroSlideEvents.length || HERO_EVENTS.length) - 1 : prev - 1
-    );
-  }, [heroSlideEvents.length]);
+    if (!heroSlideLength) return;
+    setCurrentHeroIndex((prev) => (prev - 1 + heroSlideLength) % heroSlideLength);
+  }, [heroSlideLength]);
 
   const handleNextHero = useCallback(() => {
-    setCurrentHeroIndex((prev) => prev + 1);
+    if (!heroSlideLength) return;
+    setCurrentHeroIndex((prev) => (prev + 1) % heroSlideLength);
+  }, [heroSlideLength]);
+
+  const handleHeroBulletClick = useCallback((idx: number) => {
+    setCurrentHeroIndex(idx);
   }, []);
 
-  const handleHeroBulletClick = (idx: number) => {
-    setCurrentHeroIndex(idx);
-  };
-
-  const handleViewAllCategories = () => {
+  const handleViewAllCategories = useCallback(() => {
     setFilters((prev) => ({ ...prev, category: "all" }));
-  };
+  }, [setFilters]);
 
-  const handleCategoryClick = (categoryName: string) => {
-    const idx = heroSlideEvents.findIndex((ev) => String(ev?.tag || "") === categoryName);
-    if (idx >= 0) {
-      setCurrentHeroIndex(idx);
-    } else {
-      const fallbackIdx = HERO_EVENTS.findIndex((ev) => ev.category === categoryName);
-      if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
-    }
-    const categoryId = CATEGORY_MAPPING[categoryName as keyof typeof CATEGORY_MAPPING];
-    if (categoryId) {
-      setFilters((prev) => ({ ...prev, category: categoryId }));
-    }
-  };
+  const handleCategoryClick = useCallback(
+    (categoryName: string) => {
+      const idx = heroSlideEvents.findIndex((ev) => String(ev?.tag || "") === categoryName);
+      if (idx >= 0) {
+        setCurrentHeroIndex(idx);
+      } else {
+        const fallbackIdx = HERO_EVENTS.findIndex((ev) => ev.category === categoryName);
+        if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
+      }
+      const categoryId = CATEGORY_MAPPING[categoryName as keyof typeof CATEGORY_MAPPING];
+      if (categoryId) {
+        setFilters((prev) => ({ ...prev, category: categoryId }));
+      }
+    },
+    [heroSlideEvents, setFilters]
+  );
 
   return {
     currentHeroIndex,

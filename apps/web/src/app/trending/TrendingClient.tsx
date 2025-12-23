@@ -152,10 +152,14 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
       />
 
       <footer className="relative z-10 text-center py-8 text-black text-sm">
-        © 2025 Foresight. All rights reserved.
+        {tTrending("footer.copyright")}
       </footer>
 
-      <BackToTopButton show={showBackToTop} onClick={handleBackToTopClick} label="返回顶部" />
+      <BackToTopButton
+        show={showBackToTop}
+        onClick={handleBackToTopClick}
+        label={tNav("backToTop")}
+      />
     </GradientPage>
   );
 }

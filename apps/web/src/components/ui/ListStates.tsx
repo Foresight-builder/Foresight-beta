@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ChevronDown } from "lucide-react";
 
 type ListLoadingProps = {
   message: string;
@@ -68,12 +68,15 @@ export function InfiniteScrollSentinel({
   return (
     <div ref={observerTargetRef} className="flex justify-center py-8">
       {loadingMore ? (
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/80 shadow-sm">
+          <div className="w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
           <span className="text-gray-600 text-sm font-medium">{loadMoreLabel}</span>
         </div>
       ) : (
-        <div className="text-gray-400 text-sm">{scrollHintLabel}</div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 text-gray-400 text-xs shadow-sm">
+          <ChevronDown className="w-3 h-3" />
+          <span>{scrollHintLabel}</span>
+        </div>
       )}
     </div>
   );
