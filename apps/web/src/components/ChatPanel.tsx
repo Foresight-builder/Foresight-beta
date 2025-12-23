@@ -4,7 +4,7 @@ import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
-import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
+import { MessageSquare, Sparkles, Loader2, Smile } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 import EmptyState from "@/components/EmptyState";
 import { useTranslations } from "@/lib/i18n";
@@ -297,48 +297,32 @@ export default function ChatPanel({
 
   const catCls = (cat?: string) => {
     const c = String(cat || "").toLowerCase();
-    if (c.includes("科技")) return "bg-sky-100 text-sky-700";
-    if (c.includes("体育")) return "bg-emerald-100 text-emerald-700";
-    if (c.includes("娱乐")) return "bg-pink-100 text-pink-700";
-    if (c.includes("时政") || c.includes("政治")) return "bg-emerald-100 text-emerald-700";
-    if (c.includes("天气")) return "bg-cyan-100 text-cyan-700";
-    if (c.includes("加密") || c.includes("crypto")) return "bg-indigo-100 text-indigo-700";
-    if (c.includes("生活")) return "bg-rose-100 text-rose-700";
-    if (c.includes("科技")) return "bg-violet-100 text-violet-700";
-    if (c.includes("体育")) return "bg-orange-100 text-orange-700";
-    if (c.includes("更多")) return "bg-gray-100 text-gray-700";
-    return "bg-gray-100 text-gray-700";
-  };
-
-  const getMessageBubbleColor = () => {
-    const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育"))
-      return "bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-orange-200/50 shadow-md";
-    if (c.includes("娱乐"))
-      return "bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-pink-200/50 shadow-md";
+    if (c.includes("科技")) return "bg-sky-50 text-sky-700 border-sky-100";
+    if (c.includes("体育")) return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    if (c.includes("娱乐")) return "bg-pink-50 text-pink-700 border-pink-100";
     if (c.includes("时政") || c.includes("政治"))
-      return "bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-emerald-200/50 shadow-md";
-    if (c.includes("天气"))
-      return "bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-cyan-200/50 shadow-md";
-    if (c.includes("科技"))
-      return "bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-violet-200/50 shadow-md";
-    if (c.includes("更多"))
-      return "bg-gradient-to-br from-gray-400 to-slate-500 text-white shadow-gray-200/50 shadow-md";
-    return "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-200/50 shadow-md";
+      return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    if (c.includes("天气")) return "bg-cyan-50 text-cyan-700 border-cyan-100";
+    if (c.includes("加密") || c.includes("crypto"))
+      return "bg-indigo-50 text-indigo-700 border-indigo-100";
+    if (c.includes("生活")) return "bg-rose-50 text-rose-700 border-rose-100";
+    if (c.includes("更多")) return "bg-slate-50 text-slate-700 border-slate-100";
+    return "bg-slate-50 text-slate-700 border-slate-100";
   };
 
-  const getHeaderGradient = () => {
+  const getAccentColor = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育")) return "from-orange-500/90 to-amber-500/90";
-    if (c.includes("娱乐")) return "from-pink-500/90 to-rose-500/90";
-    if (c.includes("时政") || c.includes("政治")) return "from-emerald-500/90 to-teal-500/90";
-    if (c.includes("天气")) return "from-cyan-500/90 to-blue-500/90";
-    if (c.includes("科技")) return "from-violet-500/90 to-purple-500/90";
-    if (c.includes("更多")) return "from-gray-500/90 to-slate-600/90";
-    return "from-indigo-500/90 to-purple-600/90";
+    if (c.includes("体育")) return "text-emerald-600 border-emerald-100";
+    if (c.includes("娱乐")) return "text-rose-600 border-rose-100";
+    if (c.includes("时政") || c.includes("政治")) return "text-teal-600 border-teal-100";
+    if (c.includes("天气")) return "text-sky-600 border-sky-100";
+    if (c.includes("科技")) return "text-violet-600 border-violet-100";
+    if (c.includes("更多")) return "text-slate-600 border-slate-100";
+    return "text-indigo-600 border-indigo-100";
   };
 
-  const containerCls = "flex flex-col h-full bg-transparent relative";
+  const containerCls =
+    "flex flex-col h-full bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl text-slate-900 shadow-sm";
   const minH = String(
     minHeightPx && minHeightPx > 0
       ? `${minHeightPx}px`
@@ -350,40 +334,50 @@ export default function ChatPanel({
   return (
     <div className={containerCls} style={{ minHeight: minH }}>
       {!hideHeader && (
-        <div
-          className={`px-4 py-4 bg-gradient-to-r ${getHeaderGradient()} text-white border-b border-white/10 flex items-center justify-between relative overflow-hidden`}
-        >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-          <div className="flex items-center gap-2 relative z-10">
-            <div className="inline-flex items-center justify-center w-8 h-8 bg-white/20 rounded-xl shadow-sm">
-              <MessageSquare className="w-4 h-4 text-white" />
+        <div className="px-4 py-3 border-b border-slate-200 bg-white/90 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 border border-slate-200">
+              <MessageSquare className="w-4 h-4 text-slate-700" />
             </div>
-            <div className="font-bold flex items-center gap-2">
-              <span className="tracking-tight">{roomLabel}</span>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold text-sm text-slate-900 truncate">{roomLabel}</span>
+                <Sparkles className="w-3 h-3 text-amber-500" />
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] ${getAccentColor()}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {roomCategory || tChat("header.title")}
+                </span>
+                <span className="text-slate-400">·</span>
+                <span className="truncate">
+                  {account
+                    ? tChat("header.youLabel").replace("{name}", displayName(account))
+                    : tChat("header.walletDisconnected")}
+                </span>
+              </div>
             </div>
-            <Sparkles className="w-4 h-4 text-white/90" />
-          </div>
-          <div className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-lg border border-white/20 relative z-10">
-            {account
-              ? tChat("header.youLabel").replace("{name}", displayName(account))
-              : tChat("header.walletDisconnected")}
           </div>
         </div>
       )}
 
-      <div className="px-4 py-2 bg-white/10 border-b border-white/20 flex items-center gap-2 text-xs text-white">
-        <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">
+      <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2 text-[11px] text-slate-500">
+        <span className={`px-2 py-0.5 rounded-full border ${catCls(roomCategory)} text-xs`}>
           {tChat("announcement.badge")}
         </span>
-        <div className="flex-1 truncate">
-          {forumThreads.slice(0, 2).map((t) => (
-            <span key={t.id} className="mr-3 opacity-90">
-              {String(t.title || "").slice(0, 40)}
-            </span>
-          ))}
-          {forumThreads.length === 0 && (
-            <span className="opacity-75">{tChat("announcement.empty")}</span>
-          )}
+        <div className="flex-1 overflow-hidden">
+          <div className="flex items-center gap-3 whitespace-nowrap overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+            {forumThreads.slice(0, 3).map((t) => (
+              <span key={t.id} className="opacity-80 text-xs truncate">
+                {String(t.title || "").slice(0, 40)}
+              </span>
+            ))}
+            {forumThreads.length === 0 && (
+              <span className="opacity-75">{tChat("announcement.empty")}</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -397,7 +391,7 @@ export default function ChatPanel({
 
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent custom-scrollbar"
+        className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4 bg-white/40 custom-scrollbar"
       >
         {mergedMessages.length === 0 && (
           <EmptyState
@@ -433,32 +427,36 @@ export default function ChatPanel({
             <React.Fragment key={m.id}>
               {dateChanged && (
                 <div className="flex justify-center">
-                  <span className="text-xs text-gray-500 bg-white/40 border border-white/60 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+                  <span className="text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-full px-3 py-0.5">
                     {new Date(m.created_at).toLocaleDateString()}
                   </span>
                 </div>
               )}
-              <div className={`flex items-end gap-3 ${mine ? "justify-end" : ""}`}>
-                <div
-                  className={`${
-                    mine ? "order-2" : ""
-                  } w-8 h-8 rounded-full bg-white/80 border border-white flex items-center justify-center text-purple-600 text-xs font-bold shadow-sm`}
-                >
-                  {displayName(m.user_id).slice(0, 2)}
+              <div className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 text-xs font-semibold">
+                    {displayName(m.user_id).slice(0, 2)}
+                  </div>
                 </div>
-                <div className={`${mine ? "order-1" : ""} max-w-[80%]`}>
+                <div
+                  className={`flex flex-col gap-1 max-w-[80%] ${
+                    mine ? "items-end text-right" : "items-start text-left"
+                  }`}
+                >
+                  <div className="flex items-baseline gap-2 text-[11px] text-slate-500">
+                    <span className="font-medium">{displayName(m.user_id)}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(m.created_at).toLocaleString()}
+                    </span>
+                  </div>
                   <div
-                    className={`$
+                    className={`rounded-2xl px-3 py-2 leading-relaxed border ${
                       mine
-                        ? getMessageBubbleColor()
-                    : "bg-white/60 text-gray-800 border border-white/30 shadow-sm"
-                    } rounded-2xl px-3 py-2`}
+                        ? "bg-indigo-50 text-slate-900 border-indigo-100"
+                        : "bg-white text-slate-900 border-slate-100"
+                    }`}
                   >
-                    <div className="text-xs opacity-80 mb-1">
-                      <span className="mr-2">{displayName(m.user_id)}</span>
-                      <span>{new Date(m.created_at).toLocaleString()}</span>
-                    </div>
-                    <div className="leading-relaxed break-words">{m.content}</div>
+                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
                   </div>
                 </div>
               </div>
@@ -467,7 +465,7 @@ export default function ChatPanel({
         })}
       </div>
 
-      <div className="p-3 border-t border-white/30 bg-white/40 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800">
+      <div className="p-3 border-t border-slate-100 bg-white/90 relative pb-[env(safe-area-inset-bottom)] text-slate-800">
         {!account ? (
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-700 font-medium">
