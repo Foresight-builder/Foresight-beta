@@ -318,3 +318,77 @@ export const sortEvents = (events: TrendingEvent[], sortBy: FilterSortState["sor
 
   return sorted;
 };
+
+export type ActiveHeroSlideData = {
+  activeTitle: string;
+  activeDescription: string;
+  activeImage: string;
+  activeCategory: string;
+  activeFollowers: number;
+  activeSlideId: number | null;
+};
+
+export function buildTrendingCategories(tTrending: (key: string) => string) {
+  return TRENDING_CATEGORIES.map((cat) => {
+    const id = CATEGORY_MAPPING[cat.name];
+    const label = id ? tTrending(`category.${id}`) : cat.name;
+    return { ...cat, label };
+  });
+}
+
+export function getActiveHeroSlideData(
+  heroSlideEvents: TrendingEvent[],
+  currentHeroIndex: number,
+  tTrending: (key: string) => string,
+  tEvents: (key: string) => string
+): ActiveHeroSlideData {
+  const hasHeroEvents = heroSlideEvents.length > 0;
+  const activeSlide = hasHeroEvents
+    ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length]
+    : null;
+  const hasFallbackEvents = HERO_EVENTS.length > 0;
+  const fallbackIndex = hasFallbackEvents ? currentHeroIndex % HERO_EVENTS.length : 0;
+  const fallbackEvent = hasFallbackEvents ? HERO_EVENTS[fallbackIndex] : null;
+
+  const rawActiveTitle = activeSlide
+    ? String(activeSlide.title || "")
+    : fallbackEvent
+      ? tTrending(`hero.${fallbackEvent.id}.title`)
+      : "";
+  const activeTitle = activeSlide ? tEvents(rawActiveTitle) : rawActiveTitle;
+
+  const activeDescription = activeSlide
+    ? String(activeSlide.description || "")
+    : fallbackEvent
+      ? tTrending(`hero.${fallbackEvent.id}.description`)
+      : "";
+
+  const activeImage = activeSlide
+    ? String(activeSlide.image || "")
+    : fallbackEvent
+      ? String(fallbackEvent.image || "")
+      : "";
+
+  const activeCategory = activeSlide
+    ? String(activeSlide.tag || "")
+    : fallbackEvent
+      ? String(fallbackEvent.category || "")
+      : "";
+
+  const activeFollowers = activeSlide
+    ? Number(activeSlide.followers_count || 0)
+    : fallbackEvent
+      ? Number(fallbackEvent.followers || 0)
+      : 0;
+
+  const activeSlideId = activeSlide ? Number(activeSlide.id) : null;
+
+  return {
+    activeTitle,
+    activeDescription,
+    activeImage,
+    activeCategory,
+    activeFollowers,
+    activeSlideId,
+  };
+}

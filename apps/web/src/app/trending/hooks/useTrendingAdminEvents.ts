@@ -3,16 +3,24 @@
 import { useEffect, useState } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
-import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "../trendingModel";
+import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME, type TrendingEvent } from "../trendingModel";
 
 interface UseTrendingAdminEventsParams {
   accountNorm: string | undefined;
   profileIsAdmin: boolean | undefined;
-  siweLogin: () => Promise<any>;
+  siweLogin: () => Promise<unknown>;
   queryClient: QueryClient;
   tTrendingAdmin: (key: string) => string;
   tTrending: (key: string) => string;
 }
+
+export type TrendingEditForm = {
+  title: string;
+  category: string;
+  status: string;
+  deadline: string;
+  minStake: string;
+};
 
 export function useTrendingAdminEvents({
   accountNorm,
@@ -24,12 +32,12 @@ export function useTrendingAdminEvents({
 }: UseTrendingAdminEventsParams) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({
+  const [editForm, setEditForm] = useState<TrendingEditForm>({
     title: "",
     category: "",
     status: "active",
     deadline: "",
-    minStake: 0,
+    minStake: "0",
   });
   const [editTargetId, setEditTargetId] = useState<number | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -43,16 +51,18 @@ export function useTrendingAdminEvents({
     setIsAdmin(!!profileIsAdmin);
   }, [accountNorm, profileIsAdmin]);
 
-  const openEdit = (p: any) => {
-    setEditTargetId(Number(p?.id));
-    const rawCategory = String(p?.tag || p?.category || "");
+  const openEdit = (p: TrendingEvent) => {
+    setEditTargetId(Number(p.id));
+    const rawCategory = String(p.tag || p.category || "");
     const categoryId = rawCategory ? CATEGORY_MAPPING[rawCategory] || rawCategory : "";
+    const minStakeSource = p.minInvestment || p.insured || "0";
+    const minStakeNumber = Number(minStakeSource.split(" ")[0] || 0);
     setEditForm({
-      title: String(p?.title || ""),
+      title: String(p.title || ""),
       category: categoryId,
-      status: String(p?.status || "active"),
-      deadline: String(p?.deadline || ""),
-      minStake: Number(p?.min_stake || 0),
+      status: String(p.status || "active"),
+      deadline: String(p.deadline || ""),
+      minStake: String(Number.isNaN(minStakeNumber) ? 0 : minStakeNumber),
     });
     setEditOpen(true);
   };
@@ -62,8 +72,8 @@ export function useTrendingAdminEvents({
     setEditTargetId(null);
   };
 
-  const setEditField = (k: string, v: any) =>
-    setEditForm((prev: any) => ({
+  const setEditField = <K extends keyof TrendingEditForm>(k: K, v: TrendingEditForm[K]) =>
+    setEditForm((prev) => ({
       ...prev,
       [k]: v,
     }));
@@ -78,7 +88,7 @@ export function useTrendingAdminEvents({
       const id = Number(editTargetId);
       const categoryId = String(editForm.category || "");
       const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
-      const payload: any = {
+      const payload = {
         title: editForm.title,
         category: categoryName,
         status: editForm.status,
@@ -95,26 +105,28 @@ export function useTrendingAdminEvents({
       if (!res.ok || !j?.success) {
         throw new Error(String(j?.message || tTrendingAdmin("updateFailed")));
       }
-      queryClient.setQueryData(["predictions"], (old: any[]) =>
-        old?.map((p: any) =>
-          p?.id === id
-            ? {
-                ...p,
-                title: payload.title,
-                category: payload.category,
-                status: payload.status,
-                deadline: payload.deadline,
-                min_stake: payload.minStake,
-              }
-            : p
-        )
+      queryClient.setQueryData(
+        ["predictions"],
+        (old: TrendingEvent[] | undefined): TrendingEvent[] | undefined =>
+          old?.map((p) =>
+            p?.id === id
+              ? {
+                  ...p,
+                  title: payload.title,
+                  category: payload.category,
+                  status: payload.status,
+                  deadline: payload.deadline,
+                  minInvestment: `${payload.minStake} USDC`,
+                }
+              : p
+          )
       );
       toast.success(tTrendingAdmin("updateSuccessTitle"), tTrendingAdmin("updateSuccessDesc"));
       setEditOpen(false);
-    } catch (e: any) {
+    } catch (e) {
       toast.error(
         tTrendingAdmin("updateFailed"),
-        String(e?.message || e || tTrendingAdmin("retryLater"))
+        String((e as Error)?.message || e || tTrendingAdmin("retryLater"))
       );
     } finally {
       setSavingEdit(false);
@@ -134,14 +146,16 @@ export function useTrendingAdminEvents({
       if (!res.ok || !j?.success) {
         throw new Error(String(j?.message || tTrendingAdmin("deleteFailed")));
       }
-      queryClient.setQueryData(["predictions"], (old: any[]) =>
-        old?.filter((p: any) => p?.id !== id)
+      queryClient.setQueryData(
+        ["predictions"],
+        (old: TrendingEvent[] | undefined): TrendingEvent[] | undefined =>
+          old?.filter((p) => p?.id !== id)
       );
       toast.success(tTrendingAdmin("deleteSuccessTitle"), tTrendingAdmin("deleteSuccessDesc"));
-    } catch (e: any) {
+    } catch (e) {
       toast.error(
         tTrendingAdmin("deleteFailed"),
-        String(e?.message || e || tTrendingAdmin("retryLater"))
+        String((e as Error)?.message || e || tTrendingAdmin("retryLater"))
       );
     } finally {
       setDeleteBusyId(null);

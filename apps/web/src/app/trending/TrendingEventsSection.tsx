@@ -28,7 +28,7 @@ type TrendingEventsSectionProps = {
   observerTargetRef: React.Ref<HTMLDivElement>;
   toggleFollow: (predictionId: number, event: React.MouseEvent) => void | Promise<void>;
   createCategoryParticlesAtCardClick: (event: React.MouseEvent, category?: string) => void;
-  openEdit: (p: any) => void;
+  openEdit: (p: TrendingEvent) => void;
   deleteEvent: (id: number) => void;
   onCreatePrediction: () => void;
   tTrending: (key: string) => string;
@@ -69,7 +69,7 @@ type TrendingEventsGridProps = {
   deleteBusyId: number | null;
   createCategoryParticlesAtCardClick: (event: React.MouseEvent, category?: string) => void;
   toggleFollow: (predictionId: number, event: React.MouseEvent) => void | Promise<void>;
-  openEdit: (p: any) => void;
+  openEdit: (p: TrendingEvent) => void;
   deleteEvent: (id: number) => void;
   tTrending: (key: string) => string;
   tTrendingAdmin: (key: string) => string;

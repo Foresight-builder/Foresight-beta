@@ -23,15 +23,15 @@ export function useTrendingEvents(predictions: Prediction[], filters: FilterSort
     [predictions]
   );
 
-  const displayEvents = useMemo(() => {
+  const displayEvents: TrendingEvent[] = useMemo(() => {
     if (!searchQuery.trim()) return allEvents;
     const q = searchQuery.toLowerCase();
-    return allEvents.filter(
-      (e: any) =>
-        (e.title || "").toLowerCase().includes(q) ||
-        (e.description || "").toLowerCase().includes(q) ||
-        (e.tag || "").toLowerCase().includes(q)
-    );
+    return allEvents.filter((e) => {
+      const title = String(e.title || "").toLowerCase();
+      const description = String(e.description || "").toLowerCase();
+      const tag = String(e.tag || "").toLowerCase();
+      return title.includes(q) || description.includes(q) || tag.includes(q);
+    });
   }, [allEvents, searchQuery]);
 
   useEffect(() => {
@@ -39,10 +39,7 @@ export function useTrendingEvents(predictions: Prediction[], filters: FilterSort
   }, [displayEvents]);
 
   const sortedEvents: TrendingEvent[] = useMemo(() => {
-    const filteredByCategory = filterEventsByCategory(
-      displayEvents as TrendingEvent[],
-      filters.category || null
-    );
+    const filteredByCategory = filterEventsByCategory(displayEvents, filters.category || null);
     const filteredByStatus = filterEventsByStatus(filteredByCategory, filters.status || null);
     return sortEvents(filteredByStatus, filters.sortBy);
   }, [displayEvents, filters.category, filters.sortBy, filters.status]) as TrendingEvent[];

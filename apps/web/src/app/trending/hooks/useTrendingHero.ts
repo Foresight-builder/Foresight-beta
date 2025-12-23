@@ -1,9 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { HERO_EVENTS, CATEGORY_MAPPING } from "../trendingModel";
+import type { Dispatch, SetStateAction } from "react";
+import type { FilterSortState } from "@/components/FilterSort";
+import {
+  HERO_EVENTS,
+  CATEGORY_MAPPING,
+  getActiveHeroSlideData,
+  type TrendingEvent,
+  type TrendingCategory,
+} from "../trendingModel";
 
-export function useTrendingHero(displayEvents: any[], categories: any[], setFilters: any) {
+type HeroCategories = TrendingCategory[];
+
+type SetFiltersFn = Dispatch<SetStateAction<FilterSortState>>;
+
+export function useTrendingHero(
+  displayEvents: TrendingEvent[],
+  categories: HeroCategories,
+  setFilters: SetFiltersFn,
+  tTrending: (key: string) => string,
+  tEvents: (key: string) => string
+) {
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
   useEffect(() => {
@@ -13,14 +31,14 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
     return () => clearInterval(interval);
   }, []);
 
-  const heroSlideEvents = useMemo(() => {
+  const heroSlideEvents = useMemo<TrendingEvent[]>(() => {
     const pool = displayEvents;
-    if (pool.length === 0) return [] as any[];
+    if (pool.length === 0) return [];
     const now = Date.now();
 
-    const popularitySorter = (a: any, b: any) => {
-      const fa = Number(a?.followers_count || 0);
-      const fb = Number(b?.followers_count || 0);
+    const popularitySorter = (a: TrendingEvent, b: TrendingEvent) => {
+      const fa = Number(a.followers_count || 0);
+      const fb = Number(b.followers_count || 0);
       if (fb !== fa) return fb - fa;
       const da = new Date(String(a?.deadline || 0)).getTime() - now;
       const db = new Date(String(b?.deadline || 0)).getTime() - now;
@@ -29,20 +47,20 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
       return ta - tb;
     };
 
-    const tags = Array.from(new Set(pool.map((e: any) => String(e.tag || "")).filter(Boolean)));
+    const tags = Array.from(new Set(pool.map((e) => String(e.tag || "")).filter(Boolean)));
     const picks = tags
-      .map((tag) => {
-        const group = pool.filter((e: any) => String(e.tag || "") === tag);
-        if (group.length === 0) return null as any;
+      .map<TrendingEvent | null>((tag) => {
+        const group = pool.filter((e) => String(e.tag || "") === tag);
+        if (group.length === 0) return null;
         return [...group].sort(popularitySorter)[0];
       })
-      .filter(Boolean);
+      .filter((ev): ev is TrendingEvent => ev !== null);
 
     return [...picks].sort((a, b) => {
       const tagA = String(a.tag || "");
       const tagB = String(b.tag || "");
-      const indexA = categories.findIndex((c: any) => c.name === tagA);
-      const indexB = categories.findIndex((c: any) => c.name === tagB);
+      const indexA = categories.findIndex((c) => c.name === tagA);
+      const indexB = categories.findIndex((c) => c.name === tagB);
       if (indexA !== -1 && indexB !== -1) return indexA - indexB;
       if (indexA !== -1) return -1;
       if (indexB !== -1) return 1;
@@ -51,6 +69,18 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
   }, [displayEvents, categories]);
 
   const heroSlideLength = heroSlideEvents.length || HERO_EVENTS.length;
+
+  const {
+    activeTitle,
+    activeDescription,
+    activeImage,
+    activeCategory,
+    activeFollowers,
+    activeSlideId,
+  } = useMemo(
+    () => getActiveHeroSlideData(heroSlideEvents, currentHeroIndex, tTrending, tEvents),
+    [heroSlideEvents, currentHeroIndex, tTrending, tEvents]
+  );
 
   const handlePrevHero = useCallback(() => {
     setCurrentHeroIndex((prev) =>
@@ -67,11 +97,11 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
   };
 
   const handleViewAllCategories = () => {
-    setFilters((prev: any) => ({ ...prev, category: "all" }));
+    setFilters((prev) => ({ ...prev, category: "all" }));
   };
 
   const handleCategoryClick = (categoryName: string) => {
-    const idx = heroSlideEvents.findIndex((ev: any) => String(ev?.tag || "") === categoryName);
+    const idx = heroSlideEvents.findIndex((ev) => String(ev?.tag || "") === categoryName);
     if (idx >= 0) {
       setCurrentHeroIndex(idx);
     } else {
@@ -80,7 +110,7 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
     }
     const categoryId = CATEGORY_MAPPING[categoryName as keyof typeof CATEGORY_MAPPING];
     if (categoryId) {
-      setFilters((prev: any) => ({ ...prev, category: categoryId }));
+      setFilters((prev) => ({ ...prev, category: categoryId }));
     }
   };
 
@@ -88,6 +118,12 @@ export function useTrendingHero(displayEvents: any[], categories: any[], setFilt
     currentHeroIndex,
     heroSlideEvents,
     heroSlideLength,
+    activeTitle,
+    activeDescription,
+    activeImage,
+    activeCategory,
+    activeFollowers,
+    activeSlideId,
     handlePrevHero,
     handleNextHero,
     handleHeroBulletClick,

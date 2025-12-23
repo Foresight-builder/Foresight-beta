@@ -10,7 +10,7 @@ import type { TrendingEvent } from "../trendingModel";
 
 export function useTrendingFollowState(
   accountNorm: string | undefined,
-  setShowLoginModal: (open: boolean) => void,
+  requireLogin: () => void,
   tErrors: (key: string) => string,
   queryClient: QueryClient,
   visibleEvents: TrendingEvent[]
@@ -21,7 +21,7 @@ export function useTrendingFollowState(
   const toggleFollow = useCallback(
     async (predictionId: number, event: MouseEvent) => {
       if (!accountNorm) {
-        setShowLoginModal(true);
+        requireLogin();
         return;
       }
 
@@ -46,9 +46,9 @@ export function useTrendingFollowState(
       try {
         await toggleFollowPrediction(wasFollowing, normalizedId, accountNorm);
       } catch (err) {
-        setFollowError(
-          (err as any)?.message ? String((err as any).message) : tErrors("followActionFailed")
-        );
+        const message =
+          err instanceof Error && err.message ? err.message : tErrors("followActionFailed");
+        setFollowError(message);
         setTimeout(() => setFollowError(null), 3000);
         setFollowedEvents((prev) => {
           const rollback = new Set(prev);
@@ -61,7 +61,7 @@ export function useTrendingFollowState(
         });
       }
     },
-    [accountNorm, followedEvents, setShowLoginModal, tErrors]
+    [accountNorm, followedEvents, requireLogin, tErrors]
   );
 
   useEffect(() => {
@@ -70,8 +70,15 @@ export function useTrendingFollowState(
       try {
         const res = await fetch(`/api/user-follows?address=${accountNorm}`);
         if (!res.ok) return;
-        const data = await res.json();
-        const ids = new Set<number>((data?.follows || []).map((e: any) => Number(e.id)));
+        const data = (await res.json()) as {
+          follows?: Array<{ id: number | string }>;
+          total?: number;
+        };
+        const ids = new Set<number>(
+          (data.follows || [])
+            .map((item) => Number(item.id))
+            .filter((id): id is number => Number.isFinite(id))
+        );
         setFollowedEvents(ids);
       } catch {}
     })();
@@ -82,15 +89,13 @@ export function useTrendingFollowState(
     windowIds = visibleEvents.map((e) => Number(e?.id)).filter(Number.isFinite) as number[];
     const ids = Array.from(new Set(windowIds));
     if (ids.length === 0) return;
-    if (!supabase || typeof (supabase as any).channel !== "function") {
+    if (!supabase) {
       return;
     }
 
-    let channel: any = null;
-    let isSubscribed = true;
-
     const filterIn = `event_id=in.(${ids.join(",")})`;
-    channel = (supabase as any).channel("event_follows_trending");
+    const channel = supabase.channel("event_follows_trending");
+    let isSubscribed = true;
 
     channel
       .on(
@@ -101,22 +106,33 @@ export function useTrendingFollowState(
           table: "event_follows",
           filter: filterIn,
         },
-        (payload: any) => {
+        (payload: { new?: { event_id?: number | string; user_id?: string | null } }) => {
           if (!isSubscribed) return;
-          const row = payload?.new || {};
-          const eid = Number(row?.event_id);
-          const uid = String(row?.user_id || "");
+          const row = payload.new;
+          if (!row) return;
+          const eid = Number(row.event_id);
+          const uid = String(row.user_id || "");
           if (!Number.isFinite(eid)) return;
           if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
-            queryClient.setQueryData(["predictions"], (old: any[]) =>
-              old?.map((p: any) =>
-                p?.id === eid
-                  ? {
-                      ...p,
-                      followers_count: Number(p?.followers_count || 0) + 1,
-                    }
-                  : p
-              )
+            queryClient.setQueryData(
+              ["predictions"],
+              (
+                old:
+                  | Array<{
+                      id: number;
+                      followers_count?: number;
+                      [key: string]: unknown;
+                    }>
+                  | undefined
+              ) =>
+                old?.map((p) =>
+                  p.id === eid
+                    ? {
+                        ...p,
+                        followers_count: Number(p.followers_count || 0) + 1,
+                      }
+                    : p
+                )
             );
           }
           if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
@@ -136,22 +152,33 @@ export function useTrendingFollowState(
           table: "event_follows",
           filter: filterIn,
         },
-        (payload: any) => {
+        (payload: { old?: { event_id?: number | string; user_id?: string | null } }) => {
           if (!isSubscribed) return;
-          const row = payload?.old || {};
-          const eid = Number(row?.event_id);
-          const uid = String(row?.user_id || "");
+          const row = payload.old;
+          if (!row) return;
+          const eid = Number(row.event_id);
+          const uid = String(row.user_id || "");
           if (!Number.isFinite(eid)) return;
           if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
-            queryClient.setQueryData(["predictions"], (old: any[]) =>
-              old?.map((p: any) =>
-                p?.id === eid
-                  ? {
-                      ...p,
-                      followers_count: Math.max(0, Number(p?.followers_count || 0) - 1),
-                    }
-                  : p
-              )
+            queryClient.setQueryData(
+              ["predictions"],
+              (
+                old:
+                  | Array<{
+                      id: number;
+                      followers_count?: number;
+                      [key: string]: unknown;
+                    }>
+                  | undefined
+              ) =>
+                old?.map((p) =>
+                  p.id === eid
+                    ? {
+                        ...p,
+                        followers_count: Math.max(0, Number(p.followers_count || 0) - 1),
+                      }
+                    : p
+                )
             );
           }
           if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
@@ -171,8 +198,9 @@ export function useTrendingFollowState(
       if (channel) {
         try {
           channel.unsubscribe();
-          (supabase as any).removeChannel(channel);
-          channel = null;
+          if (supabase) {
+            supabase.removeChannel(channel);
+          }
         } catch {}
       }
     };

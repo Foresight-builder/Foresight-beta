@@ -6,156 +6,32 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
-import type { FilterSortState } from "@/components/FilterSort";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
-import { usePersistedState } from "@/hooks/usePersistedState";
-import { usePredictions } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
-import {
-  HERO_EVENTS,
-  TRENDING_CATEGORIES,
-  CATEGORY_MAPPING,
-  type Prediction,
-  type TrendingEvent,
-} from "./trendingModel";
+import { type Prediction, buildTrendingCategories } from "./trendingModel";
 import { createSmartClickEffect, createCategoryParticlesAtCardClick } from "./trendingAnimations";
 import { useTrendingCanvas, useBackToTop } from "./useTrendingCanvas";
 import { TrendingHero } from "./TrendingHero";
 import { TrendingEditModal } from "./TrendingEditModal";
 import { TrendingLoginModal } from "./TrendingLoginModal";
 import { TrendingEventsSection } from "./TrendingEventsSection";
-import { useTrendingEvents } from "./hooks/useTrendingEvents";
+import { useTrendingList } from "./hooks/useTrendingList";
 import { useTrendingFollowState } from "./hooks/useTrendingFollowState";
 import { useTrendingAdminEvents } from "./hooks/useTrendingAdminEvents";
 import { useTrendingHero } from "./hooks/useTrendingHero";
 import { useCategoryCounts } from "./hooks/useCategoryCounts";
 
-type ActiveHeroSlideData = {
-  activeTitle: string;
-  activeDescription: string;
-  activeImage: string;
-  activeCategory: string;
-  activeFollowers: number;
-  activeSlideId: number | null;
+type ScrollToSectionOptions = {
+  onBeforeScroll?: () => void;
+  targetRef: React.RefObject<HTMLElement | null>;
 };
 
-function buildTrendingCategories(tTrending: (key: string) => string) {
-  return TRENDING_CATEGORIES.map((cat) => {
-    const id = CATEGORY_MAPPING[cat.name];
-    const label = id ? tTrending(`category.${id}`) : cat.name;
-    return { ...cat, label };
-  });
-}
-
-function getActiveHeroSlideData(
-  heroSlideEvents: any[],
-  currentHeroIndex: number,
-  tTrending: (key: string) => string,
-  tEvents: (key: string) => string
-): ActiveHeroSlideData {
-  const hasHeroEvents = heroSlideEvents.length > 0;
-  const activeSlide = hasHeroEvents
-    ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length]
-    : null;
-  const hasFallbackEvents = HERO_EVENTS.length > 0;
-  const fallbackIndex = hasFallbackEvents ? currentHeroIndex % HERO_EVENTS.length : 0;
-  const fallbackEvent = hasFallbackEvents ? HERO_EVENTS[fallbackIndex] : null;
-
-  const rawActiveTitle = activeSlide
-    ? String(activeSlide.title || "")
-    : fallbackEvent
-      ? tTrending(`hero.${fallbackEvent.id}.title`)
-      : "";
-  const activeTitle = activeSlide ? tEvents(rawActiveTitle) : rawActiveTitle;
-
-  const activeDescription = activeSlide
-    ? String(activeSlide.description || "")
-    : fallbackEvent
-      ? tTrending(`hero.${fallbackEvent.id}.description`)
-      : "";
-
-  const activeImage = activeSlide
-    ? String(activeSlide.image || "")
-    : fallbackEvent
-      ? String(fallbackEvent.image || "")
-      : "";
-
-  const activeCategory = activeSlide
-    ? String(activeSlide.tag || "")
-    : fallbackEvent
-      ? String(fallbackEvent.category || "")
-      : "";
-
-  const activeFollowers = activeSlide
-    ? Number(activeSlide.followers_count || 0)
-    : fallbackEvent
-      ? Number(fallbackEvent.followers || 0)
-      : 0;
-
-  const activeSlideId = activeSlide ? Number(activeSlide.id) : null;
-
-  return {
-    activeTitle,
-    activeDescription,
-    activeImage,
-    activeCategory,
-    activeFollowers,
-    activeSlideId,
-  };
-}
-
-function useTrendingList(initialPredictions: Prediction[] | undefined): {
-  predictions: Prediction[];
-  loading: boolean;
-  error: unknown;
-  filters: FilterSortState;
-  setFilters: (next: FilterSortState) => void;
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  displayEvents: TrendingEvent[];
-  sortedEvents: TrendingEvent[];
-  visibleEvents: TrendingEvent[];
-  loadingMore: boolean;
-  hasMore: boolean;
-  observerTargetRef: ReturnType<typeof useTrendingEvents>["observerTargetRef"];
-} {
-  const {
-    data: predictions = [],
-    isLoading: loading,
-    error,
-  } = usePredictions(undefined, { initialData: initialPredictions });
-
-  const [filters, setFilters] = usePersistedState<FilterSortState>("trending_filters", {
-    category: null,
-    sortBy: "trending",
-  });
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    displayEvents,
-    sortedEvents,
-    visibleEvents,
-    loadingMore,
-    hasMore,
-    observerTargetRef,
-  } = useTrendingEvents(predictions, filters);
-
-  return {
-    predictions: predictions as Prediction[],
-    loading,
-    error,
-    filters,
-    setFilters,
-    searchQuery,
-    setSearchQuery,
-    displayEvents,
-    sortedEvents,
-    visibleEvents,
-    loadingMore,
-    hasMore,
-    observerTargetRef,
-  };
+function scrollToSectionWithBehavior(options: ScrollToSectionOptions) {
+  if (options.onBeforeScroll) options.onBeforeScroll();
+  const target = options.targetRef.current;
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth" });
+  }
 }
 
 export default function TrendingPage({
@@ -179,7 +55,6 @@ export default function TrendingPage({
   const productsSectionRef = useRef<HTMLElement | null>(null);
 
   const {
-    predictions,
     loading,
     error,
     filters,
@@ -287,7 +162,7 @@ export default function TrendingPage({
 
   const { followedEvents, followError, toggleFollow } = useTrendingFollowState(
     accountNorm,
-    setShowLoginModal,
+    () => setShowLoginModal(true),
     tErrors,
     queryClient,
     visibleEvents
@@ -315,26 +190,29 @@ export default function TrendingPage({
   const categories = useMemo(() => buildTrendingCategories(tTrending), [tTrending]);
   const {
     currentHeroIndex,
-    heroSlideEvents,
     heroSlideLength,
-    handlePrevHero,
-    handleNextHero,
-    handleHeroBulletClick,
-    handleViewAllCategories,
-    handleCategoryClick,
-  } = useTrendingHero(displayEvents, categories, setFilters);
-
-  const {
     activeTitle,
     activeDescription,
     activeImage,
     activeCategory,
     activeFollowers,
     activeSlideId,
-  } = getActiveHeroSlideData(heroSlideEvents, currentHeroIndex, tTrending, tEvents);
+    handlePrevHero,
+    handleNextHero,
+    handleHeroBulletClick,
+    handleViewAllCategories,
+    handleCategoryClick,
+  } = useTrendingHero(displayEvents, categories, setFilters, tTrending, tEvents);
   const handleViewAllCategoriesWithScroll = () => {
-    handleViewAllCategories();
-    productsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToSectionWithBehavior({
+      onBeforeScroll: handleViewAllCategories,
+      targetRef: productsSectionRef,
+    });
+  };
+
+  const handleBackToTopClick = (e: React.MouseEvent) => {
+    scrollToTop();
+    createSmartClickEffect(e);
   };
 
   return (
@@ -423,14 +301,7 @@ export default function TrendingPage({
       </footer>
 
       {/* 返回顶部按钮 */}
-      <BackToTopButton
-        show={showBackToTop}
-        onClick={(e) => {
-          scrollToTop();
-          createSmartClickEffect(e);
-        }}
-        label="返回顶部"
-      />
+      <BackToTopButton show={showBackToTop} onClick={handleBackToTopClick} label="返回顶部" />
     </div>
   );
 }

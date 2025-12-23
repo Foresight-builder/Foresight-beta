@@ -1,11 +1,12 @@
 import React from "react";
 import DatePicker from "@/components/ui/DatePicker";
+import type { TrendingEditForm } from "./hooks/useTrendingAdminEvents";
 
 type TrendingEditModalProps = {
   open: boolean;
-  editForm: any;
+  editForm: TrendingEditForm;
   savingEdit: boolean;
-  onChangeField: (field: string, value: any) => void;
+  onChangeField: <K extends keyof TrendingEditForm>(field: K, value: TrendingEditForm[K]) => void;
   onClose: () => void;
   onSubmit: () => void;
   tTrendingAdmin: (key: string) => string;
