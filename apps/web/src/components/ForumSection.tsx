@@ -37,6 +37,106 @@ interface CommentView {
   parent_id?: number | null;
 }
 
+async function fetchThreads(eventId: number, threadId: number | undefined) {
+  const res = await fetch(`/api/forum?eventId=${eventId}`);
+  const data = await res.json();
+  let list = Array.isArray(data?.threads) ? data.threads : [];
+  if (threadId != null) {
+    const idNum = normalizeId(threadId);
+    if (idNum != null) {
+      list = list.filter((t: any) => normalizeId(t.id) === idNum);
+    }
+  }
+  return list as ThreadView[];
+}
+
+async function fetchUserVotes(eventId: number) {
+  const res = await fetch(`/api/forum/user-votes?eventId=${eventId}`);
+  const j = await res.json();
+  const set = new Set<string>();
+  const types: Record<string, "up" | "down"> = {};
+  (Array.isArray(j?.votes) ? j.votes : []).forEach((v: any) => {
+    const key = `${String(v.content_type)}:${String(v.content_id)}`;
+    set.add(key);
+    const vt = String(v.vote_type) === "down" ? "down" : "up";
+    types[key] = vt;
+  });
+  return { set, types };
+}
+
+async function createThread(payload: {
+  eventId: number;
+  title: string;
+  walletAddress: string;
+  subjectName: string;
+  actionVerb: "priceReach" | "willWin" | "willHappen";
+  targetValue: string;
+  category:
+    | "tech"
+    | "entertainment"
+    | "politics"
+    | "weather"
+    | "sports"
+    | "business"
+    | "crypto"
+    | "more";
+  deadline: string;
+  titlePreview: string;
+  criteriaPreview: string;
+}) {
+  const res = await fetch("/api/forum", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: payload.eventId,
+      title: payload.title,
+      content: "",
+      walletAddress: payload.walletAddress,
+      subjectName: payload.subjectName,
+      actionVerb: payload.actionVerb,
+      targetValue: payload.targetValue,
+      category: payload.category,
+      deadline: payload.deadline,
+      titlePreview: payload.titlePreview,
+      criteriaPreview: payload.criteriaPreview,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+async function createComment(input: {
+  eventId: number;
+  threadId: number;
+  content: string;
+  walletAddress: string;
+  parentId?: number | null;
+}) {
+  const res = await fetch("/api/forum/comments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventId: input.eventId,
+      threadId: input.threadId,
+      content: input.content,
+      walletAddress: input.walletAddress,
+      parentId: input.parentId,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+async function sendVote(input: { type: "thread" | "comment"; id: number; dir: "up" | "down" }) {
+  const res = await fetch("/api/forum/vote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || "Vote failed");
+  }
+}
+
 export default function ForumSection({ eventId, threadId, hideCreate }: ForumSectionProps) {
   const {
     account,
@@ -117,15 +217,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/forum?eventId=${eventId}`);
-      const data = await res.json();
-      let list = Array.isArray(data?.threads) ? data.threads : [];
-      if (threadId != null) {
-        const idNum = normalizeId(threadId);
-        if (idNum != null) {
-          list = list.filter((t: any) => normalizeId(t.id) === idNum);
-        }
-      }
+      const list = await fetchThreads(eventId, threadId);
       setThreads(list);
     } catch (e: any) {
       setError(e?.message || tForum("errors.loadFailed"));
@@ -145,16 +237,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
           setUserVotes(new Set());
           return;
         }
-        const res = await fetch(`/api/forum/user-votes?eventId=${eventId}`);
-        const j = await res.json();
-        const set = new Set<string>();
-        const types: Record<string, "up" | "down"> = {};
-        (Array.isArray(j?.votes) ? j.votes : []).forEach((v: any) => {
-          const key = `${String(v.content_type)}:${String(v.content_id)}`;
-          set.add(key);
-          const vt = String(v.vote_type) === "down" ? "down" : "up";
-          types[key] = vt;
-        });
+        const { set, types } = await fetchUserVotes(eventId);
         setUserVotes(set);
         setUserVoteTypes(types);
       } catch {}
@@ -191,24 +274,18 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     setPosting(true);
     setError(null);
     try {
-      const res = await fetch("/api/forum", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          title: t,
-          content: "",
-          walletAddress: account,
-          subjectName: subjectName,
-          actionVerb: actionVerb,
-          targetValue: targetValue,
-          category: category,
-          deadline: deadline,
-          titlePreview: titlePreview,
-          criteriaPreview: criteriaPreview,
-        }),
+      await createThread({
+        eventId,
+        title: t,
+        walletAddress: account,
+        subjectName,
+        actionVerb,
+        targetValue,
+        category,
+        deadline,
+        titlePreview,
+        criteriaPreview,
       });
-      if (!res.ok) throw new Error(await res.text());
       setTitle("");
       await load();
     } catch (e: any) {
@@ -225,18 +302,13 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     }
     if (!text.trim()) return;
     try {
-      const res = await fetch("/api/forum/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          threadId,
-          content: text,
-          walletAddress: account,
-          parentId,
-        }),
+      await createComment({
+        eventId,
+        threadId,
+        content: text,
+        walletAddress: account,
+        parentId,
       });
-      if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
       setError(e?.message || tForum("errors.commentFailed"));
@@ -254,15 +326,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
         setError(tForum("errors.alreadyVoted"));
         return;
       }
-      const res = await fetch("/api/forum/vote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, id, dir }),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || tForum("errors.voteFailed"));
-      }
+      await sendVote({ type, id, dir });
       setUserVotes((prev) => new Set([...prev, key]));
       setUserVoteTypes((prev) => ({ ...prev, [key]: dir }));
       await load();

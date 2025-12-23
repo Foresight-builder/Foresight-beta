@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCategories } from "@/hooks/useQueries";
-import { normalizeCategory } from "@/features/trending/trendingModel";
+import { normalizeCategory, fetchPredictions } from "@/features/trending/trendingModel";
 import { CATEGORIES } from "./forumConfig";
 
 export type PredictionItem = {
@@ -33,12 +33,15 @@ export function useForumList() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/predictions?includeOutcomes=0");
-        if (!res.ok) {
-          throw new Error("Failed to fetch predictions");
-        }
-        const data = await res.json();
-        const list: PredictionItem[] = Array.isArray(data?.data) ? data.data : [];
+        const data = await fetchPredictions();
+        const list: PredictionItem[] = data.map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          category: p.category,
+          created_at: p.created_at,
+          followers_count: p.followers_count,
+        }));
         if (!cancelled) {
           setPredictions(list);
           setSelectedTopicId((prev) => prev ?? list[0]?.id ?? null);

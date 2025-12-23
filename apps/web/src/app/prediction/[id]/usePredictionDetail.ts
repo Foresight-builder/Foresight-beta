@@ -26,6 +26,64 @@ const erc1155Abi = [
   "function setApprovalForAll(address operator, bool approved) external",
 ];
 
+const API_BASE = "/api";
+
+function buildMarketKey(chainId: number, eventId: string | number) {
+  return `${chainId}:${eventId}`;
+}
+
+async function fetchOrderbookDepthApi(
+  contract: string,
+  chainId: number,
+  marketKey: string,
+  outcome: number
+) {
+  const qBuy = `contract=${contract}&chainId=${chainId}&marketKey=${encodeURIComponent(
+    marketKey
+  )}&outcome=${outcome}&side=true&levels=10`;
+  const qSell = `contract=${contract}&chainId=${chainId}&marketKey=${encodeURIComponent(
+    marketKey
+  )}&outcome=${outcome}&side=false&levels=10`;
+
+  const [r1, r2] = await Promise.all([
+    fetch(`${API_BASE}/orderbook/depth?${qBuy}`),
+    fetch(`${API_BASE}/orderbook/depth?${qSell}`),
+  ]);
+  const [j1, j2] = await Promise.all([safeJson(r1), safeJson(r2)]);
+
+  return {
+    buys: j1.data || [],
+    sells: j2.data || [],
+  };
+}
+
+async function fetchUserOpenOrdersApi(
+  contract: string,
+  chainId: number,
+  marketKey: string,
+  maker: string
+) {
+  const q = `contract=${contract}&chainId=${chainId}&marketKey=${encodeURIComponent(
+    marketKey
+  )}&maker=${maker}&status=open`;
+  const res = await fetch(`${API_BASE}/orderbook/orders?${q}`);
+  const json = await safeJson(res);
+  if (json.success && json.data) {
+    return json.data;
+  }
+  return [];
+}
+
+async function fetchTradesApi(contract: string, chainId: number) {
+  const q = `contract=${contract}&chainId=${chainId}&limit=50`;
+  const res = await fetch(`${API_BASE}/orderbook/trades?${q}`);
+  const json = await safeJson(res);
+  if (json.success && json.data) {
+    return json.data;
+  }
+  return [];
+}
+
 async function safeJson<T = any>(res: Response): Promise<T> {
   const contentType = res.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
@@ -39,6 +97,22 @@ async function safeJson<T = any>(res: Response): Promise<T> {
     return (await res.json()) as T;
   } catch {
     throw new Error("Invalid JSON response");
+  }
+}
+
+async function createBrowserProvider(walletProvider: any) {
+  return new ethers.BrowserProvider(walletProvider);
+}
+
+async function ensureNetwork(
+  provider: ethers.BrowserProvider,
+  targetChainId: number,
+  switchNetwork: (chainId: number) => Promise<void>
+) {
+  const network = await provider.getNetwork();
+  if (Number(network.chainId) !== targetChainId) {
+    await switchNetwork(targetChainId);
+    await new Promise((r) => setTimeout(r, 1000));
   }
 }
 
@@ -80,6 +154,17 @@ function resolveAddresses(chainId: number): {
   const usdc = (fromMap.usdc || defaultUsdc || "").trim();
 
   return { foresight, usdc };
+}
+
+async function getCollateralTokenContract(
+  market: { market: string; chain_id: number; collateral_token?: string },
+  signer: ethers.Signer
+) {
+  const addresses = resolveAddresses(market.chain_id);
+  const collateralToken = market.collateral_token || addresses.usdc;
+  const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
+  const decimals = await tokenContract.decimals();
+  return { tokenContract, decimals: Number(decimals) };
 }
 
 function parseUnitsByDecimals(value: number | string, decimals: number): bigint {
@@ -169,16 +254,15 @@ export function usePredictionDetail() {
   const refreshUserOrders = useCallback(async () => {
     if (!market || !account) return;
     try {
-      const base = "/api";
-      const mk = `${market.chain_id}:${(params as any).id}`;
-      const q = `contract=${market.market}&chainId=${
-        market.chain_id
-      }&marketKey=${encodeURIComponent(mk)}&maker=${account}&status=open`;
-      const res = await fetch(`${base}/orderbook/orders?${q}`);
-      const json = await safeJson(res);
-      if (json.success && json.data) {
-        setOpenOrders(json.data);
-      }
+      const eventId = (params as any).id;
+      const marketKey = buildMarketKey(market.chain_id, eventId);
+      const orders = await fetchUserOpenOrdersApi(
+        market.market,
+        market.chain_id,
+        marketKey,
+        account
+      );
+      setOpenOrders(orders);
     } catch (e) {
       console.error("Refresh orders failed", e);
     }
@@ -221,7 +305,7 @@ export function usePredictionDetail() {
   useEffect(() => {
     const loadMarket = async () => {
       try {
-        const resp = await fetch(`/api/markets/map?id=${(params as any).id}`);
+        const resp = await fetch(`${API_BASE}/markets/map?id=${(params as any).id}`);
         const j = await safeJson(resp);
         if (j?.success && j?.data) {
           setMarket(j.data);
@@ -235,23 +319,14 @@ export function usePredictionDetail() {
     if (!market) return;
     const fetchDepth = async () => {
       try {
-        const base = "/api";
-        const mk = `${market.chain_id}:${(params as any).id}`;
-        const qBuy = `contract=${market.market}&chainId=${
-          market.chain_id
-        }&marketKey=${encodeURIComponent(mk)}&outcome=${tradeOutcome}&side=true&levels=10`;
-        const qSell = `contract=${market.market}&chainId=${
-          market.chain_id
-        }&marketKey=${encodeURIComponent(mk)}&outcome=${tradeOutcome}&side=false&levels=10`;
-
-        const [r1, r2] = await Promise.all([
-          fetch(`${base}/orderbook/depth?${qBuy}`),
-          fetch(`${base}/orderbook/depth?${qSell}`),
-        ]);
-        const [j1, j2] = await Promise.all([safeJson(r1), safeJson(r2)]);
-
-        const buys = j1.data || [];
-        const sells = j2.data || [];
+        const eventId = (params as any).id;
+        const marketKey = buildMarketKey(market.chain_id, eventId);
+        const { buys, sells } = await fetchOrderbookDepthApi(
+          market.market,
+          market.chain_id,
+          marketKey,
+          tradeOutcome
+        );
 
         setDepthBuy(buys);
         setDepthSell(sells);
@@ -276,13 +351,8 @@ export function usePredictionDetail() {
     if (!market) return;
     const fetchTrades = async () => {
       try {
-        const base = "/api";
-        const q = `contract=${market.market}&chainId=${market.chain_id}&limit=50`;
-        const res = await fetch(`${base}/orderbook/trades?${q}`);
-        const json = await safeJson(res);
-        if (json.success && json.data) {
-          setTrades(json.data);
-        }
+        const items = await fetchTradesApi(market.market, market.chain_id);
+        setTrades(items);
       } catch (e) {
         console.error("Fetch trades failed", e);
       }
@@ -296,7 +366,7 @@ export function usePredictionDetail() {
   const cancelOrder = async (salt: string) => {
     if (!account || !market) return;
     try {
-      const provider = new ethers.BrowserProvider(walletProvider);
+      const provider = await createBrowserProvider(walletProvider);
       const signer = await provider.getSigner();
 
       const domain = createOrderDomain(market.chain_id, market.market);
@@ -312,10 +382,9 @@ export function usePredictionDetail() {
       };
       const signature = await signer.signTypedData(domain as any, types as any, value as any);
 
-      const base = "/api";
       const mk = `${market.chain_id}:${(params as any).id}`;
 
-      const res = await fetch(`${base}/orderbook/cancel-salt`, {
+      const res = await fetch(`${API_BASE}/orderbook/cancel-salt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -347,21 +416,12 @@ export function usePredictionDetail() {
       if (!market || !account || !walletProvider) return;
       setOrderMsg("准备铸币...");
 
-      const provider = new ethers.BrowserProvider(walletProvider);
+      const provider = await createBrowserProvider(walletProvider);
+      await ensureNetwork(provider, market.chain_id, switchNetwork);
       const signer = await provider.getSigner();
 
-      const network = await provider.getNetwork();
-      if (Number(network.chainId) !== market.chain_id) {
-        await switchNetwork(market.chain_id);
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-
-      const addresses = resolveAddresses(market.chain_id);
-      const collateralToken = market.collateral_token || addresses.usdc;
-
-      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
-      const decimals = await tokenContract.decimals();
-      const amountBN = parseUnitsByDecimals(amountStr, Number(decimals));
+      const { tokenContract, decimals } = await getCollateralTokenContract(market, signer);
+      const amountBN = parseUnitsByDecimals(amountStr, decimals);
 
       const allowance = await tokenContract.allowance(account, market.market);
 
@@ -394,20 +454,12 @@ export function usePredictionDetail() {
       if (!market || !account || !walletProvider) return;
       setOrderMsg("准备赎回...");
 
-      const provider = new ethers.BrowserProvider(walletProvider);
+      const provider = await createBrowserProvider(walletProvider);
+      await ensureNetwork(provider, market.chain_id, switchNetwork);
       const signer = await provider.getSigner();
 
-      const network = await provider.getNetwork();
-      if (Number(network.chainId) !== market.chain_id) {
-        await switchNetwork(market.chain_id);
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-
-      const addresses = resolveAddresses(market.chain_id);
-      const collateralToken = market.collateral_token || addresses.usdc;
-      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
-      const decimals = await tokenContract.decimals();
-      const amountBN = parseUnitsByDecimals(amountStr, Number(decimals));
+      const { decimals } = await getCollateralTokenContract(market, signer);
+      const amountBN = parseUnitsByDecimals(amountStr, decimals);
 
       const marketContract = new ethers.Contract(market.market, marketAbi, signer);
       const outcomeTokenAddress = await marketContract.outcomeToken();
@@ -446,25 +498,15 @@ export function usePredictionDetail() {
       if (isNaN(price) || price <= 0 || price >= 1) throw new Error("价格无效 (0-1)");
       if (isNaN(amount) || amount <= 0) throw new Error("数量无效");
 
-      const provider = new ethers.BrowserProvider(walletProvider);
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
-
-      if (currentChainId !== market.chain_id) {
-        try {
-          await switchNetwork(market.chain_id);
-          await new Promise((r) => setTimeout(r, 1000));
-        } catch (e: any) {
-          throw new Error(`请切换到正确网络 (Chain ID: ${market.chain_id})`);
-        }
+      const provider = await createBrowserProvider(walletProvider);
+      try {
+        await ensureNetwork(provider, market.chain_id, switchNetwork);
+      } catch (e: any) {
+        throw new Error(`请切换到正确网络 (Chain ID: ${market.chain_id})`);
       }
 
       const signer = await provider.getSigner();
-      const addresses = resolveAddresses(market.chain_id);
-      const collateralToken = market.collateral_token || addresses.usdc;
-
-      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
-      const decimals = Number(await tokenContract.decimals());
+      const { tokenContract, decimals } = await getCollateralTokenContract(market, signer);
       const priceBN = parseUnitsByDecimals(price.toString(), decimals);
       const amountInt = Math.floor(amount);
       if (amountInt <= 0) throw new Error("数量无效");
@@ -510,7 +552,6 @@ export function usePredictionDetail() {
       const domain = createOrderDomain(market.chain_id, market.market);
       const signature = await signer.signTypedData(domain as any, ORDER_TYPES as any, value as any);
 
-      const base = "/api";
       const mk = `${market.chain_id}:${(params as any).id}`;
       const payload = {
         order: {
@@ -530,7 +571,7 @@ export function usePredictionDetail() {
         eventId: Number((params as any).id),
       };
 
-      const res = await fetch(`${base}/orderbook/orders`, {
+      const res = await fetch(`${API_BASE}/orderbook/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
