@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
+import { getPooledClient } from "./dbPool";
 
 export type { Database };
 
@@ -58,6 +59,12 @@ export type EventFollow = Database["public"]["Tables"]["event_follows"]["Row"];
 
 export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
-export function getClient() {
+export function getClient(id?: string) {
+  if (isServer) {
+    const pooled = getPooledClient(undefined, undefined, id);
+    if (pooled) {
+      return pooled;
+    }
+  }
   return (supabaseAdmin || supabase) as SupabaseClient<Database>;
 }

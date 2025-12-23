@@ -16,6 +16,7 @@ import {
   TRENDING_CATEGORIES,
   CATEGORY_MAPPING,
   type Prediction,
+  type TrendingEvent,
 } from "./trendingModel";
 import { createSmartClickEffect, createCategoryParticlesAtCardClick } from "./trendingAnimations";
 import { useTrendingCanvas, useBackToTop } from "./useTrendingCanvas";
@@ -37,6 +38,14 @@ type ActiveHeroSlideData = {
   activeFollowers: number;
   activeSlideId: number | null;
 };
+
+function buildTrendingCategories(tTrending: (key: string) => string) {
+  return TRENDING_CATEGORIES.map((cat) => {
+    const id = CATEGORY_MAPPING[cat.name];
+    const label = id ? tTrending(`category.${id}`) : cat.name;
+    return { ...cat, label };
+  });
+}
 
 function getActiveHeroSlideData(
   heroSlideEvents: any[],
@@ -95,6 +104,60 @@ function getActiveHeroSlideData(
   };
 }
 
+function useTrendingList(initialPredictions: Prediction[] | undefined): {
+  predictions: Prediction[];
+  loading: boolean;
+  error: unknown;
+  filters: FilterSortState;
+  setFilters: (next: FilterSortState) => void;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  displayEvents: TrendingEvent[];
+  sortedEvents: TrendingEvent[];
+  visibleEvents: TrendingEvent[];
+  loadingMore: boolean;
+  hasMore: boolean;
+  observerTargetRef: ReturnType<typeof useTrendingEvents>["observerTargetRef"];
+} {
+  const {
+    data: predictions = [],
+    isLoading: loading,
+    error,
+  } = usePredictions(undefined, { initialData: initialPredictions });
+
+  const [filters, setFilters] = usePersistedState<FilterSortState>("trending_filters", {
+    category: null,
+    sortBy: "trending",
+  });
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    displayEvents,
+    sortedEvents,
+    visibleEvents,
+    loadingMore,
+    hasMore,
+    observerTargetRef,
+  } = useTrendingEvents(predictions, filters);
+
+  return {
+    predictions: predictions as Prediction[],
+    loading,
+    error,
+    filters,
+    setFilters,
+    searchQuery,
+    setSearchQuery,
+    displayEvents,
+    sortedEvents,
+    visibleEvents,
+    loadingMore,
+    hasMore,
+    observerTargetRef,
+  };
+}
+
 export default function TrendingPage({
   initialPredictions,
 }: {
@@ -108,12 +171,6 @@ export default function TrendingPage({
   const { canvasReady } = useTrendingCanvas(canvasRef, canvasWorkerRef, offscreenActiveRef);
   const { showBackToTop, scrollToTop } = useBackToTop();
 
-  const {
-    data: predictions = [],
-    isLoading: loading,
-    error,
-  } = usePredictions(undefined, { initialData: initialPredictions as Prediction[] | undefined });
-
   const tErrors = useTranslations("errors");
   const tTrending = useTranslations("trending");
   const tTrendingAdmin = useTranslations("trending.admin");
@@ -121,18 +178,12 @@ export default function TrendingPage({
   const tEvents = useTranslations();
   const productsSectionRef = useRef<HTMLElement | null>(null);
 
-  // 筛选排序状态（持久化）
-  const [filters, setFilters] = usePersistedState<FilterSortState>("trending_filters", {
-    category: null,
-    sortBy: "trending",
-  });
-
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const { account, siweLogin } = useWallet();
-  const profileCtx = useUserProfileOptional();
-  const accountNorm = account?.toLowerCase();
-
   const {
+    predictions,
+    loading,
+    error,
+    filters,
+    setFilters,
     searchQuery,
     setSearchQuery,
     displayEvents,
@@ -141,7 +192,12 @@ export default function TrendingPage({
     loadingMore,
     hasMore,
     observerTargetRef,
-  } = useTrendingEvents(predictions, filters);
+  } = useTrendingList(initialPredictions as Prediction[] | undefined);
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { account, siweLogin } = useWallet();
+  const profileCtx = useUserProfileOptional();
+  const accountNorm = account?.toLowerCase();
 
   const categoryCounts = useCategoryCounts();
 
@@ -256,15 +312,7 @@ export default function TrendingPage({
     tTrending,
   });
 
-  const categories = useMemo(
-    () =>
-      TRENDING_CATEGORIES.map((cat) => {
-        const id = CATEGORY_MAPPING[cat.name];
-        const label = id ? tTrending(`category.${id}`) : cat.name;
-        return { ...cat, label };
-      }),
-    [tTrending]
-  );
+  const categories = useMemo(() => buildTrendingCategories(tTrending), [tTrending]);
   const {
     currentHeroIndex,
     heroSlideEvents,

@@ -146,6 +146,36 @@ export const ID_TO_CATEGORY_NAME: Record<string, string> = {
   more: "更多",
 };
 
+export const normalizeCategory = (raw?: string): string => {
+  const s = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (!s) return "科技";
+  if (["tech", "technology", "ai", "人工智能", "机器人", "科技"].includes(s)) return "科技";
+  if (["entertainment", "media", "娱乐", "综艺", "影视"].includes(s)) return "娱乐";
+  if (
+    [
+      "politics",
+      "时政",
+      "政治",
+      "news",
+      "国际",
+      "finance",
+      "经济",
+      "宏观",
+      "market",
+      "stocks",
+    ].includes(s)
+  )
+    return "时政";
+  if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
+  if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
+  if (["business", "商业", "finance", "biz"].includes(s)) return "商业";
+  if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3"].includes(s)) return "加密货币";
+  if (["more", "更多", "other", "其他"].includes(s)) return "更多";
+  return "科技";
+};
+
 export const getFallbackEventImage = (title: string) =>
   buildDiceBearUrl(title, "&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20");
 

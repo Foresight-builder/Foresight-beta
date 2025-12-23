@@ -29,6 +29,13 @@ import {
 import { useRouter } from "next/navigation";
 import ProposalCard from "./ProposalCard";
 import CreateProposalModal from "./CreateProposalModal";
+import {
+  buildProposalsWithUserVotes,
+  filterProposals,
+  sortProposals,
+  buildProposalCategories,
+} from "./proposalsListUtils";
+import type { ProposalFilter } from "./proposalsListUtils";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useQueries";
@@ -77,33 +84,12 @@ const OFFICIAL_PROPOSALS = [
   },
 ];
 
-export default function ProposalsPage() {
-  const [filter, setFilter] = useState<"hot" | "new" | "top">("hot");
-  const [category, setCategory] = useState("All");
-  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const { account, connectWallet } = useWallet();
-  const { user } = useAuth();
+function useProposalsList(account: string | null | undefined, connectWallet: () => void) {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const { data: categoriesData } = useCategories();
-
-  // Inspiration Widget State
-  const [inspiration, setInspiration] = useState(INSPIRATIONS[0]);
-  const [isRolling, setIsRolling] = useState(false);
-
-  const rollInspiration = () => {
-    setIsRolling(true);
-    let count = 0;
-    const interval = setInterval(() => {
-      setInspiration(INSPIRATIONS[Math.floor(Math.random() * INSPIRATIONS.length)]);
-      count++;
-      if (count > 10) {
-        clearInterval(interval);
-        setIsRolling(false);
-      }
-    }, 100);
-  };
+  const [filter, setFilter] = useState<ProposalFilter>("hot");
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
 
   const { data: proposals = [], isLoading } = useQuery({
     queryKey: ["proposals"],
@@ -156,60 +142,65 @@ export default function ProposalsPage() {
     },
   });
 
-  const proposalsWithUserVote = proposals.map((p: any) => ({
-    ...p,
-    userVote: userVotesMap[p.id] || p.userVote,
-  }));
-
-  const filteredProposals = proposalsWithUserVote.filter((p: any) => {
-    const inCategory = category === "All" || p.category === category;
-    if (!inCategory) return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    const title = String(p.title || "").toLowerCase();
-    const content = String(p.content || "").toLowerCase();
-    return title.includes(q) || content.includes(q);
+  const proposalsWithUserVote = buildProposalsWithUserVotes(proposals, userVotesMap);
+  const filteredProposals = filterProposals(proposalsWithUserVote, {
+    category,
+    search,
   });
+  const sortedProposals = sortProposals(filteredProposals, filter);
+  const categories = React.useMemo(() => buildProposalCategories(categoriesData), [categoriesData]);
 
-  const sortedProposals = [...filteredProposals].sort((a: any, b: any) => {
-    if (filter === "hot") {
-      const scoreA = (a.upvotes || 0) - (a.downvotes || 0) + (a.comments?.length || 0) * 2;
-      const scoreB = (b.upvotes || 0) - (b.downvotes || 0) + (b.comments?.length || 0) * 2;
-      return scoreB - scoreA;
-    }
-    if (filter === "new") {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-    if (filter === "top") {
-      return (b.upvotes || 0) - (b.downvotes || 0) - ((a.upvotes || 0) - (a.downvotes || 0));
-    }
-    return 0;
-  });
+  return {
+    filter,
+    setFilter,
+    category,
+    setCategory,
+    search,
+    setSearch,
+    proposals,
+    sortedProposals,
+    categories,
+    isLoading,
+    voteMutation,
+  };
+}
 
-  const categories = React.useMemo(() => {
-    const base = [{ id: "All", label: "Overview", icon: LayoutGrid }];
-    if (!Array.isArray(categoriesData) || categoriesData.length === 0) {
-      return base;
-    }
-    const seen = new Set<string>();
-    const items =
-      (categoriesData as any[]).map((item) => {
-        const name = String((item as any).name || "").trim();
-        if (!name || seen.has(name)) {
-          return null;
-        }
-        seen.add(name);
-        let icon = Hash;
-        if (name === "General") icon = MessageCircle;
-        else if (name === "Tech") icon = Zap;
-        else if (name === "Business") icon = Target;
-        else if (name === "Crypto") icon = Sparkles;
-        else if (name === "Sports") icon = Trophy;
-        else if (name === "Politics") icon = Shield;
-        return { id: name, label: name, icon };
-      }) || [];
-    return base.concat(items.filter((x): x is { id: string; label: string; icon: any } => !!x));
-  }, [categoriesData]);
+export default function ProposalsPage() {
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const { account, connectWallet } = useWallet();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const {
+    filter,
+    setFilter,
+    category,
+    setCategory,
+    search,
+    setSearch,
+    proposals,
+    sortedProposals,
+    categories,
+    isLoading,
+    voteMutation,
+  } = useProposalsList(account, connectWallet);
+
+  // Inspiration Widget State
+  const [inspiration, setInspiration] = useState(INSPIRATIONS[0]);
+  const [isRolling, setIsRolling] = useState(false);
+
+  const rollInspiration = () => {
+    setIsRolling(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setInspiration(INSPIRATIONS[Math.floor(Math.random() * INSPIRATIONS.length)]);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        setIsRolling(false);
+      }
+    }, 100);
+  };
 
   const activeProposalsCount = proposals.filter(
     (p: any) => (p.upvotes || 0) + (p.downvotes || 0) > 10

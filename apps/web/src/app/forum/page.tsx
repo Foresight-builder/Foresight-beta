@@ -21,6 +21,7 @@ import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useCategories } from "@/hooks/useQueries";
+import { normalizeCategory } from "../trending/trendingModel";
 
 type PredictionItem = {
   id: number;
@@ -44,36 +45,6 @@ const ALLOWED_CATEGORIES = [
 const CATEGORIES = [{ id: "all", name: "All Topics", icon: Globe }].concat(
   ALLOWED_CATEGORIES.map((c) => ({ id: c, name: c, icon: Activity }))
 );
-
-function normalizeCategory(raw?: string): string {
-  const s = String(raw || "")
-    .trim()
-    .toLowerCase();
-  if (!s) return "科技";
-  if (["tech", "technology", "ai", "人工智能", "机器人", "科技"].includes(s)) return "科技";
-  if (["entertainment", "media", "娱乐", "综艺", "影视"].includes(s)) return "娱乐";
-  if (
-    [
-      "politics",
-      "时政",
-      "政治",
-      "news",
-      "国际",
-      "finance",
-      "经济",
-      "宏观",
-      "market",
-      "stocks",
-    ].includes(s)
-  )
-    return "时政";
-  if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
-  if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
-  if (["business", "商业", "finance", "biz"].includes(s)) return "商业";
-  if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3"].includes(s)) return "加密货币";
-  if (["more", "更多", "other", "其他"].includes(s)) return "更多";
-  return "科技";
-}
 
 type CategoryStyle = {
   chip: string;
@@ -222,27 +193,14 @@ type ForumChatFrameProps = {
   error: string | null;
 };
 
-function useForumData() {
-  const { account, formatAddress } = useWallet();
+function useForumList() {
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const { data: categoriesData } = useCategories();
-
-  useEffect(() => {
-    if (!account) return;
-    const run = async () => {
-      const res = await fetchUsernamesByAddresses([account]);
-      if (res && Object.keys(res).length > 0) {
-        setNameMap((prev) => ({ ...prev, ...res }));
-      }
-    };
-    run();
-  }, [account]);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,6 +277,53 @@ function useForumData() {
     return predictions.find((p) => p.id === id) || filtered[0] || null;
   }, [predictions, filtered, selectedTopicId]);
   const activeCat = normalizeCategory(currentTopic?.category);
+
+  return {
+    predictions,
+    categories,
+    activeCategory,
+    setActiveCategory,
+    searchQuery,
+    setSearchQuery,
+    filtered,
+    loading,
+    error,
+    selectedTopicId,
+    setSelectedTopicId,
+    currentTopic,
+    activeCat,
+  };
+}
+
+function useForumData() {
+  const { account, formatAddress } = useWallet();
+  const [nameMap, setNameMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!account) return;
+    const run = async () => {
+      const res = await fetchUsernamesByAddresses([account]);
+      if (res && Object.keys(res).length > 0) {
+        setNameMap((prev) => ({ ...prev, ...res }));
+      }
+    };
+    run();
+  }, [account]);
+
+  const {
+    categories,
+    activeCategory,
+    setActiveCategory,
+    searchQuery,
+    setSearchQuery,
+    filtered,
+    loading,
+    error,
+    selectedTopicId,
+    setSelectedTopicId,
+    currentTopic,
+    activeCat,
+  } = useForumList();
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
   return {

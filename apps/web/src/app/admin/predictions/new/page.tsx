@@ -35,28 +35,7 @@ import {
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useQueries";
-
-const CATEGORY_ID_MAP: Record<string, string> = {
-  科技: "tech",
-  娱乐: "entertainment",
-  时政: "politics",
-  天气: "weather",
-  体育: "sports",
-  商业: "business",
-  加密货币: "crypto",
-  更多: "more",
-};
-
-const CATEGORY_NAME_MAP: Record<string, string> = {
-  tech: "科技",
-  entertainment: "娱乐",
-  politics: "时政",
-  weather: "天气",
-  sports: "体育",
-  crypto: "加密货币",
-  business: "商业",
-  more: "更多",
-};
+import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "../../../trending/trendingModel";
 
 const DRAFT_KEY = "admin_prediction_new_draft_v1";
 
@@ -123,7 +102,7 @@ function usePredictionDraft(
                 const next = { ...prev, ...data.form };
                 const rawCategory = String(next.category || "");
                 if (rawCategory) {
-                  next.category = CATEGORY_ID_MAP[rawCategory] || rawCategory;
+                  next.category = CATEGORY_MAPPING[rawCategory] || rawCategory;
                 }
                 return next;
               });
@@ -223,7 +202,7 @@ export default function AdminCreatePredictionPage() {
         await siweLogin();
       } catch {}
       const categoryId = String(form.category || "");
-      const categoryName = CATEGORY_NAME_MAP[categoryId] || categoryId;
+      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
       const payload: any = {
         title: form.title,
         description: form.description,
@@ -351,7 +330,7 @@ export default function AdminCreatePredictionPage() {
                           if (!name) {
                             return null;
                           }
-                          const id = CATEGORY_ID_MAP[name] || name;
+                          const id = CATEGORY_MAPPING[name] || name;
                           const labelKey = String(id || "");
                           const label =
                             labelKey && labelKey !== name
