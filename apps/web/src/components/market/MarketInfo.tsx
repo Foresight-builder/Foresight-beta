@@ -9,7 +9,7 @@ import {
   MessageSquare,
   Scale,
 } from "lucide-react";
-import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
+import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
 import dynamic from "next/dynamic";
 import { useTranslations } from "@/lib/i18n";
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
-import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
+import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 
