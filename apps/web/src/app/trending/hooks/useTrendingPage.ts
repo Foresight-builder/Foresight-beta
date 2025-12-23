@@ -35,6 +35,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWorkerRef = useRef<Worker | null>(null);
   const offscreenActiveRef = useRef<boolean>(false);
+  const [highlightHero, setHighlightHero] = useState(false);
   const { canvasReady, showBackToTop, scrollToTop } = useTrendingCanvas(
     canvasRef,
     canvasWorkerRef,
@@ -113,6 +114,8 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
     handleHeroBulletClick,
     handleViewAllCategories,
     handleCategoryClick,
+    handleHeroMouseEnter,
+    handleHeroMouseLeave,
   } = useTrendingHero(displayEvents, categories, setFilters, tTrending, tEvents);
 
   const handleViewAllCategoriesWithScroll = useCallback(() => {
@@ -126,6 +129,14 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
     (e: React.MouseEvent) => {
       scrollToTop();
       createSmartClickEffect(e);
+      const heroSection = document.getElementById("trending-hero-section");
+      if (heroSection && "focus" in heroSection) {
+        (heroSection as HTMLElement).focus();
+      }
+      setHighlightHero(true);
+      window.setTimeout(() => {
+        setHighlightHero(false);
+      }, 500);
     },
     [scrollToTop]
   );
@@ -194,11 +205,14 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
       activeCategory,
       activeFollowers,
       activeSlideId,
+      highlightHero,
       handlePrevHero,
       handleNextHero,
       handleHeroBulletClick,
       handleViewAllCategoriesWithScroll,
       handleCategoryClick,
+      handleHeroMouseEnter,
+      handleHeroMouseLeave,
     },
     modals: {
       showLoginModal,

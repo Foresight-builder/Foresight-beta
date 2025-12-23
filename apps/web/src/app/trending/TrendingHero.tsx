@@ -22,11 +22,14 @@ type TrendingHeroProps = {
   activeSlideId: number | null;
   currentHeroIndex: number;
   heroSlideLength: number;
+  highlightHero?: boolean;
   onPrevHero: () => void;
   onNextHero: () => void;
   onHeroBulletClick: (idx: number) => void;
   onViewAllCategories: () => void;
   onCategoryClick: (categoryName: string) => void;
+  onHeroMouseEnter: () => void;
+  onHeroMouseLeave: () => void;
   tTrending: (key: string) => string;
   tNav: (key: string) => string;
 };
@@ -47,6 +50,7 @@ type TrendingHeroViewProps = {
     slideId: number | null;
     currentIndex: number;
     totalSlides: number;
+    highlight?: boolean;
   };
   actions: {
     onPrevHero: () => void;
@@ -55,6 +59,8 @@ type TrendingHeroViewProps = {
     onViewAllCategories: () => void;
     onCategoryClick: (categoryName: string) => void;
     onOpenPrediction: (id: number) => void;
+    onHeroMouseEnter: () => void;
+    onHeroMouseLeave: () => void;
   };
   i18n: {
     tTrending: (key: string) => string;
@@ -75,7 +81,13 @@ function TrendingHeroView({
   };
 
   return (
-    <section className="relative w-full pt-4 pb-8 lg:pt-8 lg:pb-12 flex flex-col justify-center overflow-hidden">
+    <section
+      id="trending-hero-section"
+      className="relative w-full pt-4 pb-8 lg:pt-8 lg:pb-12 flex flex-col justify-center overflow-hidden"
+      tabIndex={-1}
+      onMouseEnter={actions.onHeroMouseEnter}
+      onMouseLeave={actions.onHeroMouseLeave}
+    >
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-br from-purple-200/40 to-blue-200/40 rounded-full blur-[120px] mix-blend-multiply opacity-70" />
         <div className="absolute bottom-[-10%] left-[-20%] w-[600px] h-[600px] bg-gradient-to-tr from-pink-200/40 to-orange-100/40 rounded-full blur-[100px] mix-blend-multiply opacity-70" />
@@ -91,7 +103,13 @@ function TrendingHeroView({
           />
         </div>
 
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+        <div
+          className={`flex flex-col lg:flex-row items-center gap-12 lg:gap-20 transition-shadow transition-transform duration-300 ${
+            hero.highlight
+              ? "shadow-[0_0_0_2px_rgba(129,140,248,0.4)] lg:shadow-[0_0_0_3px_rgba(129,140,248,0.4)] rounded-[2rem]"
+              : ""
+          }`}
+        >
           <HeroMainInfo
             activeTitle={hero.title}
             activeDescription={hero.description}
@@ -154,11 +172,14 @@ export const TrendingHero = React.memo(function TrendingHero({
   activeSlideId,
   currentHeroIndex,
   heroSlideLength,
+  highlightHero,
   onPrevHero,
   onNextHero,
   onHeroBulletClick,
   onViewAllCategories,
   onCategoryClick,
+  onHeroMouseEnter,
+  onHeroMouseLeave,
   tTrending,
   tNav,
 }: TrendingHeroProps) {
@@ -185,6 +206,7 @@ export const TrendingHero = React.memo(function TrendingHero({
         slideId: activeSlideId,
         currentIndex: currentHeroIndex,
         totalSlides: heroSlideLength,
+        highlight: highlightHero,
       }}
       actions={{
         onPrevHero,
@@ -193,6 +215,8 @@ export const TrendingHero = React.memo(function TrendingHero({
         onViewAllCategories,
         onCategoryClick,
         onOpenPrediction: handleOpenPrediction,
+        onHeroMouseEnter,
+        onHeroMouseLeave,
       }}
       i18n={{
         tTrending,

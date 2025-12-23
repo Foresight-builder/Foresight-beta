@@ -40,6 +40,8 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
         activeSlideId={hero.activeSlideId}
         currentHeroIndex={hero.currentHeroIndex}
         heroSlideLength={hero.heroSlideLength}
+        onHeroMouseEnter={hero.handleHeroMouseEnter}
+        onHeroMouseLeave={hero.handleHeroMouseLeave}
         onPrevHero={hero.handlePrevHero}
         onNextHero={hero.handleNextHero}
         onHeroBulletClick={hero.handleHeroBulletClick}
@@ -51,7 +53,7 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
 
       <section
         ref={list.eventsSectionRef}
-        className="relative z-10 px-10 py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"
+        className="relative z-10 px-4 sm:px-6 lg:px-10 py-10 sm:py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"
       >
         <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
           <span className="w-2 h-2 rounded-full bg-purple-500" />

@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
@@ -85,7 +86,13 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   tEvents,
 }: TrendingEventsGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+    >
       {visibleEvents.map((product) => {
         const eventId = normalizeEventId(product.id);
         const isValidId = isValidEventId(eventId);
@@ -117,7 +124,7 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
           />
         );
       })}
-    </div>
+    </motion.div>
   );
 });
 
@@ -198,9 +205,11 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
       {!loading && !error && (
         <>
           {followError && (
-            <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded">{followError}</div>
+            <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded" role="alert">
+              {followError}
+            </div>
           )}
-          {sortedEvents.length === 0 ? (
+          {sortedEvents.length === 0 || visibleEvents.length === 0 ? (
             <TrendingEventsEmpty
               title={tTrending("empty.title")}
               description={tTrending("empty.description")}

@@ -23,6 +23,8 @@ export function useTrendingHero(
   tEvents: (key: string) => string
 ) {
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
+  const [isHoveringHero, setIsHoveringHero] = useState(false);
 
   const heroSlideEvents = useMemo<TrendingEvent[]>(() => {
     const pool = displayEvents;
@@ -84,24 +86,29 @@ export function useTrendingHero(
   );
 
   useEffect(() => {
-    if (!heroSlideLength) return;
+    if (!heroSlideLength || heroSlideLength <= 1) return;
+    if (!autoPlayEnabled) return;
+    if (isHoveringHero) return;
     const interval = setInterval(() => {
       setCurrentHeroIndex((prevIndex) => (prevIndex + 1) % heroSlideLength);
     }, 5000);
     return () => clearInterval(interval);
-  }, [heroSlideLength]);
+  }, [heroSlideLength, autoPlayEnabled, isHoveringHero]);
 
   const handlePrevHero = useCallback(() => {
     if (!heroSlideLength) return;
+    setAutoPlayEnabled(false);
     setCurrentHeroIndex((prev) => (prev - 1 + heroSlideLength) % heroSlideLength);
   }, [heroSlideLength]);
 
   const handleNextHero = useCallback(() => {
     if (!heroSlideLength) return;
+    setAutoPlayEnabled(false);
     setCurrentHeroIndex((prev) => (prev + 1) % heroSlideLength);
   }, [heroSlideLength]);
 
   const handleHeroBulletClick = useCallback((idx: number) => {
+    setAutoPlayEnabled(false);
     setCurrentHeroIndex(idx);
   }, []);
 
@@ -111,6 +118,7 @@ export function useTrendingHero(
 
   const handleCategoryClick = useCallback(
     (categoryName: string) => {
+      setAutoPlayEnabled(false);
       const idx = heroSlideEvents.findIndex((ev) => String(ev?.tag || "") === categoryName);
       if (idx >= 0) {
         setCurrentHeroIndex(idx);
@@ -125,6 +133,14 @@ export function useTrendingHero(
     },
     [heroSlideEvents, setFilters]
   );
+
+  const handleHeroMouseEnter = useCallback(() => {
+    setIsHoveringHero(true);
+  }, []);
+
+  const handleHeroMouseLeave = useCallback(() => {
+    setIsHoveringHero(false);
+  }, []);
 
   return {
     currentHeroIndex,
@@ -142,5 +158,7 @@ export function useTrendingHero(
     handleViewAllCategories,
     handleCategoryClick,
     setCurrentHeroIndex,
+    handleHeroMouseEnter,
+    handleHeroMouseLeave,
   };
 }

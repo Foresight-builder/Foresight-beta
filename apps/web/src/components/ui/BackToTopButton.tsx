@@ -21,7 +21,7 @@ export function BackToTopButton({ show, onClick, label }: BackToTopButtonProps) 
           onClick={onClick}
           aria-label={label}
           title={label}
-          className="fixed bottom-8 right-8 z-50 w-10 h-10 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
+          className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50 w-11 h-11 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
           whileHover={{
             scale: 1.1,
             boxShadow: "0 8px 20px rgba(0, 0, 0, 0.15)",

@@ -29,7 +29,9 @@ export const useTrendingCanvas = (
         isScrolling: true,
       });
 
-      const shouldShow = window.scrollY > 480;
+      const viewportHeight = window.innerHeight || 0;
+      const threshold = Math.max(viewportHeight * 1.2, 480);
+      const shouldShow = window.scrollY > threshold;
       setShowBackToTop((prev) => (prev === shouldShow ? prev : shouldShow));
     };
 

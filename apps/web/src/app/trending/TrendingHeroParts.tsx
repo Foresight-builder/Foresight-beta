@@ -263,6 +263,7 @@ export function HeroPreviewCard({
   successRateLabel,
 }: HeroPreviewCardProps) {
   const canOpenPrediction = typeof activeSlideId === "number" && Number.isFinite(activeSlideId);
+  const hasMultipleSlides = heroSlideLength > 1;
 
   return (
     <div className="w-full lg:w-1/2 relative h-[400px] md:h-[500px] flex items-center justify-center lg:justify-end">
@@ -287,29 +288,31 @@ export function HeroPreviewCard({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
 
-          <div
-            className="absolute bottom-6 right-6 flex gap-3 z-20"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onPrevHero();
-              }}
-              className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+          {hasMultipleSlides && (
+            <div
+              className="absolute bottom-6 right-6 flex gap-3 z-20"
+              onClick={(e) => e.stopPropagation()}
             >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNextHero();
-              }}
-              className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPrevHero();
+                }}
+                className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNextHero();
+                }}
+                className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-purple-600 transition-all hover:-translate-y-1 active:translate-y-0"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
 
         <motion.div
@@ -328,17 +331,21 @@ export function HeroPreviewCard({
         </motion.div>
       </motion.div>
 
-      <div className="absolute right-[-20px] lg:right-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-3">
-        {Array.from({ length: Math.min(heroSlideLength, 5) }).map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => onHeroBulletClick(idx)}
-            className={`w-1.5 rounded-full transition-all duration-300 ${
-              currentHeroIndex === idx ? "h-8 bg-purple-600" : "h-2 bg-gray-300 hover:bg-purple-300"
-            }`}
-          />
-        ))}
-      </div>
+      {hasMultipleSlides && (
+        <div className="absolute right-[-20px] lg:right-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-3">
+          {Array.from({ length: Math.min(heroSlideLength, 5) }).map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => onHeroBulletClick(idx)}
+              className={`w-1.5 rounded-full transition-all duration-300 ${
+                currentHeroIndex === idx
+                  ? "h-8 bg-purple-600"
+                  : "h-2 bg-gray-300 hover:bg-purple-300"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -383,9 +390,10 @@ export function HeroCategoryList({
         {categories.map((category) => {
           const isActive = String(activeCategory || "") === category.name;
           return (
-            <button
+            <motion.button
               key={category.name}
               onClick={() => onCategoryClick(category.name)}
+              whileTap={{ scale: 0.97 }}
               className={`group flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 shrink-0 ${
                 isActive
                   ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20 transform -translate-y-1"
@@ -407,7 +415,7 @@ export function HeroCategoryList({
                   {categoryCounts[category.name] || 0} {eventsLabel}
                 </div>
               </div>
-            </button>
+            </motion.button>
           );
         })}
       </div>

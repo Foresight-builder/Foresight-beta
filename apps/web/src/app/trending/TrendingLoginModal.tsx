@@ -1,5 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { CheckCircle, Wallet } from "lucide-react";
 
 type TrendingLoginModalProps = {
@@ -9,6 +10,31 @@ type TrendingLoginModalProps = {
 };
 
 export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginModalProps) {
+  const router = useRouter();
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    if (dialogRef.current) {
+      dialogRef.current.focus();
+    }
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  const handleLoginNow = () => {
+    onClose();
+    router.push("/login");
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -25,6 +51,12 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative max-w-md w-full bg-gradient-to-br from-white via-white to-purple-50 rounded-3xl shadow-2xl border border-white/20 overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trending-login-modal-title"
+            aria-describedby="trending-login-modal-description"
+            tabIndex={-1}
+            ref={dialogRef}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -36,10 +68,15 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl mb-6">
                 <Wallet className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+              <h3
+                id="trending-login-modal-title"
+                className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4"
+              >
                 {tTrending("login.title")}
               </h3>
-              <p className="text-gray-600 mb-6">{tTrending("login.description")}</p>
+              <p id="trending-login-modal-description" className="text-gray-600 mb-6">
+                {tTrending("login.description")}
+              </p>
               <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-6">
                 <h4 className="text-lg font-semibold text-gray-800 mb-3">
                   {tTrending("login.benefitsTitle")}
@@ -67,7 +104,7 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
                   {tTrending("login.later")}
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={handleLoginNow}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-md"
                 >
                   {tTrending("login.now")}
