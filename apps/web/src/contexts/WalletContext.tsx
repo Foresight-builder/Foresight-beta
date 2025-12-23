@@ -98,6 +98,16 @@ export const WalletContext = createContext<WalletContextType | undefined>(undefi
 
 const LOGOUT_FLAG = "fs_wallet_logged_out";
 
+function useIsMounted() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return mounted;
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletState, setWalletState] = useState<WalletState>({
     account: null,
@@ -111,8 +121,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     availableWallets: [],
   });
 
-  const [mounted, setMounted] = useState(false);
   const currentProviderRef = useRef<any>(null); // 保存当前连接的 provider 引用
+  const mounted = useIsMounted();
 
   const detectWallets = (): WalletInfo[] => {
     const ethereum: any = (window as any).ethereum;
@@ -291,8 +301,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    setMounted(true);
-
     let onAnnounce: any;
     if (typeof window !== "undefined") {
       onAnnounce = (ev: any) => {

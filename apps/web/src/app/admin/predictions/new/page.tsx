@@ -188,6 +188,113 @@ function usePredictionDraft(
   };
 }
 
+function useAdminCreatePredictionPage() {
+  const router = useRouter();
+  const { account, siweLogin } = useWallet();
+  const profileCtx = useUserProfileOptional();
+  const { data: categoriesData } = useCategories();
+  const tTrending = useTranslations("trending");
+  const tTrendingAdmin = useTranslations("trending.admin");
+  const tCommon = useTranslations("common");
+  const [form, setForm] = useState<PredictionForm>({
+    title: "",
+    description: "",
+    category: "tech",
+    deadline: "",
+    minStake: 1,
+    criteria: "",
+    type: "binary",
+  });
+  const [outcomes, setOutcomes] = useState<Outcome[]>([{ label: "Yes" }, { label: "No" }]);
+  const [submitting, setSubmitting] = useState(false);
+  const [showDraftMenu, setShowDraftMenu] = useState(false);
+  const { lastSaved, msg, setMsg, manualSaveDraft, clearDraft } = usePredictionDraft(
+    form,
+    setForm,
+    outcomes,
+    setOutcomes,
+    tTrendingAdmin
+  );
+
+  const setField = useCallback(
+    (k: keyof PredictionForm, v: PredictionForm[keyof PredictionForm]) =>
+      setForm((p) => ({ ...p, [k]: v })),
+    []
+  );
+
+  const { onAddOutcome, onDelOutcome, onOutcomeChange } = usePredictionOutcomes(setOutcomes);
+
+  const submit = useCallback(async () => {
+    try {
+      setSubmitting(true);
+      setMsg(null);
+      if (!account) {
+        setMsg(tCommon("connectWallet"));
+        return;
+      }
+      try {
+        await siweLogin();
+      } catch {}
+      const categoryId = String(form.category || "");
+      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
+      const payload: any = {
+        title: form.title,
+        description: form.description,
+        category: categoryName,
+        deadline: form.deadline,
+        minStake: Number(form.minStake),
+        criteria: form.criteria,
+        type: form.type,
+        walletAddress: String(account).toLowerCase(),
+      };
+      if (form.type === "multi") payload.outcomes = outcomes.map((o) => ({ ...o }));
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setMsg(String(j?.message || tTrendingAdmin("createFailed")));
+        return;
+      }
+      setMsg(tTrendingAdmin("createSuccess"));
+      const id = Number(j?.data?.id);
+      if (Number.isFinite(id)) router.push(`/prediction/${id}`);
+    } catch (e: any) {
+      setMsg(String(e?.message || e || tTrendingAdmin("createFailed")));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [account, form, outcomes, router, siweLogin, tCommon, tTrendingAdmin]);
+
+  useEffect(() => {
+    if (!account) return;
+    if (!profileCtx?.isAdmin) router.replace("/trending");
+  }, [account, profileCtx?.isAdmin, router]);
+
+  return {
+    router,
+    categoriesData,
+    tTrending,
+    tTrendingAdmin,
+    form,
+    outcomes,
+    submitting,
+    showDraftMenu,
+    setShowDraftMenu,
+    lastSaved,
+    msg,
+    manualSaveDraft,
+    clearDraft,
+    setField,
+    onAddOutcome,
+    onDelOutcome,
+    onOutcomeChange,
+    submit,
+  };
+}
+
 type BasicInfoSectionProps = {
   form: PredictionForm;
   setField: (key: keyof PredictionForm, value: PredictionForm[keyof PredictionForm]) => void;
@@ -590,85 +697,26 @@ function SubmitSection({
 }
 
 export default function AdminCreatePredictionPage() {
-  const router = useRouter();
-  const { account, siweLogin } = useWallet();
-  const profileCtx = useUserProfileOptional();
-  const { data: categoriesData } = useCategories();
-  const tTrending = useTranslations("trending");
-  const tTrendingAdmin = useTranslations("trending.admin");
-  const tCommon = useTranslations("common");
-  const [form, setForm] = useState<PredictionForm>({
-    title: "",
-    description: "",
-    category: "tech",
-    deadline: "",
-    minStake: 1,
-    criteria: "",
-    type: "binary",
-  });
-  const [outcomes, setOutcomes] = useState<Outcome[]>([{ label: "Yes" }, { label: "No" }]);
-  const [submitting, setSubmitting] = useState(false);
-  const [showDraftMenu, setShowDraftMenu] = useState(false);
-  const { lastSaved, msg, setMsg, manualSaveDraft, clearDraft } = usePredictionDraft(
+  const {
+    router,
+    categoriesData,
+    tTrending,
+    tTrendingAdmin,
     form,
-    setForm,
     outcomes,
-    setOutcomes,
-    tTrendingAdmin
-  );
-
-  const setField = (k: keyof PredictionForm, v: PredictionForm[keyof PredictionForm]) =>
-    setForm((p) => ({ ...p, [k]: v }));
-  const { onAddOutcome, onDelOutcome, onOutcomeChange } = usePredictionOutcomes(setOutcomes);
-
-  const submit = async () => {
-    try {
-      setSubmitting(true);
-      setMsg(null);
-      if (!account) {
-        setMsg(tCommon("connectWallet"));
-        return;
-      }
-      try {
-        await siweLogin();
-      } catch {}
-      const categoryId = String(form.category || "");
-      const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
-      const payload: any = {
-        title: form.title,
-        description: form.description,
-        category: categoryName,
-        deadline: form.deadline,
-        minStake: Number(form.minStake),
-        criteria: form.criteria,
-        type: form.type,
-        walletAddress: String(account).toLowerCase(),
-      };
-      if (form.type === "multi") payload.outcomes = outcomes.map((o) => ({ ...o }));
-      const res = await fetch("/api/predictions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.success) {
-        setMsg(String(j?.message || tTrendingAdmin("createFailed")));
-        return;
-      }
-      setMsg(tTrendingAdmin("createSuccess"));
-      const id = Number(j?.data?.id);
-      if (Number.isFinite(id)) router.push(`/prediction/${id}`);
-    } catch (e: any) {
-      setMsg(String(e?.message || e || tTrendingAdmin("createFailed")));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!account) return;
-    if (!profileCtx?.isAdmin) router.replace("/trending");
-  }, [account, profileCtx?.isAdmin, router]);
+    submitting,
+    showDraftMenu,
+    setShowDraftMenu,
+    lastSaved,
+    msg,
+    manualSaveDraft,
+    clearDraft,
+    setField,
+    onAddOutcome,
+    onDelOutcome,
+    onOutcomeChange,
+    submit,
+  } = useAdminCreatePredictionPage();
 
   return (
     <GradientPage className="relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
