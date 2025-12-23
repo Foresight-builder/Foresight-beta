@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
-import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
+import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
 
 interface ForumSectionProps {
@@ -108,10 +108,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   const canSubmit = useMemo(() => {
     return !!titlePreview && !formError;
   }, [titlePreview, formError]);
-  const displayName = (addr: string) => {
-    const key = String(addr || "").toLowerCase();
-    return nameMap[key] || formatAddress(addr);
-  };
+  const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [userVoteTypes, setUserVoteTypes] = useState<Record<string, "up" | "down">>({});
 

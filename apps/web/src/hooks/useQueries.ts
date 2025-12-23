@@ -33,9 +33,6 @@ export const QueryKeys = {
   market: (contract: string, chainId: number) => ["market", contract, chainId] as const,
 } as const;
 
-/**
- * 通用 fetch 函数
- */
 async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
@@ -45,15 +42,33 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
     },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      success: false,
-      error: { message: "Network error", code: "NETWORK_ERROR" },
-    }));
-    throw new Error(error.error?.message || "Request failed");
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    const text = await response.text().catch(() => "");
+
+    if (text && text.trim().startsWith("<!DOCTYPE html")) {
+      throw new Error("Server returned an HTML error page");
+    }
+
+    throw new Error("Unexpected response format");
   }
 
-  const data: ApiResponse<T> = await response.json();
+  let parsed: ApiResponse<T>;
+
+  try {
+    parsed = (await response.json()) as ApiResponse<T>;
+  } catch {
+    throw new Error("Invalid JSON response");
+  }
+
+  if (!response.ok) {
+    const message = (parsed as any).error?.message || (parsed as any).message || "Request failed";
+
+    throw new Error(message);
+  }
+
+  const data: ApiResponse<T> = parsed;
 
   if (!data.success) {
     throw new Error(data.error?.message || "Request failed");

@@ -6,29 +6,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import DatePicker from "../DatePicker";
 
-// 固定系统时间，方便断言「过去/未来」逻辑
 const fixedNow = new Date("2025-01-15T10:30:00");
 
 vi.useFakeTimers();
 vi.setSystemTime(fixedNow);
-
-// Mock icons
-vi.mock("lucide-react", () => ({
-  Calendar: () => <svg data-testid="calendar-icon" />,
-  ChevronLeft: () => <svg data-testid="chevron-left-icon" />,
-  ChevronRight: () => <svg data-testid="chevron-right-icon" />,
-  Clock: () => <svg data-testid="clock-icon" />,
-  X: () => <svg data-testid="x-icon" />,
-}));
-
-// Mock framer-motion，避免动画影响测试
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...rest }: any) => <div {...rest}>{children}</div>,
-    button: ({ children, ...rest }: any) => <button {...rest}>{children}</button>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
 
 describe("DatePicker Component", () => {
   beforeEach(() => {

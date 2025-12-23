@@ -19,7 +19,7 @@ import {
 import { motion } from "framer-motion";
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
-import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
+import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useCategories } from "@/hooks/useQueries";
 
 type PredictionItem = {
@@ -86,10 +86,7 @@ export default function ForumPage() {
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const { data: categoriesData } = useCategories();
 
-  const displayName = (addr: string) => {
-    const key = String(addr || "").toLowerCase();
-    return nameMap[key] || formatAddress(addr);
-  };
+  const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
   useEffect(() => {
     if (!account) return;

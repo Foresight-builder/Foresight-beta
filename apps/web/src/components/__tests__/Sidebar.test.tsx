@@ -6,20 +6,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Sidebar from "../Sidebar";
 
-// Mock 翻译
-vi.mock("@/lib/i18n", () => ({
-  useTranslations: vi.fn(() => (key: string) => key),
-}));
-
-// Mock Next.js Image，避免在 jsdom 中渲染报错
-vi.mock("next/image", () => ({
-  __esModule: true,
-  default: ({ src, alt, priority: _priority, ...rest }: any) => (
-    // eslint-disable-next-line jsx-a11y/alt-text
-    <img src={typeof src === "string" ? src : ""} alt={alt} {...rest} />
-  ),
-}));
-
 // Router mocks（使用 vi.hoisted 保证可在工厂外复用）
 const routerPushMock = vi.hoisted(() => vi.fn());
 
@@ -61,19 +47,6 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/contexts/UserProfileContext", () => ({
   useUserProfileOptional: useUserProfileOptionalMock,
-}));
-
-// Mock icons（只需保证渲染不报错，并覆盖 Sidebar 使用的图标）
-vi.mock("lucide-react", () => ({
-  ChevronDown: () => <svg data-testid="chevron-down-icon" />,
-  Users: () => <svg data-testid="users-icon" />,
-  BarChart3: () => <svg data-testid="trending-icon" />,
-  MessageSquare: () => <svg data-testid="message-icon" />,
-  Heart: () => <svg data-testid="heart-icon" />,
-  Pin: () => <svg data-testid="pin-icon" />,
-  Flag: () => <svg data-testid="flag-icon" />,
-  Trophy: () => <svg data-testid="trophy-icon" />,
-  ShieldCheck: () => <svg data-testid="shield-icon" />,
 }));
 
 describe("Sidebar Component", () => {

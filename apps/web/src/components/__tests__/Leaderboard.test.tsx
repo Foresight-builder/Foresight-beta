@@ -2,31 +2,10 @@
  * Leaderboard 组件单元测试
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import Leaderboard from "../Leaderboard";
-
-// Mock framer-motion
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    tr: ({ children, ...props }: any) => <tr {...props}>{children}</tr>,
-  },
-}));
-
-// Mock icons
-vi.mock("lucide-react", () => ({
-  Trophy: () => <svg data-testid="trophy-icon" />,
-  Medal: () => <svg data-testid="medal-icon" />,
-  TrendingUp: () => <svg data-testid="trending-icon" />,
-  Award: () => <svg data-testid="award-icon" />,
-}));
-
-// Mock Next.js Image
-vi.mock("next/image", () => ({
-  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />,
-}));
 
 // 需要进一步调试 - 暂时跳过
 describe.skip("Leaderboard Component", () => {

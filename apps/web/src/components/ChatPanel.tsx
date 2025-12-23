@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useWallet } from "@/contexts/WalletContext";
-import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
+import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 import EmptyState from "@/components/EmptyState";
@@ -54,10 +54,7 @@ export default function ChatPanel({
   const [showEmojis, setShowEmojis] = useState(false);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
 
-  const displayName = (addr: string) => {
-    const key = String(addr || "").toLowerCase();
-    return nameMap[key] || formatAddress(addr);
-  };
+  const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
   const quickPrompts = [
     tChat("quickPrompt.reason"),

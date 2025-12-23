@@ -9,28 +9,6 @@ import { WalletContext } from "@/contexts/WalletContext";
 import { AuthContext } from "@/contexts/AuthContext";
 import { UserProfileContext } from "@/contexts/UserProfileContext";
 
-// Mock 翻译hook
-vi.mock("@/lib/i18n", () => ({
-  useTranslations: vi.fn(() => (key: string) => key),
-}));
-
-// Mock Next.js Image
-vi.mock("next/image", () => ({
-  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />,
-}));
-
-// Mock icons
-vi.mock("lucide-react", () => ({
-  Copy: () => <svg data-testid="copy-icon" />,
-  LogOut: () => <svg data-testid="logout-icon" />,
-  Wallet: () => <svg data-testid="wallet-icon" />,
-  ExternalLink: () => <svg data-testid="external-link-icon" />,
-  RefreshCw: () => <svg data-testid="refresh-icon" />,
-  ChevronDown: () => <svg data-testid="chevron-down-icon" />,
-  Eye: () => <svg data-testid="eye-icon" />,
-  EyeOff: () => <svg data-testid="eyeoff-icon" />,
-}));
-
 // Mock WalletModal
 vi.mock("@/components/WalletModal", () => ({
   default: () => <div data-testid="wallet-modal">WalletModal</div>,

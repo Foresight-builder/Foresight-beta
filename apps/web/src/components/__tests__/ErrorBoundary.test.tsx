@@ -11,13 +11,6 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }));
 
-// Mock icons
-vi.mock("lucide-react", () => ({
-  AlertTriangle: () => <svg data-testid="alert-icon" />,
-  RefreshCw: () => <svg data-testid="refresh-icon" />,
-  Home: () => <svg data-testid="home-icon" />,
-}));
-
 // 会抛出错误的组件
 function ThrowError({ shouldThrow }: { shouldThrow?: boolean }) {
   if (shouldThrow) {

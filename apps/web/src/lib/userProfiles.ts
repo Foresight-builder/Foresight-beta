@@ -23,3 +23,13 @@ export async function fetchUsernamesByAddresses(
     return {};
   }
 }
+
+export function getDisplayName(
+  address: string,
+  nameMap: Record<string, string>,
+  formatAddress: (addr: string) => string
+): string {
+  const key = String(address || "").toLowerCase();
+  if (key && nameMap[key]) return nameMap[key];
+  return formatAddress(address);
+}

@@ -1,15 +1,13 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeAll, vi } from "vitest";
+import React from "react";
 
-// 设置测试环境变量
 beforeAll(() => {
   process.env.JWT_SECRET = "test-secret-key-for-testing-only-do-not-use-in-production";
-  // process.env.NODE_ENV = 'test'; // Read-only property
   process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 });
 
-// Mock Sentry
 vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
   captureMessage: vi.fn(),
@@ -26,10 +24,45 @@ vi.mock("@sentry/nextjs", () => ({
   browserTracingIntegration: vi.fn(),
 }));
 
-// 保留原始 console，让各个测试自己决定是否 mock
-// 如果全局 mock console 会影响某些测试
+vi.mock("@/lib/i18n", () => ({
+  useTranslations: vi.fn(() => (key: string) => key),
+}));
 
-// Mock navigator.clipboard
+vi.mock("lucide-react", () => {
+  const overrideTestIds: Record<string, string> = {
+    TrendingUp: "trending-icon",
+  };
+
+  const handler: ProxyHandler<Record<string, React.ComponentType<any>>> = {
+    get(_target, prop: string) {
+      const testId =
+        overrideTestIds[prop] ??
+        `${prop.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}-icon`;
+      return (props: any) =>
+        React.createElement("svg", {
+          "data-testid": testId,
+          ...props,
+        });
+    },
+  };
+
+  return new Proxy({}, handler);
+});
+
+vi.mock("framer-motion", () => {
+  const motionHandler: ProxyHandler<Record<string, React.ComponentType<any>>> = {
+    get(_target, prop: string) {
+      const tag = prop === "tr" ? "tr" : prop === "button" ? "button" : "div";
+      return ({ children, ...rest }: any) => React.createElement(tag, rest, children);
+    },
+  };
+
+  return {
+    motion: new Proxy({}, motionHandler),
+    AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children),
+  };
+});
+
 Object.assign(navigator, {
   clipboard: {
     writeText: vi.fn().mockResolvedValue(undefined),
@@ -37,13 +70,11 @@ Object.assign(navigator, {
   },
 });
 
-// 每个测试后清理
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
 
-// Mock Next.js router
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -60,12 +91,16 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
-// Mock Next.js image
 vi.mock("next/image", () => ({
-  default: (props: any) => props,
+  __esModule: true,
+  default: ({ src, alt, ...rest }: any) =>
+    React.createElement("img", {
+      src: typeof src === "string" ? src : "",
+      alt,
+      ...rest,
+    }),
 }));
 
-// Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
@@ -80,7 +115,6 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-// Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
@@ -91,7 +125,6 @@ global.IntersectionObserver = class IntersectionObserver {
   unobserve() {}
 } as any;
 
-// Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
