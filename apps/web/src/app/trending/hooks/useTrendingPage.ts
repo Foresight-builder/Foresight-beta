@@ -43,7 +43,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const tTrendingAdmin = useTranslations("trending.admin");
   const tNav = useTranslations("nav");
   const tEvents = useTranslations();
-  const productsSectionRef = useRef<HTMLElement | null>(null);
+  const eventsSectionRef = useRef<HTMLElement | null>(null);
 
   const {
     loading,
@@ -115,9 +115,9 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const handleViewAllCategoriesWithScroll = useCallback(() => {
     scrollToSectionWithBehavior({
       onBeforeScroll: handleViewAllCategories,
-      targetRef: productsSectionRef,
+      targetRef: eventsSectionRef,
     });
-  }, [handleViewAllCategories, productsSectionRef]);
+  }, [handleViewAllCategories, eventsSectionRef]);
 
   const handleBackToTopClick = useCallback(
     (e: React.MouseEvent) => {
@@ -131,59 +131,80 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
     router.push("/prediction/new");
   }, [router]);
 
+  const handleCloseLoginModal = useCallback(() => {
+    setShowLoginModal(false);
+  }, []);
+
   return {
-    canvasRef,
-    canvasReady,
-    showBackToTop,
-    handleBackToTopClick,
-    tTrending,
-    tTrendingAdmin,
-    tNav,
-    tEvents,
-    productsSectionRef,
-    loading,
-    error,
-    filters,
-    setFilters,
-    searchQuery,
-    setSearchQuery,
-    displayEvents,
-    sortedEvents,
-    visibleEvents,
-    loadingMore,
-    hasMore,
-    observerTargetRef,
-    showLoginModal,
-    setShowLoginModal,
-    categoryCounts,
-    followedEvents,
-    followError,
-    toggleFollow,
-    isAdmin,
-    editOpen,
-    editForm,
-    savingEdit,
-    deleteBusyId,
-    openEdit,
-    closeEdit,
-    setEditField,
-    submitEdit,
-    deleteEvent,
-    categories,
-    currentHeroIndex,
-    heroSlideLength,
-    activeTitle,
-    activeDescription,
-    activeImage,
-    activeCategory,
-    activeFollowers,
-    activeSlideId,
-    handlePrevHero,
-    handleNextHero,
-    handleHeroBulletClick,
-    handleViewAllCategoriesWithScroll,
-    handleCategoryClick,
-    handleCreatePrediction,
+    canvas: {
+      canvasRef,
+      canvasReady,
+      showBackToTop,
+      handleBackToTopClick,
+    },
+    i18n: {
+      tTrending,
+      tTrendingAdmin,
+      tNav,
+      tEvents,
+    },
+    list: {
+      loading,
+      error,
+      filters,
+      setFilters,
+      searchQuery,
+      setSearchQuery,
+      displayEvents,
+      sortedEvents,
+      visibleEvents,
+      loadingMore,
+      hasMore,
+      observerTargetRef,
+      eventsSectionRef,
+    },
+    follow: {
+      categoryCounts,
+      followedEvents,
+      followError,
+      toggleFollow,
+    },
+    admin: {
+      isAdmin,
+      editOpen,
+      editForm,
+      savingEdit,
+      deleteBusyId,
+      openEdit,
+      closeEdit,
+      setEditField,
+      submitEdit,
+      deleteEvent,
+    },
+    hero: {
+      categories,
+      currentHeroIndex,
+      heroSlideLength,
+      activeTitle,
+      activeDescription,
+      activeImage,
+      activeCategory,
+      activeFollowers,
+      activeSlideId,
+      handlePrevHero,
+      handleNextHero,
+      handleHeroBulletClick,
+      handleViewAllCategoriesWithScroll,
+      handleCategoryClick,
+    },
+    modals: {
+      showLoginModal,
+      setShowLoginModal,
+      handleCloseLoginModal,
+    },
+    actions: {
+      handleCreatePrediction,
+    },
   };
 }
 

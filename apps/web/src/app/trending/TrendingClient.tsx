@@ -16,149 +16,98 @@ type TrendingPageProps = {
 };
 
 export default function TrendingPage({ initialPredictions }: TrendingPageProps) {
-  const {
-    canvasRef,
-    canvasReady,
-    showBackToTop,
-    handleBackToTopClick,
-    tTrending,
-    tTrendingAdmin,
-    tNav,
-    tEvents,
-    productsSectionRef,
-    loading,
-    error,
-    filters,
-    setFilters,
-    searchQuery,
-    setSearchQuery,
-    sortedEvents,
-    visibleEvents,
-    loadingMore,
-    hasMore,
-    observerTargetRef,
-    showLoginModal,
-    setShowLoginModal,
-    categoryCounts,
-    followedEvents,
-    followError,
-    toggleFollow,
-    isAdmin,
-    editOpen,
-    editForm,
-    savingEdit,
-    deleteBusyId,
-    openEdit,
-    closeEdit,
-    setEditField,
-    submitEdit,
-    deleteEvent,
-    categories,
-    currentHeroIndex,
-    heroSlideLength,
-    activeTitle,
-    activeDescription,
-    activeImage,
-    activeCategory,
-    activeFollowers,
-    activeSlideId,
-    handlePrevHero,
-    handleNextHero,
-    handleHeroBulletClick,
-    handleViewAllCategoriesWithScroll,
-    handleCategoryClick,
-    handleCreatePrediction,
-  } = useTrendingPage(initialPredictions);
+  const { canvas, i18n, list, follow, admin, hero, modals, actions } =
+    useTrendingPage(initialPredictions);
 
   return (
     <GradientPage className="relative overflow-x-hidden text-gray-900">
       <canvas
-        ref={canvasRef}
+        ref={canvas.canvasRef}
         className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ease-out ${
-          canvasReady ? "opacity-40" : "opacity-0"
+          canvas.canvasReady ? "opacity-40" : "opacity-0"
         }`}
       />
       <TrendingHero
-        categories={categories}
-        categoryCounts={categoryCounts}
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
-        activeTitle={activeTitle}
-        activeDescription={activeDescription}
-        activeImage={activeImage}
-        activeCategory={activeCategory}
-        activeFollowers={activeFollowers}
-        activeSlideId={activeSlideId}
-        currentHeroIndex={currentHeroIndex}
-        heroSlideLength={heroSlideLength}
-        onPrevHero={handlePrevHero}
-        onNextHero={handleNextHero}
-        onHeroBulletClick={handleHeroBulletClick}
-        onViewAllCategories={handleViewAllCategoriesWithScroll}
-        onCategoryClick={handleCategoryClick}
-        tTrending={tTrending}
-        tNav={tNav}
+        categories={hero.categories}
+        categoryCounts={follow.categoryCounts}
+        searchQuery={list.searchQuery}
+        onSearchQueryChange={list.setSearchQuery}
+        activeTitle={hero.activeTitle}
+        activeDescription={hero.activeDescription}
+        activeImage={hero.activeImage}
+        activeCategory={hero.activeCategory}
+        activeFollowers={hero.activeFollowers}
+        activeSlideId={hero.activeSlideId}
+        currentHeroIndex={hero.currentHeroIndex}
+        heroSlideLength={hero.heroSlideLength}
+        onPrevHero={hero.handlePrevHero}
+        onNextHero={hero.handleNextHero}
+        onHeroBulletClick={hero.handleHeroBulletClick}
+        onViewAllCategories={hero.handleViewAllCategoriesWithScroll}
+        onCategoryClick={hero.handleCategoryClick}
+        tTrending={i18n.tTrending}
+        tNav={i18n.tNav}
       />
 
       <section
-        ref={productsSectionRef}
+        ref={list.eventsSectionRef}
         className="relative z-10 px-10 py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"
       >
         <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
           <span className="w-2 h-2 rounded-full bg-purple-500" />
-          {tTrending("sections.hotEvents")}
+          {i18n.tTrending("sections.hotEvents")}
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
         <TrendingEventsSection
-          loading={loading}
-          error={error}
-          filters={filters}
-          onFilterChange={setFilters}
-          followError={followError}
-          sortedEvents={sortedEvents}
-          visibleEvents={visibleEvents}
-          followedEvents={followedEvents}
-          isAdmin={isAdmin}
-          deleteBusyId={deleteBusyId}
-          hasMore={hasMore}
-          loadingMore={loadingMore}
-          observerTargetRef={observerTargetRef}
-          toggleFollow={toggleFollow}
+          loading={list.loading}
+          error={list.error}
+          filters={list.filters}
+          onFilterChange={list.setFilters}
+          followError={follow.followError}
+          sortedEvents={list.sortedEvents}
+          visibleEvents={list.visibleEvents}
+          followedEvents={follow.followedEvents}
+          isAdmin={admin.isAdmin}
+          deleteBusyId={admin.deleteBusyId}
+          hasMore={list.hasMore}
+          loadingMore={list.loadingMore}
+          observerTargetRef={list.observerTargetRef}
+          toggleFollow={follow.toggleFollow}
           createCategoryParticlesAtCardClick={createCategoryParticlesAtCardClick}
-          openEdit={openEdit}
-          deleteEvent={deleteEvent}
-          onCreatePrediction={handleCreatePrediction}
-          tTrending={tTrending}
-          tTrendingAdmin={tTrendingAdmin}
-          tEvents={tEvents}
+          openEdit={admin.openEdit}
+          deleteEvent={admin.deleteEvent}
+          onCreatePrediction={actions.handleCreatePrediction}
+          tTrending={i18n.tTrending}
+          tTrendingAdmin={i18n.tTrendingAdmin}
+          tEvents={i18n.tEvents}
         />
       </section>
 
       <TrendingEditModal
-        open={editOpen}
-        editForm={editForm}
-        savingEdit={savingEdit}
-        onChangeField={setEditField}
-        onClose={closeEdit}
-        onSubmit={submitEdit}
-        tTrendingAdmin={tTrendingAdmin}
-        tTrending={tTrending}
+        open={admin.editOpen}
+        editForm={admin.editForm}
+        savingEdit={admin.savingEdit}
+        onChangeField={admin.setEditField}
+        onClose={admin.closeEdit}
+        onSubmit={admin.submitEdit}
+        tTrendingAdmin={i18n.tTrendingAdmin}
+        tTrending={i18n.tTrending}
       />
 
       <TrendingLoginModal
-        open={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        tTrending={tTrending}
+        open={modals.showLoginModal}
+        onClose={modals.handleCloseLoginModal}
+        tTrending={i18n.tTrending}
       />
 
       <footer className="relative z-10 text-center py-8 text-black text-sm">
-        {tTrending("footer.copyright")}
+        {i18n.tTrending("footer.copyright")}
       </footer>
 
       <BackToTopButton
-        show={showBackToTop}
-        onClick={handleBackToTopClick}
-        label={tNav("backToTop")}
+        show={canvas.showBackToTop}
+        onClick={canvas.handleBackToTopClick}
+        label={i18n.tNav("backToTop")}
       />
     </GradientPage>
   );

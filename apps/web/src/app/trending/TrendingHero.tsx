@@ -549,7 +549,7 @@ function TrendingHeroView({
   );
 }
 
-export function TrendingHero({
+export const TrendingHero = React.memo(function TrendingHero({
   categories,
   categoryCounts,
   searchQuery,
@@ -608,4 +608,4 @@ export function TrendingHero({
       }}
     />
   );
-}
+});
