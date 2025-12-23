@@ -14,7 +14,7 @@ import StickerGalleryModal from "@/components/StickerGalleryModal";
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
 import { useFlagsData } from "./useFlagsData";
-import { buildOfficialTemplates, defaultConfigFor } from "./flagsConfig";
+import { buildOfficialTemplates, defaultConfigFor, OfficialTemplate } from "./flagsConfig";
 import { FlagsHistoryModal } from "./FlagsHistoryModal";
 import {
   Loader2,
@@ -45,6 +45,286 @@ import {
   PiggyBank,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+type FlagsRightSidebarProps = {
+  tFlags: (key: string) => string;
+  officialTemplates: OfficialTemplate[];
+  onTemplateClick: (template: OfficialTemplate) => void;
+  onViewAll: () => void;
+};
+
+function FlagsRightSidebar({
+  tFlags,
+  officialTemplates,
+  onTemplateClick,
+  onViewAll,
+}: FlagsRightSidebarProps) {
+  return (
+    <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
+      <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
+          <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
+          <button
+            onClick={onViewAll}
+            className="text-[10px] font-bold text-purple-600 hover:underline"
+          >
+            {tFlags("sidebar.viewAll")}
+          </button>
+        </div>
+        <div className="space-y-3">
+          {officialTemplates.slice(0, 3).map((tpl) => (
+            <div
+              key={tpl.id}
+              onClick={() => onTemplateClick(tpl)}
+              className="group p-3 rounded-2xl bg-white border border-gray-100 hover:border-purple-200 hover:shadow-md transition-all cursor-pointer flex gap-3 items-center"
+            >
+              <div
+                className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tpl.gradient} flex items-center justify-center text-white shadow-sm shrink-0`}
+              >
+                <tpl.icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-700 transition-colors">
+                  {tpl.title}
+                </div>
+                <div className="text-[10px] text-gray-400 font-medium truncate">
+                  {tpl.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
+        <div className="relative z-10">
+          <Sparkles className="w-5 h-5 text-yellow-300 mb-3" />
+          <p className="text-sm font-bold leading-relaxed opacity-90 mb-4">
+            {tFlags("sidebar.quote.text")}
+          </p>
+          <div className="flex items-center gap-2 text-[10px] font-medium opacity-60">
+            <div className="w-1 h-1 rounded-full bg-white" />
+            <span>{tFlags("sidebar.quote.label")}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type OfficialTemplatesModalProps = {
+  isOpen: boolean;
+  templates: OfficialTemplate[];
+  tFlags: (key: string) => string;
+  onClose: () => void;
+  onTemplateClick: (template: OfficialTemplate) => void;
+};
+
+function OfficialTemplatesModal({
+  isOpen,
+  templates,
+  tFlags,
+  onClose,
+  onTemplateClick,
+}: OfficialTemplatesModalProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 sm:inset-10 z-50 bg-[#F0F2F5] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+          >
+            <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 p-6 flex items-center justify-between shrink-0 z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">{tFlags("official.title")}</h3>
+                  <p className="text-sm font-bold text-gray-400">{tFlags("official.subtitle")}</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                {templates.map((tpl) => (
+                  <motion.div
+                    key={tpl.id}
+                    whileHover={{ y: -8, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`group relative overflow-hidden rounded-[2rem] p-6 cursor-pointer transition-all duration-300 border border-white/40 shadow-lg hover:shadow-2xl bg-gradient-to-br ${tpl.gradient} ${tpl.shadow}`}
+                    onClick={() => {
+                      onTemplateClick(tpl);
+                      onClose();
+                    }}
+                  >
+                    <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+                    <div className="absolute top-0 left-0 w-full h-full bg-white/0 group-hover:bg-white/10 transition-colors duration-300" />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-6">
+                        <div
+                          className={`w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${tpl.color}`}
+                        >
+                          <tpl.icon className="w-7 h-7" />
+                        </div>
+                        <div className="px-2.5 py-1 rounded-full bg-white/60 backdrop-blur-md border border-white/40 flex items-center gap-1.5 shadow-sm">
+                          <ShieldCheck className={`w-3.5 h-3.5 ${tpl.color}`} />
+                          <span className={`text-[10px] font-extrabold ${tpl.color}`}>
+                            OFFICIAL
+                          </span>
+                        </div>
+                      </div>
+
+                      <h3 className="text-xl font-black text-gray-900 mb-2 tracking-tight group-hover:translate-x-1 transition-transform duration-300">
+                        {tpl.title}
+                      </h3>
+                      <p className="text-sm font-bold text-gray-700/90 leading-relaxed line-clamp-2 mb-6 h-10">
+                        {tpl.description}
+                      </p>
+
+                      <div
+                        className={`flex items-center gap-2 text-xs font-black ${tpl.color} bg-white/80 w-fit px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm group-hover:bg-white group-hover:scale-105 transition-all duration-300`}
+                      >
+                        <span className="tracking-wide">{tFlags("official.cta")}</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+type CheckinModalProps = {
+  isOpen: boolean;
+  flag: FlagItem | null;
+  tFlags: (key: string) => string;
+  note: string;
+  image: string;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+  onNoteChange: (value: string) => void;
+  onImageChange: (value: string) => void;
+};
+
+function CheckinModal({
+  isOpen,
+  flag,
+  tFlags,
+  note,
+  image,
+  submitting,
+  onClose,
+  onSubmit,
+  onNoteChange,
+  onImageChange,
+}: CheckinModalProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && flag && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-purple-500/10 z-50 p-8 overflow-hidden border border-white/50"
+          >
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-emerald-50/60 to-transparent pointer-events-none" />
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-emerald-200/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-200/20 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                  <Camera className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">{tFlags("checkin.title")}</h3>
+                  <p className="text-sm text-gray-500 font-medium">{tFlags("checkin.subtitle")}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
+                    {tFlags("checkin.noteLabel")}
+                  </label>
+                  <textarea
+                    value={note}
+                    onChange={(e) => onNoteChange(e.target.value)}
+                    placeholder={tFlags("checkin.notePlaceholder")}
+                    rows={4}
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 resize-none font-medium"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">
+                    {tFlags("checkin.imageLabel")}
+                  </label>
+                  <input
+                    value={image}
+                    onChange={(e) => onImageChange(e.target.value)}
+                    placeholder={tFlags("checkin.imagePlaceholder")}
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-600 font-bold hover:bg-gray-100 transition-colors"
+                >
+                  {tFlags("checkin.cancel")}
+                </button>
+                <button
+                  onClick={onSubmit}
+                  disabled={submitting}
+                  className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:translate-y-0"
+                >
+                  {submitting ? tFlags("checkin.submitLoading") : tFlags("checkin.submit")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function FlagsPage() {
   const { account } = useWallet();
@@ -273,6 +553,15 @@ export default function FlagsPage() {
 
   const allStickers = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
 
+  const handleTemplateClick = (template: OfficialTemplate) => {
+    setInitTitle(template.title);
+    setInitDesc(template.description);
+    setOfficialCreate(true);
+    setSelectedTplId(template.id);
+    setTplConfig(defaultConfigFor(template.id));
+    setCreateOpen(true);
+  };
+
   return (
     <div className="h-[calc(100vh-64px)] w-full bg-[#FAFAFA] relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
       {/* Organic Background Blobs */}
@@ -471,166 +760,20 @@ export default function FlagsPage() {
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR: Inspiration & Extras */}
-      <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 h-full overflow-y-auto scrollbar-hide pb-20">
-        {/* Official Challenges Widget */}
-        <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
-            <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
-            <button
-              onClick={() => setOfficialListOpen(true)}
-              className="text-[10px] font-bold text-purple-600 hover:underline"
-            >
-              {tFlags("sidebar.viewAll")}
-            </button>
-          </div>
-          <div className="space-y-3">
-            {officialTemplates.slice(0, 3).map((tpl) => (
-              <div
-                key={tpl.id}
-                onClick={() => {
-                  setInitTitle(tpl.title);
-                  setInitDesc(tpl.description);
-                  setOfficialCreate(true);
-                  setSelectedTplId(tpl.id);
-                  setTplConfig(defaultConfigFor(tpl.id));
-                  setCreateOpen(true);
-                }}
-                className="group p-3 rounded-2xl bg-white border border-gray-100 hover:border-purple-200 hover:shadow-md transition-all cursor-pointer flex gap-3 items-center"
-              >
-                <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tpl.gradient} flex items-center justify-center text-white shadow-sm shrink-0`}
-                >
-                  <tpl.icon className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-700 transition-colors">
-                    {tpl.title}
-                  </div>
-                  <div className="text-[10px] text-gray-400 font-medium truncate">
-                    {tpl.description}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <FlagsRightSidebar
+        tFlags={tFlags}
+        officialTemplates={officialTemplates}
+        onTemplateClick={handleTemplateClick}
+        onViewAll={() => setOfficialListOpen(true)}
+      />
 
-        {/* Daily Quote / Motivation */}
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-          <div className="relative z-10">
-            <Sparkles className="w-5 h-5 text-yellow-300 mb-3" />
-            <p className="text-sm font-bold leading-relaxed opacity-90 mb-4">
-              {tFlags("sidebar.quote.text")}
-            </p>
-            <div className="flex items-center gap-2 text-[10px] font-medium opacity-60">
-              <div className="w-1 h-1 rounded-full bg-white" />
-              <span>{tFlags("sidebar.quote.label")}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modals */}
-      <AnimatePresence>
-        {officialListOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-              onClick={() => setOfficialListOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-0 sm:inset-10 z-50 bg-[#F0F2F5] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
-            >
-              {/* Header */}
-              <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 p-6 flex items-center justify-between shrink-0 z-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600">
-                    <Trophy className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-gray-900">
-                      {tFlags("official.title")}
-                    </h3>
-                    <p className="text-sm font-bold text-gray-400">{tFlags("official.subtitle")}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setOfficialListOpen(false)}
-                  className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6 sm:p-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
-                  {officialTemplates.map((tpl) => (
-                    <motion.div
-                      key={tpl.id}
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`group relative overflow-hidden rounded-[2rem] p-6 cursor-pointer transition-all duration-300 border border-white/40 shadow-lg hover:shadow-2xl bg-gradient-to-br ${tpl.gradient} ${tpl.shadow}`}
-                      onClick={() => {
-                        setOfficialListOpen(false);
-                        setInitTitle(tpl.title);
-                        setInitDesc(tpl.description);
-                        setOfficialCreate(true);
-                        setSelectedTplId(tpl.id);
-                        setTplConfig(defaultConfigFor(tpl.id));
-                        setCreateOpen(true);
-                      }}
-                    >
-                      {/* Decorative Elements */}
-                      <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-                      <div className="absolute top-0 left-0 w-full h-full bg-white/0 group-hover:bg-white/10 transition-colors duration-300" />
-
-                      <div className="relative z-10">
-                        <div className="flex items-start justify-between mb-6">
-                          <div
-                            className={`w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${tpl.color}`}
-                          >
-                            <tpl.icon className="w-7 h-7" />
-                          </div>
-                          <div className="px-2.5 py-1 rounded-full bg-white/60 backdrop-blur-md border border-white/40 flex items-center gap-1.5 shadow-sm">
-                            <ShieldCheck className={`w-3.5 h-3.5 ${tpl.color}`} />
-                            <span className={`text-[10px] font-extrabold ${tpl.color}`}>
-                              OFFICIAL
-                            </span>
-                          </div>
-                        </div>
-
-                        <h3 className="text-xl font-black text-gray-900 mb-2 tracking-tight group-hover:translate-x-1 transition-transform duration-300">
-                          {tpl.title}
-                        </h3>
-                        <p className="text-sm font-bold text-gray-700/90 leading-relaxed line-clamp-2 mb-6 h-10">
-                          {tpl.description}
-                        </p>
-
-                        <div
-                          className={`flex items-center gap-2 text-xs font-black ${tpl.color} bg-white/80 w-fit px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm group-hover:bg-white group-hover:scale-105 transition-all duration-300`}
-                        >
-                          <span className="tracking-wide">{tFlags("official.cta")}</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <OfficialTemplatesModal
+        isOpen={officialListOpen}
+        templates={officialTemplates}
+        tFlags={tFlags}
+        onClose={() => setOfficialListOpen(false)}
+        onTemplateClick={handleTemplateClick}
+      />
 
       <CreateFlagModal
         isOpen={createOpen}
@@ -661,86 +804,18 @@ export default function FlagsPage() {
         stickers={allStickers}
       />
 
-      {/* Checkin Modal */}
-      <AnimatePresence>
-        {checkinOpen && checkinFlag && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-              onClick={() => setCheckinOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-purple-500/10 z-50 p-8 overflow-hidden border border-white/50"
-            >
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-emerald-50/60 to-transparent pointer-events-none" />
-              <div className="absolute -top-20 -right-20 w-60 h-60 bg-emerald-200/20 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-200/20 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="relative">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                    <Camera className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-gray-900">{tFlags("checkin.title")}</h3>
-                    <p className="text-sm text-gray-500 font-medium">
-                      {tFlags("checkin.subtitle")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">
-                      {tFlags("checkin.noteLabel")}
-                    </label>
-                    <textarea
-                      value={checkinNote}
-                      onChange={(e) => setCheckinNote(e.target.value)}
-                      placeholder={tFlags("checkin.notePlaceholder")}
-                      rows={4}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 resize-none font-medium"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">
-                      {tFlags("checkin.imageLabel")}
-                    </label>
-                    <input
-                      value={checkinImage}
-                      onChange={(e) => setCheckinImage(e.target.value)}
-                      placeholder={tFlags("checkin.imagePlaceholder")}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-4 mt-8">
-                  <button
-                    onClick={() => setCheckinOpen(false)}
-                    className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-600 font-bold hover:bg-gray-100 transition-colors"
-                  >
-                    {tFlags("checkin.cancel")}
-                  </button>
-                  <button
-                    onClick={submitCheckin}
-                    disabled={checkinSubmitting}
-                    className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:translate-y-0"
-                  >
-                    {checkinSubmitting ? tFlags("checkin.submitLoading") : tFlags("checkin.submit")}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <CheckinModal
+        isOpen={checkinOpen}
+        flag={checkinFlag}
+        tFlags={tFlags}
+        note={checkinNote}
+        image={checkinImage}
+        submitting={checkinSubmitting}
+        onClose={() => setCheckinOpen(false)}
+        onSubmit={submitCheckin}
+        onNoteChange={setCheckinNote}
+        onImageChange={setCheckinImage}
+      />
 
       <FlagsHistoryModal
         isOpen={historyOpen}

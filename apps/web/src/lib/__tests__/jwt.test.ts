@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { webcrypto } from "crypto";
 import { createToken, verifyToken, createRefreshToken, decodeToken } from "../jwt";
 
-describe.skip("JWT Token Management", () => {
+if (!(globalThis as any).crypto) {
+  (globalThis as any).crypto = webcrypto as any;
+}
+
+describe("JWT Token Management", () => {
   const testAddress = "0x1234567890123456789012345678901234567890";
   const testChainId = 11155111;
 

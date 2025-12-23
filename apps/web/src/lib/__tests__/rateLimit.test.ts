@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { checkRateLimit, RateLimits, getIP } from "../rateLimit";
 
-// 暂时跳过 - 需要更复杂的测试环境配置
-describe.skip("Rate Limiting", () => {
+describe("Rate Limiting", () => {
   beforeEach(() => {
     // 清理之前的测试数据
     vi.clearAllMocks();

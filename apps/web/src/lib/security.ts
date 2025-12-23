@@ -39,9 +39,11 @@ export function validateAndSanitize(
     minLength?: number;
     maxLength?: number;
     pattern?: RegExp;
+    min?: number;
+    max?: number;
   }
 ): { valid: boolean; value?: any; error?: string } {
-  const { type, required = false, minLength, maxLength, pattern } = options;
+  const { type, required = false, minLength, maxLength, pattern, min, max } = options;
 
   // 检查必填
   if (required && (input === null || input === undefined || input === "")) {
@@ -85,6 +87,12 @@ export function validateAndSanitize(
       const num = Number(input);
       if (isNaN(num)) {
         return { valid: false, error: "输入必须为数字" };
+      }
+      if (typeof min === "number" && num < min) {
+        return { valid: false, error: `数值不能小于最小值 ${min}` };
+      }
+      if (typeof max === "number" && num > max) {
+        return { valid: false, error: `数值不能大于最大值 ${max}` };
       }
       return { valid: true, value: num };
 
