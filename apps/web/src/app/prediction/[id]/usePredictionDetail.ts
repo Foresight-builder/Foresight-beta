@@ -20,6 +20,7 @@ const marketAbi = [
   "function mintCompleteSet(uint256 amount) external",
   "function depositCompleteSet(uint256 amount) external",
   "function outcomeToken() view returns (address)",
+  "function fillOrderSigned(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 expiry,uint256 salt) req, bytes signature, uint256 fillAmount) external",
 ];
 
 const erc1155Abi = [
@@ -28,6 +29,7 @@ const erc1155Abi = [
 ];
 
 const API_BASE = "/api";
+const RELAYER_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || "";
 
 function buildMarketKey(chainId: number, eventId: string | number) {
   return `${chainId}:${eventId}`;
@@ -234,7 +236,7 @@ export function usePredictionDetail() {
   const [tradeOutcome, setTradeOutcome] = useState<number>(0);
   const [priceInput, setPriceInput] = useState<string>("");
   const [amountInput, setAmountInput] = useState<string>("");
-  const [orderMode, setOrderMode] = useState<"limit" | "best">("limit");
+  const [orderMode, setOrderMode] = useState<"limit" | "best">("best");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderMsg, setOrderMsg] = useState<string | null>(null);
 
@@ -498,11 +500,20 @@ export function usePredictionDetail() {
       if (!account) throw new Error("请先连接钱包");
       if (!walletProvider) throw new Error("钱包未初始化");
 
-      const price = parseFloat(priceInput);
-      const amount = parseFloat(amountInput);
+      const amountVal = parseFloat(amountInput);
+      if (isNaN(amountVal) || amountVal <= 0) throw new Error("数量无效");
+      const amountInt = Math.floor(amountVal);
+      if (amountInt <= 0) throw new Error("数量无效");
+      const amountBN = BigInt(amountInt);
 
-      if (isNaN(price) || price <= 0 || price >= 1) throw new Error("价格无效 (0-1)");
-      if (isNaN(amount) || amount <= 0) throw new Error("数量无效");
+      let priceBN: bigint | null = null;
+      let priceFloat = 0;
+      if (orderMode === "limit") {
+        priceFloat = parseFloat(priceInput);
+        if (isNaN(priceFloat) || priceFloat <= 0 || priceFloat >= 1) {
+          throw new Error("价格无效 (0-1)");
+        }
+      }
 
       const provider = await createBrowserProvider(walletProvider);
       try {
@@ -513,10 +524,209 @@ export function usePredictionDetail() {
 
       const signer = await provider.getSigner();
       const { tokenContract, decimals } = await getCollateralTokenContract(market, signer);
-      const priceBN = parseUnitsByDecimals(price.toString(), decimals);
-      const amountInt = Math.floor(amount);
-      if (amountInt <= 0) throw new Error("数量无效");
-      const amountBN = BigInt(amountInt);
+
+      if (orderMode === "best") {
+        const eventId = (params as any).id;
+        const marketKey = buildMarketKey(market.chain_id, eventId);
+        const qs = new URLSearchParams({
+          contract: market.market,
+          chainId: String(market.chain_id),
+          marketKey,
+          outcome: String(tradeOutcome),
+          side: tradeSide,
+          amount: String(amountInt),
+        });
+        const quoteRes = await fetch(`${API_BASE}/orderbook/quote?${qs.toString()}`);
+        const quoteJson = await safeJson(quoteRes);
+        if (!quoteJson.success || !quoteJson.data) {
+          throw new Error(quoteJson.message || "获取报价失败");
+        }
+        const q = quoteJson.data as any;
+        const filledStr = String(q.filledAmount || "0");
+        const totalStr = String(q.total || "0");
+        const avgPriceStr = String(q.avgPrice || "0");
+        const bestPriceStr = q.bestPrice != null ? String(q.bestPrice) : "0";
+        const worstPriceStr = q.worstPrice != null ? String(q.worstPrice) : bestPriceStr;
+        const slippageBpsStr = String(q.slippageBps || "0");
+
+        const filledBN = BigInt(filledStr);
+        if (filledBN === 0n) {
+          throw new Error("当前订单簿流动性不足，无法成交");
+        }
+        const totalCostBN = BigInt(totalStr);
+        const avgPriceBN = BigInt(avgPriceStr);
+        const worstPriceBN = BigInt(worstPriceStr);
+        const slippageBpsNum = Number(slippageBpsStr);
+
+        const formatPriceNumber = (v: bigint) => {
+          try {
+            return Number(ethers.formatUnits(v, decimals));
+          } catch {
+            return Number(v);
+          }
+        };
+        const formatAmountNumber = (v: bigint) => {
+          try {
+            return Number(v);
+          } catch {
+            return Number(v);
+          }
+        };
+
+        const filledHuman = formatAmountNumber(filledBN);
+        const avgPriceHuman = formatPriceNumber(avgPriceBN);
+        const worstPriceHuman = formatPriceNumber(worstPriceBN);
+        const totalHuman = formatPriceNumber(totalCostBN);
+
+        const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
+        const slippagePercent = (slippageBpsNum || 0) / 100;
+        const confirmMsg = `预计以均价 ${avgPriceHuman.toFixed(
+          4
+        )} USDC 成交 ${filledHuman} 份，最大价格 ${worstPriceHuman.toFixed(
+          4
+        )} USDC，总${tradeSide === "buy" ? "花费" : "收入"}约 ${totalHuman.toFixed(
+          2
+        )} USDC，预计滑点约 ${slippagePercent.toFixed(2)}%。是否确认${sideLabel}？`;
+        const ok = typeof window !== "undefined" ? window.confirm(confirmMsg) : true;
+        if (!ok) {
+          setOrderMsg("已取消");
+          return;
+        }
+
+        if (tradeSide === "buy") {
+          const allowance = await tokenContract.allowance(account, market.market);
+          if (allowance < totalCostBN) {
+            setOrderMsg("正在请求授权...");
+            const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
+            await txApp.wait();
+          }
+        } else {
+          const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+          const outcomeTokenAddress = await marketContract.outcomeToken();
+          const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+          if (!isApproved) {
+            setOrderMsg("请求预测代币授权...");
+            const tx1155 = await outcome1155.setApprovalForAll(market.market, true);
+            await tx1155.wait();
+          }
+        }
+
+        if (!RELAYER_BASE) {
+          throw new Error("撮合服务未配置，无法完成市价成交");
+        }
+
+        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+        let remainingToFill = filledBN;
+        const levels = Array.isArray(q.levels) ? q.levels : [];
+
+        for (const level of levels) {
+          if (remainingToFill <= 0n) break;
+          const levelPrice = String((level as any).price);
+          const levelTakeQtyStr = String((level as any).takeQty || "0");
+          let levelTakeQty: bigint;
+          try {
+            levelTakeQty = BigInt(levelTakeQtyStr);
+          } catch {
+            continue;
+          }
+          if (levelTakeQty <= 0n) continue;
+
+          const makerSide = tradeSide === "buy" ? "sell" : "buy";
+          const queueQs = new URLSearchParams({
+            contract: market.market,
+            chainId: String(market.chain_id),
+            outcome: String(tradeOutcome),
+            side: makerSide,
+            price: levelPrice,
+            limit: "200",
+            offset: "0",
+            marketKey,
+          });
+          const queueRes = await fetch(`${RELAYER_BASE}/orderbook/queue?${queueQs.toString()}`);
+          const queueJson = await queueRes.json().catch(() => null);
+          const queueData = queueJson && queueJson.success ? queueJson.data : null;
+          if (!Array.isArray(queueData) || queueData.length === 0) continue;
+
+          for (const row of queueData as any[]) {
+            if (remainingToFill <= 0n) break;
+            const remainingStr = String(row.remaining ?? "0");
+            let makerRemaining: bigint;
+            try {
+              makerRemaining = BigInt(remainingStr);
+            } catch {
+              continue;
+            }
+            if (makerRemaining <= 0n) continue;
+            const fillAmount = makerRemaining >= remainingToFill ? remainingToFill : makerRemaining;
+            if (fillAmount <= 0n) continue;
+
+            const orderId = row.id;
+            const orderRes = await fetch(`${API_BASE}/orderbook/order?id=${orderId}`);
+            const orderJson = await safeJson(orderRes);
+            if (!orderJson.success || !orderJson.data) {
+              continue;
+            }
+            const order = orderJson.data as any;
+
+            const reqStruct = {
+              maker: order.maker_address,
+              outcomeIndex: Number(order.outcome_index),
+              isBuy: Boolean(order.is_buy),
+              price: BigInt(order.price),
+              amount: BigInt(order.amount),
+              expiry: order.expiry
+                ? BigInt(Math.floor(new Date(order.expiry).getTime() / 1000))
+                : 0n,
+              salt: BigInt(order.maker_salt),
+            };
+
+            setOrderMsg("正在成交中...");
+            const tx = await marketContract.fillOrderSigned(reqStruct, order.signature, fillAmount);
+            const receipt = await tx.wait();
+
+            try {
+              await fetch(`${API_BASE}/orderbook/orders/fill`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chainId: market.chain_id,
+                  verifyingContract: market.market,
+                  contract: market.market,
+                  marketKey,
+                  maker: order.maker_address,
+                  salt: order.maker_salt,
+                  fillAmount: fillAmount.toString(),
+                }),
+              });
+            } catch {}
+
+            try {
+              await fetch(`${API_BASE}/orderbook/report-trade`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chainId: market.chain_id,
+                  txHash: receipt.hash,
+                }),
+              });
+            } catch {}
+
+            remainingToFill -= fillAmount;
+          }
+        }
+
+        if (remainingToFill > 0n) {
+          setOrderMsg("部分成交，剩余数量未能成交");
+        } else {
+          setOrderMsg("成交成功");
+        }
+        setAmountInput("");
+        await refreshUserOrders();
+        return;
+      }
+
+      priceBN = parseUnitsByDecimals(priceFloat.toString(), decimals);
 
       if (tradeSide === "buy") {
         const cost = amountBN * priceBN;

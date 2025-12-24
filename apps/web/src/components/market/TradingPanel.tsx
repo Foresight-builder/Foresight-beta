@@ -44,11 +44,14 @@ interface TradingPanelHandlers {
   setAmountInput: (v: string) => void;
   setOrderMode: (m: "limit" | "best") => void;
   submitOrder: () => void;
-  cancelOrder: (id: string) => void;
+  cancelOrder: (salt: string) => void;
+  handleMint: (amount: string) => void;
+  handleRedeem: (amount: string) => void;
+  setMintInput: (v: string) => void;
 }
 
 interface TradingPanelProps {
-  data: TradingPanelData;
+  data: TradingPanelData & { mintInput?: string };
   state: TradingPanelState;
   handlers: TradingPanelHandlers;
 }
@@ -66,6 +69,7 @@ export function TradingPanel(props: TradingPanelProps) {
     userOrders,
     trades = [],
     outcomes,
+    mintInput = "",
   } = data;
   const { tradeSide, tradeOutcome, priceInput, amountInput, orderMode, isSubmitting, orderMsg } =
     state;
@@ -77,20 +81,40 @@ export function TradingPanel(props: TradingPanelProps) {
     setOrderMode,
     submitOrder,
     cancelOrder,
+    handleMint,
+    handleRedeem,
+    setMintInput,
   } = handlers;
   const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "history">("trade");
   const tTrading = useTranslations("trading");
   const tCommon = useTranslations("common");
 
   // Format Helpers
-  const formatPrice = (p: string) => {
+  const formatPrice = (p: string, showCents = false) => {
     try {
       const v = BigInt(p);
       if (v === BIGINT_ZERO) return "-";
       const decimals = v > BIGINT_THRESHOLD ? 18 : 6;
-      return Number(formatUnits(v, decimals)).toFixed(2);
+      const val = Number(formatUnits(v, decimals));
+      if (showCents) {
+        // < 1$ show cents
+        if (val < 1) return (val * 100).toFixed(1) + "¢";
+      }
+      return val.toFixed(2);
     } catch {
       return "-";
+    }
+  };
+
+  const getChance = (p: string) => {
+    try {
+      const v = BigInt(p);
+      if (v === BIGINT_ZERO) return "0%";
+      const decimals = v > BIGINT_THRESHOLD ? 18 : 6;
+      const val = Number(formatUnits(v, decimals));
+      return (val * 100).toFixed(0) + "%";
+    } catch {
+      return "0%";
     }
   };
 
@@ -177,116 +201,153 @@ export function TradingPanel(props: TradingPanelProps) {
       <div className="flex-1 p-5 overflow-y-auto">
         {activeTab === "trade" && (
           <div className="space-y-6">
-            {/* Outcome Selector (if multi) */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                {tTrading("selectOutcome")}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {outcomes.map((o, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setTradeOutcome(idx)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm border font-medium transition-all ${
-                      tradeOutcome === idx
-                        ? "border-purple-200 bg-purple-50 text-purple-700 shadow-sm"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shadow-sm"
-                      style={{
-                        backgroundColor: o.color || (idx === 0 ? "#10b981" : "#ef4444"),
-                      }}
-                    />
-                    {o.label || (idx === 0 ? tCommon("yes") : tCommon("no"))}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Buy/Sell Switch */}
-            <div className="bg-gray-100 p-1.5 rounded-xl grid grid-cols-2 shadow-inner">
+            {/* 1. Buy/Sell Tabs */}
+            <div className="bg-gray-100 p-1 rounded-xl flex">
               <button
                 onClick={() => setTradeSide("buy")}
-                className={`py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   tradeSide === "buy"
-                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                    ? "bg-white text-emerald-600 shadow-sm ring-1 ring-gray-200"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <ArrowUp className="w-4 h-4" /> {tTrading("buy")}
               </button>
               <button
                 onClick={() => setTradeSide("sell")}
-                className={`py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   tradeSide === "sell"
-                    ? "bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-500/20"
-                    : "text-gray-500 hover:text-rose-600 hover:bg-rose-50"
+                    ? "bg-white text-rose-600 shadow-sm ring-1 ring-gray-200"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <ArrowDown className="w-4 h-4" /> {tTrading("sell")}
               </button>
             </div>
 
-            {/* Order Type */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500 font-medium">{tTrading("orderType")}</span>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setOrderMode("limit")}
-                  className={`font-semibold transition-colors ${
-                    orderMode === "limit" ? "text-purple-600" : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  {tTrading("limitOrder")}
-                </button>
-                <button
-                  onClick={() => setOrderMode("best")}
-                  className={`font-semibold transition-colors ${
-                    orderMode === "best" ? "text-purple-600" : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  {tTrading("marketOrder")}
-                </button>
+            {/* 2. Outcome Selection (Big Buttons) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                {tTrading("selectOutcome")}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {outcomes.map((o, idx) => {
+                  const isSelected = tradeOutcome === idx;
+                  const isYes = idx === 0;
+                  // Use stats for chance if available, otherwise placeholder
+                  const chance =
+                    prediction?.stats &&
+                    (isYes ? prediction.stats.yesProbability : prediction.stats.noProbability)
+                      ? (
+                          (isYes
+                            ? prediction.stats.yesProbability
+                            : prediction.stats.noProbability) * 100
+                        ).toFixed(0) + "%"
+                      : "-";
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setTradeOutcome(idx)}
+                      className={`relative flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-50/50 shadow-md"
+                          : "border-gray-100 bg-white hover:border-purple-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span
+                          className={`text-lg font-black ${
+                            isSelected ? "text-purple-700" : "text-gray-700"
+                          }`}
+                        >
+                          {o.label || (isYes ? tCommon("yes") : tCommon("no"))}
+                        </span>
+                        {isSelected && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500">
+                            <ArrowUp className="h-3 w-3 text-white rotate-45" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                        <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                          {chance} Chance
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Inputs */}
-            <div className="space-y-4">
+            {/* 3. Inputs */}
+            <div className="space-y-4 pt-2">
               <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium text-gray-500">
-                  <span>{tTrading("price")} (USDC)</span>
-                  {orderMode === "best" && (
-                    <span className="text-purple-500">{tTrading("autoMatchBest")}</span>
-                  )}
+                  <span>{tTrading("price")}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setOrderMode("best")}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                        orderMode === "best"
+                          ? "bg-purple-100 text-purple-700 font-bold"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {tTrading("marketOrder")}
+                    </button>
+                    <button
+                      onClick={() => setOrderMode("limit")}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                        orderMode === "limit"
+                          ? "bg-purple-100 text-purple-700 font-bold"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {tTrading("limitOrder")}
+                    </button>
+                  </div>
                 </div>
-                <div className="relative group">
-                  <input
-                    type="number"
-                    value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
-                    disabled={orderMode === "best"}
-                    placeholder="0.00"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
-                  />
-                  <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
-                </div>
-                {/* Quick Price Refs */}
-                <div className="flex gap-3 text-xs font-medium pt-1">
-                  <button
-                    onClick={() => fillPrice(formatPrice(bestBid))}
-                    className="text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors"
-                  >
-                    {tTrading("bestBid").replace("{price}", formatPrice(bestBid))}
-                  </button>
-                  <button
-                    onClick={() => fillPrice(formatPrice(bestAsk))}
-                    className="text-rose-600 hover:text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md hover:bg-rose-100 transition-colors"
-                  >
-                    {tTrading("bestAsk").replace("{price}", formatPrice(bestAsk))}
-                  </button>
-                </div>
+
+                {orderMode === "best" ? (
+                  <div className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-gray-500 font-medium flex justify-between items-center cursor-not-allowed">
+                    <span>{tTrading("autoMatchBest")}</span>
+                    <span className="text-gray-900 font-bold">
+                      {tradeSide === "buy"
+                        ? formatPrice(bestAsk, true)
+                        : formatPrice(bestBid, true)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      value={priceInput}
+                      onChange={(e) => setPriceInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
+                    />
+                    <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
+                  </div>
+                )}
+
+                {/* Market Depth Hints (Only in Limit Mode) */}
+                {orderMode === "limit" && (
+                  <div className="flex gap-3 text-xs font-medium pt-1 justify-end">
+                    <button
+                      onClick={() => fillPrice(formatPrice(bestBid))}
+                      className="text-emerald-600 hover:text-emerald-700 hover:underline decoration-emerald-600/30"
+                    >
+                      Bid: {formatPrice(bestBid, true)}
+                    </button>
+                    <button
+                      onClick={() => fillPrice(formatPrice(bestAsk))}
+                      className="text-rose-600 hover:text-rose-700 hover:underline decoration-rose-600/30"
+                    >
+                      Ask: {formatPrice(bestAsk, true)}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -357,6 +418,51 @@ export function TradingPanel(props: TradingPanelProps) {
                 </div>
               )}
             </div>
+
+            {/* Pre-Selling Prep (Mint/Redeem) - Only for Sell */}
+            {tradeSide === "sell" && (
+              <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
+                <div className="bg-purple-50/50 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-800 uppercase tracking-wider">
+                      Sell Prep
+                    </span>
+                    <span className="text-[10px] text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                      Need outcome tokens?
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={mintInput}
+                      onChange={(e) => setMintInput(e.target.value)}
+                      placeholder="Amount (USDC)"
+                      className="flex-1 bg-white border border-purple-100 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500"
+                    />
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => mintInput && handleMint(mintInput)}
+                        disabled={!mintInput}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        Mint
+                      </button>
+                      <button
+                        onClick={() => mintInput && handleRedeem(mintInput)}
+                        disabled={!mintInput}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-purple-600 border border-purple-200 hover:bg-purple-50 disabled:opacity-50"
+                      >
+                        Redeem
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-purple-500/80 leading-relaxed">
+                    Mint converts USDC to Yes+No tokens (1:1). Redeem burns Yes+No to get USDC back.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

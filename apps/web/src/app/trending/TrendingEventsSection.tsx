@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
+import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { AllLoadedNotice, InfiniteScrollSentinel, ListError } from "@/components/ui/ListStates";
@@ -91,6 +92,8 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   tTrendingAdmin,
   tEvents,
 }: TrendingEventsGridProps) {
+  const router = useRouter();
+
   return (
     <motion.div
       layout
@@ -116,6 +119,9 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
             deleteBusyId={deleteBusyId}
             onCardClick={(e, category) => {
               createCategoryParticlesAtCardClick(e, category);
+              if (isValidId) {
+                router.push(`/prediction/${eventId}`);
+              }
             }}
             onToggleFollow={(e, id) => {
               toggleFollow(id, e);

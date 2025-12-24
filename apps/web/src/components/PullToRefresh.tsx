@@ -40,7 +40,11 @@ export default function PullToRefresh({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const bind = useDrag(
-    ({ down, movement: [, my], velocity: [, vy], direction: [, dy], cancel }) => {
+    (state: any) => {
+      const { down, movement, velocity, direction, cancel } = state;
+      const [, my] = movement as [number, number];
+      const [, vy] = velocity as [number, number];
+      const [, dy] = direction as [number, number];
       // 禁用状态或正在刷新时不响应
       if (disabled || isRefreshing) {
         cancel();
@@ -57,7 +61,7 @@ export default function PullToRefresh({
       }
 
       // 计算下拉距离（应用阻尼效果）
-      const pullDistance = Math.max(0, my) * 0.5; // 50% 阻尼
+      const pullDistance = Math.max(0, my || 0) * 0.5; // 50% 阻尼
       const maxPull = threshold * 2; // 最大下拉距离为阈值的2倍
 
       if (down) {
@@ -86,8 +90,8 @@ export default function PullToRefresh({
     }
   );
 
-  const pullProgress = y.to((val) => Math.min(val / threshold, 1));
-  const iconRotation = y.to((val) => (val / threshold) * 360);
+  const pullProgress = y.to((val: number) => Math.min(val / threshold, 1));
+  const iconRotation = y.to((val: number) => (val / threshold) * 360);
 
   return (
     <div
@@ -100,7 +104,7 @@ export default function PullToRefresh({
       <animated.div
         className="absolute top-0 left-0 right-0 flex items-center justify-center z-50 overflow-hidden"
         style={{
-          height: y.to((val) => `${val}px`),
+          height: y.to((val: number) => `${val}px`),
         }}
       >
         <div className="relative flex flex-col items-center gap-2">
@@ -110,7 +114,7 @@ export default function PullToRefresh({
             <animated.div
               style={{
                 rotate: iconRotation,
-                opacity: pullProgress.to((p) => p),
+                opacity: pullProgress.to((p: number) => p),
               }}
             >
               <RefreshCw className="w-6 h-6 text-purple-600" />
@@ -119,7 +123,7 @@ export default function PullToRefresh({
           <animated.span
             className="text-xs font-medium text-gray-600"
             style={{
-              opacity: pullProgress.to((p) => p),
+              opacity: pullProgress.to((p: number) => p),
             }}
           >
             {isRefreshing ? "刷新中..." : y.get() >= threshold ? "松开刷新" : "下拉刷新"}
@@ -130,7 +134,7 @@ export default function PullToRefresh({
       {/* 内容区域 */}
       <animated.div
         style={{
-          transform: y.to((val) => `translateY(${val}px)`),
+          transform: y.to((val: number) => `translateY(${val}px)`),
         }}
       >
         {children}
