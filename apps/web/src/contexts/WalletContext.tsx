@@ -98,6 +98,196 @@ export const WalletContext = createContext<WalletContextType | undefined>(undefi
 
 const LOGOUT_FLAG = "fs_wallet_logged_out";
 
+// 钱包类型识别
+const identifyWalletType = (provider?: any): WalletType | null => {
+  const ethereum = (window as any).ethereum;
+  const p = provider || ethereum;
+  if (!p) return null;
+
+  const mapped = providerTypeMap.get(p as any);
+  if (mapped) return mapped;
+
+  try {
+    if (
+      p.isOkxWallet ||
+      p.isOKExWallet ||
+      p.isOKX ||
+      (p.constructor &&
+        (p.constructor.name === "OkxWalletProvider" ||
+          p.constructor.name === "OKXWallet" ||
+          p.constructor.name === "OkxWallet")) ||
+      (typeof window !== "undefined" &&
+        (p === (window as any).okxwallet ||
+          p === (window as any).okex ||
+          p === (window as any).OKXWallet ||
+          p === (window as any).okxWallet))
+    ) {
+      return "okx";
+    }
+
+    if (
+      p._metamask ||
+      (p.isMetaMask && p.constructor && p.constructor.name === "MetaMaskInpageProvider") ||
+      (p.isMetaMask && typeof p._metamask !== "undefined")
+    ) {
+      return "metamask";
+    }
+
+    if (
+      p.isCoinbaseWallet ||
+      p.isCoinbaseBrowser ||
+      p.selectedProvider?.isCoinbaseWallet ||
+      p.provider?.isCoinbaseWallet ||
+      (p.constructor && p.constructor.name === "CoinbaseWalletProvider") ||
+      p.qrUrl
+    ) {
+      return "coinbase";
+    }
+
+    if (
+      p.isBinanceWallet ||
+      p.isBinance ||
+      p.bbcSignTx ||
+      (p.constructor && p.constructor.name === "BinanceWalletProvider") ||
+      (p.isMetaMask && !p._metamask && !p.isCoinbaseWallet && !p.isOkxWallet)
+    ) {
+      return "binance";
+    }
+
+    if (typeof p.host === "string") {
+      const host = p.host.toLowerCase();
+      if (host.includes("metamask")) return "metamask";
+      if (host.includes("coinbase")) return "coinbase";
+      if (host.includes("binance")) return "binance";
+      if (host.includes("okx")) return "okx";
+    }
+
+    if (typeof p.name === "string") {
+      const name = p.name.toLowerCase();
+      if (name.includes("metamask")) return "metamask";
+      if (name.includes("coinbase")) return "coinbase";
+      if (name.includes("binance")) return "binance";
+      if (name.includes("okx")) return "okx";
+    }
+  } catch (error) {
+    console.log("钱包类型识别出错:", error);
+  }
+
+  if ((window as any).BinanceChain === p || (window as any).BinanceChain) return "binance";
+  if ((window as any).coinbaseWalletExtension === p || (window as any).coinbaseWalletExtension)
+    return "coinbase";
+  if ((window as any).okxwallet === p || (window as any).okxwallet) return "okx";
+
+  if (!provider && ethereum?.providers) {
+    for (const pr of ethereum.providers) {
+      const m = providerTypeMap.get(pr);
+      if (m) return m;
+      if (pr._metamask && pr.isMetaMask) return "metamask";
+      if (pr.isCoinbaseWallet) return "coinbase";
+      if (pr.isMetaMask && !pr._metamask && !pr.isCoinbaseWallet) return "binance";
+    }
+  }
+
+  return null;
+};
+
+// 已安装钱包检测
+const detectWallets = (): WalletInfo[] => {
+  const ethereum: any = (window as any).ethereum;
+  let hasMM = false,
+    hasCB = false,
+    hasBN = false,
+    hasOKX = false;
+
+  if (ethereum?.providers) {
+    ethereum.providers.forEach((provider: any) => {
+      const t = identifyWalletType(provider);
+      if (t === "metamask") hasMM = true;
+      else if (t === "coinbase") hasCB = true;
+      else if (t === "binance") hasBN = true;
+      else if (t === "okx") hasOKX = true;
+    });
+  }
+
+  if (discoveredProviders.length > 0) {
+    for (const d of discoveredProviders) {
+      const mapped = providerTypeMap.get(d.provider) || walletTypeFromInfo(d.info);
+      if (mapped === "metamask") hasMM = true;
+      else if (mapped === "coinbase") hasCB = true;
+      else if (mapped === "binance") hasBN = true;
+      else if (mapped === "okx") hasOKX = true;
+    }
+  }
+
+  if ((window as any).BinanceChain) hasBN = true;
+  if ((window as any).coinbaseWalletExtension) hasCB = true;
+
+  if (
+    (window as any).okxwallet ||
+    (window as any).okex ||
+    (window as any).OKXWallet ||
+    (window as any).okxWallet
+  ) {
+    hasOKX = true;
+  }
+
+  if (!ethereum?.providers && ethereum) {
+    const t = identifyWalletType(ethereum);
+    if (t === "metamask") hasMM = true;
+    else if (t === "coinbase") hasCB = true;
+    else if (t === "binance") hasBN = true;
+    else if (t === "okx") hasOKX = true;
+    if (ethereum.isBinanceWallet) hasBN = true;
+  }
+
+  const wallets: WalletInfo[] = [
+    { type: "metamask", name: "MetaMask", isAvailable: hasMM, provider: null },
+    { type: "coinbase", name: "Coinbase Wallet", isAvailable: hasCB, provider: null },
+    { type: "binance", name: "Binance Wallet", isAvailable: hasBN, provider: null },
+    { type: "okx", name: "OKX Wallet", isAvailable: hasOKX, provider: null },
+  ];
+
+  const uniqueWallets = wallets.reduce((acc: WalletInfo[], current) => {
+    const exists = acc.find((w) => w.type === current.type);
+    if (!exists) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
+
+  return uniqueWallets;
+};
+
+const getFallbackRpcUrl = (chainIdNum?: number): string | null => {
+  const env = process.env || ({} as any);
+  const id = Number(chainIdNum || 1);
+  switch (id) {
+    case 1:
+      return (
+        env.NEXT_PUBLIC_RPC_MAINNET ||
+        env.NEXT_PUBLIC_RPC_ETHEREUM ||
+        env.NEXT_PUBLIC_RPC_URL ||
+        "https://ethereum.publicnode.com"
+      );
+    case 11155111:
+      return env.NEXT_PUBLIC_RPC_SEPOLIA || env.NEXT_PUBLIC_RPC_URL || "https://rpc.sepolia.org";
+    case 137:
+      return env.NEXT_PUBLIC_RPC_POLYGON || env.NEXT_PUBLIC_RPC_URL || "https://polygon-rpc.com";
+    case 80002:
+      return (
+        env.NEXT_PUBLIC_RPC_POLYGON_AMOY ||
+        env.NEXT_PUBLIC_RPC_URL ||
+        "https://rpc-amoy.polygon.technology"
+      );
+    case 56:
+      return (
+        env.NEXT_PUBLIC_RPC_BSC || env.NEXT_PUBLIC_RPC_URL || "https://bsc-dataseed.binance.org"
+      );
+    default:
+      return env.NEXT_PUBLIC_RPC_URL || null;
+  }
+};
+
 function useIsMounted() {
   const [mounted, setMounted] = useState(false);
 
@@ -123,182 +313,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const currentProviderRef = useRef<any>(null); // 保存当前连接的 provider 引用
   const mounted = useIsMounted();
-
-  const detectWallets = (): WalletInfo[] => {
-    const ethereum: any = (window as any).ethereum;
-    let hasMM = false,
-      hasCB = false,
-      hasBN = false,
-      hasOKX = false;
-
-    // 检查 providers 数组中的真实钱包
-    if (ethereum?.providers) {
-      ethereum.providers.forEach((provider: any) => {
-        const t = identifyWalletType(provider);
-        if (t === "metamask") hasMM = true;
-        else if (t === "coinbase") hasCB = true;
-        else if (t === "binance") hasBN = true;
-        else if (t === "okx") hasOKX = true;
-      });
-    }
-
-    // 融合 EIP-6963 发现到可用状态
-    if (discoveredProviders.length > 0) {
-      for (const d of discoveredProviders) {
-        const mapped = providerTypeMap.get(d.provider) || walletTypeFromInfo(d.info);
-        if (mapped === "metamask") hasMM = true;
-        else if (mapped === "coinbase") hasCB = true;
-        else if (mapped === "binance") hasBN = true;
-        else if (mapped === "okx") hasOKX = true;
-      }
-    }
-
-    // 检查独立注入的钱包 - 增强OKX检测
-    if ((window as any).BinanceChain) hasBN = true;
-    if ((window as any).coinbaseWalletExtension) hasCB = true;
-
-    // OKX钱包的多种检测方式
-    if (
-      (window as any).okxwallet ||
-      (window as any).okex ||
-      (window as any).OKXWallet ||
-      (window as any).okxWallet
-    ) {
-      hasOKX = true;
-    }
-
-    // 如果没有 providers 但有 ethereum，检查主对象
-    if (!ethereum?.providers && ethereum) {
-      const t = identifyWalletType(ethereum);
-      if (t === "metamask") hasMM = true;
-      else if (t === "coinbase") hasCB = true;
-      else if (t === "binance") hasBN = true;
-      else if (t === "okx") hasOKX = true;
-      // 兜底：显式属性检测
-      if (ethereum.isBinanceWallet) hasBN = true;
-    }
-
-    const wallets: WalletInfo[] = [
-      { type: "metamask", name: "MetaMask", isAvailable: hasMM, provider: null },
-      { type: "coinbase", name: "Coinbase Wallet", isAvailable: hasCB, provider: null },
-      { type: "binance", name: "Binance Wallet", isAvailable: hasBN, provider: null },
-      { type: "okx", name: "OKX Wallet", isAvailable: hasOKX, provider: null },
-    ];
-
-    // 去重处理，确保每种钱包类型只出现一次
-    const uniqueWallets = wallets.reduce((acc: WalletInfo[], current) => {
-      const exists = acc.find((w) => w.type === current.type);
-      if (!exists) {
-        acc.push(current);
-      }
-      return acc;
-    }, []);
-
-    return uniqueWallets;
-  };
-
-  // 识别当前连接的钱包类型
-  const identifyWalletType = (provider?: any): WalletType | null => {
-    const ethereum = (window as any).ethereum;
-    const p = provider || ethereum;
-    if (!p) return null;
-
-    // 优先使用 EIP-6963 映射
-    const mapped = providerTypeMap.get(p as any);
-    if (mapped) return mapped;
-
-    try {
-      // OKX 钱包识别 - 优先检测，因为OKX可能伪装成其他钱包
-      if (
-        p.isOkxWallet ||
-        p.isOKExWallet ||
-        p.isOKX ||
-        (p.constructor &&
-          (p.constructor.name === "OkxWalletProvider" ||
-            p.constructor.name === "OKXWallet" ||
-            p.constructor.name === "OkxWallet")) ||
-        // 检查全局对象引用
-        (typeof window !== "undefined" &&
-          (p === (window as any).okxwallet ||
-            p === (window as any).okex ||
-            p === (window as any).OKXWallet ||
-            p === (window as any).okxWallet))
-      ) {
-        return "okx";
-      }
-
-      // MetaMask 检测 - 更精确的识别
-      if (
-        p._metamask ||
-        (p.isMetaMask && p.constructor && p.constructor.name === "MetaMaskInpageProvider") ||
-        (p.isMetaMask && typeof p._metamask !== "undefined")
-      ) {
-        return "metamask";
-      }
-
-      // Coinbase 钱包识别 - 增强检测
-      if (
-        p.isCoinbaseWallet ||
-        p.isCoinbaseBrowser ||
-        p.selectedProvider?.isCoinbaseWallet ||
-        p.provider?.isCoinbaseWallet ||
-        (p.constructor && p.constructor.name === "CoinbaseWalletProvider") ||
-        p.qrUrl
-      ) {
-        return "coinbase";
-      }
-
-      // Binance 钱包识别 - 增强检测
-      if (
-        p.isBinanceWallet ||
-        p.isBinance ||
-        p.bbcSignTx ||
-        (p.constructor && p.constructor.name === "BinanceWalletProvider") ||
-        (p.isMetaMask && !p._metamask && !p.isCoinbaseWallet && !p.isOkxWallet)
-      ) {
-        return "binance";
-      }
-
-      // 检查 provider 的 host 或 origin 信息
-      if (typeof p.host === "string") {
-        const host = p.host.toLowerCase();
-        if (host.includes("metamask")) return "metamask";
-        if (host.includes("coinbase")) return "coinbase";
-        if (host.includes("binance")) return "binance";
-        if (host.includes("okx")) return "okx";
-      }
-
-      // 检查 provider 的 name 属性
-      if (typeof p.name === "string") {
-        const name = p.name.toLowerCase();
-        if (name.includes("metamask")) return "metamask";
-        if (name.includes("coinbase")) return "coinbase";
-        if (name.includes("binance")) return "binance";
-        if (name.includes("okx")) return "okx";
-      }
-    } catch (error) {
-      console.log("钱包类型识别出错:", error);
-    }
-
-    // 独立注入的钱包检查
-    if ((window as any).BinanceChain === p || (window as any).BinanceChain) return "binance";
-    if ((window as any).coinbaseWalletExtension === p || (window as any).coinbaseWalletExtension)
-      return "coinbase";
-    if ((window as any).okxwallet === p || (window as any).okxwallet) return "okx";
-
-    // 遍历 providers 数组进行匹配
-    if (!provider && ethereum?.providers) {
-      for (const pr of ethereum.providers) {
-        const m = providerTypeMap.get(pr);
-        if (m) return m;
-        if (pr._metamask && pr.isMetaMask) return "metamask";
-        if (pr.isCoinbaseWallet) return "coinbase";
-        if (pr.isMetaMask && !pr._metamask && !pr.isCoinbaseWallet) return "binance";
-      }
-    }
-
-    return null;
-  };
 
   useEffect(() => {
     let onAnnounce: any;
@@ -514,37 +528,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (p && p.on) {
       p.on("accountsChanged", handleAccountsChanged);
       p.on("chainChanged", handleChainChanged);
-    }
-  };
-
-  // 根据链ID选择回退RPC URL（支持环境变量覆盖）
-  const getFallbackRpcUrl = (chainIdNum?: number): string | null => {
-    const env = process.env || ({} as any);
-    const id = Number(chainIdNum || 1);
-    switch (id) {
-      case 1:
-        return (
-          env.NEXT_PUBLIC_RPC_MAINNET ||
-          env.NEXT_PUBLIC_RPC_ETHEREUM ||
-          env.NEXT_PUBLIC_RPC_URL ||
-          "https://ethereum.publicnode.com"
-        );
-      case 11155111:
-        return env.NEXT_PUBLIC_RPC_SEPOLIA || env.NEXT_PUBLIC_RPC_URL || "https://rpc.sepolia.org";
-      case 137:
-        return env.NEXT_PUBLIC_RPC_POLYGON || env.NEXT_PUBLIC_RPC_URL || "https://polygon-rpc.com";
-      case 80002:
-        return (
-          env.NEXT_PUBLIC_RPC_POLYGON_AMOY ||
-          env.NEXT_PUBLIC_RPC_URL ||
-          "https://rpc-amoy.polygon.technology"
-        );
-      case 56:
-        return (
-          env.NEXT_PUBLIC_RPC_BSC || env.NEXT_PUBLIC_RPC_URL || "https://bsc-dataseed.binance.org"
-        );
-      default:
-        return env.NEXT_PUBLIC_RPC_URL || null;
     }
   };
 

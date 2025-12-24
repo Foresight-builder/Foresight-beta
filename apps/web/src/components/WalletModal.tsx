@@ -540,6 +540,591 @@ function useWalletModalLogic({ isOpen, onClose }: WalletModalProps) {
   };
 }
 
+type WalletModalHeaderProps = {
+  tWalletModal: (key: string) => string;
+  onClose: () => void;
+};
+
+function WalletModalHeader({ tWalletModal, onClose }: WalletModalHeaderProps) {
+  return (
+    <div className="relative flex items-center justify-between p-6 border-b border-gradient-to-r from-purple-100/50 to-pink-100/50">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
+            <path
+              d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <polyline
+              points="15,10 21,4 15,4 21,4"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <div>
+          <h2
+            id="wallet-modal-title"
+            className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+          >
+            {tWalletModal("title")}
+          </h2>
+          <p id="wallet-modal-description" className="text-sm text-gray-500">
+            {tWalletModal("subtitle")}
+          </p>
+        </div>
+      </div>
+      <motion.button
+        onClick={onClose}
+        className="p-2 hover:bg-gradient-to-br hover:from-purple-100 hover:to-pink-100 rounded-xl transition-all duration-200 group"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          className="text-gray-400 group-hover:text-gray-600"
+        >
+          <path
+            d="M15 5L5 15M5 5l10 10"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      </motion.button>
+    </div>
+  );
+}
+
+type WalletModalStepperProps = {
+  tWalletModal: (key: string) => string;
+  stepHint: string;
+  step1Active: boolean;
+  step2Active: boolean;
+  step3Active: boolean;
+  step1Done: boolean;
+  step2Done: boolean;
+  step3Done: boolean;
+};
+
+function WalletModalStepper({
+  tWalletModal,
+  stepHint,
+  step1Active,
+  step2Active,
+  step3Active,
+  step1Done,
+  step2Done,
+  step3Done,
+}: WalletModalStepperProps) {
+  return (
+    <div className="relative px-6 pt-3 pb-4 border-b border-purple-50">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center flex-1">
+          <div
+            className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+              step1Done
+                ? "border-purple-500 bg-purple-500 text-white"
+                : step1Active
+                  ? "border-purple-500 text-purple-600"
+                  : "border-gray-200 text-gray-400"
+            }`}
+          >
+            {step1Done ? "✓" : step1Active ? <Loader2 className="w-3 h-3 animate-spin" /> : "1"}
+          </div>
+          <div
+            className={`ml-2 text-[11px] ${
+              step1Done ? "text-purple-600" : step1Active ? "text-gray-900" : "text-gray-400"
+            }`}
+          >
+            {tWalletModal("steps.connectWallet")}
+          </div>
+          <div
+            className={`flex-1 h-px mx-2 ${
+              step2Done || step2Active
+                ? "bg-gradient-to-r from-purple-400 to-pink-400"
+                : "bg-gray-200"
+            }`}
+          />
+        </div>
+        <div className="flex items-center flex-1">
+          <div
+            className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+              step2Done
+                ? "border-purple-500 bg-purple-500 text-white"
+                : step2Active
+                  ? "border-purple-500 text-purple-600"
+                  : "border-gray-200 text-gray-400"
+            }`}
+          >
+            {step2Done ? "✓" : step2Active ? <Loader2 className="w-3 h-3 animate-spin" /> : "2"}
+          </div>
+          <div
+            className={`ml-2 text-[11px] ${
+              step2Done ? "text-purple-600" : step2Active ? "text-gray-900" : "text-gray-400"
+            }`}
+          >
+            {tWalletModal("steps.signIn")}
+          </div>
+          <div
+            className={`flex-1 h-px mx-2 ${
+              step3Done || step3Active
+                ? "bg-gradient-to-r from-purple-400 to-pink-400"
+                : "bg-gray-200"
+            }`}
+          />
+        </div>
+        <div className="flex items-center">
+          <div
+            className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+              step3Done
+                ? "border-purple-500 bg-purple-500 text-white"
+                : step3Active
+                  ? "border-purple-500 text-purple-600"
+                  : "border-gray-200 text-gray-400"
+            }`}
+          >
+            {step3Done ? "✓" : step3Active ? <Loader2 className="w-3 h-3 animate-spin" /> : "3"}
+          </div>
+          <div
+            className={`ml-2 text-[11px] ${
+              step3Done ? "text-purple-600" : step3Active ? "text-gray-900" : "text-gray-400"
+            }`}
+          >
+            {tWalletModal("steps.completeProfile")}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 text-xs text-gray-500">{stepHint}</div>
+    </div>
+  );
+}
+
+type WalletProfileFormProps = {
+  tWalletModal: (key: string) => string;
+  tLogin: (key: string) => string;
+  email: string;
+  setEmail: (value: string) => void;
+  otpRequested: boolean;
+  otp: string;
+  setOtp: (value: string) => void;
+  emailLoading: boolean;
+  emailVerified: boolean;
+  codePreview: string | null;
+  username: string;
+  setUsername: (value: string) => void;
+  rememberMe: boolean;
+  setRememberMe: (value: boolean) => void;
+  profileError: string | null;
+  canSubmitProfile: boolean;
+  profileLoading: boolean;
+  requestRegisterOtp: () => Promise<void>;
+  verifyRegisterOtp: () => Promise<void>;
+  submitProfile: () => Promise<void>;
+  onClose: () => void;
+};
+
+function WalletProfileForm({
+  tWalletModal,
+  tLogin,
+  email,
+  setEmail,
+  otpRequested,
+  otp,
+  setOtp,
+  emailLoading,
+  emailVerified,
+  codePreview,
+  username,
+  setUsername,
+  rememberMe,
+  setRememberMe,
+  profileError,
+  canSubmitProfile,
+  profileLoading,
+  requestRegisterOtp,
+  verifyRegisterOtp,
+  submitProfile,
+  onClose,
+}: WalletProfileFormProps) {
+  return (
+    <div className="relative p-6 space-y-4">
+      <h3 className="text-lg font-semibold">{tWalletModal("profile.title")}</h3>
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-gray-900">
+          {tWalletModal("profile.usernameLabel")}
+        </label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder={tWalletModal("profile.usernamePlaceholder")}
+          className="w-full rounded-xl border-2 border-purple-200 bg-white/95 px-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
+        />
+        <label className="block text-sm font-semibold text-gray-900">{tLogin("emailLabel")}</label>
+        <div className="relative">
+          <Mail
+            className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500"
+            aria-hidden="true"
+          />
+          <input
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={requestRegisterOtp}
+            disabled={!/.+@.+\..+/.test(email) || emailLoading}
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+          >
+            {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {tWalletModal("profile.sendOtpWithValidity")}
+          </button>
+          {emailVerified && (
+            <span className="text-sm text-green-600">{tWalletModal("profile.verifiedTag")}</span>
+          )}
+        </div>
+        {otpRequested && (
+          <div className="space-y-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
+              placeholder="••••••"
+            />
+            {codePreview && (
+              <div className="text-xs text-green-600">
+                {tWalletModal("devCodePreviewPrefix")}
+                {codePreview}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={verifyRegisterOtp}
+                disabled={otp.length !== 6 || emailLoading}
+                className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+              >
+                {tWalletModal("profile.verifyEmail")}
+              </button>
+            </div>
+            <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <input
+            id="remember-me"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
+          <label htmlFor="remember-me" className="text-sm text-gray-700">
+            {tWalletModal("profile.rememberMe")}
+          </label>
+        </div>
+        {profileError && <div className="text-sm text-red-600">{profileError}</div>}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={submitProfile}
+            disabled={!canSubmitProfile || profileLoading}
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+          >
+            {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {tWalletModal("profile.submit")}
+          </button>
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
+          >
+            {tWalletModal("profile.later")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type WalletEmailSectionProps = {
+  tWalletModal: (key: string) => string;
+  tLogin: (key: string) => string;
+  email: string;
+  setEmail: (value: string) => void;
+  otpRequested: boolean;
+  otp: string;
+  setOtp: (value: string) => void;
+  emailLoading: boolean;
+  authError: string | null;
+  canRequest: boolean;
+  handleRequestOtp: () => Promise<void>;
+  handleVerifyOtp: () => Promise<void>;
+  handleSendMagicLink: () => Promise<void>;
+};
+
+function WalletEmailSection({
+  tWalletModal,
+  tLogin,
+  email,
+  setEmail,
+  otpRequested,
+  otp,
+  setOtp,
+  emailLoading,
+  authError,
+  canRequest,
+  handleRequestOtp,
+  handleVerifyOtp,
+  handleSendMagicLink,
+}: WalletEmailSectionProps) {
+  return (
+    <div className="relative p-6 space-y-4">
+      {!otpRequested ? (
+        <div className="space-y-3">
+          <label htmlFor="wallet-email" className="block text-sm font-semibold text-gray-900">
+            {tLogin("emailLabel")}
+          </label>
+          <div className="relative">
+            <Mail
+              className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500"
+              aria-hidden="true"
+            />
+            <input
+              id="wallet-email"
+              type="email"
+              inputMode="email"
+              autoFocus
+              aria-label={tLogin("emailLabel")}
+              aria-describedby="wallet-email-help"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={tLogin("emailPlaceholder")}
+              className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400 shadow-sm hover:border-purple-300"
+              spellCheck={false}
+            />
+          </div>
+          <div id="wallet-email-help" className="text-xs text-gray-500">
+            {tLogin("emailContinueDescription")}
+          </div>
+          {!canRequest && email.length > 0 && (
+            <div className="text-xs text-red-600">{tWalletModal("profile.emailInvalid")}</div>
+          )}
+          {authError && <div className="text-sm text-red-600">{authError}</div>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRequestOtp}
+              disabled={!canRequest || emailLoading}
+              className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+            >
+              {emailLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              {tLogin("sendOtp")}
+            </button>
+            <button
+              onClick={handleSendMagicLink}
+              disabled={!canRequest || emailLoading}
+              className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900 disabled:opacity-60"
+            >
+              {tLogin("sendMagicLink")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            {tLogin("otpDescriptionPrefix")} <span className="font-medium">{email}</span>
+            {tLogin("otpDescriptionSuffix")}
+          </p>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
+            placeholder="••••••"
+          />
+          {authError && <div className="text-sm text-red-600">{authError}</div>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleVerifyOtp}
+              disabled={otp.length !== 6 || emailLoading}
+              className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+            >
+              {emailLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              {tLogin("verifyAndLogin")}
+            </button>
+            <button
+              onClick={handleRequestOtp}
+              disabled={emailLoading}
+              className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
+            >
+              {tLogin("resend")}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-purple-200 to-pink-200" />
+        <span className="text-xs text-gray-500">{tWalletModal("profile.or")}</span>
+        <div className="h-px flex-1 bg-gradient-to-r from-pink-200 to-purple-200" />
+      </div>
+    </div>
+  );
+}
+
+type WalletListSectionProps = {
+  tLogin: (key: string) => string;
+  availableWallets: { type: string; isAvailable: boolean }[];
+  selectedWallet: string | null;
+  isConnecting: boolean;
+  siweLoading: boolean;
+  permLoading: boolean;
+  multiLoading: boolean;
+  handleWalletConnect: (walletType: string, isAvailable?: boolean) => Promise<void>;
+};
+
+function WalletListSection({
+  tLogin,
+  availableWallets,
+  selectedWallet,
+  isConnecting,
+  siweLoading,
+  permLoading,
+  multiLoading,
+  handleWalletConnect,
+}: WalletListSectionProps) {
+  return (
+    <div className="relative px-6 pb-6">
+      <div className="h-56 overflow-y-auto snap-y snap-mandatory pr-2 -mr-2 space-y-3 scrollbar-beauty">
+        {availableWallets.map((wallet, index) => (
+          <motion.button
+            key={wallet.type}
+            onClick={() => handleWalletConnect(wallet.type, wallet.isAvailable)}
+            disabled={isConnecting}
+            className={`
+                    snap-center w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group relative overflow-hidden
+                    ${
+                      wallet.isAvailable
+                        ? "border-purple-200/50 hover:border-purple-300 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 cursor-pointer hover:shadow-lg"
+                        : "border-gray-200/50 bg-gray-50/50 opacity-60"
+                    }
+                    ${
+                      selectedWallet === wallet.type
+                        ? "border-purple-400 bg-gradient-to-r from-purple-100/50 to-pink-100/50 shadow-lg"
+                        : ""
+                    }
+                  `}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            whileHover={wallet.isAvailable ? { scale: 1.02 } : {}}
+            whileTap={wallet.isAvailable ? { scale: 0.98 } : {}}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+
+            <div className="relative flex items-center space-x-4">
+              <div className="flex-shrink-0 p-2 bg-white rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-300">
+                {walletIcons[wallet.type as keyof typeof walletIcons]}
+              </div>
+              <div className="text-left">
+                <div className="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
+                  {walletNames[wallet.type as keyof typeof walletNames]}
+                </div>
+                {!wallet.isAvailable ? (
+                  <div className="text-sm text-red-500 font-medium">{tLogin("notInstalled")}</div>
+                ) : (
+                  <div className="text-sm text-gray-500 group-hover:text-purple-500 transition-colors duration-300">
+                    {tLogin("clickToConnect")}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="relative">
+              {selectedWallet === wallet.type &&
+              (isConnecting || siweLoading || permLoading || multiLoading) ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent" />
+              ) : wallet.isAvailable ? (
+                <div className="w-6 h-6 rounded-full border-2 border-purple-300 group-hover:border-purple-500 transition-colors duration-300 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+              ) : (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="text-red-400"
+                >
+                  <path
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                    fill="currentColor"
+                  />
+                </svg>
+              )}
+            </div>
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type WalletModalFooterProps = {
+  tLogin: (key: string) => string;
+};
+
+function WalletModalFooter({ tLogin }: WalletModalFooterProps) {
+  return (
+    <div className="relative px-6 pb-6">
+      <div className="text-sm text-gray-500 text-center leading-relaxed">
+        {tLogin("agreePrefix")}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
+        >
+          {tLogin("terms")}
+        </a>
+        <span className="mx-1">{tLogin("and")}</span>
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
+        >
+          {tLogin("privacy")}
+        </a>
+        <span className="mx-1">{tLogin("agreeSuffix")}</span>
+      </div>
+    </div>
+  );
+}
+
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const {
     tWalletModal,
@@ -615,471 +1200,74 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-2xl"></div>
           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-2xl"></div>
 
-          <div className="relative flex items-center justify-between p-6 border-b border-gradient-to-r from-purple-100/50 to-pink-100/50">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
-                  <path
-                    d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <polyline
-                    points="15,10 21,4 15,4 21,4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2
-                  id="wallet-modal-title"
-                  className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
-                >
-                  {tWalletModal("title")}
-                </h2>
-                <p id="wallet-modal-description" className="text-sm text-gray-500">
-                  {tWalletModal("subtitle")}
-                </p>
-              </div>
-            </div>
-            <motion.button
-              onClick={onClose}
-              className="p-2 hover:bg-gradient-to-br hover:from-purple-100 hover:to-pink-100 rounded-xl transition-all duration-200 group"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                className="text-gray-400 group-hover:text-gray-600"
-              >
-                <path
-                  d="M15 5L5 15M5 5l10 10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </motion.button>
-          </div>
+          <WalletModalHeader tWalletModal={tWalletModal} onClose={onClose} />
 
-          <div className="relative px-6 pt-3 pb-4 border-b border-purple-50">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center flex-1">
-                <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
-                    step1Done
-                      ? "border-purple-500 bg-purple-500 text-white"
-                      : step1Active
-                        ? "border-purple-500 text-purple-600"
-                        : "border-gray-200 text-gray-400"
-                  }`}
-                >
-                  {step1Done ? (
-                    "✓"
-                  ) : step1Active ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    "1"
-                  )}
-                </div>
-                <div
-                  className={`ml-2 text-[11px] ${
-                    step1Done ? "text-purple-600" : step1Active ? "text-gray-900" : "text-gray-400"
-                  }`}
-                >
-                  {tWalletModal("steps.connectWallet")}
-                </div>
-                <div
-                  className={`flex-1 h-px mx-2 ${
-                    step2Done || step2Active
-                      ? "bg-gradient-to-r from-purple-400 to-pink-400"
-                      : "bg-gray-200"
-                  }`}
-                />
-              </div>
-              <div className="flex items-center flex-1">
-                <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
-                    step2Done
-                      ? "border-purple-500 bg-purple-500 text-white"
-                      : step2Active
-                        ? "border-purple-500 text-purple-600"
-                        : "border-gray-200 text-gray-400"
-                  }`}
-                >
-                  {step2Done ? (
-                    "✓"
-                  ) : step2Active ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    "2"
-                  )}
-                </div>
-                <div
-                  className={`ml-2 text-[11px] ${
-                    step2Done ? "text-purple-600" : step2Active ? "text-gray-900" : "text-gray-400"
-                  }`}
-                >
-                  {tWalletModal("steps.signIn")}
-                </div>
-                <div
-                  className={`flex-1 h-px mx-2 ${
-                    step3Done || step3Active
-                      ? "bg-gradient-to-r from-purple-400 to-pink-400"
-                      : "bg-gray-200"
-                  }`}
-                />
-              </div>
-              <div className="flex items-center">
-                <div
-                  className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
-                    step3Done
-                      ? "border-purple-500 bg-purple-500 text-white"
-                      : step3Active
-                        ? "border-purple-500 text-purple-600"
-                        : "border-gray-200 text-gray-400"
-                  }`}
-                >
-                  {step3Done ? (
-                    "✓"
-                  ) : step3Active ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    "3"
-                  )}
-                </div>
-                <div
-                  className={`ml-2 text-[11px] ${
-                    step3Done ? "text-purple-600" : step3Active ? "text-gray-900" : "text-gray-400"
-                  }`}
-                >
-                  {tWalletModal("steps.completeProfile")}
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-gray-500">{stepHint}</div>
-          </div>
+          <WalletModalStepper
+            tWalletModal={tWalletModal}
+            stepHint={stepHint}
+            step1Active={step1Active}
+            step2Active={step2Active}
+            step3Active={step3Active}
+            step1Done={step1Done}
+            step2Done={step2Done}
+            step3Done={step3Done}
+          />
 
-          {showProfileForm && (
-            <div className="relative p-6 space-y-4">
-              <h3 className="text-lg font-semibold">{tWalletModal("profile.title")}</h3>
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-900">
-                  {tWalletModal("profile.usernameLabel")}
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder={tWalletModal("profile.usernamePlaceholder")}
-                  className="w-full rounded-xl border-2 border-purple-200 bg-white/95 px-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
-                />
-                <label className="block text-sm font-semibold text-gray-900">
-                  {tLogin("emailLabel")}
-                </label>
-                <div className="relative">
-                  <Mail
-                    className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500"
-                    aria-hidden="true"
-                  />
-                  <input
-                    type="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={requestRegisterOtp}
-                    disabled={!/.+@.+\..+/.test(email) || emailLoading}
-                    className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
-                  >
-                    {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    {tWalletModal("profile.sendOtpWithValidity")}
-                  </button>
-                  {emailVerified && (
-                    <span className="text-sm text-green-600">
-                      {tWalletModal("profile.verifiedTag")}
-                    </span>
-                  )}
-                </div>
-                {otpRequested && (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                      className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
-                      placeholder="••••••"
-                    />
-                    {codePreview && (
-                      <div className="text-xs text-green-600">
-                        {tWalletModal("devCodePreviewPrefix")}
-                        {codePreview}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={verifyRegisterOtp}
-                        disabled={otp.length !== 6 || emailLoading}
-                        className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
-                      >
-                        {tWalletModal("profile.verifyEmail")}
-                      </button>
-                    </div>
-                    <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <input
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                  <label htmlFor="remember-me" className="text-sm text-gray-700">
-                    {tWalletModal("profile.rememberMe")}
-                  </label>
-                </div>
-                {profileError && <div className="text-sm text-red-600">{profileError}</div>}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={submitProfile}
-                    disabled={!canSubmitProfile || profileLoading}
-                    className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
-                  >
-                    {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    {tWalletModal("profile.submit")}
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
-                  >
-                    {tWalletModal("profile.later")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {!showProfileForm && (
-            <div className="relative p-6 space-y-4">
-              {!otpRequested ? (
-                <div className="space-y-3">
-                  <label
-                    htmlFor="wallet-email"
-                    className="block text-sm font-semibold text-gray-900"
-                  >
-                    {tLogin("emailLabel")}
-                  </label>
-                  <div className="relative">
-                    <Mail
-                      className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500"
-                      aria-hidden="true"
-                    />
-                    <input
-                      id="wallet-email"
-                      type="email"
-                      inputMode="email"
-                      autoFocus
-                      aria-label={tLogin("emailLabel")}
-                      aria-describedby="wallet-email-help"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={tLogin("emailPlaceholder")}
-                      className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400 shadow-sm hover:border-purple-300"
-                      spellCheck={false}
-                    />
-                  </div>
-                  <div id="wallet-email-help" className="text-xs text-gray-500">
-                    {tLogin("emailContinueDescription")}
-                  </div>
-                  {!canRequest && email.length > 0 && (
-                    <div className="text-xs text-red-600">
-                      {tWalletModal("profile.emailInvalid")}
-                    </div>
-                  )}
-                  {authError && <div className="text-sm text-red-600">{authError}</div>}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleRequestOtp}
-                      disabled={!canRequest || emailLoading}
-                      className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
-                    >
-                      {emailLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Mail className="w-4 h-4" />
-                      )}
-                      {tLogin("sendOtp")}
-                    </button>
-                    <button
-                      onClick={handleSendMagicLink}
-                      disabled={!canRequest || emailLoading}
-                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900 disabled:opacity-60"
-                    >
-                      {tLogin("sendMagicLink")}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    {tLogin("otpDescriptionPrefix")} <span className="font-medium">{email}</span>
-                    {tLogin("otpDescriptionSuffix")}
-                  </p>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
-                    placeholder="••••••"
-                  />
-                  {authError && <div className="text-sm text-red-600">{authError}</div>}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleVerifyOtp}
-                      disabled={otp.length !== 6 || emailLoading}
-                      className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
-                    >
-                      {emailLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Mail className="w-4 h-4" />
-                      )}
-                      {tLogin("verifyAndLogin")}
-                    </button>
-                    <button
-                      onClick={handleRequestOtp}
-                      disabled={emailLoading}
-                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
-                    >
-                      {tLogin("resend")}
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-purple-200 to-pink-200" />
-                <span className="text-xs text-gray-500">{tWalletModal("profile.or")}</span>
-                <div className="h-px flex-1 bg-gradient-to-r from-pink-200 to-purple-200" />
-              </div>
-            </div>
+          {showProfileForm ? (
+            <WalletProfileForm
+              tWalletModal={tWalletModal}
+              tLogin={tLogin}
+              email={email}
+              setEmail={setEmail}
+              otpRequested={otpRequested}
+              otp={otp}
+              setOtp={setOtp}
+              emailLoading={emailLoading}
+              emailVerified={emailVerified}
+              codePreview={codePreview}
+              username={username}
+              setUsername={setUsername}
+              rememberMe={rememberMe}
+              setRememberMe={setRememberMe}
+              profileError={profileError}
+              canSubmitProfile={canSubmitProfile}
+              profileLoading={profileLoading}
+              requestRegisterOtp={requestRegisterOtp}
+              verifyRegisterOtp={verifyRegisterOtp}
+              submitProfile={submitProfile}
+              onClose={onClose}
+            />
+          ) : (
+            <>
+              <WalletEmailSection
+                tWalletModal={tWalletModal}
+                tLogin={tLogin}
+                email={email}
+                setEmail={setEmail}
+                otpRequested={otpRequested}
+                otp={otp}
+                setOtp={setOtp}
+                emailLoading={emailLoading}
+                authError={authError}
+                canRequest={canRequest}
+                handleRequestOtp={handleRequestOtp}
+                handleVerifyOtp={handleVerifyOtp}
+                handleSendMagicLink={handleSendMagicLink}
+              />
+              <WalletListSection
+                tLogin={tLogin}
+                availableWallets={availableWallets}
+                selectedWallet={selectedWallet}
+                isConnecting={isConnecting}
+                siweLoading={siweLoading}
+                permLoading={permLoading}
+                multiLoading={multiLoading}
+                handleWalletConnect={handleWalletConnect}
+              />
+            </>
           )}
 
-          {!showProfileForm && (
-            <div className="relative px-6 pb-6">
-              <div className="h-56 overflow-y-auto snap-y snap-mandatory pr-2 -mr-2 space-y-3 scrollbar-beauty">
-                {availableWallets.map((wallet, index) => (
-                  <motion.button
-                    key={wallet.type}
-                    onClick={() => handleWalletConnect(wallet.type, wallet.isAvailable)}
-                    disabled={isConnecting}
-                    className={`
-                    snap-center w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group relative overflow-hidden
-                    ${
-                      wallet.isAvailable
-                        ? "border-purple-200/50 hover:border-purple-300 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 cursor-pointer hover:shadow-lg"
-                        : "border-gray-200/50 bg-gray-50/50 opacity-60"
-                    }
-                    ${selectedWallet === wallet.type ? "border-purple-400 bg-gradient-to-r from-purple-100/50 to-pink-100/50 shadow-lg" : ""}
-                  `}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={wallet.isAvailable ? { scale: 1.02 } : {}}
-                    whileTap={wallet.isAvailable ? { scale: 0.98 } : {}}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
-
-                    <div className="relative flex items-center space-x-4">
-                      <div className="flex-shrink-0 p-2 bg-white rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-300">
-                        {walletIcons[wallet.type as keyof typeof walletIcons]}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
-                          {walletNames[wallet.type as keyof typeof walletNames]}
-                        </div>
-                        {!wallet.isAvailable ? (
-                          <div className="text-sm text-red-500 font-medium">
-                            {tLogin("notInstalled")}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500 group-hover:text-purple-500 transition-colors duration-300">
-                            {tLogin("clickToConnect")}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      {selectedWallet === wallet.type &&
-                      (isConnecting || siweLoading || permLoading || multiLoading) ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent" />
-                      ) : wallet.isAvailable ? (
-                        <div className="w-6 h-6 rounded-full border-2 border-purple-300 group-hover:border-purple-500 transition-colors duration-300 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        </div>
-                      ) : (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          className="text-red-400"
-                        >
-                          <path
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="relative px-6 pb-6">
-            <div className="text-sm text-gray-500 text-center leading-relaxed">
-              {tLogin("agreePrefix")}
-              <a
-                href="/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
-              >
-                {tLogin("terms")}
-              </a>
-              <span className="mx-1">{tLogin("and")}</span>
-              <a
-                href="/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
-              >
-                {tLogin("privacy")}
-              </a>
-              <span className="mx-1">{tLogin("agreeSuffix")}</span>
-            </div>
-          </div>
+          <WalletModalFooter tLogin={tLogin} />
         </motion.div>
       </Modal>
       <InstallPromptModal
