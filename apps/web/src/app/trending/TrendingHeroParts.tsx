@@ -225,6 +225,11 @@ export function HeroMainInfo({
           {activeDescription}
         </p>
 
+        <p className="text-sm text-gray-500 leading-relaxed max-w-xl">
+          Foresight
+          是一个基于区块链的去中心化预测市场平台，你可以创建和交易各种现实世界事件的预测，使用加密货币表达观点并获得潜在收益。
+        </p>
+
         <HeroMetricsSummary
           activeFollowers={activeFollowers}
           poolSizeLabel={poolSizeLabel}

@@ -1,8 +1,7 @@
 "use client";
 
 import { usePredictionDetail } from "./usePredictionDetail";
-
-// Components
+import Link from "next/link";
 import { MarketHeader } from "@/components/market/MarketHeader";
 import { MarketChart } from "@/components/market/MarketChart";
 import { TradingPanel } from "@/components/market/TradingPanel";
@@ -78,7 +77,6 @@ export default function PredictionDetailClient() {
       <div className="fixed inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] pointer-events-none opacity-30 z-0"></div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10">
-        {/* 1. Header Section */}
         <div className="mb-8">
           <MarketHeader
             prediction={prediction}
@@ -88,6 +86,29 @@ export default function PredictionDetailClient() {
             followLoading={followLoading}
             followError={followError}
           />
+        </div>
+
+        <div className="mb-8 bg-white/80 border border-purple-100 rounded-3xl p-5 shadow-sm max-w-3xl">
+          <p className="text-sm text-gray-700 leading-relaxed mb-2">
+            在这个预测市场中，你可以通过买入不同选项来交易自己对事件结果的看法，价格代表市场对事件发生概率的共识。
+          </p>
+          <p className="text-sm text-gray-700 leading-relaxed mb-2">
+            右侧交易面板用于下单和管理仓位，下面的图表和盘口数据可以帮助你观察市场情绪和价格变化。
+          </p>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            想浏览更多事件？前往{" "}
+            <Link
+              href="/trending"
+              className="text-purple-600 hover:text-purple-700 hover:underline"
+            >
+              热门预测
+            </Link>{" "}
+            页面，或在{" "}
+            <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+              讨论区
+            </Link>{" "}
+            分享你的观点和交易策略。
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

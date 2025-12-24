@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
@@ -503,6 +504,24 @@ export default function LeaderboardPage() {
             Who's the smartest predictor? 🧠
             <br />
             Follow top strategies and climb the ranks!
+          </p>
+          <p className="mt-4 text-sm text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Foresight
+            排行榜基于预测收益和胜率等指标，展示在去中心化预测市场中表现突出的交易者，帮助你发现长期稳定盈利的钱包地址和交易风格。
+          </p>
+          <p className="mt-2 text-xs text-gray-500 max-w-3xl mx-auto leading-relaxed">
+            想看看这些高手都在押注哪些事件？前往{" "}
+            <Link
+              href="/trending"
+              className="text-purple-600 hover:text-purple-700 hover:underline"
+            >
+              热门预测
+            </Link>{" "}
+            浏览实时市场，或在{" "}
+            <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+              讨论区
+            </Link>{" "}
+            跟进他们的观点与策略。
           </p>
         </div>
 

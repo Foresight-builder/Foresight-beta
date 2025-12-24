@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "zh_CN",
-    url: "/",
+    url: "/trending",
     title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
     description:
       "参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market.",

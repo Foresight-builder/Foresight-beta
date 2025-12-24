@@ -56,7 +56,7 @@ const nextConfig: NextConfig = {
   },
 
   async redirects() {
-    return [{ source: "/", destination: "/trending", permanent: false }];
+    return [{ source: "/", destination: "/trending", permanent: true }];
   },
 
   // 安全 Headers

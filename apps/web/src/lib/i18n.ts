@@ -4,7 +4,9 @@ import en from "../../messages/en.json";
 import es from "../../messages/es.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
 
-const messages: Record<Locale, unknown> = {
+type Messages = typeof zhCN;
+
+const messages: Record<Locale, Messages> = {
   "zh-CN": zhCN,
   en,
   es,
@@ -54,7 +56,7 @@ export function getCurrentLocale(): Locale {
   return defaultLocale;
 }
 
-export function getTranslation(locale: Locale = getCurrentLocale()) {
+export function getTranslation(locale: Locale = getCurrentLocale()): Messages {
   return messages[locale] || messages[defaultLocale];
 }
 
@@ -197,3 +199,5 @@ export function useLocale() {
 
   return { locale, setLocale: changeLocale };
 }
+
+export type { Locale };

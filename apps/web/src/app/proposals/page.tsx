@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -307,6 +308,29 @@ export default function ProposalsPage() {
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
             New Proposal
           </button>
+        </div>
+
+        <div className="bg-white/60 backdrop-blur-xl rounded-[1.5rem] p-4 border border-white/60 shadow-sm text-xs text-slate-700 leading-relaxed">
+          <p className="mb-2 font-semibold text-slate-900">
+            提案广场是 Foresight 的“产品经理面板”，用于发起新预测市场或协议治理提案。
+          </p>
+          <p className="mb-2">
+            你可以在这里描述真实世界事件、设置结算条件和时间线，并交由社区讨论与投票，决定是否上线为正式预测市场。
+          </p>
+          <p className="text-[11px] text-slate-500">
+            想看看有哪些正在交易的市场？前往{" "}
+            <Link
+              href="/trending"
+              className="text-purple-600 hover:text-purple-700 hover:underline"
+            >
+              热门预测
+            </Link>{" "}
+            浏览已有事件；有想法但还不成熟，可以先在{" "}
+            <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+              讨论区
+            </Link>{" "}
+            收集反馈，再在此发起正式提案。
+          </p>
         </div>
 
         {/* Navigation / Filters - List Style */}
