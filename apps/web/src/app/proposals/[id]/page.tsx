@@ -1,287 +1,469 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle, ThumbsUp, ThumbsDown, Clock, User, Hash } from "lucide-react";
-import ForumSection from "@/components/ForumSection";
-import GradientPage from "@/components/ui/GradientPage";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
+import {
+  ArrowLeft,
+  MessageCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  User,
+  Hash,
+  Share2,
+  MoreHorizontal,
+  CornerDownRight,
+  Send,
+  Loader2,
+  Flag,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useWallet } from "@/contexts/WalletContext";
+import { useProposalDetail, CommentView } from "./useProposalDetail";
+import { toast } from "@/lib/toast";
 
-interface ProposalDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-interface ThreadView {
-  id: number;
-  event_id: number;
-  title: string;
-  content: string;
-  user_id: string;
-  created_at: string;
-  upvotes: number;
-  downvotes: number;
-  comments?: {
-    id: number;
-  }[];
-}
-
-export default function ProposalDetailPage({ params }: ProposalDetailPageProps) {
+export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const resolvedParams = React.use(params);
-  const idNum = normalizePositiveId(resolvedParams.id);
-  const isValidId = isValidPositiveId(idNum);
+  const {
+    thread,
+    loading,
+    error,
+    isValidId,
+    vote,
+    postComment,
+    stats,
+    userVotes,
+    userVoteTypes,
+    displayName,
+  } = useProposalDetail(resolvedParams.id);
 
-  const [thread, setThread] = useState<ThreadView | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { account, connectWallet } = useWallet();
+  const [replyText, setReplyText] = useState("");
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isValidId || !idNum) return;
-
-    let cancelled = false;
-    const fetchThread = async () => {
-      try {
-        setLoading(true);
-        setLoadError(null);
-        const res = await fetch("/api/forum?eventId=0");
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data?.message || "加载提案失败");
-        }
-        const list = Array.isArray(data?.threads) ? data.threads : [];
-        const found = list.find((t: any) => normalizePositiveId(String(t.id)) === idNum) || null;
-        if (!cancelled) {
-          setThread(found);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setLoadError(e?.message || "加载提案失败");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchThread();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [idNum, isValidId]);
-
-  const stats = useMemo(() => {
-    if (!thread) {
-      return {
-        commentsCount: 0,
-        upvotes: 0,
-        downvotes: 0,
-        totalVotes: 0,
-      };
-    }
-    const upvotes = Number(thread.upvotes || 0);
-    const downvotes = Number(thread.downvotes || 0);
-    const totalVotes = upvotes + downvotes;
-    const commentsCount = Array.isArray(thread.comments) ? thread.comments.length : 0;
-    return {
-      commentsCount,
-      upvotes,
-      downvotes,
-      totalVotes,
-    };
-  }, [thread]);
+  const handleCopyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("Link copied to clipboard");
+    });
+  };
 
   if (!isValidId) {
     return (
-      <div className="h-[calc(100vh-64px)] w-full flex items-center justify-center">
-        <div className="max-w-md w-full px-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-slate-900">Invalid Proposal ID</h2>
           <button
             onClick={() => router.push("/proposals")}
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 mb-4 hover:text-slate-900"
+            className="mt-4 text-purple-600 hover:underline"
           >
-            <ArrowLeft className="w-4 h-4" />
-            返回提案列表
+            Back to Proposals
           </button>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="text-lg font-black text-slate-900 mb-2">无效的提案</div>
-            <div className="text-sm text-slate-500">无法识别该提案编号，请从列表重新进入。</div>
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <GradientPage className="relative overflow-hidden font-sans text-slate-900">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.16] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-soft-light" />
+    <div className="min-h-screen bg-[#f8faff] font-sans pb-20 relative">
+      {/* Background Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/30 rounded-full blur-[100px]" />
+      </div>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {/* Navigation Bar */}
+        <nav className="flex items-center justify-between mb-8">
           <button
             onClick={() => router.push("/proposals")}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 px-3 py-1.5 rounded-full bg-white/80 border border-slate-200 shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all"
+            className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm transition-all text-sm font-bold text-slate-600 hover:text-slate-900"
           >
-            <ArrowLeft className="w-3 h-3" />
-            返回提案列表
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back
           </button>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em]">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 text-white">
-              <MessageCircle className="w-3 h-3" />
-              提案讨论
-            </span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:flex items-center gap-1">
-              <Hash className="w-3 h-3" />
-              <span>#{idNum}</span>
-            </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyLink}
+              className="p-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:text-slate-900 transition-all"
+              title="Share"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
           </div>
-        </div>
+        </nav>
 
-        <section className="grid lg:grid-cols-[minmax(0,2.4fr)_minmax(260px,1fr)] gap-6 items-start">
-          <div className="space-y-4">
-            <div className="rounded-3xl bg-white/90 border border-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.08)] px-5 sm:px-7 py-5 sm:py-6">
-              {loading ? (
-                <div className="space-y-4">
-                  <Skeleton variant="text" width="70%" height={26} />
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                    <Skeleton variant="rectangular" width={120} height={20} />
-                    <Skeleton variant="rectangular" width={100} height={20} />
-                    <Skeleton variant="rectangular" width={80} height={20} />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
+            <p className="text-slate-400 font-medium">Loading proposal...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
+            <h3 className="text-lg font-bold text-red-800 mb-2">Error Loading Proposal</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-bold transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : thread ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Main Thread Card */}
+            <article className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
+              {/* Header */}
+              <div className="p-6 sm:p-8 border-b border-slate-100/50">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-sm font-bold text-slate-600 border border-white shadow-sm">
+                    {displayName(thread.user_id).slice(0, 2).toUpperCase()}
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 space-y-2">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        正在进行的社区提案
-                      </div>
-                      <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 break-words">
-                        {thread?.title || "提案讨论"}
-                      </h1>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold">
-                        {thread?.user_id
-                          ? `${String(thread.user_id).slice(0, 6)}...${String(thread.user_id).slice(-4)}`
-                          : "匿名用户"}
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-900">
+                        {displayName(thread.user_id)}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
+                        AUTHOR
                       </span>
                     </div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>
-                        {thread?.created_at
-                          ? new Date(thread.created_at).toLocaleString()
-                          : "时间未知"}
-                      </span>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200">
-                      <MessageCircle className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{stats.commentsCount} 条回复</span>
+                    <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                      <span>{new Date(thread.created_at).toLocaleString()}</span>
+                      <span>•</span>
+                      <span>#{thread.id}</span>
                     </div>
                   </div>
-
-                  {thread?.content ? (
-                    <p className="mt-1 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap break-words">
-                      {thread.content}
-                    </p>
-                  ) : null}
+                  {thread.category && (
+                    <div className="ml-auto px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-bold border border-purple-100">
+                      {thread.category}
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {loadError && (
-                <div className="mt-4 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2">
-                  {loadError}
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight mb-4">
+                  {thread.title}
+                </h1>
+
+                <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed">
+                  <p className="whitespace-pre-wrap">{thread.content}</p>
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="flex-1 min-w-0">
-              <ForumSection eventId={0} threadId={idNum || 0} hideCreate />
-            </div>
-          </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-3xl bg-white/90 border border-white/70 shadow-[0_14px_35px_rgba(15,23,42,0.06)] p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                    讨论概览
-                  </h2>
+              {/* Actions Bar */}
+              <div className="bg-slate-50/50 px-6 sm:px-8 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                    <button
+                      onClick={() => vote("thread", thread.id, "up")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
+                        userVoteTypes[`thread:${thread.id}`] === "up"
+                          ? "bg-purple-100 text-purple-700"
+                          : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                      {stats.upvotes}
+                    </button>
+                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <button
+                      onClick={() => vote("thread", thread.id, "down")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
+                        userVoteTypes[`thread:${thread.id}`] === "down"
+                          ? "bg-slate-200 text-slate-700"
+                          : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                      {stats.downvotes}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                    <MessageCircle className="w-4 h-4" />
+                    {stats.commentsCount} Comments
+                  </div>
                 </div>
-                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                  实时更新
+
+                <button className="text-slate-400 hover:text-slate-600 transition-colors">
+                  <Flag className="w-4 h-4" />
+                </button>
+              </div>
+            </article>
+
+            {/* Comments Section */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-2 px-2">
+                <h3 className="text-lg font-black text-slate-900">Discussion</h3>
+                <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+                  {stats.commentsCount}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-500">总投票</span>
-                    <Hash className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                  <div className="text-lg font-black text-slate-900">{stats.totalVotes}</div>
-                  <div className="text-[11px] text-slate-400">赞成 + 反对</div>
+              {/* Comment Input */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5 text-slate-400" />
                 </div>
-
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-500">回复数</span>
-                    <MessageCircle className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                  <div className="text-lg font-black text-slate-900">{stats.commentsCount}</div>
-                  <div className="text-[11px] text-slate-400">社区观点</div>
-                </div>
-
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-emerald-700">赞成</span>
-                    <ThumbsUp className="w-3.5 h-3.5 text-emerald-500" />
-                  </div>
-                  <div className="text-lg font-black text-emerald-700">{stats.upvotes}</div>
-                  <div className="text-[11px] text-emerald-500/80">看好该提案</div>
-                </div>
-
-                <div className="rounded-2xl bg-rose-50 border border-rose-100 p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-rose-700">反对</span>
-                    <ThumbsDown className="w-3.5 h-3.5 text-rose-500" />
-                  </div>
-                  <div className="text-lg font-black text-rose-700">{stats.downvotes}</div>
-                  <div className="text-[11px] text-rose-500/80">持保留意见</div>
+                <div className="flex-1">
+                  {!account ? (
+                    <div className="h-full flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 border-dashed">
+                      <span className="text-sm text-slate-500 font-medium">
+                        Log in to join the discussion
+                      </span>
+                      <button
+                        onClick={() => connectWallet()}
+                        className="text-sm font-bold text-purple-600 hover:text-purple-700"
+                      >
+                        Connect Wallet
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="What are your thoughts?"
+                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-100 min-h-[80px] resize-none"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => {
+                            if (!replyText.trim()) return;
+                            postComment(replyText);
+                            setReplyText("");
+                          }}
+                          disabled={!replyText.trim()}
+                          className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Post Comment
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-3xl bg-slate-900 text-slate-50 p-4 sm:p-5 shadow-[0_20px_40px_rgba(15,23,42,0.35)] relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-16 -left-14 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
-
-              <div className="relative z-10 space-y-3">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-emerald-300" />
-                  参与讨论的小提示
-                </h3>
-                <ul className="space-y-1.5 text-[11px] text-slate-200">
-                  <li>分享你对提案的看法，可以引用数据或案例。</li>
-                  <li>尊重不同意见，理性讨论有助于达成共识。</li>
-                  <li>如果你特别认同某条回复，可以为它点赞。</li>
-                </ul>
+              {/* Comment Tree */}
+              <div className="space-y-4">
+                <CommentTree
+                  comments={thread.comments || []}
+                  userVoteTypes={userVoteTypes}
+                  onVote={(id, dir) => vote("comment", id, dir)}
+                  onReply={(id, text) => postComment(text, id)}
+                  account={account}
+                  connectWallet={connectWallet}
+                  displayName={displayName}
+                />
               </div>
+            </section>
+          </motion.div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CommentTree({
+  comments,
+  userVoteTypes,
+  onVote,
+  onReply,
+  account,
+  connectWallet,
+  displayName,
+}: {
+  comments: CommentView[];
+  userVoteTypes: Record<string, "up" | "down">;
+  onVote: (id: number, dir: "up" | "down") => void;
+  onReply: (parentId: number, text: string) => void;
+  account: string | null | undefined;
+  connectWallet: () => void;
+  displayName: (addr: string) => string;
+}) {
+  const rootComments = comments.filter((c) => !c.parent_id);
+  const getReplies = (parentId: number) => comments.filter((c) => c.parent_id === parentId);
+
+  return (
+    <div className="space-y-4">
+      {rootComments.map((comment) => (
+        <CommentNode
+          key={comment.id}
+          comment={comment}
+          getReplies={getReplies}
+          userVoteTypes={userVoteTypes}
+          onVote={onVote}
+          onReply={onReply}
+          account={account}
+          connectWallet={connectWallet}
+          displayName={displayName}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CommentNode({
+  comment,
+  getReplies,
+  userVoteTypes,
+  onVote,
+  onReply,
+  account,
+  connectWallet,
+  displayName,
+}: {
+  comment: CommentView;
+  getReplies: (id: number) => CommentView[];
+  userVoteTypes: Record<string, "up" | "down">;
+  onVote: (id: number, dir: "up" | "down") => void;
+  onReply: (parentId: number, text: string) => void;
+  account: string | null | undefined;
+  connectWallet: () => void;
+  displayName: (addr: string) => string;
+}) {
+  const replies = getReplies(comment.id);
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  const voteType = userVoteTypes[`comment:${comment.id}`];
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shadow-sm">
+          {displayName(comment.user_id).slice(0, 2).toUpperCase()}
+        </div>
+        {replies.length > 0 && <div className="w-px h-full bg-slate-200/60 my-1" />}
+      </div>
+
+      <div className="flex-1 pb-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-900">
+                {displayName(comment.user_id)}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                {new Date(comment.created_at).toLocaleString()}
+              </span>
             </div>
-          </aside>
-        </section>
-      </main>
-    </GradientPage>
+          </div>
+
+          <p className="text-sm text-slate-700 leading-relaxed mb-3 break-words">
+            {comment.content}
+          </p>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 bg-slate-50 rounded-lg p-1 border border-slate-100">
+              <button
+                onClick={() => onVote(comment.id, "up")}
+                className={`p-1 rounded hover:bg-white transition-colors ${
+                  voteType === "up" ? "text-purple-600 bg-white shadow-sm" : "text-slate-400"
+                }`}
+              >
+                <ThumbsUp className="w-3 h-3" />
+              </button>
+              <span className="text-xs font-bold text-slate-600 min-w-[12px] text-center">
+                {(comment.upvotes || 0) - (comment.downvotes || 0)}
+              </span>
+              <button
+                onClick={() => onVote(comment.id, "down")}
+                className={`p-1 rounded hover:bg-white transition-colors ${
+                  voteType === "down" ? "text-slate-600 bg-white shadow-sm" : "text-slate-400"
+                }`}
+              >
+                <ThumbsDown className="w-3 h-3" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                if (!account) {
+                  connectWallet();
+                  return;
+                }
+                setIsReplying(!isReplying);
+              }}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              Reply
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isReplying && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 overflow-hidden"
+            >
+              <div className="flex gap-2">
+                <div className="w-8 flex justify-center">
+                  <CornerDownRight className="w-4 h-4 text-slate-300" />
+                </div>
+                <div className="flex-1 flex gap-2">
+                  <input
+                    autoFocus
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply..."
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-purple-100"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (replyText.trim()) {
+                          onReply(comment.id, replyText);
+                          setReplyText("");
+                          setIsReplying(false);
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (replyText.trim()) {
+                        onReply(comment.id, replyText);
+                        setReplyText("");
+                        setIsReplying(false);
+                      }
+                    }}
+                    disabled={!replyText.trim()}
+                    className="p-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {replies.length > 0 && (
+          <div className="mt-4 pl-0">
+            {replies.map((reply) => (
+              <CommentNode
+                key={reply.id}
+                comment={reply}
+                getReplies={getReplies}
+                userVoteTypes={userVoteTypes}
+                onVote={onVote}
+                onReply={onReply}
+                account={account}
+                connectWallet={connectWallet}
+                displayName={displayName}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
