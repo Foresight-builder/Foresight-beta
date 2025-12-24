@@ -2,21 +2,35 @@ import { useState, useEffect, useCallback } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
+import { locales, defaultLocale, type Locale } from "../i18n-config";
 
-export type Locale = "zh-CN" | "en" | "es";
-
-const messages = {
+const messages: Record<Locale, unknown> = {
   "zh-CN": zhCN,
-  en: en,
-  es: es,
+  en,
+  es,
 };
 
-export function getCurrentLocale(): Locale {
-  if (typeof window === "undefined") return "zh-CN";
+export function getSupportedLocales(): Locale[] {
+  return [...locales];
+}
 
-  const saved = localStorage.getItem("preferred-language");
-  if (saved === "zh-CN" || saved === "en" || saved === "es") {
+export function isSupportedLocale(value: string | null | undefined): value is Locale {
+  return locales.includes(value as Locale);
+}
+
+export function getCurrentLocale(): Locale {
+  if (typeof window === "undefined") return defaultLocale;
+
+  const saved =
+    typeof localStorage !== "undefined" ? localStorage.getItem("preferred-language") : null;
+  if (isSupportedLocale(saved)) {
     return saved;
+  }
+
+  if (saved && typeof localStorage !== "undefined") {
+    try {
+      localStorage.removeItem("preferred-language");
+    } catch {}
   }
 
   if (typeof navigator !== "undefined") {
@@ -37,11 +51,11 @@ export function getCurrentLocale(): Locale {
     }
   }
 
-  return "zh-CN";
+  return defaultLocale;
 }
 
 export function getTranslation(locale: Locale = getCurrentLocale()) {
-  return messages[locale] || messages["zh-CN"];
+  return messages[locale] || messages[defaultLocale];
 }
 
 export function t(key: string, locale?: Locale): string {
@@ -87,9 +101,17 @@ export function formatTranslation(
 
 export function setLocale(nextLocale: Locale) {
   if (typeof window === "undefined") return;
-  if (nextLocale !== "zh-CN" && nextLocale !== "en" && nextLocale !== "es") return;
+  if (!isSupportedLocale(nextLocale)) return;
 
   localStorage.setItem("preferred-language", nextLocale);
+
+  if (typeof document !== "undefined") {
+    try {
+      document.cookie = `preferred-language=${encodeURIComponent(
+        nextLocale
+      )}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
+  }
 
   window.dispatchEvent(
     new CustomEvent("languagechange", {
@@ -99,14 +121,14 @@ export function setLocale(nextLocale: Locale) {
 }
 
 export function useTranslations(namespace?: string) {
-  const [locale, setLocaleState] = useState<Locale>("zh-CN");
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
 
   useEffect(() => {
     setLocaleState(getCurrentLocale());
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "preferred-language" && e.newValue) {
-        if (e.newValue === "zh-CN" || e.newValue === "en" || e.newValue === "es") {
+        if (isSupportedLocale(e.newValue)) {
           setLocaleState(e.newValue);
         }
       }
@@ -115,7 +137,7 @@ export function useTranslations(namespace?: string) {
     const handleLanguageChange = (event: Event) => {
       const customEvent = event as CustomEvent<{ locale?: string }>;
       const nextLocale = customEvent.detail?.locale;
-      if (nextLocale === "zh-CN" || nextLocale === "en" || nextLocale === "es") {
+      if (isSupportedLocale(nextLocale)) {
         setLocaleState(nextLocale);
       }
     };
@@ -138,4 +160,40 @@ export function useTranslations(namespace?: string) {
   );
 
   return translate;
+}
+
+export function useLocale() {
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+
+  useEffect(() => {
+    setLocaleState(getCurrentLocale());
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "preferred-language" && e.newValue && isSupportedLocale(e.newValue)) {
+        setLocaleState(e.newValue);
+      }
+    };
+
+    const handleLanguageChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ locale?: string }>;
+      const nextLocale = customEvent.detail?.locale;
+      if (isSupportedLocale(nextLocale)) {
+        setLocaleState(nextLocale);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("languagechange", handleLanguageChange as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("languagechange", handleLanguageChange as EventListener);
+    };
+  }, []);
+
+  const changeLocale = useCallback((next: Locale) => {
+    setLocale(next);
+  }, []);
+
+  return { locale, setLocale: changeLocale };
 }

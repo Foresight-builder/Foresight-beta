@@ -28,6 +28,13 @@
     "userAvatar": "Avatar de usuario",
     "hideBalance": "Ocultar saldo",
     "showBalance": "Mostrar saldo",
+    "batch": {
+      "loading": "Procesando ({current}/{total})",
+      "success": "{count} elementos procesados correctamente",
+      "error": "Error en {count} elementos",
+      "partialTitle": "Completado parcialmente",
+      "partialDescription": "{successCount} correctos, {failureCount} con error"
+    },
     "datePicker": {
       "placeholder": "Seleccionar fecha",
       "monthNames": [
@@ -642,12 +649,62 @@
       "now": "Iniciar sesión ahora"
     },
     "admin": {
+      "page": {
+        "badge": "Centro de administración",
+        "description": "Configura los datos centrales del mercado de predicciones global. Asegúrate de que las reglas sean claras y sin ambigüedades.",
+        "backToList": "Volver a la lista",
+        "immutableWarning": "Importante: después de publicar, parte de la información clave (como el título y la fecha límite) no se podrá modificar.",
+        "submit": "Crear ahora"
+      },
+      "draft": {
+        "savedMsg": "Borrador guardado",
+        "savedToastTitle": "Borrador guardado",
+        "savedToastDesc": "Tu progreso se ha guardado de forma segura en local",
+        "restoreConfirm": "Se ha detectado un borrador sin terminar. ¿Quieres continuar editándolo?",
+        "restoredToastTitle": "Borrador restaurado",
+        "restoredToastDesc": "Puedes seguir editando el contenido anterior",
+        "clearConfirm": "¿Seguro que quieres borrar el borrador actual? Esta acción no se puede deshacer.",
+        "clearedMsg": "Borrador borrado",
+        "autoSavedPrefix": "Guardado automáticamente a las",
+        "menuLabel": "Acciones de borrador",
+        "menuTitle": "Gestión de borradores",
+        "saveCurrent": "Guardar borrador actual",
+        "reset": "Descartar y restablecer"
+      },
+      "section": {
+        "basicTitle": "Información básica",
+        "basicSubtitle": "Configura los parámetros clave que identifican el mercado",
+        "detailsTitle": "Reglas detalladas",
+        "detailsSubtitle": "Describe el contexto de la predicción y los criterios de resolución",
+        "typeTitle": "Tipo de predicción y opciones",
+        "typeSubtitle": "Configura los resultados que los usuarios pueden elegir"
+      },
+      "type": {
+        "binary": "Predicción binaria",
+        "multi": "Predicción múltiple"
+      },
+      "multi": {
+        "optionsTitle": "Gestión de opciones",
+        "addOption": "Añadir opción",
+        "optionLabelPlaceholder": "Nombre de la opción (p. ej., Sí, No)",
+        "optionDescriptionPlaceholder": "Descripción adicional",
+        "optionImagePlaceholder": "URL de la imagen",
+        "optionColorPlaceholder": "Color Hex"
+      },
+      "createFailed": "Error al crear",
+      "createSuccess": "Creación correcta",
       "editDialogTitle": "Editar evento",
       "fieldTitle": "Título",
+      "fieldTitlePlaceholder": "Por ejemplo: ¿Superará el precio de Bitcoin los 150 000 USD en 2025?",
       "fieldCategory": "Categoría",
       "fieldStatus": "Estado",
       "fieldDeadline": "Fecha límite",
       "fieldMinStake": "Apuesta mínima",
+      "fieldMinStakeLabel": "Importe mínimo de participación (USDC)",
+      "fieldDescription": "Descripción del contexto del evento",
+      "fieldDescriptionPlaceholder": "Describe en detalle el contexto, el alcance y otra información importante de la predicción...",
+      "fieldCriteria": "Criterios de resolución (Oracle Criteria)",
+      "fieldCriteriaPlaceholder": "Por ejemplo: según el precio de cierre en CoinMarketCap en el momento de la fecha límite",
       "confirmDelete": "¿Seguro que quieres eliminar este evento?",
       "updateFailed": "Error al actualizar",
       "deleteFailed": "Error al eliminar",
@@ -799,6 +856,10 @@
         "waitingReview": "Esperando revisión",
         "approved": "Verificado",
         "rejected": "Rechazado"
+      },
+      "reviewReason": {
+        "approved": "Aprobado por el revisor",
+        "rejected": "Rechazado por el revisor"
       }
     },
     "toast": {

@@ -667,25 +667,29 @@
         "clearedMsg": "Draft cleared",
         "autoSavedPrefix": "Auto-saved at",
         "menuLabel": "Draft actions",
-        "menuTitle": "Draft manager",
+        "menuTitle": "Draft management",
         "saveCurrent": "Save current draft",
         "reset": "Discard and reset"
       },
       "section": {
+        "basicTitle": "Basic information",
+        "basicSubtitle": "Configure the core identifying parameters of the market",
         "detailsTitle": "Detailed rules",
-        "detailsSubtitle": "Describe the background and resolution criteria of the prediction",
-        "typeTitle": "Prediction type & options",
-        "typeSubtitle": "Configure the options users can choose from"
+        "detailsSubtitle": "Describe the prediction background and resolution criteria",
+        "typeTitle": "Prediction type and options",
+        "typeSubtitle": "Configure the outcomes users can choose"
       },
       "type": {
         "binary": "Binary prediction",
         "multi": "Multi-outcome prediction"
       },
       "multi": {
-        "optionsTitle": "Manage options",
+        "optionsTitle": "Options list",
         "addOption": "Add option",
-        "optionDescriptionPlaceholder": "Optional description",
-        "optionImagePlaceholder": "Image URL"
+        "optionLabelPlaceholder": "Option name (e.g. Yes, No)",
+        "optionDescriptionPlaceholder": "Additional description",
+        "optionImagePlaceholder": "Image URL",
+        "optionColorPlaceholder": "Hex color"
       },
       "createFailed": "Create failed",
       "createSuccess": "Created successfully",

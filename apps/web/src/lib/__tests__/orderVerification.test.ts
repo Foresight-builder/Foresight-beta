@@ -39,28 +39,28 @@ describe("Order Verification - Params and Expiry", () => {
       const invalidOrder = { ...validOrder, maker: "invalid-address" };
       const result = validateOrderParams(invalidOrder);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("地址格式无效");
+      expect(result.error).toContain("Invalid maker address format");
     });
 
     it("should reject price out of range", () => {
       const invalidOrder = { ...validOrder, price: "2000000" }; // > 1 USDC
       const result = validateOrderParams(invalidOrder);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("价格必须在");
+      expect(result.error).toContain("Price must be between 0 and 1 USDC");
     });
 
     it("should reject zero or negative amount", () => {
       const invalidOrder = { ...validOrder, amount: "0" };
       const result = validateOrderParams(invalidOrder);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("数量必须大于");
+      expect(result.error).toContain("Amount must be greater than 0");
     });
 
     it("should reject invalid outcomeIndex", () => {
       const invalidOrder = { ...validOrder, outcomeIndex: -1 };
       const result = validateOrderParams(invalidOrder);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("outcomeIndex 无效");
+      expect(result.error).toContain("Invalid outcomeIndex");
     });
 
     it("should reject expired order", () => {
@@ -70,7 +70,7 @@ describe("Order Verification - Params and Expiry", () => {
       };
       const result = validateOrderParams(expiredOrder);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("已过期");
+      expect(result.error).toContain("Order has already expired");
     });
   });
 
@@ -184,7 +184,7 @@ describe("Order Verification - Signature", () => {
       const result = await verifyOrderSignature(validOrder, signature, chainId, verifyingContract);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toContain("签名地址不匹配");
+      expect(result.error).toContain("Signature address mismatch");
     });
   });
 

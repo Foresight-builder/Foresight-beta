@@ -21,7 +21,7 @@ function safeLog(
       try {
         desc = ` - ${String(description)}`;
       } catch {
-        desc = " - [无法转换的内容]";
+        desc = " - [unserializable description]";
       }
     }
 

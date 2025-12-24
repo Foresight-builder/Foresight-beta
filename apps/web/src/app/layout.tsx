@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProgressBar from "@/components/ProgressBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import WebVitalsReporter from "@/components/WebVitalsReporter";
+import { getServerLocale } from "@/lib/i18n-server";
 
 export const metadata: Metadata = {
   title: {
@@ -89,13 +90,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = getServerLocale();
+
   return (
-    <html lang="zh-CN">
+    <html lang={locale}>
       <body className="overflow-x-hidden">
         <Suspense fallback={null}>
           <ProgressBar />

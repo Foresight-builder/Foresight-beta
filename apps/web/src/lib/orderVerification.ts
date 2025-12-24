@@ -45,7 +45,7 @@ export async function verifyOrderSignature(
       return {
         valid: false,
         recoveredAddress,
-        error: `签名地址不匹配: 期望 ${normalizedMaker}, 实际 ${recoveredAddress.toLowerCase()}`,
+        error: `Signature address mismatch: expected ${normalizedMaker}, got ${recoveredAddress.toLowerCase()}`,
       };
     }
 
@@ -57,7 +57,7 @@ export async function verifyOrderSignature(
     console.error("Order signature verification error:", error);
     return {
       valid: false,
-      error: error.message || "签名验证失败",
+      error: error.message || "Signature verification failed",
     };
   }
 }
@@ -76,7 +76,7 @@ export function isOrderExpired(expiryTimestamp: number): boolean {
 export function validateOrderParams(order: EIP712Order): { valid: boolean; error?: string } {
   // 验证地址格式
   if (!ethers.isAddress(order.maker)) {
-    return { valid: false, error: "maker 地址格式无效" };
+    return { valid: false, error: "Invalid maker address format" };
   }
 
   // 验证价格范围 (假设使用 6 位小数的 USDC)
@@ -85,28 +85,28 @@ export function validateOrderParams(order: EIP712Order): { valid: boolean; error
   const MAX_PRICE = BigInt(1_000_000); // 1 USDC = 1,000,000 (6 decimals)
 
   if (price <= BigInt(0) || price > MAX_PRICE) {
-    return { valid: false, error: "价格必须在 0 到 1 USDC 之间" };
+    return { valid: false, error: "Price must be between 0 and 1 USDC" };
   }
 
   // 验证数量
   if (amount <= BigInt(0)) {
-    return { valid: false, error: "数量必须大于 0" };
+    return { valid: false, error: "Amount must be greater than 0" };
   }
 
   // 验证 outcomeIndex
   if (order.outcomeIndex < 0 || order.outcomeIndex > 255) {
-    return { valid: false, error: "outcomeIndex 无效" };
+    return { valid: false, error: "Invalid outcomeIndex" };
   }
 
   // 验证过期时间
   if (order.expiry > 0) {
     const maxExpiry = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 年
     if (order.expiry > maxExpiry) {
-      return { valid: false, error: "过期时间过长（最多 1 年）" };
+      return { valid: false, error: "Expiry time is too long (maximum 1 year)" };
     }
 
     if (isOrderExpired(order.expiry)) {
-      return { valid: false, error: "订单已过期" };
+      return { valid: false, error: "Order has already expired" };
     }
   }
 

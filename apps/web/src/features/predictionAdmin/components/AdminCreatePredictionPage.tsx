@@ -71,8 +71,8 @@ function BasicInfoSection({
     <div className="space-y-8">
       <SectionHeader
         icon={<Layout className="w-5 h-5" />}
-        title="基本信息"
-        subtitle="设置事件的核心识别参数"
+        title={tTrendingAdmin("section.basicTitle")}
+        subtitle={tTrendingAdmin("section.basicSubtitle")}
       />
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -283,7 +283,7 @@ function TypeAndOutcomesSection({
                     <input
                       value={outcome.label}
                       onChange={(event) => onOutcomeChange(index, "label", event.target.value)}
-                      placeholder="选项名称 (如: 会, 不会)"
+                      placeholder={tTrendingAdmin("multi.optionLabelPlaceholder")}
                       className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 font-black placeholder:text-slate-300 p-0 text-lg"
                     />
                     <button
@@ -312,7 +312,7 @@ function TypeAndOutcomesSection({
                       <input
                         value={outcome.color || ""}
                         onChange={(event) => onOutcomeChange(index, "color", event.target.value)}
-                        placeholder="Hex 颜色"
+                        placeholder={tTrendingAdmin("multi.optionColorPlaceholder")}
                         className="w-full bg-transparent border-none focus:ring-0 text-xs text-slate-600 p-0 placeholder:text-slate-400 font-mono"
                       />
                       {outcome.color && (
@@ -380,7 +380,9 @@ function SubmitSection({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`px-3 py-1.5 rounded-lg text-[10px] font-black w-fit ${
-              msg.includes("成功") || msg.includes("保存")
+              msg === tTrendingAdmin("createSuccess") ||
+              msg === tTrendingAdmin("draft.savedMsg") ||
+              msg === tTrendingAdmin("draft.clearedMsg")
                 ? "text-emerald-600 bg-emerald-50"
                 : "text-red-600 bg-red-50"
             }`}

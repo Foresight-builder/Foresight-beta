@@ -672,6 +672,8 @@
         "reset": "放弃并重置"
       },
       "section": {
+        "basicTitle": "基本信息",
+        "basicSubtitle": "设置事件的核心识别参数",
         "detailsTitle": "详细规则",
         "detailsSubtitle": "描述预测背景与判定准则",
         "typeTitle": "预测类型与选项",
@@ -684,8 +686,10 @@
       "multi": {
         "optionsTitle": "选项列表管理",
         "addOption": "添加选项",
+        "optionLabelPlaceholder": "选项名称 (如: 会, 不会)",
         "optionDescriptionPlaceholder": "补充描述",
-        "optionImagePlaceholder": "图片链接"
+        "optionImagePlaceholder": "图片链接",
+        "optionColorPlaceholder": "Hex 颜色"
       },
       "createFailed": "创建失败",
       "createSuccess": "创建成功",
