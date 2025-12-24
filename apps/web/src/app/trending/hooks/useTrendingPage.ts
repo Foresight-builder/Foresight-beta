@@ -128,11 +128,8 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const handleCategoryClickWithScroll = useCallback(
     (categoryName: string) => {
       handleCategoryClick(categoryName);
-      scrollToSectionWithBehavior({
-        targetRef: eventsSectionRef,
-      });
     },
-    [handleCategoryClick, eventsSectionRef]
+    [handleCategoryClick]
   );
 
   const handleBackToTopClick = useCallback(

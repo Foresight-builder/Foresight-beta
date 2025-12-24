@@ -243,17 +243,6 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
         >
           <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
-            <div className="flex flex-wrap items-center gap-2">
-              <span>
-                {tTrending("metrics.events")}: {visibleEvents.length} / {sortedEvents.length || 0}
-              </span>
-              {typeof totalEvents === "number" && totalEvents > sortedEvents.length && (
-                <span>
-                  ({sortedEvents.length} / {totalEvents})
-                </span>
-              )}
-              {activeFiltersCount > 0 && <span>· {activeFiltersCount}</span>}
-            </div>
             {searchQuery.trim() && (
               <div className="flex items-center gap-2 max-w-full">
                 <span className="truncate max-w-[160px] sm:max-w-[260px]">
