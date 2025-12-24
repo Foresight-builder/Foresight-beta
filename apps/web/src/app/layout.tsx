@@ -46,6 +46,11 @@ export const metadata: Metadata = {
 
   alternates: {
     canonical: "/trending",
+    languages: {
+      "zh-CN": "/trending",
+      "en-US": "/trending",
+      "es-ES": "/trending",
+    },
   },
 
   openGraph: {

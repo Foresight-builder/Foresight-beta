@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "在 Foresight 提案广场发起新的预测市场想法，为加密、宏观、AI 等主题设计问题，与社区一起投票决定是否上线市场并参与协议治理。",
   alternates: {
     canonical: "/proposals",
+    languages: {
+      "zh-CN": "/proposals",
+      "en-US": "/proposals",
+      "es-ES": "/proposals",
+    },
   },
   openGraph: {
     title: "Foresight 提案广场 - 创建新预测市场与治理投票",

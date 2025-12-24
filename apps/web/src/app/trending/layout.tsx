@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "在 Foresight 热门预测市场中参与加密货币、宏观经济、AI 等真实世界事件的预测交易，发现高赔率机会，用 USDC 表达观点并在链上透明结算收益。",
   alternates: {
     canonical: "/trending",
+    languages: {
+      "zh-CN": "/trending",
+      "en-US": "/trending",
+      "es-ES": "/trending",
+    },
   },
   openGraph: {
     title: "Foresight 热门预测市场 - 加密事件交易与收益机会",

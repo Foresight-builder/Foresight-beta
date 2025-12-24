@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "在 Foresight 预测排行榜中查看顶级预测者的历史收益、胜率和风险偏好，发现稳定盈利的策略账户，为自己的预测交易寻找可参考的实盘样本。",
   alternates: {
     canonical: "/leaderboard",
+    languages: {
+      "zh-CN": "/leaderboard",
+      "en-US": "/leaderboard",
+      "es-ES": "/leaderboard",
+    },
   },
   openGraph: {
     title: "Foresight 预测排行榜 - 收益高手与策略榜单",

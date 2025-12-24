@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: "查看 Foresight 隐私政策，了解我们如何收集、使用和保护你的个人信息与使用数据。",
   alternates: {
     canonical: "/privacy",
+    languages: {
+      "zh-CN": "/privacy",
+      "en-US": "/privacy",
+      "es-ES": "/privacy",
+    },
   },
 };
 

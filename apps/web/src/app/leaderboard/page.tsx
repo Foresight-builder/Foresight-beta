@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,53 +18,6 @@ import {
   BarChart2,
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
-
-function buildLeaderboardJsonLd() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
-  const items = leaderboardData.slice(0, 50).map((user, index) => {
-    const url = `${baseUrl}/leaderboard`;
-    const description = `预测收益：${user.profit}，胜率：${user.winRate}，交易次数：${user.trades}`;
-    return {
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "Person",
-        name: user.name,
-        description,
-      },
-    };
-  });
-
-  return {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "ItemList",
-        name: "Foresight 预测排行榜",
-        itemListOrder: "https://schema.org/ItemListOrderDescending",
-        url: baseUrl + "/leaderboard",
-        itemListElement: items,
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "首页",
-            item: baseUrl + "/",
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "预测排行榜",
-            item: baseUrl + "/leaderboard",
-          },
-        ],
-      },
-    ],
-  };
-}
 import { buildDiceBearUrl } from "@/lib/dicebear";
 
 // Enhanced Mock Data with History for Sparklines
@@ -233,6 +186,52 @@ const Sparkline = ({ data, color = "#10B981" }: { data: number[]; color?: string
       />
     </svg>
   );
+};
+
+const buildLeaderboardJsonLd = () => {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const items = leaderboardData.slice(0, 50).map((user, index) => {
+    const description = `预测收益：${user.profit}，胜率：${user.winRate}，交易次数：${user.trades}`;
+    return {
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Person",
+        name: user.name,
+        description,
+      },
+    };
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "ItemList",
+        name: "Foresight 预测排行榜",
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        url: baseUrl + "/leaderboard",
+        itemListElement: items,
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "首页",
+            item: baseUrl + "/",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "预测排行榜",
+            item: baseUrl + "/leaderboard",
+          },
+        ],
+      },
+    ],
+  };
 };
 
 const getRankStyles = (rank: number) => {

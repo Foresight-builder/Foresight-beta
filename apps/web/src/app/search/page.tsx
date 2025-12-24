@@ -6,6 +6,11 @@ export const metadata: Metadata = {
     "通过 Foresight 全站搜索快速发现热门预测市场、社区提案与讨论内容，用关键词联通事件、治理和策略研究。",
   alternates: {
     canonical: "/search",
+    languages: {
+      "zh-CN": "/search",
+      "en-US": "/search",
+      "es-ES": "/search",
+    },
   },
 };
 

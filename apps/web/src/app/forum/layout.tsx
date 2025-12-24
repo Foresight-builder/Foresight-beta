@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "在 Foresight 预测论坛参与热门事件与市场走势讨论，分享数据驱动的交易策略与研究笔记，与其他预测者交流观点、寻找新的 alpha 机会。",
   alternates: {
     canonical: "/forum",
+    languages: {
+      "zh-CN": "/forum",
+      "en-US": "/forum",
+      "es-ES": "/forum",
+    },
   },
   openGraph: {
     title: "Foresight 预测论坛 - 事件讨论与交易策略研究",
