@@ -10,7 +10,6 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-// 获取预测事件详情的辅助函数
 async function getPrediction(id: string) {
   const client = getClient();
   if (!client) return null;
@@ -20,7 +19,6 @@ async function getPrediction(id: string) {
   return data;
 }
 
-// 动态生成 Metadata
 export async function generateMetadata(
   { params, searchParams }: Props,
   parent: ResolvingMetadata
@@ -33,25 +31,37 @@ export async function generateMetadata(
   if (!prediction) {
     return {
       title: "Prediction Not Found",
+      description: "The requested prediction market event could not be found.",
     };
   }
 
   const previousImages = (await parent).openGraph?.images || [];
   const imageUrl = prediction.image_url || "/og-image.png";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const title = prediction.title || "Foresight 预测市场事件";
+  const rawDescription =
+    prediction.description ||
+    prediction.criteria ||
+    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+  const description =
+    rawDescription.length > 160 ? rawDescription.slice(0, 157) + "..." : rawDescription;
 
   return {
-    title: prediction.title,
-    description: prediction.description.slice(0, 160),
+    title,
+    description,
+    alternates: {
+      canonical: `${baseUrl}/prediction/${id}`,
+    },
     openGraph: {
-      title: prediction.title,
-      description: prediction.description.slice(0, 160),
+      title,
+      description,
       images: [imageUrl, ...previousImages],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
-      title: prediction.title,
-      description: prediction.description.slice(0, 160),
+      title,
+      description,
       images: [imageUrl],
     },
   };

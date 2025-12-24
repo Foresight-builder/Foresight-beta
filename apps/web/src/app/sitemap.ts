@@ -4,7 +4,6 @@ import { getClient } from "@/lib/supabase";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
 
-  // 静态页面
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -50,8 +49,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // 动态页面：预测事件
   let predictionPages: MetadataRoute.Sitemap = [];
+  let completedPredictionPages: MetadataRoute.Sitemap = [];
 
   try {
     const client = getClient();
@@ -71,10 +70,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.8,
         }));
       }
+
+      const { data: completedPredictions } = await (client as any)
+        .from("predictions")
+        .select("id, updated_at, status, deadline")
+        .eq("status", "completed")
+        .order("updated_at", { ascending: false })
+        .limit(200);
+
+      if (completedPredictions) {
+        completedPredictionPages = completedPredictions.map((p: any) => ({
+          url: `${baseUrl}/prediction/${p.id}`,
+          lastModified: new Date(p.updated_at || p.deadline || Date.now()),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        }));
+      }
     }
   } catch (error) {
     console.error("Error generating sitemap:", error);
   }
 
-  return [...staticPages, ...predictionPages];
+  return [...staticPages, ...predictionPages, ...completedPredictionPages];
 }

@@ -17,7 +17,7 @@ import { getServerLocale } from "@/lib/i18n-server";
 
 export const metadata: Metadata = {
   title: {
-    default: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
+    default: "Foresight - 去中心化预测市场平台",
     template: "%s | Foresight",
   },
   description:
@@ -39,6 +39,10 @@ export const metadata: Metadata = {
   applicationName: "Foresight",
 
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market"),
+
+  alternates: {
+    canonical: "/trending",
+  },
 
   openGraph: {
     type: "website",
@@ -100,6 +104,19 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className="overflow-x-hidden">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Foresight",
+              url: process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market",
+              logo:
+                (process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market") + "/icon-192.png",
+            }),
+          }}
+        />
         <Suspense fallback={null}>
           <ProgressBar />
         </Suspense>

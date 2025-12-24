@@ -8,6 +8,32 @@ import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
 import { Loader2 } from "lucide-react";
+
+function buildJsonLd(prediction: any) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const url = `${baseUrl}/prediction/${prediction.id}`;
+  const imageUrl = prediction.image_url || `${baseUrl}/og-image.png`;
+  const description =
+    prediction.description ||
+    prediction.criteria ||
+    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: prediction.title || "Foresight 预测市场事件",
+    description,
+    image: [imageUrl],
+    url,
+    mainEntityOfPage: url,
+    inLanguage: "zh-CN",
+    publisher: {
+      "@type": "Organization",
+      name: "Foresight",
+      url: baseUrl,
+    },
+  };
+}
 export default function PredictionDetailClient() {
   const {
     loading,
@@ -66,6 +92,10 @@ export default function PredictionDetailClient() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 text-gray-900 font-sans pb-20 relative overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(prediction)) }}
+      />
       {/* Colorful Blobs Background */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/40 rounded-full blur-[120px] mix-blend-multiply animate-blob"></div>
