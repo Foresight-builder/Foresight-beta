@@ -99,6 +99,7 @@ async function getPredictions(): Promise<Prediction[]> {
   const predictions = rawPredictions as RawPrediction[];
 
   const ids = predictions.map((p) => Number(p.id)).filter((n) => Number.isFinite(n));
+  const idSet = new Set(ids);
   let counts: Record<number, number> = {};
 
   if (ids.length > 0) {
@@ -109,11 +110,9 @@ async function getPredictions(): Promise<Prediction[]> {
 
     if (!rowsError && Array.isArray(rawRows)) {
       const rows = rawRows as EventFollowRow[];
-      // 在内存中聚合，对于小规模数据（<10k rows）比多次 DB 调用快
-      // 如果数据量大，应该使用 rpc 或视图
       for (const r of rows) {
         const eid = Number(r.event_id);
-        if (Number.isFinite(eid) && ids.includes(eid)) {
+        if (Number.isFinite(eid) && idSet.has(eid)) {
           counts[eid] = (counts[eid] || 0) + 1;
         }
       }

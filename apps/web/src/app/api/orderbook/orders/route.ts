@@ -152,9 +152,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 检查订单是否已存在（防止重复提交）
-    const { data: existingOrder } = await client
-      .from("orders")
-      // @ts-ignore
+    const { data: existingOrder } = await (client.from("orders") as any)
       .select("id, market_key")
       .eq("chain_id", chainIdNum)
       .eq("verifying_contract", vc.toLowerCase())
@@ -163,7 +161,6 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existingOrder) {
-      // @ts-ignore
       const existingMk = (existingOrder as any).market_key
         ? String((existingOrder as any).market_key)
         : "";
