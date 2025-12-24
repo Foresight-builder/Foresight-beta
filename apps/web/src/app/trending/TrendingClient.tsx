@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import type { Prediction } from "@/features/trending/trendingModel";
@@ -58,12 +59,38 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
       >
         <h3
           id="trending-events-heading"
-          className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3"
+          className="text-2xl font-bold text-gray-900 mb-4 text-center flex items-center justify-center gap-3"
         >
           <span className="w-2 h-2 rounded-full bg-purple-500" />
           {i18n.tTrending("sections.hotEvents")}
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
+        <p className="max-w-2xl mx-auto text-xs sm:text-sm text-gray-600 text-center mb-6">
+          想从想法阶段就参与？可以先在{" "}
+          <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
+            提案广场
+          </Link>{" "}
+          发起或投票，通过后对应市场会出现在这里；如果你更关注研究与观点，可以前往{" "}
+          <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+            预测论坛
+          </Link>{" "}
+          浏览与这些市场关联的讨论；想把交易行为沉淀成长期挑战，可以到{" "}
+          <Link href="/flags" className="text-purple-600 hover:text-purple-700 hover:underline">
+            成就 Flags
+          </Link>{" "}
+          为自己设定目标，并在{" "}
+          <Link
+            href="/leaderboard"
+            className="text-purple-600 hover:text-purple-700 hover:underline"
+          >
+            预测排行榜
+          </Link>{" "}
+          查看表现；还可以通过{" "}
+          <Link href="/search" className="text-purple-600 hover:text-purple-700 hover:underline">
+            全站搜索
+          </Link>{" "}
+          快速找到与你关注主题相关的事件。
+        </p>
         <TrendingEventsSection
           loading={list.loading}
           error={list.error}

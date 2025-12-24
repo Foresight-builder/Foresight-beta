@@ -29,6 +29,7 @@ export interface ThreadView {
   comments?: CommentView[];
   category?: string;
   // Optional extra fields based on API
+  created_prediction_id?: number | null;
   subject_name?: string;
   action_verb?: string;
   target_value?: string;

@@ -150,6 +150,8 @@ export async function GET(req: Request) {
       created_at: String(t.created_at || ""),
       upvotes: Number(t.upvotes || 0),
       downvotes: Number(t.downvotes || 0),
+      created_prediction_id:
+        t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       comments: (commentsByThread[String(t.id)] || []).map((c: any) => ({
         id: Number(c.id),
         thread_id: Number(c.thread_id),

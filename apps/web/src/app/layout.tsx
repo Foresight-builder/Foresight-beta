@@ -32,6 +32,10 @@ export const metadata: Metadata = {
     "智能合约",
     "加密货币",
     "预言机",
+    "prediction market",
+    "crypto",
+    "blockchain",
+    "mercado de predicción",
   ],
   authors: [{ name: "Foresight Team" }],
   creator: "Foresight",
@@ -47,6 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "zh_CN",
+    alternateLocale: ["en_US", "es_ES"],
     url: "/trending",
     title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
     description:
@@ -109,11 +114,28 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "Foresight",
-              url: process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market",
-              logo:
-                (process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market") + "/icon-192.png",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  name: "Foresight",
+                  url: process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market",
+                  logo:
+                    (process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market") +
+                    "/icon-192.png",
+                },
+                {
+                  "@type": "WebSite",
+                  name: "Foresight",
+                  url: process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market",
+                  potentialAction: {
+                    "@type": "SearchAction",
+                    target:
+                      (process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market") +
+                      "/api/search?q={search_term_string}",
+                    "query-input": "required name=search_term_string",
+                  },
+                },
+              ],
             }),
           }}
         />

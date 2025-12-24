@@ -51,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let predictionPages: MetadataRoute.Sitemap = [];
   let completedPredictionPages: MetadataRoute.Sitemap = [];
+  let proposalPages: MetadataRoute.Sitemap = [];
 
   try {
     const client = getClient();
@@ -86,10 +87,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.6,
         }));
       }
+
+      const { data: proposals } = await (client as any)
+        .from("forum_threads")
+        .select("id, created_at, updated_at, event_id")
+        .eq("event_id", 0)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (proposals) {
+        proposalPages = proposals.map((p: any) => ({
+          url: `${baseUrl}/proposals/${p.id}`,
+          lastModified: new Date(p.updated_at || p.created_at || Date.now()),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        }));
+      }
     }
   } catch (error) {
     console.error("Error generating sitemap:", error);
   }
 
-  return [...staticPages, ...predictionPages, ...completedPredictionPages];
+  return [...staticPages, ...predictionPages, ...completedPredictionPages, ...proposalPages];
 }

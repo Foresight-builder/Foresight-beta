@@ -19,6 +19,52 @@ import {
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 
+function buildLeaderboardJsonLd() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const items = leaderboardData.slice(0, 50).map((user, index) => {
+    const url = `${baseUrl}/leaderboard`;
+    const description = `预测收益：${user.profit}，胜率：${user.winRate}，交易次数：${user.trades}`;
+    return {
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Person",
+        name: user.name,
+        description,
+      },
+    };
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "ItemList",
+        name: "Foresight 预测排行榜",
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        url: baseUrl + "/leaderboard",
+        itemListElement: items,
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "首页",
+            item: baseUrl + "/",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "预测排行榜",
+            item: baseUrl + "/leaderboard",
+          },
+        ],
+      },
+    ],
+  };
+}
 import { buildDiceBearUrl } from "@/lib/dicebear";
 
 // Enhanced Mock Data with History for Sparklines
@@ -459,9 +505,14 @@ export default function LeaderboardPage() {
 
   const topThree = leaderboardData.slice(0, 3);
   const restRank = leaderboardData.slice(3);
+  const jsonLd = buildLeaderboardJsonLd();
 
   return (
     <GradientPage className="w-full relative overflow-hidden font-sans selection:bg-purple-200">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <FloatingShapes />
 
       {/* Background Gradients */}

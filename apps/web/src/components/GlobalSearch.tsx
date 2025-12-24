@@ -12,7 +12,7 @@ interface SearchResult {
   title: string;
   description: string;
   category: string;
-  type: "prediction" | "user" | "topic";
+  type: "prediction" | "proposal" | "user" | "topic";
 }
 
 interface GlobalSearchProps {
@@ -156,6 +156,8 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
     switch (type) {
       case "prediction":
         return "🎯";
+      case "proposal":
+        return "📝";
       case "user":
         return "👤";
       case "topic":
@@ -216,36 +218,47 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
                   <div className="text-xs font-medium text-gray-500 px-3 py-2">
                     {tSearch("resultsTitle")}
                   </div>
-                  {results.map((result) => (
-                    <Link
-                      key={result.id}
-                      href={`/prediction/${result.id}`}
-                      onClick={() => {
-                        saveSearchHistory(result.title);
-                        setIsOpen(false);
-                      }}
-                      className="block px-3 py-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl mt-0.5">{getCategoryIcon(result.type)}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 group-hover:text-purple-600 transition-colors mb-1 line-clamp-1">
-                            {result.title}
-                          </div>
-                          <div className="text-xs text-gray-500 line-clamp-2">
-                            {result.description}
-                          </div>
-                          {result.category && (
-                            <div className="mt-2">
-                              <span className="inline-block px-2 py-0.5 bg-purple-50 text-purple-600 text-xs rounded-full">
-                                {result.category}
-                              </span>
+                  {results.map((result) => {
+                    const href =
+                      result.type === "proposal"
+                        ? `/proposals/${result.id}`
+                        : result.type === "prediction"
+                          ? `/prediction/${result.id}`
+                          : "#";
+
+                    return (
+                      <Link
+                        key={result.id}
+                        href={href}
+                        onClick={() => {
+                          if (href !== "#") {
+                            saveSearchHistory(result.title);
+                            setIsOpen(false);
+                          }
+                        }}
+                        className="block px-3 py-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl mt-0.5">{getCategoryIcon(result.type)}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 group-hover:text-purple-600 transition-colors mb-1 line-clamp-1">
+                              {result.title}
                             </div>
-                          )}
+                            <div className="text-xs text-gray-500 line-clamp-2">
+                              {result.description}
+                            </div>
+                            {result.category && (
+                              <div className="mt-2">
+                                <span className="inline-block px-2 py-0.5 bg-purple-50 text-purple-600 text-xs rounded-full">
+                                  {result.category}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
 

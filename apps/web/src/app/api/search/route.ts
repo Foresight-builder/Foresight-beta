@@ -53,17 +53,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchTerm = `%${query.trim()}%`;
-    const { data: predictions, error: predictionsError } = await supabase
-      .from("predictions")
-      .select("id, title, description, category, status")
-      .or(`title.ilike.${searchTerm},description.ilike.${searchTerm},category.ilike.${searchTerm}`)
-      .eq("status", "active")
-      .limit(20)
-      .order("created_at", { ascending: false });
+    const trimmed = query.trim();
+    const searchTerm = `%${trimmed}%`;
+
+    const [predictionsRes, proposalsRes] = await Promise.all([
+      supabase
+        .from("predictions")
+        .select("id, title, description, category, status")
+        .or(
+          `title.ilike.${searchTerm},description.ilike.${searchTerm},category.ilike.${searchTerm}`
+        )
+        .eq("status", "active")
+        .limit(20)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("forum_threads")
+        .select("id, event_id, title, content, category")
+        .eq("event_id", 0)
+        .or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`)
+        .limit(20)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const { data: predictions, error: predictionsError } = predictionsRes as any;
+    const { data: proposals, error: proposalsError } = proposalsRes as any;
 
     if (predictionsError) {
       console.error("Search predictions error:", predictionsError);
+    }
+
+    if (proposalsError) {
+      console.error("Search proposals error:", proposalsError);
     }
 
     const predictionResults = (predictions || []).map((p: any) => ({
@@ -74,6 +94,14 @@ export async function GET(request: NextRequest) {
       type: "prediction" as const,
     }));
 
+    const proposalResults = (proposals || []).map((p: any) => ({
+      id: p.id,
+      title: p.title || "未命名提案",
+      description: p.content || "来自 Foresight 提案广场的社区提案讨论。",
+      category: p.category || "Proposal",
+      type: "proposal" as const,
+    }));
+
     // TODO: 搜索用户（需要 user_profiles 表）
     // const { data: users } = await supabase
     //   .from("user_profiles")
@@ -81,13 +109,14 @@ export async function GET(request: NextRequest) {
     //   .ilike("username", searchTerm)
     //   .limit(10);
 
-    // 合并所有结果
-    const allResults = [...predictionResults];
+    const allResults = [...predictionResults, ...proposalResults];
 
-    // 按相关性排序（简单实现：标题匹配优先）
     allResults.sort((a, b) => {
-      const aScore = a.title.toLowerCase().includes(query.toLowerCase()) ? 2 : 1;
-      const bScore = b.title.toLowerCase().includes(query.toLowerCase()) ? 2 : 1;
+      const q = trimmed.toLowerCase();
+      const aTitle = String(a.title || "").toLowerCase();
+      const bTitle = String(b.title || "").toLowerCase();
+      const aScore = aTitle.includes(q) ? 2 : 1;
+      const bScore = bTitle.includes(q) ? 2 : 1;
       return bScore - aScore;
     });
 
@@ -95,7 +124,7 @@ export async function GET(request: NextRequest) {
       {
         results: allResults,
         total: allResults.length,
-        query: query.trim(),
+        query: trimmed,
       },
       {
         status: 200,
