@@ -167,6 +167,178 @@ function TrendingEventsSkeletonGrid({ count = 8 }: TrendingEventsSkeletonGridPro
   );
 }
 
+type TrendingEventsFilterBarProps = {
+  loading: boolean;
+  error: unknown;
+  filters: FilterSortState;
+  onFilterChange: (state: FilterSortState) => void;
+  searchQuery: string;
+  onClearSearch: () => void;
+  highlightFilters: boolean;
+  tTrending: (key: string) => string;
+};
+
+function TrendingEventsFilterBar({
+  loading,
+  error,
+  filters,
+  onFilterChange,
+  searchQuery,
+  onClearSearch,
+  highlightFilters,
+  tTrending,
+}: TrendingEventsFilterBarProps) {
+  if (loading || error) return null;
+
+  const hasSearch = searchQuery.trim().length > 0;
+
+  return (
+    <div
+      className={`mb-8 space-y-3 transition-shadow duration-300 ${
+        highlightFilters ? "shadow-[0_0_0_2px_rgba(129,140,248,0.45)] rounded-2xl" : ""
+      }`}
+    >
+      <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
+        {hasSearch && (
+          <div className="flex items-center gap-2 max-w-full">
+            <span className="truncate max-w-[160px] sm:max-w-[260px]">
+              {tTrending("search.activeLabel")} {searchQuery}
+            </span>
+            <button
+              type="button"
+              onClick={onClearSearch}
+              className="text-xs font-medium text-purple-600 hover:text-purple-800"
+            >
+              {tTrending("search.clear")}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type TrendingEventsMainContentProps = {
+  loading: boolean;
+  error: unknown;
+  followError: string | null;
+  sortedEvents: TrendingEvent[];
+  visibleEvents: TrendingEvent[];
+  followedEvents: Set<number>;
+  pendingFollows: Set<number>;
+  isAdmin: boolean;
+  deleteBusyId: number | null;
+  hasMore: boolean;
+  loadingMore: boolean;
+  observerTargetRef: React.Ref<HTMLDivElement>;
+  createCategoryParticlesAtCardClick: (event: React.MouseEvent, category?: string) => void;
+  toggleFollow: (predictionId: number, event: React.MouseEvent) => void | Promise<void>;
+  openEdit: (p: TrendingEvent) => void;
+  deleteEvent: (id: number) => void;
+  onCreatePrediction: () => void;
+  emptyTitleKey: string;
+  emptyDescriptionKey: string;
+  tTrending: (key: string) => string;
+  tTrendingAdmin: (key: string) => string;
+  tEvents: (key: string) => string;
+};
+
+function TrendingEventsMainContent({
+  loading,
+  error,
+  followError,
+  sortedEvents,
+  visibleEvents,
+  followedEvents,
+  pendingFollows,
+  isAdmin,
+  deleteBusyId,
+  hasMore,
+  loadingMore,
+  observerTargetRef,
+  createCategoryParticlesAtCardClick,
+  toggleFollow,
+  openEdit,
+  deleteEvent,
+  onCreatePrediction,
+  emptyTitleKey,
+  emptyDescriptionKey,
+  tTrending,
+  tTrendingAdmin,
+  tEvents,
+}: TrendingEventsMainContentProps) {
+  if (loading) {
+    return (
+      <div className="mb-8">
+        <TrendingEventsSkeletonGrid />
+        <p className="mt-6 text-center text-sm text-gray-500">{tTrending("state.loading")}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ListError
+        error={error}
+        title={tTrending("state.errorTitle")}
+        reloadLabel={tTrending("state.reload")}
+      />
+    );
+  }
+
+  return (
+    <>
+      {followError && (
+        <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded" role="alert">
+          {followError}
+        </div>
+      )}
+      {sortedEvents.length === 0 || visibleEvents.length === 0 ? (
+        <TrendingEventsEmpty
+          title={tTrending(emptyTitleKey)}
+          description={tTrending(emptyDescriptionKey)}
+          actionLabel={tTrending("actions.createPrediction")}
+          onCreatePrediction={onCreatePrediction}
+        />
+      ) : (
+        <>
+          <TrendingEventsGrid
+            visibleEvents={visibleEvents}
+            followedEvents={followedEvents}
+            pendingFollows={pendingFollows}
+            isAdmin={isAdmin}
+            deleteBusyId={deleteBusyId}
+            createCategoryParticlesAtCardClick={createCategoryParticlesAtCardClick}
+            toggleFollow={toggleFollow}
+            openEdit={openEdit}
+            deleteEvent={deleteEvent}
+            tTrending={tTrending}
+            tTrendingAdmin={tTrendingAdmin}
+            tEvents={tEvents}
+          />
+
+          <InfiniteScrollSentinel
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            observerTargetRef={observerTargetRef}
+            loadMoreLabel={tTrending("state.loadMore")}
+            scrollHintLabel={tTrending("state.scrollHint")}
+          />
+
+          {!hasMore && sortedEvents.length > 0 && (
+            <AllLoadedNotice
+              totalCount={sortedEvents.length}
+              prefixLabel={tTrending("state.allLoadedPrefix")}
+              suffixLabel={tTrending("state.allLoadedSuffix")}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 export const TrendingEventsSection = React.memo(function TrendingEventsSection(
   props: TrendingEventsSectionProps
 ) {
@@ -241,97 +413,41 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
 
   return (
     <>
-      {!loading && !error && (
-        <div
-          className={`mb-8 space-y-3 transition-shadow duration-300 ${
-            highlightFilters ? "shadow-[0_0_0_2px_rgba(129,140,248,0.45)] rounded-2xl" : ""
-          }`}
-        >
-          <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
-            {searchQuery.trim() && (
-              <div className="flex items-center gap-2 max-w-full">
-                <span className="truncate max-w-[160px] sm:max-w-[260px]">
-                  {tTrending("search.activeLabel")} {searchQuery}
-                </span>
-                <button
-                  type="button"
-                  onClick={onClearSearch}
-                  className="text-xs font-medium text-purple-600 hover:text-purple-800"
-                >
-                  {tTrending("search.clear")}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <TrendingEventsFilterBar
+        loading={loading}
+        error={error}
+        filters={filters}
+        onFilterChange={onFilterChange}
+        searchQuery={searchQuery}
+        onClearSearch={onClearSearch}
+        highlightFilters={highlightFilters}
+        tTrending={tTrending}
+      />
 
-      {loading && (
-        <div className="mb-8">
-          <TrendingEventsSkeletonGrid />
-          <p className="mt-6 text-center text-sm text-gray-500">{tTrending("state.loading")}</p>
-        </div>
-      )}
-
-      {error && (
-        <ListError
-          error={error}
-          title={tTrending("state.errorTitle")}
-          reloadLabel={tTrending("state.reload")}
-        />
-      )}
-
-      {!loading && !error && (
-        <>
-          {followError && (
-            <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded" role="alert">
-              {followError}
-            </div>
-          )}
-          {sortedEvents.length === 0 || visibleEvents.length === 0 ? (
-            <TrendingEventsEmpty
-              title={tTrending(emptyTitleKey)}
-              description={tTrending(emptyDescriptionKey)}
-              actionLabel={tTrending("actions.createPrediction")}
-              onCreatePrediction={onCreatePrediction}
-            />
-          ) : (
-            <>
-              <TrendingEventsGrid
-                visibleEvents={visibleEvents}
-                followedEvents={followedEvents}
-                pendingFollows={pendingFollows}
-                isAdmin={isAdmin}
-                deleteBusyId={deleteBusyId}
-                createCategoryParticlesAtCardClick={createCategoryParticlesAtCardClick}
-                toggleFollow={toggleFollow}
-                openEdit={openEdit}
-                deleteEvent={deleteEvent}
-                tTrending={tTrending}
-                tTrendingAdmin={tTrendingAdmin}
-                tEvents={tEvents}
-              />
-
-              <InfiniteScrollSentinel
-                hasMore={hasMore}
-                loadingMore={loadingMore}
-                observerTargetRef={observerTargetRef}
-                loadMoreLabel={tTrending("state.loadMore")}
-                scrollHintLabel={tTrending("state.scrollHint")}
-              />
-
-              {!hasMore && sortedEvents.length > 0 && (
-                <AllLoadedNotice
-                  totalCount={sortedEvents.length}
-                  prefixLabel={tTrending("state.allLoadedPrefix")}
-                  suffixLabel={tTrending("state.allLoadedSuffix")}
-                />
-              )}
-            </>
-          )}
-        </>
-      )}
+      <TrendingEventsMainContent
+        loading={loading}
+        error={error}
+        followError={followError}
+        sortedEvents={sortedEvents}
+        visibleEvents={visibleEvents}
+        followedEvents={followedEvents}
+        pendingFollows={pendingFollows}
+        isAdmin={isAdmin}
+        deleteBusyId={deleteBusyId}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        observerTargetRef={observerTargetRef}
+        createCategoryParticlesAtCardClick={createCategoryParticlesAtCardClick}
+        toggleFollow={toggleFollow}
+        openEdit={openEdit}
+        deleteEvent={deleteEvent}
+        onCreatePrediction={onCreatePrediction}
+        emptyTitleKey={emptyTitleKey}
+        emptyDescriptionKey={emptyDescriptionKey}
+        tTrending={tTrending}
+        tTrendingAdmin={tTrendingAdmin}
+        tEvents={tEvents}
+      />
     </>
   );
 });

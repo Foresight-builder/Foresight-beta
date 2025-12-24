@@ -71,9 +71,36 @@ const MOCK_HISTORY = [
 //     image_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=FedRate"
 //   }
 // ];
-
+//
 type TabType = "overview" | "predictions" | "history" | "following";
 
+type PortfolioStats = {
+  total_invested: number;
+  active_count: number;
+  win_rate: string;
+  realized_pnl?: number;
+};
+
+type TabConfig = {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+};
+
+type ProfilePageViewProps = {
+  account: string | null | undefined;
+  username: string;
+  tProfile: ReturnType<typeof useTranslations>;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  tabs: TabConfig[];
+  historyCount: number;
+  positionsCount: number;
+  followingCount: number;
+  portfolioStats: PortfolioStats | null;
+  disconnect: () => void;
+};
+//
 export default function ProfilePage() {
   const { account, disconnectWallet: disconnect } = useWallet();
   const { user } = useAuth();
@@ -82,11 +109,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [history, setHistory] = useState(MOCK_HISTORY);
   const [username, setUsername] = useState("");
-  const [portfolioStats, setPortfolioStats] = useState<{
-    total_invested: number;
-    active_count: number;
-    win_rate: string;
-  } | null>(null);
+  const [portfolioStats, setPortfolioStats] = useState<PortfolioStats | null>(null);
   const [positionsCount, setPositionsCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
 
@@ -163,13 +186,43 @@ export default function ProfilePage() {
     setUsername(`User ${account.slice(0, 4)}`);
   }, [account, user, profileCtx?.profile, tProfile]);
 
-  const tabs = [
+  const tabs: TabConfig[] = [
     { id: "overview", label: tProfile("sidebar.tabs.overview"), icon: User },
     { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
     { id: "history", label: tProfile("sidebar.tabs.history"), icon: History },
     { id: "following", label: tProfile("sidebar.tabs.following"), icon: Heart },
   ];
 
+  return (
+    <ProfilePageView
+      account={account}
+      username={username}
+      tProfile={tProfile}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      tabs={tabs}
+      historyCount={history.length}
+      positionsCount={positionsCount}
+      followingCount={followingCount}
+      portfolioStats={portfolioStats}
+      disconnect={disconnect}
+    />
+  );
+}
+
+function ProfilePageView({
+  account,
+  username,
+  tProfile,
+  activeTab,
+  setActiveTab,
+  tabs,
+  historyCount,
+  positionsCount,
+  followingCount,
+  portfolioStats,
+  disconnect,
+}: ProfilePageViewProps) {
   return (
     <GradientPage className="pb-24 pt-24">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -222,7 +275,7 @@ export default function ProfilePage() {
                     labelClass="text-fuchsia-400"
                   />
                   <SidebarStatCard
-                    value={history.length}
+                    value={historyCount}
                     label={tProfile("sidebar.stats.history")}
                     containerClass="bg-cyan-50/80 border border-cyan-100 hover:bg-cyan-100/80"
                     valueClass="text-cyan-600"

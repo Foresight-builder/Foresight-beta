@@ -540,6 +540,164 @@ function useWalletModalLogic({ isOpen, onClose }: WalletModalProps) {
   };
 }
 
+type WalletModalLogic = ReturnType<typeof useWalletModalLogic>;
+
+type WalletModalViewProps = WalletModalProps & Omit<WalletModalLogic, "mounted">;
+
+const WalletModalView: React.FC<WalletModalViewProps> = ({
+  isOpen,
+  onClose,
+  tWalletModal,
+  tLogin,
+  user,
+  authError,
+  selectedWallet,
+  email,
+  setEmail,
+  otpRequested,
+  otp,
+  setOtp,
+  emailLoading,
+  siweLoading,
+  permLoading,
+  multiLoading,
+  showProfileForm,
+  setShowProfileForm,
+  profileLoading,
+  username,
+  setUsername,
+  profileError,
+  rememberMe,
+  setRememberMe,
+  emailVerified,
+  resendLeft,
+  codePreview,
+  installPromptOpen,
+  setInstallPromptOpen,
+  installWalletName,
+  installUrl,
+  walletStep,
+  canRequest,
+  canSubmitProfile,
+  handleWalletConnect,
+  handleRequestOtp,
+  handleVerifyOtp,
+  handleSendMagicLink,
+  submitProfile,
+  requestRegisterOtp,
+  verifyRegisterOtp,
+  stepHint,
+  step1Active,
+  step2Active,
+  step3Active,
+  step1Done,
+  step2Done,
+  step3Done,
+  availableWallets,
+  isConnecting,
+}) => {
+  return (
+    <>
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        size="fullscreen"
+        ariaLabelledby="wallet-modal-title"
+        ariaDescribedby="wallet-modal-description"
+        backdropClassName="bg-gradient-to-br from-black/40 via-purple-900/20 to-pink-900/20 backdrop-blur-md"
+        containerClassName="flex items-center justify-center px-4"
+      >
+        <motion.div
+          className="relative bg-gradient-to-br from-white via-white to-purple-50/50 rounded-3xl shadow-2xl w-full max-w-md mx-auto overflow-hidden border border-white/20 backdrop-blur-sm"
+          onClick={(e) => e.stopPropagation()}
+          initial={{ scale: 0.8, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        >
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-2xl"></div>
+
+          <WalletModalHeader tWalletModal={tWalletModal} onClose={onClose} />
+
+          <WalletModalStepper
+            tWalletModal={tWalletModal}
+            stepHint={stepHint}
+            step1Active={step1Active}
+            step2Active={step2Active}
+            step3Active={step3Active}
+            step1Done={step1Done}
+            step2Done={step2Done}
+            step3Done={step3Done}
+          />
+
+          {showProfileForm ? (
+            <WalletProfileForm
+              tWalletModal={tWalletModal}
+              tLogin={tLogin}
+              email={email}
+              setEmail={setEmail}
+              otpRequested={otpRequested}
+              otp={otp}
+              setOtp={setOtp}
+              emailLoading={emailLoading}
+              emailVerified={emailVerified}
+              codePreview={codePreview}
+              username={username}
+              setUsername={setUsername}
+              rememberMe={rememberMe}
+              setRememberMe={setRememberMe}
+              profileError={profileError}
+              canSubmitProfile={canSubmitProfile}
+              profileLoading={profileLoading}
+              requestRegisterOtp={requestRegisterOtp}
+              verifyRegisterOtp={verifyRegisterOtp}
+              submitProfile={submitProfile}
+              onClose={onClose}
+            />
+          ) : (
+            <>
+              <WalletEmailSection
+                tWalletModal={tWalletModal}
+                tLogin={tLogin}
+                email={email}
+                setEmail={setEmail}
+                otpRequested={otpRequested}
+                otp={otp}
+                setOtp={setOtp}
+                emailLoading={emailLoading}
+                authError={authError}
+                canRequest={canRequest}
+                handleRequestOtp={handleRequestOtp}
+                handleVerifyOtp={handleVerifyOtp}
+                handleSendMagicLink={handleSendMagicLink}
+              />
+              <WalletListSection
+                tLogin={tLogin}
+                availableWallets={availableWallets}
+                selectedWallet={selectedWallet}
+                isConnecting={isConnecting}
+                siweLoading={siweLoading}
+                permLoading={permLoading}
+                multiLoading={multiLoading}
+                handleWalletConnect={handleWalletConnect}
+              />
+            </>
+          )}
+
+          <WalletModalFooter tLogin={tLogin} />
+        </motion.div>
+      </Modal>
+      <InstallPromptModal
+        key="install-prompt-modal"
+        open={installPromptOpen}
+        onClose={() => setInstallPromptOpen(false)}
+        walletName={installWalletName}
+        installUrl={installUrl}
+      />
+    </>
+  );
+};
+
 type WalletModalHeaderProps = {
   tWalletModal: (key: string) => string;
   onClose: () => void;
@@ -1126,159 +1284,11 @@ function WalletModalFooter({ tLogin }: WalletModalFooterProps) {
 }
 
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
-  const {
-    tWalletModal,
-    tLogin,
-    user,
-    authError,
-    selectedWallet,
-    email,
-    setEmail,
-    otpRequested,
-    otp,
-    setOtp,
-    emailLoading,
-    siweLoading,
-    permLoading,
-    multiLoading,
-    showProfileForm,
-    setShowProfileForm,
-    profileLoading,
-    username,
-    setUsername,
-    profileError,
-    rememberMe,
-    setRememberMe,
-    emailVerified,
-    codePreview,
-    installPromptOpen,
-    setInstallPromptOpen,
-    installWalletName,
-    installUrl,
-    walletStep,
-    canRequest,
-    canSubmitProfile,
-    handleWalletConnect,
-    handleRequestOtp,
-    handleVerifyOtp,
-    handleSendMagicLink,
-    submitProfile,
-    requestRegisterOtp,
-    verifyRegisterOtp,
-    mounted,
-    stepHint,
-    step1Active,
-    step2Active,
-    step3Active,
-    step1Done,
-    step2Done,
-    step3Done,
-    availableWallets,
-    isConnecting,
-  } = useWalletModalLogic({ isOpen, onClose });
+  const { mounted, ...logic } = useWalletModalLogic({ isOpen, onClose });
 
   if (!mounted) return null;
 
-  return (
-    <>
-      <Modal
-        open={isOpen}
-        onClose={onClose}
-        size="fullscreen"
-        ariaLabelledby="wallet-modal-title"
-        ariaDescribedby="wallet-modal-description"
-        backdropClassName="bg-gradient-to-br from-black/40 via-purple-900/20 to-pink-900/20 backdrop-blur-md"
-        containerClassName="flex items-center justify-center px-4"
-      >
-        <motion.div
-          className="relative bg-gradient-to-br from-white via-white to-purple-50/50 rounded-3xl shadow-2xl w-full max-w-md mx-auto overflow-hidden border border-white/20 backdrop-blur-sm"
-          onClick={(e) => e.stopPropagation()}
-          initial={{ scale: 0.8, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        >
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-2xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-2xl"></div>
-
-          <WalletModalHeader tWalletModal={tWalletModal} onClose={onClose} />
-
-          <WalletModalStepper
-            tWalletModal={tWalletModal}
-            stepHint={stepHint}
-            step1Active={step1Active}
-            step2Active={step2Active}
-            step3Active={step3Active}
-            step1Done={step1Done}
-            step2Done={step2Done}
-            step3Done={step3Done}
-          />
-
-          {showProfileForm ? (
-            <WalletProfileForm
-              tWalletModal={tWalletModal}
-              tLogin={tLogin}
-              email={email}
-              setEmail={setEmail}
-              otpRequested={otpRequested}
-              otp={otp}
-              setOtp={setOtp}
-              emailLoading={emailLoading}
-              emailVerified={emailVerified}
-              codePreview={codePreview}
-              username={username}
-              setUsername={setUsername}
-              rememberMe={rememberMe}
-              setRememberMe={setRememberMe}
-              profileError={profileError}
-              canSubmitProfile={canSubmitProfile}
-              profileLoading={profileLoading}
-              requestRegisterOtp={requestRegisterOtp}
-              verifyRegisterOtp={verifyRegisterOtp}
-              submitProfile={submitProfile}
-              onClose={onClose}
-            />
-          ) : (
-            <>
-              <WalletEmailSection
-                tWalletModal={tWalletModal}
-                tLogin={tLogin}
-                email={email}
-                setEmail={setEmail}
-                otpRequested={otpRequested}
-                otp={otp}
-                setOtp={setOtp}
-                emailLoading={emailLoading}
-                authError={authError}
-                canRequest={canRequest}
-                handleRequestOtp={handleRequestOtp}
-                handleVerifyOtp={handleVerifyOtp}
-                handleSendMagicLink={handleSendMagicLink}
-              />
-              <WalletListSection
-                tLogin={tLogin}
-                availableWallets={availableWallets}
-                selectedWallet={selectedWallet}
-                isConnecting={isConnecting}
-                siweLoading={siweLoading}
-                permLoading={permLoading}
-                multiLoading={multiLoading}
-                handleWalletConnect={handleWalletConnect}
-              />
-            </>
-          )}
-
-          <WalletModalFooter tLogin={tLogin} />
-        </motion.div>
-      </Modal>
-      <InstallPromptModal
-        key="install-prompt-modal"
-        open={installPromptOpen}
-        onClose={() => setInstallPromptOpen(false)}
-        walletName={installWalletName}
-        installUrl={installUrl}
-      />
-    </>
-  );
+  return <WalletModalView isOpen={isOpen} onClose={onClose} {...logic} />;
 };
 
 export default WalletModal;

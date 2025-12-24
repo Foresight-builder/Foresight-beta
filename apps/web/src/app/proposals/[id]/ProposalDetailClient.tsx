@@ -91,45 +91,55 @@ function buildProposalBreadcrumbJsonLd(thread: ThreadView) {
   };
 }
 
-export default function ProposalDetailClient({ id }: { id: string }) {
-  const router = useRouter();
-  const tProposals = useTranslations("proposals");
-  const {
-    thread,
-    loading,
-    error,
-    isValidId,
-    vote,
-    postComment,
-    stats,
-    userVotes,
-    userVoteTypes,
-    displayName,
-  } = useProposalDetail(id);
+type ProposalDetailState = ReturnType<typeof useProposalDetail>;
 
-  const { account, connectWallet } = useWallet();
-  const [replyText, setReplyText] = useState("");
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+type ProposalDetailClientViewProps = {
+  isValidId: boolean;
+  thread: ThreadView | null;
+  loading: boolean;
+  error: string | null;
+  stats: ProposalDetailState["stats"];
+  userVoteTypes: ProposalDetailState["userVoteTypes"];
+  displayName: ProposalDetailState["displayName"];
+  account: string | null | undefined;
+  connectWallet: () => void;
+  replyText: string;
+  onReplyTextChange: (value: string) => void;
+  onSubmitReply: () => void;
+  onBack: () => void;
+  onCopyLink: () => void;
+  vote: ProposalDetailState["vote"];
+  postComment: ProposalDetailState["postComment"];
+  jsonLdMain: any | null;
+  jsonLdBreadcrumb: any | null;
+};
 
-  const handleCopyLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success(tProposals("share.copyLinkSuccessTitle"));
-    });
-  };
-
-  const jsonLdMain = thread ? buildProposalJsonLd(thread as ThreadView) : null;
-  const jsonLdBreadcrumb = thread ? buildProposalBreadcrumbJsonLd(thread as ThreadView) : null;
-
+function ProposalDetailClientView({
+  isValidId,
+  thread,
+  loading,
+  error,
+  stats,
+  userVoteTypes,
+  displayName,
+  account,
+  connectWallet,
+  replyText,
+  onReplyTextChange,
+  onSubmitReply,
+  onBack,
+  onCopyLink,
+  vote,
+  postComment,
+  jsonLdMain,
+  jsonLdBreadcrumb,
+}: ProposalDetailClientViewProps) {
   if (!isValidId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-slate-900">Invalid Proposal ID</h2>
-          <button
-            onClick={() => router.push("/proposals")}
-            className="mt-4 text-purple-600 hover:underline"
-          >
+          <button onClick={onBack} className="mt-4 text-purple-600 hover:underline">
             Back to Proposals
           </button>
         </div>
@@ -159,7 +169,7 @@ export default function ProposalDetailClient({ id }: { id: string }) {
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <nav className="flex items-center justify-between mb-8">
           <button
-            onClick={() => router.push("/proposals")}
+            onClick={onBack}
             className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm transition-all text-sm font-bold text-slate-600 hover:text-slate-900"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -167,7 +177,7 @@ export default function ProposalDetailClient({ id }: { id: string }) {
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleCopyLink}
+              onClick={onCopyLink}
               className="p-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:text-slate-900 transition-all"
               title="Share"
             >
@@ -227,7 +237,7 @@ export default function ProposalDetailClient({ id }: { id: string }) {
           >
             <article className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
               <div className="p-6 sm:p-8 border-b border-slate-100/50">
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex itemscenter gap-3 mb-6">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-sm font-bold text-slate-600 border border-white shadow-sm">
                     {displayName(thread.user_id).slice(0, 2).toUpperCase()}
                   </div>
@@ -261,7 +271,7 @@ export default function ProposalDetailClient({ id }: { id: string }) {
                   <p className="whitespace-pre-wrap">{thread.content}</p>
                 </div>
                 {thread.created_prediction_id && (
-                  <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+                  <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justifybetween gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
                     <p className="text-xs sm:text-sm text-emerald-800">
                       该提案已生成对应的链上预测市场，你可以前往市场页面观察价格信号或直接参与交易。
                     </p>
@@ -343,17 +353,13 @@ export default function ProposalDetailClient({ id }: { id: string }) {
                     <div className="flex flex-col gap-3">
                       <textarea
                         value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
+                        onChange={(e) => onReplyTextChange(e.target.value)}
                         placeholder="What are your thoughts?"
                         className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-100 min-h-[80px] resize-none"
                       />
                       <div className="flex justify-end">
                         <button
-                          onClick={() => {
-                            if (!replyText.trim()) return;
-                            postComment(replyText);
-                            setReplyText("");
-                          }}
+                          onClick={onSubmitReply}
                           disabled={!replyText.trim()}
                           className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                         >
@@ -382,6 +388,60 @@ export default function ProposalDetailClient({ id }: { id: string }) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function ProposalDetailClient({ id }: { id: string }) {
+  const router = useRouter();
+  const tProposals = useTranslations("proposals");
+  const detail = useProposalDetail(id);
+  const { account, connectWallet } = useWallet();
+  const [replyText, setReplyText] = useState("");
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+
+  const handleCopyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(tProposals("share.copyLinkSuccessTitle"));
+    });
+  };
+
+  const jsonLdMain = detail.thread ? buildProposalJsonLd(detail.thread as ThreadView) : null;
+  const jsonLdBreadcrumb = detail.thread
+    ? buildProposalBreadcrumbJsonLd(detail.thread as ThreadView)
+    : null;
+
+  const handleBack = () => {
+    router.push("/proposals");
+  };
+
+  const handleSubmitReply = () => {
+    if (!replyText.trim()) return;
+    detail.postComment(replyText);
+    setReplyText("");
+  };
+
+  return (
+    <ProposalDetailClientView
+      isValidId={detail.isValidId}
+      thread={(detail.thread as ThreadView) || null}
+      loading={detail.loading}
+      error={detail.error}
+      stats={detail.stats}
+      userVoteTypes={detail.userVoteTypes}
+      displayName={detail.displayName}
+      account={account}
+      connectWallet={connectWallet}
+      replyText={replyText}
+      onReplyTextChange={setReplyText}
+      onSubmitReply={handleSubmitReply}
+      onBack={handleBack}
+      onCopyLink={handleCopyLink}
+      vote={detail.vote}
+      postComment={detail.postComment}
+      jsonLdMain={jsonLdMain}
+      jsonLdBreadcrumb={jsonLdBreadcrumb}
+    />
   );
 }
 

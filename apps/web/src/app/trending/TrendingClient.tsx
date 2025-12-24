@@ -15,10 +15,18 @@ type TrendingPageProps = {
   initialPredictions?: Prediction[];
 };
 
-export default function TrendingPage({ initialPredictions }: TrendingPageProps) {
-  const { canvas, i18n, list, follow, admin, hero, modals, actions } =
-    useTrendingPage(initialPredictions);
+type TrendingPageViewProps = ReturnType<typeof useTrendingPage>;
 
+function TrendingPageView({
+  canvas,
+  i18n,
+  list,
+  follow,
+  admin,
+  hero,
+  modals,
+  actions,
+}: TrendingPageViewProps) {
   return (
     <GradientPage className="relative overflow-x-hidden text-gray-900">
       <canvas
@@ -148,4 +156,10 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
       />
     </GradientPage>
   );
+}
+
+export default function TrendingPage({ initialPredictions }: TrendingPageProps) {
+  const state = useTrendingPage(initialPredictions);
+
+  return <TrendingPageView {...state} />;
 }

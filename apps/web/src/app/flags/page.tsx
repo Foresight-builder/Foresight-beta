@@ -375,28 +375,288 @@ function CheckinModal({
   );
 }
 
-export default function FlagsPage() {
-  const { account } = useWallet();
-  const { user } = useAuth();
-  const tFlags = useTranslations("flags");
-  const officialTemplates = buildOfficialTemplates(tFlags);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+type FlagsPageHeaderProps = {
+  tFlags: (key: string) => string;
+  activeCount: number;
+  completedCount: number;
+  invitesCount: number;
+  inviteNotice: { id: number; title: string } | null;
+  viewerId: string;
+  flags: FlagItem[];
+  statusFilter: "all" | "active" | "success";
+  setStatusFilter: (value: "all" | "active" | "success") => void;
+  witnessFlags: FlagItem[];
+  collectedCount: number;
+  onOpenGallery: () => void;
+  onOpenHistory: (flag: FlagItem) => void;
+};
 
-  // Modal initial state
-  const [initTitle, setInitTitle] = useState("");
-  const [initDesc, setInitDesc] = useState("");
+function FlagsPageHeader({
+  tFlags,
+  activeCount,
+  completedCount,
+  invitesCount,
+  inviteNotice,
+  viewerId,
+  flags,
+  statusFilter,
+  setStatusFilter,
+  witnessFlags,
+  collectedCount,
+  onOpenGallery,
+  onOpenHistory,
+}: FlagsPageHeaderProps) {
+  return (
+    <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-6 px-8 pt-4">
+      <div className="space-y-3">
+        <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2 relative inline-block">
+          {tFlags("header.title")}
+          <div className="absolute -top-6 -right-8 transform rotate-12">
+            <div className="px-3 py-1 bg-yellow-300 text-yellow-800 text-xs font-black uppercase tracking-widest rounded-sm shadow-sm transform -rotate-3">
+              {tFlags("header.badge")}
+            </div>
+          </div>
+        </h1>
+        <div className="flex items-center gap-4 text-sm font-bold text-gray-500">
+          <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-orange-400" />
+            <span>
+              {activeCount} {tFlags("header.activeLabel")}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>
+              {completedCount} {tFlags("header.achievedLabel")}
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 font-medium max-w-xl">
+          想把现实目标和预测市场结合？你可以在{" "}
+          <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
+            热门预测
+          </Link>{" "}
+          中选择事件创建对应 Flag，在{" "}
+          <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
+            提案广场
+          </Link>{" "}
+          发起长期挑战，前往{" "}
+          <Link
+            href="/leaderboard"
+            className="text-purple-600 hover:text-purple-700 hover:underline"
+          >
+            排行榜
+          </Link>{" "}
+          查看活跃挑战者，并在{" "}
+          <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+            讨论区
+          </Link>{" "}
+          或{" "}
+          <Link href="/search" className="text-purple-600 hover:text-purple-700 hover:underline">
+            全站搜索
+          </Link>{" "}
+          中发现更多灵感。
+        </p>
+        {invitesCount > 0 && (
+          <div className="flex items-center gap-3 bg-white/80 px-4 py-2 rounded-2xl border border-amber-200 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-xs font-bold text-amber-800">
+              {tFlags("invites.textPrefix")}
+              {invitesCount}
+              {tFlags("invites.textSuffix")}
+              {inviteNotice?.title ? ` · ${inviteNotice.title}` : ""}
+            </div>
+            <button
+              onClick={() => {
+                if (!viewerId) return;
+                const pending = flags.filter(
+                  (f) =>
+                    f.status === "pending_review" &&
+                    f.verification_type === "witness" &&
+                    String(f.witness_id || "").toLowerCase() === viewerId
+                );
+                if (pending.length > 0) {
+                  onOpenHistory(pending[0]);
+                }
+              }}
+              className="text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-xl hover:bg-amber-200 transition-colors"
+            >
+              {tFlags("invites.button")}
+            </button>
+          </div>
+        )}
+      </div>
 
-  const [checkinOpen, setCheckinOpen] = useState(false);
-  const [checkinFlag, setCheckinFlag] = useState<FlagItem | null>(null);
-  const [checkinNote, setCheckinNote] = useState("");
-  const [checkinImage, setCheckinImage] = useState("");
-  const [checkinSubmitting, setCheckinSubmitting] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyFlag, setHistoryFlag] = useState<FlagItem | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyItems, setHistoryItems] = useState<
-    Array<{
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onOpenGallery}
+          className="group flex items-center gap-3 px-6 py-2.5 bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl shadow-soft hover:shadow-brand/20 hover:bg-white/60 transition-all duration-300 active:scale-95"
+        >
+          <div className="relative">
+            <Smile className="w-5 h-5 text-brand group-hover:rotate-12 transition-transform duration-300" />
+            <div className="absolute inset-0 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+          <span className="text-sm font-black text-slate-800 tracking-tight">
+            {tFlags("gallery.button")}
+          </span>
+          {collectedCount > 0 && (
+            <div className="flex items-center justify-center min-w-[20px] h-[20px] bg-brand/10 rounded-lg border border-brand/20">
+              <span className="text-[10px] font-black text-brand">{collectedCount}</span>
+            </div>
+          )}
+        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex bg白/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
+            {[
+              { id: "all", label: tFlags("filters.all") },
+              { id: "active", label: tFlags("filters.active") },
+              { id: "success", label: tFlags("filters.success") },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id as "all" | "active" | "success")}
+                className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                  statusFilter === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {witnessFlags.length > 0 && (
+            <button
+              onClick={() => {
+                if (witnessFlags.length > 0) {
+                  onOpenHistory(witnessFlags[0]);
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-purple-50 text-[11px] font-black text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
+            >
+              {tFlags("filters.witnessRequests")} {witnessFlags.length}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type FlagsMainContentProps = {
+  tFlags: (key: string) => string;
+  loading: boolean;
+  filteredFlags: FlagItem[];
+  account: string | null | undefined;
+  userId: string | null | undefined;
+  onCreate: () => void;
+  onCheckin: (flag: FlagItem) => void;
+  onOpenHistory: (flag: FlagItem) => void;
+  onSettle: (flag: FlagItem) => void;
+};
+
+function FlagsMainContent({
+  tFlags,
+  loading,
+  filteredFlags,
+  account,
+  userId,
+  onCreate,
+  onCheckin,
+  onOpenHistory,
+  onSettle,
+}: FlagsMainContentProps) {
+  return (
+    <div className="flex-1 overflow-y-auto scrollbar-hide px-8 pb-20">
+      {loading ? (
+        <div className="h-full flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <p className="text-sm font-bold text-gray-400">{tFlags("state.loading")}</p>
+        </div>
+      ) : (
+        <div className="columns-1 md:columns-2 xl:columns-3 2xl:columns-4 gap-8 space-y-8 pb-20 mx-auto">
+          <motion.div
+            layout
+            onClick={onCreate}
+            className="break-inside-avoid group cursor-pointer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="relative h-[300px] rounded-[2rem] border-[4px] border-dashed border-gray-300 bg-white/30 hover:bg-white/60 hover:border-purple-300 transition-all duration-300 flex flex-col items-center justify-center gap-4 text-center p-6">
+              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
+                <Plus className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-gray-600 group-hover:text-purple-600 transition-colors">
+                  {tFlags("createCard.title")}
+                </h3>
+                <p className="text-xs font-bold text-gray-400 mt-1">
+                  {tFlags("createCard.subtitle")}
+                </p>
+              </div>
+              <div
+                className="absolute -top-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-gray-200/50 rotate-1 mask-tape"
+                style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }}
+              />
+            </div>
+          </motion.div>
+
+          <AnimatePresence mode="popLayout">
+            {filteredFlags.map((flag, index) => (
+              <motion.div
+                key={flag.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="break-inside-avoid"
+              >
+                <FlagCard
+                  flag={flag}
+                  isMine={
+                    Boolean(account || userId) &&
+                    String(flag.user_id || "").toLowerCase() ===
+                      String(account || userId || "").toLowerCase()
+                  }
+                  onCheckin={() => onCheckin(flag)}
+                  onViewHistory={() => onOpenHistory(flag)}
+                  onSettle={() => onSettle(flag)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type FlagsPageViewProps = {
+  tFlags: (key: string) => string;
+  officialTemplates: OfficialTemplate[];
+  jsonLd: ReturnType<typeof buildFlagsJsonLd>;
+  account: string | null | undefined;
+  userId: string | null | undefined;
+  data: ReturnType<typeof useFlagsData>;
+  uiState: {
+    createOpen: boolean;
+    walletModalOpen: boolean;
+    initTitle: string;
+    initDesc: string;
+    checkinOpen: boolean;
+    checkinFlag: FlagItem | null;
+    checkinNote: string;
+    checkinImage: string;
+    checkinSubmitting: boolean;
+    historyOpen: boolean;
+    historyFlag: FlagItem | null;
+    historyLoading: boolean;
+    historyItems: Array<{
       id: string;
       note: string;
       image_url?: string;
@@ -404,21 +664,48 @@ export default function FlagsPage() {
       review_status?: string;
       reviewer_id?: string;
       review_reason?: string;
-    }>
-  >([]);
-  const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(null);
+    }>;
+    reviewSubmittingId: string | null;
+    settlingId: number | null;
+    stickerOpen: boolean;
+    earnedSticker: StickerItem | null;
+    galleryOpen: boolean;
+    officialCreate: boolean;
+    officialListOpen: boolean;
+    selectedTplId: string;
+    tplConfig: any;
+    allStickers: StickerItem[];
+  };
+  uiActions: {
+    handleCreateClick: () => void;
+    openCheckin: (flag: FlagItem) => void;
+    submitCheckin: () => void;
+    openHistory: (flag: FlagItem) => void;
+    handleReview: (checkinId: string, action: "approve" | "reject") => void;
+    settleFlag: (flag: FlagItem) => void;
+    handleTemplateClick: (template: OfficialTemplate) => void;
+    setCreateOpen: (open: boolean) => void;
+    setWalletModalOpen: (open: boolean) => void;
+    setGalleryOpen: (open: boolean) => void;
+    setOfficialListOpen: (open: boolean) => void;
+    setCheckinOpen: (open: boolean) => void;
+    setHistoryOpen: (open: boolean) => void;
+    setStickerOpen: (open: boolean) => void;
+    setCheckinNote: (value: string) => void;
+    setCheckinImage: (value: string) => void;
+  };
+};
 
-  const [settlingId, setSettlingId] = useState<number | null>(null);
-
-  const [stickerOpen, setStickerOpen] = useState(false);
-  const [earnedSticker, setEarnedSticker] = useState<StickerItem | null>(null);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-
-  // Official challenges
-  const [officialCreate, setOfficialCreate] = useState(false);
-  const [officialListOpen, setOfficialListOpen] = useState(false);
-  const [selectedTplId, setSelectedTplId] = useState("");
-  const [tplConfig, setTplConfig] = useState<any>({});
+function FlagsPageView({
+  tFlags,
+  officialTemplates,
+  jsonLd,
+  account,
+  userId,
+  data,
+  uiState,
+  uiActions,
+}: FlagsPageViewProps) {
   const {
     flags,
     loading,
@@ -436,182 +723,52 @@ export default function FlagsPage() {
     filteredFlags,
     viewerId,
     witnessFlags,
-  } = useFlagsData(account, user?.id || null, tFlags);
+  } = data;
 
-  const handleCreateClick = () => {
-    if (!account && !user) {
-      setWalletModalOpen(true);
-      return;
-    }
-    setInitTitle("");
-    setInitDesc("");
-    setOfficialCreate(false);
-    setSelectedTplId("");
-    setTplConfig({});
-    setCreateOpen(true);
-  };
+  const {
+    createOpen,
+    walletModalOpen,
+    initTitle,
+    initDesc,
+    checkinOpen,
+    checkinFlag,
+    checkinNote,
+    checkinImage,
+    checkinSubmitting,
+    historyOpen,
+    historyFlag,
+    historyLoading,
+    historyItems,
+    reviewSubmittingId,
+    settlingId,
+    stickerOpen,
+    earnedSticker,
+    galleryOpen,
+    officialCreate,
+    officialListOpen,
+    selectedTplId,
+    tplConfig,
+    allStickers,
+  } = uiState;
 
-  const openCheckin = (flag: FlagItem) => {
-    const deadline = new Date(flag.deadline);
-    const now = new Date();
-    if (!Number.isNaN(deadline.getTime()) && now > deadline) {
-      toast.info(tFlags("toast.checkinExpiredTitle"), tFlags("toast.checkinExpiredDesc"));
-      return;
-    }
-    setCheckinFlag(flag);
-    setCheckinNote("");
-    setCheckinImage("");
-    setCheckinOpen(true);
-  };
-
-  const submitCheckin = async () => {
-    if (!checkinFlag) return;
-    try {
-      setCheckinSubmitting(true);
-      const me = account || user?.id || "";
-      const res = await fetch(`/api/flags/${checkinFlag.id}/checkin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: me,
-          note: checkinNote,
-          image_url: checkinImage,
-        }),
-      });
-      if (!res.ok) throw new Error("Checkin failed");
-      const ret = await res.json();
-
-      // 1. 先关闭打卡框并刷新数据
-      setCheckinOpen(false);
-      loadFlags();
-
-      // 2. 立即检查是否有表情包奖励
-      if (ret.sticker_earned) {
-        if (ret.sticker) {
-          setEarnedSticker(ret.sticker);
-          setTimeout(() => setStickerOpen(true), 100);
-        } else if (ret.sticker_id) {
-          // 从本地池中找到对应的表情包配置 (兼容旧逻辑)
-          const s = OFFICIAL_STICKERS.find((x) => x.id === ret.sticker_id);
-          if (s) {
-            setEarnedSticker(s);
-            // 延迟极短时间确保打卡框关闭动画不冲突，然后开启惊喜弹窗
-            setTimeout(() => setStickerOpen(true), 100);
-          }
-        }
-      }
-    } catch (e) {
-      toast.error(tFlags("toast.checkinFailedTitle"), tFlags("toast.checkinFailedDesc"));
-    } finally {
-      setCheckinSubmitting(false);
-    }
-  };
-
-  const openHistory = async (flag: FlagItem) => {
-    setHistoryFlag(flag);
-    setHistoryItems([]);
-    setHistoryLoading(true);
-    setHistoryOpen(true);
-    try {
-      const me = account || user?.id || "";
-      const res = await fetch(
-        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(me)}`,
-        {
-          cache: "no-store",
-        }
-      );
-      const data = await res.json().catch(() => ({}) as any);
-      const items = Array.isArray(data?.items) ? data.items : [];
-      setHistoryItems(items);
-    } catch {
-      // ignore
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const handleReview = async (checkinId: string, action: "approve" | "reject") => {
-    try {
-      setReviewSubmittingId(checkinId);
-      const me = account || user?.id || "";
-      const reasonKey =
-        action === "reject" ? "history.reviewReason.rejected" : "history.reviewReason.approved";
-      const reason = tFlags(reasonKey);
-      const res = await fetch(`/api/checkins/${checkinId}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reviewer_id: me,
-          action,
-          reason,
-        }),
-      });
-      if (!res.ok) throw new Error("Review failed");
-      // refresh history
-      if (historyFlag) openHistory(historyFlag);
-    } catch (e) {
-      toast.error(tFlags("toast.reviewFailedTitle"), tFlags("toast.reviewFailedDesc"));
-    } finally {
-      setReviewSubmittingId(null);
-    }
-  };
-
-  const settleFlag = async (flag: FlagItem) => {
-    if (!confirm(tFlags("toast.settleConfirmMessage"))) return;
-    try {
-      setSettlingId(flag.id);
-      const me = account || user?.id || "";
-      const res = await fetch(`/api/flags/${flag.id}/settle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: me }),
-      });
-      if (!res.ok) throw new Error("Settle failed");
-      const ret = await res.json();
-      loadFlags();
-
-      if (ret.sticker_earned) {
-        if (ret.sticker) {
-          setEarnedSticker(ret.sticker);
-          setStickerOpen(true);
-        } else {
-          const s = OFFICIAL_STICKERS.find((x) => x.id === ret.sticker_id);
-          if (s) {
-            setEarnedSticker(s);
-            setStickerOpen(true);
-          }
-        }
-      } else {
-        const statusText = String(ret?.status || "");
-        const approvedDays = ret?.metrics?.approvedDays || 0;
-        const totalDays = ret?.metrics?.totalDays || 0;
-        const desc = `${tFlags("toast.statusLabel")}: ${statusText}，${tFlags(
-          "toast.approvedDaysLabel"
-        )} ${approvedDays}/${totalDays}`;
-        toast.success(tFlags("toast.settleSuccessTitle"), desc);
-      }
-    } catch (e) {
-      toast.error(
-        tFlags("toast.settleFailedTitle"),
-        String((e as any)?.message || tFlags("toast.retryLater"))
-      );
-    } finally {
-      setSettlingId(null);
-    }
-  };
-
-  const allStickers = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
-
-  const handleTemplateClick = (template: OfficialTemplate) => {
-    setInitTitle(template.title);
-    setInitDesc(template.description);
-    setOfficialCreate(true);
-    setSelectedTplId(template.id);
-    setTplConfig(defaultConfigFor(template.id));
-    setCreateOpen(true);
-  };
-
-  const jsonLd = buildFlagsJsonLd();
+  const {
+    handleCreateClick,
+    openCheckin,
+    submitCheckin,
+    openHistory,
+    handleReview,
+    settleFlag,
+    handleTemplateClick,
+    setCreateOpen,
+    setWalletModalOpen,
+    setGalleryOpen,
+    setOfficialListOpen,
+    setCheckinOpen,
+    setHistoryOpen,
+    setStickerOpen,
+    setCheckinNote,
+    setCheckinImage,
+  } = uiActions;
 
   return (
     <>
@@ -624,232 +781,36 @@ export default function FlagsPage() {
         <div className="fixed top-[20%] right-[-10%] w-[600px] h-[600px] bg-pink-200/40 rounded-full blur-[120px] mix-blend-multiply filter pointer-events-none animate-blob animation-delay-2000" />
         <div className="fixed bottom-[-20%] left-[20%] w-[600px] h-[600px] bg-orange-200/40 rounded-full blur-[120px] mix-blend-multiply filter pointer-events-none animate-blob animation-delay-4000" />
 
-        {/* Grid Texture Overlay */}
         <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 pointer-events-none mix-blend-soft-light" />
 
-        {/* LEFT SIDEBAR: Dashboard Control (Fixed Width) - REMOVED, merged into main view */}
-
-        {/* MAIN CONTENT AREA */}
         <div className="flex-1 flex flex-col min-w-0 z-10 h-full max-w-[1600px] mx-auto w-full">
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-6 px-8 pt-4">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2 relative inline-block">
-                {tFlags("header.title")}
-                <div className="absolute -top-6 -right-8 transform rotate-12">
-                  <div className="px-3 py-1 bg-yellow-300 text-yellow-800 text-xs font-black uppercase tracking-widest rounded-sm shadow-sm transform -rotate-3">
-                    {tFlags("header.badge")}
-                  </div>
-                </div>
-              </h1>
-              <div className="flex items-center gap-4 text-sm font-bold text-gray-500">
-                <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span>
-                    {activeFlags.length} {tFlags("header.activeLabel")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span>
-                    {completedFlags.length} {tFlags("header.achievedLabel")}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 font-medium max-w-xl">
-                想把现实目标和预测市场结合？你可以在{" "}
-                <Link
-                  href="/trending"
-                  className="text-purple-600 hover:text-purple-700 hover:underline"
-                >
-                  热门预测
-                </Link>{" "}
-                中选择事件创建对应 Flag，在{" "}
-                <Link
-                  href="/proposals"
-                  className="text-purple-600 hover:text-purple-700 hover:underline"
-                >
-                  提案广场
-                </Link>{" "}
-                发起长期挑战，前往{" "}
-                <Link
-                  href="/leaderboard"
-                  className="text-purple-600 hover:text-purple-700 hover:underline"
-                >
-                  排行榜
-                </Link>{" "}
-                查看活跃挑战者，并在{" "}
-                <Link
-                  href="/forum"
-                  className="text-purple-600 hover:text-purple-700 hover:underline"
-                >
-                  讨论区
-                </Link>{" "}
-                或{" "}
-                <Link
-                  href="/search"
-                  className="text-purple-600 hover:text-purple-700 hover:underline"
-                >
-                  全站搜索
-                </Link>{" "}
-                中发现更多灵感。
-              </p>
-              {invitesCount > 0 && (
-                <div className="flex items-center gap-3 bg-white/80 px-4 py-2 rounded-2xl border border-amber-200 shadow-sm">
-                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 text-xs font-bold text-amber-800">
-                    {tFlags("invites.textPrefix")}
-                    {invitesCount}
-                    {tFlags("invites.textSuffix")}
-                    {inviteNotice?.title ? ` · ${inviteNotice.title}` : ""}
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (!viewerId) return;
-                      const pending = flags.filter(
-                        (f) =>
-                          f.status === "pending_review" &&
-                          f.verification_type === "witness" &&
-                          String(f.witness_id || "").toLowerCase() === viewerId
-                      );
-                      if (pending.length > 0) {
-                        openHistory(pending[0]);
-                      }
-                    }}
-                    className="text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-xl hover:bg-amber-200 transition-colors"
-                  >
-                    {tFlags("invites.button")}
-                  </button>
-                </div>
-              )}
-            </div>
+          <FlagsPageHeader
+            tFlags={tFlags}
+            activeCount={activeFlags.length}
+            completedCount={completedFlags.length}
+            invitesCount={invitesCount}
+            inviteNotice={inviteNotice}
+            viewerId={viewerId}
+            flags={flags}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            witnessFlags={witnessFlags}
+            collectedCount={collectedStickers.length}
+            onOpenGallery={() => setGalleryOpen(true)}
+            onOpenHistory={openHistory}
+          />
 
-            <div className="flex items-center gap-3">
-              {/* 重新设计的画廊入口 - 符合全站玻璃拟态风格 */}
-              <button
-                onClick={() => setGalleryOpen(true)}
-                className="group flex items-center gap-3 px-6 py-2.5 bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl shadow-soft hover:shadow-brand/20 hover:bg-white/60 transition-all duration-300 active:scale-95"
-              >
-                <div className="relative">
-                  <Smile className="w-5 h-5 text-brand group-hover:rotate-12 transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <span className="text-sm font-black text-slate-800 tracking-tight">
-                  {tFlags("gallery.button")}
-                </span>
-                {collectedStickers.length > 0 && (
-                  <div className="flex items-center justify-center min-w-[20px] h-[20px] bg-brand/10 rounded-lg border border-brand/20">
-                    <span className="text-[10px] font-black text-brand">
-                      {collectedStickers.length}
-                    </span>
-                  </div>
-                )}
-              </button>
-
-              {/* Filter Tabs - Sticker Style */}
-              <div className="flex items-center gap-2">
-                <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
-                  {[
-                    { id: "all", label: tFlags("filters.all") },
-                    { id: "active", label: tFlags("filters.active") },
-                    { id: "success", label: tFlags("filters.success") },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setStatusFilter(tab.id as any)}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-                        statusFilter === tab.id
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-500 hover:text-gray-900"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {witnessFlags.length > 0 && (
-                  <button
-                    onClick={() => {
-                      if (witnessFlags.length > 0) {
-                        openHistory(witnessFlags[0]);
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-purple-50 text-[11px] font-black text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
-                  >
-                    {tFlags("filters.witnessRequests")} {witnessFlags.length}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Masonry Grid Container */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide px-8 pb-20">
-            {loading ? (
-              <div className="h-full flex flex-col items-center justify-center gap-4">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                <p className="text-sm font-bold text-gray-400">{tFlags("state.loading")}</p>
-              </div>
-            ) : (
-              <div className="columns-1 md:columns-2 xl:columns-3 2xl:columns-4 gap-8 space-y-8 pb-20 mx-auto">
-                {/* Create New Card - Always First */}
-                <motion.div
-                  layout
-                  onClick={handleCreateClick}
-                  className="break-inside-avoid group cursor-pointer"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="relative h-[300px] rounded-[2rem] border-[4px] border-dashed border-gray-300 bg-white/30 hover:bg-white/60 hover:border-purple-300 transition-all duration-300 flex flex-col items-center justify-center gap-4 text-center p-6">
-                    <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
-                      <Plus className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-gray-600 group-hover:text-purple-600 transition-colors">
-                        {tFlags("createCard.title")}
-                      </h3>
-                      <p className="text-xs font-bold text-gray-400 mt-1">
-                        {tFlags("createCard.subtitle")}
-                      </p>
-                    </div>
-                    {/* Decorative Tape */}
-                    <div
-                      className="absolute -top-4 left-1/2 -translate-x-1/2 w-32 h-8 bg-gray-200/50 rotate-1 mask-tape"
-                      style={{ clipPath: "polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%)" }}
-                    />
-                  </div>
-                </motion.div>
-
-                <AnimatePresence mode="popLayout">
-                  {filteredFlags.map((flag, index) => (
-                    <motion.div
-                      key={flag.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.4, delay: index * 0.05 }}
-                      className="break-inside-avoid"
-                    >
-                      <FlagCard
-                        flag={flag}
-                        isMine={
-                          Boolean(account || user?.id) &&
-                          String(flag.user_id || "").toLowerCase() ===
-                            String(account || user?.id || "").toLowerCase()
-                        }
-                        onCheckin={() => openCheckin(flag)}
-                        onViewHistory={() => openHistory(flag)}
-                        onSettle={() => settleFlag(flag)}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+          <FlagsMainContent
+            tFlags={tFlags}
+            loading={loading}
+            filteredFlags={filteredFlags}
+            account={account}
+            userId={userId}
+            onCreate={handleCreateClick}
+            onCheckin={openCheckin}
+            onOpenHistory={openHistory}
+            onSettle={settleFlag}
+          />
         </div>
 
         <FlagsRightSidebar
@@ -922,5 +883,285 @@ export default function FlagsPage() {
         />
       </div>
     </>
+  );
+}
+
+export default function FlagsPage() {
+  const { account } = useWallet();
+  const { user } = useAuth();
+  const tFlags = useTranslations("flags");
+  const officialTemplates = buildOfficialTemplates(tFlags);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [initTitle, setInitTitle] = useState("");
+  const [initDesc, setInitDesc] = useState("");
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [checkinFlag, setCheckinFlag] = useState<FlagItem | null>(null);
+  const [checkinNote, setCheckinNote] = useState("");
+  const [checkinImage, setCheckinImage] = useState("");
+  const [checkinSubmitting, setCheckinSubmitting] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyFlag, setHistoryFlag] = useState<FlagItem | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyItems, setHistoryItems] = useState<
+    Array<{
+      id: string;
+      note: string;
+      image_url?: string;
+      created_at: string;
+      review_status?: string;
+      reviewer_id?: string;
+      review_reason?: string;
+    }>
+  >([]);
+  const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(null);
+  const [settlingId, setSettlingId] = useState<number | null>(null);
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [earnedSticker, setEarnedSticker] = useState<StickerItem | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [officialCreate, setOfficialCreate] = useState(false);
+  const [officialListOpen, setOfficialListOpen] = useState(false);
+  const [selectedTplId, setSelectedTplId] = useState("");
+  const [tplConfig, setTplConfig] = useState<any>({});
+
+  const data = useFlagsData(account, user?.id || null, tFlags);
+  const {
+    flags,
+    loading,
+    filterMine,
+    setFilterMine,
+    statusFilter,
+    setStatusFilter,
+    collectedStickers,
+    dbStickers,
+    inviteNotice,
+    invitesCount,
+    loadFlags,
+    activeFlags,
+    completedFlags,
+    filteredFlags,
+    viewerId,
+    witnessFlags,
+  } = data;
+
+  const handleCreateClick = () => {
+    if (!account && !user) {
+      setWalletModalOpen(true);
+      return;
+    }
+    setInitTitle("");
+    setInitDesc("");
+    setOfficialCreate(false);
+    setSelectedTplId("");
+    setTplConfig({});
+    setCreateOpen(true);
+  };
+
+  const openCheckin = (flag: FlagItem) => {
+    const deadline = new Date(flag.deadline);
+    const now = new Date();
+    if (!Number.isNaN(deadline.getTime()) && now > deadline) {
+      toast.info(tFlags("toast.checkinExpiredTitle"), tFlags("toast.checkinExpiredDesc"));
+      return;
+    }
+    setCheckinFlag(flag);
+    setCheckinNote("");
+    setCheckinImage("");
+    setCheckinOpen(true);
+  };
+
+  const submitCheckin = async () => {
+    if (!checkinFlag) return;
+    try {
+      setCheckinSubmitting(true);
+      const me = account || user?.id || "";
+      const res = await fetch(`/api/flags/${checkinFlag.id}/checkin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: me,
+          note: checkinNote,
+          image_url: checkinImage,
+        }),
+      });
+      if (!res.ok) throw new Error("Checkin failed");
+      const ret = await res.json();
+      setCheckinOpen(false);
+      loadFlags();
+      if (ret.sticker_earned) {
+        if (ret.sticker) {
+          setEarnedSticker(ret.sticker);
+          setTimeout(() => setStickerOpen(true), 100);
+        } else if (ret.sticker_id) {
+          const s = OFFICIAL_STICKERS.find((x) => x.id === ret.sticker_id);
+          if (s) {
+            setEarnedSticker(s);
+            setTimeout(() => setStickerOpen(true), 100);
+          }
+        }
+      }
+    } catch (e) {
+      toast.error(tFlags("toast.checkinFailedTitle"), tFlags("toast.checkinFailedDesc"));
+    } finally {
+      setCheckinSubmitting(false);
+    }
+  };
+
+  const openHistory = async (flag: FlagItem) => {
+    setHistoryFlag(flag);
+    setHistoryItems([]);
+    setHistoryLoading(true);
+    setHistoryOpen(true);
+    try {
+      const me = account || user?.id || "";
+      const res = await fetch(
+        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(me)}`,
+        {
+          cache: "no-store",
+        }
+      );
+      const data = await res.json().catch(() => ({}) as any);
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setHistoryItems(items);
+    } catch {
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleReview = async (checkinId: string, action: "approve" | "reject") => {
+    try {
+      setReviewSubmittingId(checkinId);
+      const me = account || user?.id || "";
+      const reasonKey =
+        action === "reject" ? "history.reviewReason.rejected" : "history.reviewReason.approved";
+      const reason = tFlags(reasonKey);
+      const res = await fetch(`/api/checkins/${checkinId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewer_id: me,
+          action,
+          reason,
+        }),
+      });
+      if (!res.ok) throw new Error("Review failed");
+      if (historyFlag) openHistory(historyFlag);
+    } catch (e) {
+      toast.error(tFlags("toast.reviewFailedTitle"), tFlags("toast.reviewFailedDesc"));
+    } finally {
+      setReviewSubmittingId(null);
+    }
+  };
+
+  const settleFlag = async (flag: FlagItem) => {
+    if (!confirm(tFlags("toast.settleConfirmMessage"))) return;
+    try {
+      setSettlingId(flag.id);
+      const me = account || user?.id || "";
+      const res = await fetch(`/api/flags/${flag.id}/settle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: me }),
+      });
+      if (!res.ok) throw new Error("Settle failed");
+      const ret = await res.json();
+      loadFlags();
+
+      if (ret.sticker_earned) {
+        if (ret.sticker) {
+          setEarnedSticker(ret.sticker);
+          setStickerOpen(true);
+        } else {
+          const s = OFFICIAL_STICKERS.find((x) => x.id === ret.sticker_id);
+          if (s) {
+            setEarnedSticker(s);
+            setStickerOpen(true);
+          }
+        }
+      } else {
+        const statusText = String(ret?.status || "");
+        const approvedDays = ret?.metrics?.approvedDays || 0;
+        const totalDays = ret?.metrics?.totalDays || 0;
+        const desc = `${tFlags("toast.statusLabel")}: ${statusText}，${tFlags(
+          "toast.approvedDaysLabel"
+        )} ${approvedDays}/${totalDays}`;
+        toast.success(tFlags("toast.settleSuccessTitle"), desc);
+      }
+    } catch (e) {
+      toast.error(
+        tFlags("toast.settleFailedTitle"),
+        String((e as any)?.message || tFlags("toast.retryLater"))
+      );
+    } finally {
+      setSettlingId(null);
+    }
+  };
+
+  const allStickers = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
+
+  const handleTemplateClick = (template: OfficialTemplate) => {
+    setInitTitle(template.title);
+    setInitDesc(template.description);
+    setOfficialCreate(true);
+    setSelectedTplId(template.id);
+    setTplConfig(defaultConfigFor(template.id));
+    setCreateOpen(true);
+  };
+
+  const jsonLd = buildFlagsJsonLd();
+
+  return (
+    <FlagsPageView
+      tFlags={tFlags}
+      officialTemplates={officialTemplates}
+      jsonLd={jsonLd}
+      account={account}
+      userId={user?.id || null}
+      data={data}
+      uiState={{
+        createOpen,
+        walletModalOpen,
+        initTitle,
+        initDesc,
+        checkinOpen,
+        checkinFlag,
+        checkinNote,
+        checkinImage,
+        checkinSubmitting,
+        historyOpen,
+        historyFlag,
+        historyLoading,
+        historyItems,
+        reviewSubmittingId,
+        settlingId,
+        stickerOpen,
+        earnedSticker,
+        galleryOpen,
+        officialCreate,
+        officialListOpen,
+        selectedTplId,
+        tplConfig,
+        allStickers,
+      }}
+      uiActions={{
+        handleCreateClick,
+        openCheckin,
+        submitCheckin,
+        openHistory,
+        handleReview,
+        settleFlag,
+        handleTemplateClick,
+        setCreateOpen,
+        setWalletModalOpen,
+        setGalleryOpen,
+        setOfficialListOpen,
+        setCheckinOpen,
+        setHistoryOpen,
+        setStickerOpen,
+        setCheckinNote,
+        setCheckinImage,
+      }}
+    />
   );
 }
