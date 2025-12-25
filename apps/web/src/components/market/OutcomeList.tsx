@@ -49,7 +49,6 @@ export function OutcomeList({
   const outcomes = prediction.outcomes || [];
   const stats = prediction.stats;
 
-  // Prepare display items
   const items =
     outcomes.length > 0
       ? outcomes
@@ -58,29 +57,67 @@ export function OutcomeList({
           { label: tCommon("no"), color: "#ef4444" },
         ];
 
+  const displayItems = items.map((outcome: any, idx: number) => {
+    let prob = 0;
+
+    if (outcome.probability !== undefined) {
+      prob = Number(outcome.probability);
+    } else if (outcomes.length === 0 || outcomes.length === 2) {
+      if (idx === 0) prob = stats?.yesProbability || 0;
+      else prob = stats?.noProbability || 0;
+    }
+
+    if (isNaN(prob)) prob = 0;
+
+    const buyPrice = prob;
+    const sellPrice = 100 - prob;
+
+    return {
+      outcome,
+      idx,
+      prob,
+      buyPrice,
+      sellPrice,
+    };
+  });
+
+  const isMultiOutcome = displayItems.length > 2;
+
   return (
     <div className="bg-white border-y border-gray-100 overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
         <h3 className="font-bold text-gray-900">Outcomes</h3>
         <span className="text-xs text-gray-500 font-medium tracking-wider uppercase">% Chance</span>
       </div>
+      {isMultiOutcome && (
+        <div className="px-6 pt-4 pb-3 border-b border-gray-100 space-y-2 bg-white">
+          <div className="flex justify-between items-center text-[11px] text-gray-500">
+            <span className="font-semibold text-gray-700">多结局概率分布</span>
+            <span className="text-gray-400">根据当前市场价格实时更新</span>
+          </div>
+          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden flex">
+            {displayItems.map(({ outcome, idx, prob }) => {
+              const width = prob > 0 ? prob : 0.0001;
+              const isSelected = selectedOutcome === idx;
+              const color = outcome.color || (idx === 0 ? "#10b981" : "#ef4444");
+
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    width: `${width}%`,
+                    backgroundColor: color,
+                    opacity: isSelected ? 0.95 : 0.7,
+                  }}
+                  className="h-full transition-opacity"
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="divide-y divide-gray-100">
-        {items.map((outcome: any, idx: number) => {
-          // Attempt to find probability.
-          let prob = 0;
-          if (outcome.probability !== undefined) {
-            prob = Number(outcome.probability);
-          } else if (outcomes.length === 0 || outcomes.length === 2) {
-            // Binary assumption
-            if (idx === 0) prob = stats?.yesProbability || 0;
-            else prob = stats?.noProbability || 0;
-          }
-
-          if (isNaN(prob)) prob = 0;
-
-          const buyPrice = prob;
-          const sellPrice = 100 - prob;
-
+        {displayItems.map(({ outcome, idx, prob, buyPrice, sellPrice }) => {
           return (
             <div
               key={idx}

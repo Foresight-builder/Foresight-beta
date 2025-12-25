@@ -11,6 +11,7 @@ const BIGINT_THRESHOLD = BigInt("1000000000000");
 interface TradingPanelData {
   market: any;
   prediction: any;
+  account?: string | null;
   bestBid: string;
   bestAsk: string;
   balance: string;
@@ -55,6 +56,7 @@ export function TradingPanel(props: TradingPanelProps) {
   const {
     market,
     prediction,
+    account,
     bestBid,
     bestAsk,
     balance,
@@ -117,11 +119,52 @@ export function TradingPanel(props: TradingPanelProps) {
     setPriceInput(p);
   };
 
+  const isWalletConnected = !!account;
+  const isTradeTab = activeTab === "trade";
+  const isManageTab = activeTab === "orders" || activeTab === "history";
+
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden flex flex-col h-full min-h-[600px] shadow-xl shadow-purple-500/5 relative">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"></div>
+      <div className="px-4 pt-4">
+        <div className="flex items-center justify-between text-[11px] text-slate-500">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                isWalletConnected ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              1
+            </div>
+            <span className={isWalletConnected ? "font-semibold text-slate-800" : ""}>
+              连接钱包
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                isTradeTab ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              2
+            </div>
+            <span className={isTradeTab ? "font-semibold text-slate-800" : ""}>选择方向并下单</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                isManageTab ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              3
+            </div>
+            <span className={isManageTab ? "font-semibold text-slate-800" : ""}>
+              管理订单与成交
+            </span>
+          </div>
+        </div>
+      </div>
 
-      <div className="flex border-b border-gray-100 bg-gray-50/50 p-1 mx-2 mt-4 rounded-xl gap-1">
+      <div className="flex border-b border-gray-100 bg-gray-50/50 p-1 mx-2 mt-3 rounded-xl gap-1">
         <button
           onClick={() => setActiveTab("trade")}
           className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${

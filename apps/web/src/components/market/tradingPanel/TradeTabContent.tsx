@@ -105,6 +105,10 @@ export function TradeTabContent({
         total={total}
         potentialReturn={potentialReturn}
         profitPercent={profitPercent}
+        tradeSide={tradeSide}
+        price={priceNum}
+        amount={amountNum}
+        outcomeLabel={currentOutcomeLabel}
         tTrading={tTrading}
       />
       <TradeSubmitSection
@@ -362,24 +366,80 @@ type TradeSummaryProps = {
   total: number;
   potentialReturn: number;
   profitPercent: number;
+  tradeSide: "buy" | "sell";
+  price: number;
+  amount: number;
+  outcomeLabel: string;
   tTrading: (key: string) => string;
 };
 
-function TradeSummary({ total, potentialReturn, profitPercent, tTrading }: TradeSummaryProps) {
+function TradeSummary({
+  total,
+  potentialReturn,
+  profitPercent,
+  tradeSide,
+  price,
+  amount,
+  outcomeLabel,
+  tTrading,
+}: TradeSummaryProps) {
+  const hasInput = price > 0 && amount > 0;
+  const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
+  const sideColor =
+    tradeSide === "buy"
+      ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+      : "text-rose-600 bg-rose-50 border-rose-100";
+
   return (
-    <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-sm border border-gray-100">
-      <div className="flex justify-between items-center">
-        <span className="text-gray-500">{tTrading("totalInvestment")}</span>
-        <span className="text-gray-900 font-bold text-base">${total.toFixed(2)}</span>
-      </div>
-      <div className="flex justify-between items-center">
-        <span className="text-gray-500">{tTrading("potentialReturn")}</span>
-        <span className="text-emerald-600 font-bold text-base flex items-center gap-1">
-          ${potentialReturn.toFixed(2)}
-          <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium">
-            +{profitPercent.toFixed(0)}%
+    <div className="bg-gray-50 rounded-xl p-4 space-y-4 text-sm border border-gray-100">
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">{tTrading("totalInvestment")}</span>
+          <span className="text-gray-900 font-bold text-base">${total.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">{tTrading("potentialReturn")}</span>
+          <span className="text-emerald-600 font-bold text-base flex items-center gap-1">
+            ${potentialReturn.toFixed(2)}
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium">
+              +{profitPercent.toFixed(0)}%
+            </span>
           </span>
-        </span>
+        </div>
+      </div>
+      <div className="pt-3 border-t border-dashed border-gray-200 space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-gray-600">模拟下单预览</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${sideColor}`}
+          >
+            {sideLabel} {outcomeLabel}
+          </span>
+        </div>
+        {hasInput ? (
+          <div className="space-y-1.5 text-xs text-gray-500">
+            <div className="flex justify-between">
+              <span>价格 × 数量</span>
+              <span className="font-medium text-gray-900">
+                ${price.toFixed(2)} × {amount.toFixed(2)} = ${total.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>本次{sideLabel === "买入" ? "预计支付" : "预计收到"}</span>
+              <span className="font-medium text-gray-900">${total.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-gray-400">若该结局发生</span>
+              <span className="font-medium text-emerald-600">
+                头寸价值约 ${potentialReturn.toFixed(2)}，收益率 {profitPercent.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400">
+            输入价格和数量后，将在这里看到本次下单的模拟预览。
+          </div>
+        )}
       </div>
     </div>
   );
