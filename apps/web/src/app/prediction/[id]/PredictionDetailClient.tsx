@@ -8,8 +8,6 @@ import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
 import { Loader2 } from "lucide-react";
-import { usePredictions } from "@/hooks/useQueries";
-import { getFallbackEventImage } from "@/features/trending/trendingModel";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -131,12 +129,6 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     cancelOrder,
   } = usePredictionDetail();
 
-  const relatedCategory = prediction?.category;
-  const { data: relatedPredictions } = usePredictions(
-    { category: relatedCategory, status: "active", limit: 6 },
-    undefined
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -154,21 +146,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   }
 
   const outcomes = prediction.outcomes || [];
-  const relatedList =
-    (relatedPredictions || [])
-      .filter((item: any) => item.id !== prediction.id)
-      .sort((a: any, b: any) => {
-        const aVol = Number(a?.stats?.totalAmount || 0);
-        const bVol = Number(b?.stats?.totalAmount || 0);
-        if (aVol !== bVol) return bVol - aVol;
-        const aFollowers = Number(a?.followers_count || 0);
-        const bFollowers = Number(b?.followers_count || 0);
-        if (aFollowers !== bFollowers) return bFollowers - aFollowers;
-        const aCreated = new Date(a?.created_at || 0).getTime();
-        const bCreated = new Date(b?.created_at || 0).getTime();
-        return bCreated - aCreated;
-      }) || [];
-  const hasRelated = relatedList.length > 0;
+  const hasRelated = false;
 
   return (
     <div className="min-h-screen bg-gray-50/50 text-gray-900 font-sans pb-20 relative overflow-hidden">
@@ -324,48 +302,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           </div>
         </div>
 
-        {hasRelated && (
-          <div className="mt-12">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">你可能还感兴趣的预测</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {relatedList.slice(0, 6).map((item: any) => {
-                const image =
-                  item.image_url || getFallbackEventImage(String(item.title || "预测事件"));
-                const totalAmount = Number(item?.stats?.totalAmount || 0);
-                const participantCount = Number(item?.stats?.participantCount || 0);
-                return (
-                  <Link
-                    key={item.id}
-                    href={`/prediction/${item.id}`}
-                    className="group rounded-2xl bg-white/80 border border-purple-100 shadow-sm overflow-hidden hover:border-purple-300 hover:shadow-md transition-all flex flex-col"
-                  >
-                    <div className="relative h-32 overflow-hidden bg-gray-100">
-                      <img
-                        src={image}
-                        alt={String(item.title || "预测事件")}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                      />
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <div className="text-xs text-purple-600 font-medium mb-1 line-clamp-1">
-                        {item.category || "其他"}
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-700">
-                        {item.title}
-                      </div>
-                      <div className="mt-auto flex items-center justify-between text-[11px] text-gray-500">
-                        <span>交易额 {totalAmount.toFixed(2)} USDC</span>
-                        <span>参与人数 {participantCount}</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {hasRelated && null}
       </div>
     </div>
   );
