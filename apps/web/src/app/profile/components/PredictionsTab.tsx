@@ -25,12 +25,21 @@ export function PredictionsTab() {
     const fetchPortfolio = async () => {
       try {
         const res = await fetch(`/api/user-portfolio?address=${account}`);
-        if (!res.ok) throw new Error("Failed to fetch portfolio");
+        if (!res.ok) {
+          try {
+            const errorBody = await res.json();
+            console.warn("Failed to fetch portfolio", res.status, errorBody);
+          } catch {
+            console.warn("Failed to fetch portfolio", res.status);
+          }
+          setError(tProfile("predictions.errors.loadFailed"));
+          return;
+        }
         const data = await res.json();
         setPredictions(data.positions || []);
       } catch (err) {
+        console.warn("Failed to fetch portfolio", err);
         setError(tProfile("predictions.errors.loadFailed"));
-        console.error(err);
       } finally {
         setLoading(false);
       }

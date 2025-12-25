@@ -6,9 +6,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, LogOut, Settings, Wallet } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
+import { toast } from "@/lib/toast";
 import type { PortfolioStats, TabConfig, TabType } from "../types";
 import { SidebarStatCard } from "./ProfileUI";
-import { OverviewTab } from "./OverviewTab";
 import { PredictionsTab } from "./PredictionsTab";
 import { HistoryTab } from "./HistoryTab";
 import { FollowingTab } from "./FollowingTab";
@@ -69,12 +69,42 @@ export function ProfilePageView({
                 <h2 className="text-2xl font-black text-gray-900 mb-1 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">
                   {username}
                 </h2>
-                <div className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono text-purple-600 mb-6 shadow-sm">
-                  <Wallet className="w-3.5 h-3.5" />
-                  {account
-                    ? `${account.slice(0, 6)}...${account.slice(-4)}`
-                    : tProfile("username.walletDisconnected")}
-                </div>
+                <button
+                  type="button"
+                  disabled={!account}
+                  onClick={async () => {
+                    if (!account) return;
+                    try {
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(account);
+                      } else {
+                        const textarea = document.createElement("textarea");
+                        textarea.value = account;
+                        textarea.style.position = "fixed";
+                        textarea.style.opacity = "0";
+                        document.body.appendChild(textarea);
+                        textarea.focus();
+                        textarea.select();
+                        try {
+                          document.execCommand("copy");
+                        } finally {
+                          document.body.removeChild(textarea);
+                        }
+                      }
+                      toast.success(tProfile("wallet.addressCopied"));
+                    } catch {
+                      toast.error(tProfile("wallet.copyAddress"));
+                    }
+                  }}
+                  className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono mb-6 shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:border-purple-200 hover:shadow-md"
+                >
+                  <Wallet className="w-3.5 h-3.5 text-purple-600" />
+                  <span className={account ? "text-purple-600" : "text-gray-400"}>
+                    {account
+                      ? `${account.slice(0, 6)}...${account.slice(-4)}`
+                      : tProfile("username.walletDisconnected")}
+                  </span>
+                </button>
 
                 <div className="grid grid-cols-3 gap-3 w-full mb-2">
                   <SidebarStatCard
@@ -154,9 +184,6 @@ export function ProfilePageView({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {activeTab === "overview" && (
-                  <OverviewTab portfolioStats={portfolioStats} positionsCount={positionsCount} />
-                )}
                 {activeTab === "predictions" && <PredictionsTab />}
                 {activeTab === "history" && <HistoryTab initialHistory={history} />}
                 {activeTab === "following" && <FollowingTab />}
