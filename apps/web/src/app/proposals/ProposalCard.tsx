@@ -10,7 +10,7 @@ interface ProposalCardProps {
   onClick: (id: number) => void;
 }
 
-export default function ProposalCard({ proposal, onClick }: ProposalCardProps) {
+function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const tProposals = useTranslations("proposals");
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
@@ -101,6 +101,9 @@ export default function ProposalCard({ proposal, onClick }: ProposalCardProps) {
               {authorLabel.slice(0, 2)}
             </div>
             <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-bold text-slate-400 tracking-wider">
+                提案发起人
+              </span>
               <span className="text-[11px] font-semibold text-slate-800 truncate">
                 {authorLabel}
               </span>
@@ -134,6 +137,8 @@ export default function ProposalCard({ proposal, onClick }: ProposalCardProps) {
     </div>
   );
 }
+
+export default React.memo(ProposalCard);
 
 function FlameIcon({ className }: { className?: string }) {
   return (

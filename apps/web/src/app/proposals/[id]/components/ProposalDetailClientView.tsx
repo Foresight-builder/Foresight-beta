@@ -79,28 +79,32 @@ export function ProposalDetailClientView({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
+          className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-8 items-start"
         >
-          <ProposalMainArticle
-            thread={thread}
-            stats={stats}
-            userVoteTypes={userVoteTypes}
-            displayName={displayName}
-            vote={vote}
-          />
-          <ProposalDiscussionSection
-            thread={thread}
-            stats={stats}
-            userVoteTypes={userVoteTypes}
-            displayName={displayName}
-            vote={vote}
-            postComment={postComment}
-            account={account}
-            connectWallet={connectWallet}
-            replyText={replyText}
-            onReplyTextChange={onReplyTextChange}
-            onSubmitReply={onSubmitReply}
-          />
+          <div className="space-y-6">
+            <ProposalDiscussionSection
+              thread={thread}
+              stats={stats}
+              userVoteTypes={userVoteTypes}
+              displayName={displayName}
+              vote={vote}
+              postComment={postComment}
+              account={account}
+              connectWallet={connectWallet}
+              replyText={replyText}
+              onReplyTextChange={onReplyTextChange}
+              onSubmitReply={onSubmitReply}
+            />
+          </div>
+          <aside className="space-y-6">
+            <ProposalMainArticle
+              thread={thread}
+              stats={stats}
+              userVoteTypes={userVoteTypes}
+              displayName={displayName}
+              vote={vote}
+            />
+          </aside>
         </motion.div>
       ) : null}
     </ProposalShell>

@@ -5,8 +5,8 @@ import Link from "next/link";
 
 export function ProposalIntroCard() {
   return (
-    <div className="mb-6 bg-white/70 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-sm">
-      <p className="text-sm text-slate-700 leading-relaxed mb-2">
+    <div className="mb-8 pl-4 border-l-2 border-purple-200/70 space-y-2">
+      <p className="text-sm text-slate-700 leading-relaxed">
         提案详情页用于集中展示某个预测市场或治理议题的完整说明、上下文和社区讨论，方便参与者在链上投票或发起后续预测市场前充分了解背景。
       </p>
       <p className="text-xs text-slate-500 leading-relaxed">

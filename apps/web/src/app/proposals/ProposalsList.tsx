@@ -21,6 +21,12 @@ export default function ProposalsList({
   isLoading,
   router,
 }: ProposalsListProps) {
+  const handleCardClick = React.useCallback(
+    (id: number) => {
+      router.push(`/proposals/${id}`);
+    },
+    [router]
+  );
   if (isLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
@@ -65,7 +71,7 @@ export default function ProposalsList({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
-            <ProposalCard proposal={proposal} onClick={(id) => router.push(`/proposals/${id}`)} />
+            <ProposalCard proposal={proposal} onClick={handleCardClick} />
           </motion.div>
         ))}
       </AnimatePresence>

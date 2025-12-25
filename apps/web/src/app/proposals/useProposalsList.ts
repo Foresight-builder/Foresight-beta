@@ -50,15 +50,18 @@ export function useProposalsList(account: string | null | undefined, connectWall
     enabled: !!account,
   });
 
-  const userVotesMap: Record<number, "up" | "down"> = {};
-  (userVotesData || []).forEach((v: any) => {
-    if (v?.content_type === "thread" && v?.content_id != null) {
-      const idNum = normalizeId(v.content_id);
-      if (idNum != null) {
-        userVotesMap[idNum] = String(v.vote_type) === "down" ? "down" : "up";
+  const userVotesMap: Record<number, "up" | "down"> = React.useMemo(() => {
+    const map: Record<number, "up" | "down"> = {};
+    (userVotesData || []).forEach((v: any) => {
+      if (v?.content_type === "thread" && v?.content_id != null) {
+        const idNum = normalizeId(v.content_id);
+        if (idNum != null) {
+          map[idNum] = String(v.vote_type) === "down" ? "down" : "up";
+        }
       }
-    }
-  });
+    });
+    return map;
+  }, [userVotesData]);
 
   const voteMutation = useMutation({
     mutationFn: async ({ id, type }: { id: number; type: "up" | "down" }) => {
@@ -97,12 +100,24 @@ export function useProposalsList(account: string | null | undefined, connectWall
     },
   });
 
-  const proposalsWithUserVote = buildProposalsWithUserVotes(proposals, userVotesMap);
-  const filteredProposals = filterProposals(proposalsWithUserVote, {
-    category,
-    search,
-  });
-  const sortedProposals = sortProposals(filteredProposals, filter);
+  const proposalsWithUserVote = React.useMemo(
+    () => buildProposalsWithUserVotes(proposals, userVotesMap),
+    [proposals, userVotesMap]
+  );
+
+  const filteredProposals = React.useMemo(
+    () =>
+      filterProposals(proposalsWithUserVote, {
+        category,
+        search,
+      }),
+    [proposalsWithUserVote, category, search]
+  );
+
+  const sortedProposals = React.useMemo(
+    () => sortProposals(filteredProposals, filter),
+    [filteredProposals, filter]
+  );
   const categories: CategoryOption[] = React.useMemo(
     () => buildProposalCategories(categoriesData),
     [categoriesData]

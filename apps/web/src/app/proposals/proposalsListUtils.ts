@@ -9,6 +9,7 @@ import {
   Hash,
   type LucideIcon,
 } from "lucide-react";
+import { TRENDING_CATEGORIES } from "@/features/trending/trendingModel";
 
 export type ProposalFilter = "hot" | "new" | "top";
 
@@ -100,21 +101,44 @@ export function buildProposalCategories(categoriesData: any): CategoryOption[] {
     return base;
   }
   const seen = new Set<string>();
-  const items =
-    categoriesData.map((item: any) => {
-      const name = String(item?.name || "").trim();
-      if (!name || seen.has(name)) {
-        return null;
-      }
-      seen.add(name);
-      let icon: any = Hash;
-      if (name === "General") icon = MessageCircle;
-      else if (name === "Tech") icon = Zap;
-      else if (name === "Business") icon = Target;
-      else if (name === "Crypto") icon = Sparkles;
-      else if (name === "Sports") icon = Trophy;
-      else if (name === "Politics") icon = Shield;
-      return { id: name, label: name, icon };
-    }) || [];
-  return base.concat(items.filter((x): x is CategoryOption => !!x));
+  const byName: Record<string, CategoryOption> = {};
+
+  (categoriesData || []).forEach((item: any) => {
+    const name = String(item?.name || "").trim();
+    if (!name || seen.has(name)) {
+      return;
+    }
+    seen.add(name);
+    let icon: LucideIcon = Hash;
+    if (name === "General") icon = MessageCircle;
+    else if (name === "Tech" || name === "科技") icon = Zap;
+    else if (name === "Business" || name === "商业") icon = Target;
+    else if (name === "Crypto" || name === "加密货币") icon = Sparkles;
+    else if (name === "Sports" || name === "体育") icon = Trophy;
+    else if (name === "Politics" || name === "时政") icon = Shield;
+    else if (name === "娱乐") icon = Sparkles;
+    else if (name === "天气") icon = Target;
+    else if (name === "更多") icon = Hash;
+
+    byName[name] = { id: name, label: name, icon };
+  });
+
+  const orderedNames = TRENDING_CATEGORIES.map((cat) => cat.name);
+  const ordered: CategoryOption[] = [];
+
+  const hasMoreCategory = Object.prototype.hasOwnProperty.call(byName, "更多");
+
+  orderedNames.forEach((name) => {
+    const item = byName[name];
+    if (item) {
+      ordered.push(item);
+      delete byName[name];
+    }
+  });
+
+  const rest = hasMoreCategory
+    ? []
+    : Object.values(byName).sort((a, b) => a.label.localeCompare(b.label));
+
+  return base.concat(ordered, rest);
 }

@@ -22,6 +22,12 @@ export default function ProposalsLeftSidebar({
   filter,
   setFilter,
 }: ProposalsLeftSidebarProps) {
+  const myPostsCount = React.useMemo(() => {
+    return proposals.filter((p: any) => {
+      const me = account || user?.id || "";
+      return me && String(p.user_id || "").toLowerCase() === String(me).toLowerCase();
+    }).length;
+  }, [account, user?.id, proposals]);
   return (
     <div className="hidden lg:flex flex-col w-64 shrink-0 gap-6 z-10 pb-20">
       <div className="bg-white border border-gray-200 rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4 relative">
@@ -41,6 +47,7 @@ export default function ProposalsLeftSidebar({
                     )}&backgroundColor=e9d5ff`
               }
               alt="Avatar"
+              loading="lazy"
               className="w-full h-full object-cover rounded-lg"
             />
           </div>
@@ -58,14 +65,7 @@ export default function ProposalsLeftSidebar({
 
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className="bg-gray-50 rounded-xl p-2">
-            <div className="text-lg font-black text-gray-800">
-              {
-                proposals.filter((p: any) => {
-                  const me = account || user?.id || "";
-                  return me && String(p.user_id || "").toLowerCase() === String(me).toLowerCase();
-                }).length
-              }
-            </div>
+            <div className="text-lg font-black text-gray-800">{myPostsCount}</div>
             <div className="text-[10px] font-bold text-gray-400 uppercase">My Posts</div>
           </div>
           <div className="bg-gray-50 rounded-xl p-2">
@@ -86,15 +86,18 @@ export default function ProposalsLeftSidebar({
         </button>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] p-4 border border-white/60 shadow-sm text-xs text-slate-700 leading-relaxed">
-        <p className="mb-2 font-semibold text-purple-700">
-          提案广场是 Foresight 的“产品经理面板”，用于发起新预测市场或协议治理提案。
+      <div className="px-2 text-[11px] text-slate-600 leading-relaxed">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+          <span className="font-semibold text-slate-800">
+            提案广场是 Foresight 的“产品经理面板”
+          </span>
+        </div>
+        <p className="mb-1">
+          用于发起新预测市场想法或协议治理提案，由社区讨论与投票后决定是否上线为正式预测市场。
         </p>
-        <p className="mb-2">
-          你可以在这里描述真实世界事件、设置结算条件和时间线，并交由社区讨论与投票，决定是否上线为正式预测市场。
-        </p>
-        <p className="text-[11px] text-slate-500">
-          想看看有哪些正在交易的市场？前往{" "}
+        <p className="text-[10px] text-slate-500">
+          想先看正在交易的市场？前往{" "}
           <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
             热门预测
           </Link>{" "}
@@ -102,7 +105,7 @@ export default function ProposalsLeftSidebar({
           <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
             讨论区
           </Link>{" "}
-          收集反馈，再在此发起正式提案。
+          收集反馈。
         </p>
       </div>
 
