@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, Clock, TrendingUp } from "lucide-react";
+import { ArrowRight, Clock, TrendingUp, Wallet, Trophy, Activity } from "lucide-react";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import type { PortfolioStats } from "../types";
 import { ProfileCard } from "./ProfileUI";
@@ -26,75 +26,76 @@ export function OverviewTab({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-500/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-          <div className="relative z-10">
-            <div className="text-purple-200 text-sm font-bold mb-1">
-              {tProfile("overview.cards.totalInvested")}
+      {/* Minimalist Financial Dashboard Row */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-8 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          {/* Total Invested */}
+          <div className="flex-1 px-4 first:pl-0 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Wallet className="w-6 h-6" />
             </div>
-            <div className="text-3xl font-black mb-4">${totalInvested.toFixed(2)}</div>
-            <div className="flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-md">
-              <TrendingUp className="w-3 h-3" />
-              <span>
-                {formatTranslation(tProfile("overview.cards.eventsSummary"), {
-                  count: positionsCount,
-                })}
-              </span>
+            <div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                {tProfile("overview.cards.totalInvested")}
+              </div>
+              <div className="text-3xl font-black text-slate-900 tracking-tight">
+                ${totalInvested.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {/* PnL */}
+          <div className="flex-1 px-4 flex items-center gap-4 pt-6 md:pt-0">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                realizedPnl >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+              }`}
+            >
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                {tProfile("overview.cards.totalPnl")}
+              </div>
+              <div
+                className={`text-3xl font-black tracking-tight ${
+                  realizedPnl >= 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
+              >
+                {realizedPnl >= 0 ? "+" : ""}
+                {realizedPnl.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {/* Win Rate */}
+          <div className="flex-1 px-4 flex items-center gap-4 pt-6 md:pt-0">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                {tProfile("overview.cards.winRate")}
+              </div>
+              <div className="text-3xl font-black text-slate-900 tracking-tight">{winRate}</div>
+            </div>
+          </div>
+
+          {/* Events Count */}
+          <div className="flex-1 px-4 last:pr-0 flex items-center gap-4 pt-6 md:pt-0">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                {tProfile("overview.cards.eventsCount")}
+              </div>
+              <div className="text-3xl font-black text-slate-900 tracking-tight">
+                {positionsCount || activeCount}
+              </div>
             </div>
           </div>
         </div>
-
-        <ProfileCard>
-          <div className="text-gray-400 text-sm font-bold mb-1">
-            {tProfile("overview.cards.totalPnl")}
-          </div>
-          <div className="text-3xl font-black text-gray-900 mb-4">
-            {realizedPnl >= 0 ? "+" : ""}
-            {realizedPnl.toFixed(2)}
-          </div>
-          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full ${realizedPnl >= 0 ? "bg-green-500" : "bg-red-500"}`}
-              style={{
-                width: `${Math.max(
-                  5,
-                  Math.min(
-                    100,
-                    Math.abs(totalInvested > 0 ? (realizedPnl / totalInvested) * 100 : 0)
-                  )
-                )}%`,
-              }}
-            />
-          </div>
-        </ProfileCard>
-
-        <ProfileCard>
-          <div className="text-gray-400 text-sm font-bold mb-1">
-            {tProfile("overview.cards.winRate")}
-          </div>
-          <div className="text-3xl font-black text-gray-900 mb-4">{winRate}</div>
-          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500 rounded-full"
-              style={{ width: `${clampedWinRate}%` }}
-            />
-          </div>
-        </ProfileCard>
-
-        <ProfileCard>
-          <div className="text-gray-400 text-sm font-bold mb-1">
-            {tProfile("overview.cards.eventsCount")}
-          </div>
-          <div className="text-3xl font-black text-gray-900 mb-4">
-            {positionsCount || activeCount}
-          </div>
-          <div className="flex -space-x-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white" />
-            ))}
-          </div>
-        </ProfileCard>
       </div>
 
       <div>

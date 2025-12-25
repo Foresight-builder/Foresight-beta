@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 
+function getRelayerBaseUrl(): string | undefined {
+  const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
+  if (!raw) return undefined;
+  if (!/^https?:\/\//i.test(raw)) return undefined;
+  return raw;
+}
+
+function normalizeDepthSideForRelayer(side: string | null): "buy" | "sell" {
+  const raw = (side || "").toLowerCase().trim();
+  if (raw === "true" || raw === "buy") return "buy";
+  if (raw === "false" || raw === "sell") return "sell";
+  return "buy";
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const client = getClient();
-    if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
-    }
-
     const url = new URL(req.url);
     const contract = url.searchParams.get("contract");
     const chainId = url.searchParams.get("chainId");
@@ -21,6 +27,43 @@ export async function GET(req: NextRequest) {
 
     if (!contract || !chainId || outcome === null || side === null) {
       return NextResponse.json({ success: false, message: "Missing parameters" }, { status: 400 });
+    }
+
+    const relayerBase = getRelayerBaseUrl();
+    if (relayerBase) {
+      try {
+        const relayerUrl = new URL("/orderbook/depth", relayerBase);
+        relayerUrl.searchParams.set("contract", contract);
+        relayerUrl.searchParams.set("chainId", chainId);
+        relayerUrl.searchParams.set("outcome", outcome);
+        relayerUrl.searchParams.set("side", normalizeDepthSideForRelayer(side));
+        relayerUrl.searchParams.set("levels", String(levels));
+        if (marketKey) relayerUrl.searchParams.set("marketKey", marketKey);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const relayerRes = await fetch(relayerUrl.toString(), {
+          method: "GET",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const relayerJson = await relayerRes.json().catch(() => null);
+
+        return NextResponse.json(
+          relayerJson ?? { success: false, message: "invalid relayer response" },
+          {
+            status: relayerRes.status,
+          }
+        );
+      } catch {}
+    }
+
+    const client = getClient();
+    if (!client) {
+      return NextResponse.json(
+        { success: false, message: "Supabase not configured" },
+        { status: 500 }
+      );
     }
 
     const isBuy = side === "true";

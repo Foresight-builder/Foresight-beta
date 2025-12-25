@@ -10,7 +10,6 @@ import { OutcomeList } from "@/components/market/OutcomeList";
 import { Loader2 } from "lucide-react";
 import { usePredictions } from "@/hooks/useQueries";
 import { getFallbackEventImage } from "@/features/trending/trendingModel";
-import ForumSection from "@/components/ForumSection";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -281,14 +280,6 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
 
             {/* Info Tabs & Content */}
             <MarketInfo prediction={prediction} />
-
-            <div className="bg-white/80 border border-purple-100 rounded-3xl p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-3">社区讨论</h2>
-              <p className="text-xs text-gray-500 mb-4">
-                围绕这个预测市场的观点、研究和策略会集中出现在下面的讨论区中，你也可以发起新的话题或参与现有讨论。
-              </p>
-              <ForumSection eventId={prediction.id} />
-            </div>
           </div>
 
           {/* 3. Trading Panel (Right, 4 cols) */}

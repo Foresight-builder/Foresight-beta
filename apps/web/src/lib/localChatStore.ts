@@ -15,9 +15,9 @@ export async function addMessage(
 ): Promise<ChatMessage> {
   const client = getClient();
   const text = String(content || "").slice(0, 2000);
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from("discussions")
-    .insert({ proposal_id: eventId, user_id: userId || "guest", content: text } as any)
+    .insert({ proposal_id: eventId, user_id: userId || "guest", content: text })
     .select()
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -37,7 +37,7 @@ export async function getMessagesByEvent(
   since?: string
 ): Promise<ChatMessage[]> {
   const client = getClient();
-  let q = client
+  let q = (client as any)
     .from("discussions")
     .select("*")
     .eq("proposal_id", eventId)

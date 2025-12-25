@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
-import { normalizeId } from "@/lib/ids";
+
+function toNum(v: any): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
 // POST /api/forum/vote  body: { type: 'thread'|'comment', id: number, dir: 'up'|'down' }
 function getSessionAddressFromCookie(req: NextRequest): string | null {
@@ -20,7 +24,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as any;
     const type = body?.type === "comment" ? "comment" : "thread";
     const dir = body?.dir === "down" ? "down" : "up";
-    const id = normalizeId(body?.id);
+    const id = toNum(body?.id);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
     const userAddr = getSessionAddressFromCookie(req);
     if (!userAddr) return NextResponse.json({ message: "未登录或会话失效" }, { status: 401 });
@@ -56,8 +60,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "服务端未配置 SUPABASE_SERVICE_KEY" }, { status: 500 });
     }
 
+    const admin = (supabaseAdmin || client) as any;
+
     // 重复投票检查
-    const { data: existing, error: existErr } = await supabaseAdmin
+    const { data: existing, error: existErr } = await admin
       .from("forum_votes")
       .select("id")
       .eq("user_id", userAddr)
@@ -75,13 +81,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 写入投票记录（唯一约束防止并发重复）
-    const { error: insErr } = await supabaseAdmin.from("forum_votes").insert({
-      user_id: userAddr,
-      event_id: eventId,
-      content_id: id,
-      content_type: type,
-      vote_type: dir,
-    } as any);
+    const { error: insErr } = await admin
+      .from("forum_votes")
+      .insert({
+        user_id: userAddr,
+        event_id: eventId,
+        content_id: id,
+        content_type: type,
+        vote_type: dir,
+      });
     if (insErr) {
       const msg = (insErr.message || "").toLowerCase();
       if (msg.includes("unique") || msg.includes("duplicate")) {
@@ -95,7 +103,6 @@ export async function POST(req: NextRequest) {
 
     // 更新本地计数用于 UI
     // 更新计数（简化处理，读取后 +1 写回）
-    const admin = (supabaseAdmin || client) as any;
     if (type === "thread") {
       const { data: cur } = await admin
         .from("forum_threads")
@@ -106,17 +113,13 @@ export async function POST(req: NextRequest) {
       const down = Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
       const { data: updated, error: uerr } = await admin
         .from("forum_threads")
-        .update({ upvotes: up, downvotes: down } as any)
+        .update({ upvotes: up, downvotes: down })
         .eq("id", id)
         .select()
         .maybeSingle();
       if (uerr)
         return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
-      return NextResponse.json({
-        message: "ok",
-        data: updated,
-        voted: { type, id, dir },
-      });
+      return NextResponse.json({ message: "ok", data: updated, voted: { type, id, dir } });
     } else {
       const { data: cur } = await admin
         .from("forum_comments")
@@ -127,17 +130,13 @@ export async function POST(req: NextRequest) {
       const down = Number((cur as any)?.downvotes || 0) + (dir === "down" ? 1 : 0);
       const { data: updated, error: uerr } = await admin
         .from("forum_comments")
-        .update({ upvotes: up, downvotes: down } as any)
+        .update({ upvotes: up, downvotes: down })
         .eq("id", id)
         .select()
         .maybeSingle();
       if (uerr)
         return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
-      return NextResponse.json({
-        message: "ok",
-        data: updated,
-        voted: { type, id, dir },
-      });
+      return NextResponse.json({ message: "ok", data: updated, voted: { type, id, dir } });
     }
   } catch (e: any) {
     return NextResponse.json(
