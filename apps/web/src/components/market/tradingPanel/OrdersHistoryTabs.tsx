@@ -22,7 +22,7 @@ export function OrdersTabContent({
 }: OrdersTabContentProps) {
   if (userOrders.length === 0) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-beauty pr-1">
         <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
           <ListFilter className="w-10 h-10 mb-3 opacity-20" />
           <span className="text-sm font-medium">{tTrading("emptyOrders")}</span>
@@ -32,7 +32,7 @@ export function OrdersTabContent({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-beauty pr-1">
       {userOrders.map((o) => (
         <div
           key={o.id}
@@ -89,7 +89,7 @@ export function HistoryTabContent({
 }: HistoryTabContentProps) {
   if (trades.length === 0) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-beauty pr-1">
         <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
           <ListFilter className="w-10 h-10 mb-3 opacity-20" />
           <span className="text-sm font-medium">暂无成交记录</span>
@@ -99,7 +99,7 @@ export function HistoryTabContent({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-beauty pr-1">
       {trades.map((t, i) => (
         <div
           key={i}
