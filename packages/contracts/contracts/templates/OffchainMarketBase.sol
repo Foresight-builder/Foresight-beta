@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -47,24 +48,41 @@ abstract contract OffchainMarketBase is
     uint8 internal constant MIN_OUTCOMES = 2; // binary market minimum
     uint8 internal constant MAX_OUTCOMES = 8; // multi-outcome market maximum
 
+    // --- ERC-1271 magic value ---
+    bytes4 internal constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
+
     enum State {
         TRADING,
         RESOLVED,
         INVALID
     }
 
+    // --- Packed storage slot 1 ---
     bytes32 public marketId;
+
+    // --- Packed storage slot 2 (addresses) ---
     address public factory;
+
+    // --- Packed storage slot 3 ---
     address public creator;
+
+    // --- Packed storage slot 4 ---
     IERC20 public collateral; // USDC
+
+    // --- Packed storage slot 5 ---
     address public oracle; // UMA adapter (IOracle)
+
+    // --- Packed storage slot 6 ---
     uint256 public resolutionTime;
 
+    // --- Packed storage slot 7 ---
     OutcomeToken1155 public outcomeToken;
-    uint8 public outcomeCount; // 2..8
 
+    // --- Packed storage slot 8 (small values packed together) ---
+    uint8 public outcomeCount; // 2..8
     State public state;
     uint8 public resolvedOutcome; // valid iff state==RESOLVED
+    bool public paused; // Circuit breaker
 
     // maker => salt => filled amount18
     mapping(address => mapping(uint256 => uint256)) public filledBySalt;
@@ -89,12 +107,19 @@ abstract contract OffchainMarketBase is
         uint256 expiry; // 0 means no expiry
     }
 
+    // --- Events (indexed for efficient querying) ---
     event Initialized(bytes32 indexed marketId, address factory, address creator, address collateral, address oracle, uint256 resolutionTime, address outcome1155, uint8 outcomeCount);
-    event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt);
-    event OrderSaltCanceled(address maker, uint256 salt);
-    event Resolved(uint256 outcomeIndex);
+    event OrderFilledSigned(address indexed maker, address indexed taker, uint256 indexed outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt);
+    event OrderSaltCanceled(address indexed maker, uint256 salt);
+    event Resolved(uint256 indexed outcomeIndex);
     event Invalidated();
+    event Paused(address indexed by);
+    event Unpaused(address indexed by);
+    event CompleteSetMinted(address indexed user, uint256 amount18);
+    event Redeemed(address indexed user, uint256 amount18, uint8 outcomeIndex);
+    event CompleteSetRedeemedOnInvalid(address indexed user, uint256 amount18PerOutcome);
 
+    // --- Errors ---
     error InvalidOutcomeIndex();
     error InvalidState();
     error ResolutionTimeNotReached();
@@ -107,11 +132,46 @@ abstract contract OffchainMarketBase is
     error NotApproved1155();
     error FeeNotSupported();
     error InvalidShareGranularity();
+    error MarketPaused();
+    error NotAuthorized();
+    error ArrayLengthMismatch();
 
+    // --- Modifiers ---
     modifier inState(State s) {
         if (state != s) revert InvalidState();
         _;
     }
+
+    modifier whenNotPaused() {
+        if (paused) revert MarketPaused();
+        _;
+    }
+
+    modifier onlyFactoryOrCreator() {
+        if (msg.sender != factory && msg.sender != creator) revert NotAuthorized();
+        _;
+    }
+
+    // -------------------------
+    // Circuit Breaker (Pause)
+    // -------------------------
+
+    /// @notice Pauses the market. Only callable by factory or creator.
+    /// @dev When paused, batchFill, fillOrderSigned, and mintCompleteSet are disabled.
+    function pause() external onlyFactoryOrCreator {
+        paused = true;
+        emit Paused(msg.sender);
+    }
+
+    /// @notice Unpauses the market. Only callable by factory or creator.
+    function unpause() external onlyFactoryOrCreator {
+        paused = false;
+        emit Unpaused(msg.sender);
+    }
+
+    // -------------------------
+    // Token ID computation
+    // -------------------------
 
     /// @notice Computes the outcome token id for this market/outcome (with bounds check).
     /// @dev Matches OutcomeToken1155.computeTokenId(address,uint256) but avoids an external call.
@@ -126,6 +186,10 @@ abstract contract OffchainMarketBase is
     function _outcomeTokenIdUnchecked(uint256 outcomeIndex) internal view returns (uint256) {
         return (uint256(uint160(address(this))) << 32) | outcomeIndex;
     }
+
+    // -------------------------
+    // Initialization
+    // -------------------------
 
     function _initCommon(
         bytes32 _marketId,
@@ -155,6 +219,7 @@ abstract contract OffchainMarketBase is
         outcomeCount = oc;
 
         state = State.TRADING;
+        paused = false;
 
         // Optional: register the market with oracle adapter (Polymarket-style gating).
         // If oracle doesn't support registration, ignore.
@@ -167,14 +232,41 @@ abstract contract OffchainMarketBase is
         emit Initialized(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, oc);
     }
 
+    // -------------------------
+    // EIP-712 / Signature helpers
+    // -------------------------
+
     /// @notice Returns the EIP-712 domain separator for signature verification.
     /// @return The domain separator bytes32.
     function domainSeparatorV4() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
 
+    /// @dev Validates signature for both EOA (ECDSA) and smart contract wallets (ERC-1271).
+    /// @param signer The expected signer address.
+    /// @param digest The EIP-712 typed data hash.
+    /// @param signature The signature bytes.
+    /// @return True if the signature is valid.
+    function _isValidSignature(address signer, bytes32 digest, bytes calldata signature) internal view returns (bool) {
+        if (signer.code.length > 0) {
+            // Smart contract wallet (ERC-1271)
+            try IERC1271(signer).isValidSignature(digest, signature) returns (bytes4 magicValue) {
+                return magicValue == ERC1271_MAGIC_VALUE;
+            } catch {
+                return false;
+            }
+        } else {
+            // EOA wallet
+            return ECDSA.recover(digest, signature) == signer;
+        }
+    }
+
+    // -------------------------
+    // Order cancellation
+    // -------------------------
+
     /// @notice Cancels all orders with a specific salt for a maker.
-    /// @dev Requires EIP-712 signature from the maker.
+    /// @dev Requires EIP-712 signature from the maker. Supports EOA and ERC-1271.
     /// @param maker The address of the order maker.
     /// @param salt The salt value to cancel.
     /// @param signature EIP-712 signature from the maker.
@@ -182,11 +274,41 @@ abstract contract OffchainMarketBase is
         if (canceledSalt[maker][salt]) revert OrderCanceled();
         bytes32 structHash = keccak256(abi.encode(CANCEL_SALT_TYPEHASH, maker, salt));
         bytes32 digest = _hashTypedDataV4(structHash);
-        address recovered = ECDSA.recover(digest, signature);
-        if (recovered != maker) revert InvalidSignedRequest();
+        if (!_isValidSignature(maker, digest, signature)) revert InvalidSignedRequest();
         canceledSalt[maker][salt] = true;
         emit OrderSaltCanceled(maker, salt);
     }
+
+    /// @notice Batch cancel multiple salts for multiple makers.
+    /// @dev Each entry requires a valid signature. Supports EOA and ERC-1271.
+    /// @param makers Array of maker addresses.
+    /// @param salts Array of salt values to cancel.
+    /// @param signatures Array of EIP-712 signatures.
+    function cancelSaltsBatch(
+        address[] calldata makers,
+        uint256[] calldata salts,
+        bytes[] calldata signatures
+    ) external nonReentrant inState(State.TRADING) {
+        uint256 n = makers.length;
+        if (n != salts.length || n != signatures.length) revert ArrayLengthMismatch();
+        
+        for (uint256 i = 0; i < n; i++) {
+            address maker = makers[i];
+            uint256 salt = salts[i];
+            if (canceledSalt[maker][salt]) continue; // Skip already canceled
+            
+            bytes32 structHash = keccak256(abi.encode(CANCEL_SALT_TYPEHASH, maker, salt));
+            bytes32 digest = _hashTypedDataV4(structHash);
+            if (!_isValidSignature(maker, digest, signatures[i])) continue; // Skip invalid
+            
+            canceledSalt[maker][salt] = true;
+            emit OrderSaltCanceled(maker, salt);
+        }
+    }
+
+    // -------------------------
+    // Order filling
+    // -------------------------
 
     /// @notice Batch settle signed orders. Taker is msg.sender.
     /// @dev All arrays must have the same length. Each order is settled independently.
@@ -197,9 +319,9 @@ abstract contract OffchainMarketBase is
         Order[] calldata orders,
         bytes[] calldata signatures,
         uint256[] calldata fillAmounts
-    ) external nonReentrant inState(State.TRADING) {
+    ) external nonReentrant inState(State.TRADING) whenNotPaused {
         uint256 n = orders.length;
-        require(n == signatures.length && n == fillAmounts.length, "len mismatch");
+        if (n != signatures.length || n != fillAmounts.length) revert ArrayLengthMismatch();
         for (uint256 i = 0; i < n; i++) {
             _fillOne(orders[i], signatures[i], fillAmounts[i]);
         }
@@ -209,7 +331,7 @@ abstract contract OffchainMarketBase is
     /// @param order The Order struct containing maker, outcomeIndex, isBuy, price, amount, salt, expiry.
     /// @param signature EIP-712 signature from the order's maker.
     /// @param fillAmount Amount to fill (in 1e18 share units, must be multiple of SHARE_GRANULARITY).
-    function fillOrderSigned(Order calldata order, bytes calldata signature, uint256 fillAmount) external nonReentrant inState(State.TRADING) {
+    function fillOrderSigned(Order calldata order, bytes calldata signature, uint256 fillAmount) external nonReentrant inState(State.TRADING) whenNotPaused {
         _fillOne(order, signature, fillAmount);
     }
 
@@ -217,6 +339,8 @@ abstract contract OffchainMarketBase is
         if (o.outcomeIndex >= uint256(outcomeCount)) revert InvalidOutcomeIndex();
         if (o.price == 0 || o.price > MAX_PRICE_6_PER_1E18) revert InvalidPrice();
         if (o.amount == 0 || fillAmount == 0) revert InvalidAmount();
+        // Validate order amount precision
+        if (o.amount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         // Require share amounts be multiples of 1e12 so cost6 is exact in USDC base units.
         if (fillAmount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         if (o.expiry != 0 && o.expiry <= block.timestamp) revert InvalidExpiry();
@@ -238,8 +362,7 @@ abstract contract OffchainMarketBase is
             )
         );
         bytes32 digest = _hashTypedDataV4(structHash);
-        address recovered = ECDSA.recover(digest, signature);
-        if (recovered != o.maker) revert InvalidSignedRequest();
+        if (!_isValidSignature(o.maker, digest, signature)) revert InvalidSignedRequest();
 
         filledBySalt[o.maker][o.salt] = alreadyFilled + fillAmount;
 
@@ -271,7 +394,7 @@ abstract contract OffchainMarketBase is
     /// @dev User deposits USDC and receives equal amounts of all outcome tokens.
     ///      amount18 must be a multiple of SHARE_GRANULARITY (1e12).
     /// @param amount18 Amount of each outcome token to mint (1e18 = 1 share).
-    function mintCompleteSet(uint256 amount18) external nonReentrant inState(State.TRADING) {
+    function mintCompleteSet(uint256 amount18) external nonReentrant inState(State.TRADING) whenNotPaused {
         if (amount18 == 0) revert InvalidAmount();
         if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         if (!outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this))) revert NoMinterRole();
@@ -286,6 +409,8 @@ abstract contract OffchainMarketBase is
             amts[i] = amount18;
         }
         outcomeToken.mintBatch(msg.sender, ids, amts);
+        
+        emit CompleteSetMinted(msg.sender, amount18);
     }
 
     /// @notice Redeem winning outcome tokens for collateral after market resolution.
@@ -300,6 +425,8 @@ abstract contract OffchainMarketBase is
         outcomeToken.burn(msg.sender, idWin, amount18);
         uint256 payout6 = Math.mulDiv(amount18, USDC_SCALE, SHARE_SCALE);
         collateral.safeTransfer(msg.sender, payout6);
+        
+        emit Redeemed(msg.sender, amount18, resolvedOutcome);
     }
 
     /// @notice Redeem a complete set of outcome tokens when market is INVALID.
@@ -321,6 +448,8 @@ abstract contract OffchainMarketBase is
 
         uint256 payout6 = Math.mulDiv(amount18PerOutcome, USDC_SCALE, SHARE_SCALE);
         collateral.safeTransfer(msg.sender, payout6);
+        
+        emit CompleteSetRedeemedOnInvalid(msg.sender, amount18PerOutcome);
     }
 
     // -------------------------
@@ -349,6 +478,58 @@ abstract contract OffchainMarketBase is
         state = State.RESOLVED;
         emit Resolved(outcome);
     }
+
+    // -------------------------
+    // View helpers
+    // -------------------------
+
+    /// @notice Get complete market information in a single call.
+    /// @return id Market ID
+    /// @return currentState Current market state (TRADING, RESOLVED, INVALID)
+    /// @return winningOutcome Resolved outcome index (only valid if state == RESOLVED)
+    /// @return numOutcomes Number of possible outcomes
+    /// @return resolution Resolution timestamp
+    /// @return collateralToken Collateral token address (USDC)
+    /// @return isPaused Whether the market is paused
+    function getMarketInfo() external view returns (
+        bytes32 id,
+        State currentState,
+        uint8 winningOutcome,
+        uint8 numOutcomes,
+        uint256 resolution,
+        address collateralToken,
+        bool isPaused
+    ) {
+        return (marketId, state, resolvedOutcome, outcomeCount, resolutionTime, address(collateral), paused);
+    }
+
+    /// @notice Query remaining fillable amount for an order.
+    /// @param maker The order maker address.
+    /// @param salt The order salt.
+    /// @param orderAmount The original order amount.
+    /// @return remaining The remaining fillable amount (0 if canceled).
+    function getRemainingFillable(address maker, uint256 salt, uint256 orderAmount) external view returns (uint256 remaining) {
+        if (canceledSalt[maker][salt]) return 0;
+        uint256 filled = filledBySalt[maker][salt];
+        return orderAmount > filled ? orderAmount - filled : 0;
+    }
+
+    /// @notice Get user's outcome token balances for this market.
+    /// @param user The user address.
+    /// @return balances Array of balances for each outcome.
+    function getUserBalances(address user) external view returns (uint256[] memory balances) {
+        balances = new uint256[](uint256(outcomeCount));
+        for (uint256 i = 0; i < uint256(outcomeCount); i++) {
+            balances[i] = outcomeToken.balanceOf(user, _outcomeTokenIdUnchecked(i));
+        }
+    }
+
+    /// @notice Get all token IDs for this market's outcomes.
+    /// @return ids Array of token IDs.
+    function getOutcomeTokenIds() external view returns (uint256[] memory ids) {
+        ids = new uint256[](uint256(outcomeCount));
+        for (uint256 i = 0; i < uint256(outcomeCount); i++) {
+            ids[i] = _outcomeTokenIdUnchecked(i);
+        }
+    }
 }
-
-

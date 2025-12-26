@@ -28,19 +28,18 @@ interface IOptimisticOracleV3 {
     function settle(bytes32 assertionId) external;
 }
 
-/**
- * @title UMAOracleAdapterV2
- * @notice Production-oriented UMA OOv3 adapter for binary + multi-outcome (<=8) markets.
- *
- * Design:
- * - A REPORTER asserts the resolved `outcomeIndex = k` after `resolutionTime`.
- * - Anyone can call `settleOutcome(marketId)` after liveness; UMA triggers callback to finalize.
- * - If the assertion settles true => outcome=k.
- * - If settles false or is disputed/unresolvable => INVALID (`type(uint256).max`).
- *
- * Claim format is a plain text statement containing the marketId and outcomeIndex (k).
- * (You can standardize it off-chain to match your product/legal requirements.)
- */
+/// @title UMAOracleAdapterV2
+/// @author Foresight
+/// @notice Production-oriented UMA OOv3 adapter for binary + multi-outcome (<=8) markets.
+/// @dev Design:
+///      - A REPORTER asserts the resolved `outcomeIndex = k` after `resolutionTime`.
+///      - Anyone can call `settleOutcome(marketId)` after liveness; UMA triggers callback to finalize.
+///      - If the assertion settles true => outcome=k.
+///      - If settles false or is disputed/unresolvable => INVALID (`type(uint256).max`).
+///      - Admin can reset INVALID markets for reassertion (Polymarket-style).
+///
+///      Claim format is a plain text statement containing the marketId and outcomeIndex (k).
+///      (You can standardize it off-chain to match your product/legal requirements.)
 /// @custom:security-contact security@foresight.io
 contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -64,6 +63,9 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
     bool public arbitrateViaEscalationManager;
     bool public disregardProposals;
 
+    /// @notice Maximum number of reassertion attempts allowed per market.
+    uint8 public maxReassertions;
+
     struct MarketConfig {
         uint64 resolutionTime;
         uint8 outcomeCount; // 2..8
@@ -78,16 +80,23 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
     mapping(bytes32 => Status) public marketStatus; // marketId -> status
     mapping(bytes32 => uint256) public marketOutcome; // marketId -> outcomeIndex or MAX for invalid
     mapping(bytes32 => address) public assertionAsserter; // assertionId -> asserter
+    mapping(bytes32 => uint8) public marketReassertionCount; // marketId -> reassertion attempts
 
+    // --- Events ---
     event OutcomeAsserted(bytes32 indexed marketId, bytes32 indexed assertionId, uint8 outcomeIndex, bytes claim);
     event OutcomeFinalized(bytes32 indexed marketId, Status status, uint256 outcomeIndex);
     event OracleParamsUpdated(uint256 bond, bytes32 identifier, address escalationManager);
     event MarketRegistered(bytes32 indexed marketId, uint64 resolutionTime, uint8 outcomeCount);
     event AssertionDisputed(bytes32 indexed marketId, bytes32 indexed assertionId);
+    event MarketResetForReassert(bytes32 indexed marketId, uint8 reassertionAttempt);
+    event MaxReassertionsUpdated(uint8 newMax);
 
+    // --- Errors ---
     error AlreadyAsserted();
     error BadOutcomeIndex();
     error NotUmaOracle();
+    error MarketNotInvalid();
+    error MaxReassertionsReached();
 
     /// @notice Constructs the UMA Oracle Adapter.
     /// @param umaOracleV3 Address of UMA Optimistic Oracle V3.
@@ -118,7 +127,12 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         escalationManager = address(0);
         arbitrateViaEscalationManager = false;
         disregardProposals = false;
+        maxReassertions = 3; // Allow up to 3 reassertion attempts
     }
+
+    // -------------------------
+    // Admin functions
+    // -------------------------
 
     /// @notice Registers market metadata used for policing assertions (resolution time & outcome range).
     /// @dev This mirrors the Polymarket-style practice: only allow assertions after market close.
@@ -153,6 +167,37 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         disregardProposals = disregardProposals_;
         emit OracleParamsUpdated(bond, identifier, escalationManager_);
     }
+
+    /// @notice Updates the maximum number of reassertion attempts allowed.
+    /// @param newMax The new maximum (0 to disable reassertions).
+    function setMaxReassertions(uint8 newMax) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxReassertions = newMax;
+        emit MaxReassertionsUpdated(newMax);
+    }
+
+    /// @notice Resets an INVALID market for reassertion (Polymarket-style).
+    /// @dev Only callable by admin. Allows reporter to make a new assertion.
+    /// @param marketId The market ID to reset.
+    function resetMarketForReassert(bytes32 marketId) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (marketStatus[marketId] != Status.INVALID) revert MarketNotInvalid();
+        
+        uint8 currentAttempts = marketReassertionCount[marketId];
+        if (currentAttempts >= maxReassertions) revert MaxReassertionsReached();
+        
+        // Reset status to NONE to allow new assertion
+        marketStatus[marketId] = Status.NONE;
+        delete marketToAssertion[marketId];
+        delete marketOutcome[marketId];
+        
+        // Increment reassertion counter
+        marketReassertionCount[marketId] = currentAttempts + 1;
+        
+        emit MarketResetForReassert(marketId, currentAttempts + 1);
+    }
+
+    // -------------------------
+    // Reporter functions
+    // -------------------------
 
     /// @notice Reporter asserts that the market resolves to `outcomeIndex` (k).
     /// @dev Polymarket-style semantics:
@@ -192,6 +237,10 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         emit OutcomeAsserted(marketId, assertionId, outcomeIndex, claim);
     }
 
+    // -------------------------
+    // Permissionless functions
+    // -------------------------
+
     /// @notice Permissionless: settles UMA assertion (UMA will call our callback).
     /// @dev Anyone can call this after liveness period. UMA triggers assertionResolvedCallback.
     /// @param marketId Unique identifier for the market to settle.
@@ -211,6 +260,10 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         require(s == Status.RESOLVED || s == Status.INVALID, "not finalized");
         return marketOutcome[marketId];
     }
+
+    // -------------------------
+    // UMA Callbacks
+    // -------------------------
 
     /// @notice UMA callback when an assertion is resolved.
     /// @dev Called by UMA OOv3 after liveness or dispute resolution.
@@ -245,6 +298,36 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         if (marketId == bytes32(0)) return;
         emit AssertionDisputed(marketId, assertionId);
     }
+
+    // -------------------------
+    // View helpers
+    // -------------------------
+
+    /// @notice Get complete market status information.
+    /// @param marketId The market ID to query.
+    /// @return status Current status (NONE, PENDING, RESOLVED, INVALID)
+    /// @return outcome Resolved outcome (only valid if status == RESOLVED)
+    /// @return assertionId Current UMA assertion ID (bytes32(0) if none)
+    /// @return reassertionCount Number of reassertion attempts made
+    function getMarketStatus(bytes32 marketId) external view returns (
+        Status status,
+        uint256 outcome,
+        bytes32 assertionId,
+        uint8 reassertionCount
+    ) {
+        return (
+            marketStatus[marketId],
+            marketOutcome[marketId],
+            marketToAssertion[marketId],
+            marketReassertionCount[marketId]
+        );
+    }
+
+    /// @notice Check if a market can be reasserted.
+    /// @param marketId The market ID to check.
+    /// @return canReassert_ True if the market is INVALID and hasn't exceeded max reassertions.
+    function canReassert(bytes32 marketId) external view returns (bool canReassert_) {
+        return marketStatus[marketId] == Status.INVALID && 
+               marketReassertionCount[marketId] < maxReassertions;
+    }
 }
-
-
