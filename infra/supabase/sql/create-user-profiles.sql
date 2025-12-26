@@ -5,9 +5,12 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   username TEXT,
   email TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
+  is_reviewer BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS is_reviewer BOOLEAN DEFAULT FALSE;
 
 -- Enable RLS
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;

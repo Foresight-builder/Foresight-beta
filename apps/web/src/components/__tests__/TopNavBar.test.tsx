@@ -64,6 +64,7 @@ describe("TopNavBar Component", () => {
     error: null,
     refreshProfile: vi.fn(async () => {}),
     isAdmin: false,
+    isReviewer: false,
     username: null,
     avatarUrl: null,
   };

@@ -70,6 +70,8 @@ async function maybeAutoCreatePrediction(
   const thresholdMs = 60 * 1000;
   const ok = topSince && now - topSince >= thresholdMs;
   if (!ok) return;
+  const reviewStatus = String(topRow?.review_status || "");
+  if (reviewStatus && reviewStatus !== "approved") return;
   if (Number(topRow?.created_prediction_id || 0) > 0) return;
   const subj = String(topRow?.subject_name || "");
   const verb = String(topRow?.action_verb || "");
@@ -152,6 +154,7 @@ export async function GET(req: Request) {
       downvotes: Number(t.downvotes || 0),
       created_prediction_id:
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
+      review_status: String(t.review_status || "pending_review"),
       comments: (commentsByThread[String(t.id)] || []).map((c: any) => ({
         id: Number(c.id),
         thread_id: Number(c.thread_id),

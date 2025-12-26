@@ -37,6 +37,7 @@ export type ProposalItem = {
   created_prediction_id: number | null;
   comments?: ProposalComment[] | null;
   category?: string | null;
+  review_status?: string | null;
   userVote?: "up" | "down";
 };
 

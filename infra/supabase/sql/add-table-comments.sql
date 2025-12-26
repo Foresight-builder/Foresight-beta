@@ -74,6 +74,9 @@ COMMENT ON TABLE public.flag_settlements IS 'Flag 结算表，记录最终结论
 COMMENT ON COLUMN public.flag_settlements.id IS '结算记录ID';
 COMMENT ON COLUMN public.flag_settlements.flag_id IS '关联的 Flag ID';
 COMMENT ON COLUMN public.flag_settlements.status IS '结算结果：success/failed';
+COMMENT ON COLUMN public.flag_settlements.strategy IS '结算策略';
+COMMENT ON COLUMN public.flag_settlements.metrics IS '结算指标数据';
+COMMENT ON COLUMN public.flag_settlements.settled_by IS '结算执行人';
 COMMENT ON COLUMN public.flag_settlements.settled_at IS '结算时间';
 
 COMMENT ON TABLE public.forum_threads IS '论坛主题/提案表，对应某个预测事件的讨论串';
@@ -85,15 +88,10 @@ COMMENT ON COLUMN public.forum_threads.user_id IS '发起该主题的用户ID/�
 COMMENT ON COLUMN public.forum_threads.created_at IS '创建时间';
 COMMENT ON COLUMN public.forum_threads.upvotes IS '点赞数量';
 COMMENT ON COLUMN public.forum_threads.downvotes IS '点踩数量';
-COMMENT ON COLUMN public.forum_threads.subject_name IS '自动生成标题时使用的主体名称';
-COMMENT ON COLUMN public.forum_threads.action_verb IS '自动生成标题时使用的动作动词';
-COMMENT ON COLUMN public.forum_threads.target_value IS '自动生成标题时使用的目标值/条件';
-COMMENT ON COLUMN public.forum_threads.deadline IS '该讨论关联的截止时间（可选）';
-COMMENT ON COLUMN public.forum_threads.category IS '该主题所属的分类（如 科技/体育 等）';
-COMMENT ON COLUMN public.forum_threads.title_preview IS '自动生成的标题预览';
-COMMENT ON COLUMN public.forum_threads.criteria_preview IS '自动生成的结算标准预览';
-COMMENT ON COLUMN public.forum_threads.hot_since IS '被标记为热门的起始时间';
-COMMENT ON COLUMN public.forum_threads.created_prediction_id IS '由该主题生成的预测事件ID（如有）';
+COMMENT ON COLUMN public.forum_threads.review_status IS '审核状态';
+COMMENT ON COLUMN public.forum_threads.reviewed_by IS '审核人';
+COMMENT ON COLUMN public.forum_threads.reviewed_at IS '审核时间';
+COMMENT ON COLUMN public.forum_threads.review_reason IS '审核原因';
 
 COMMENT ON TABLE public.forum_comments IS '论坛评论表，记录主题下的所有回复和嵌套评论';
 COMMENT ON COLUMN public.forum_comments.id IS '评论ID';
@@ -150,3 +148,9 @@ COMMENT ON COLUMN public.markets_map.resolution_time IS '市场结算时间（�
 COMMENT ON COLUMN public.markets_map.status IS '市场状态：open/closed 等';
 COMMENT ON COLUMN public.markets_map.created_at IS '创建时间';
 COMMENT ON COLUMN public.markets_map.outcomes_count IS '该事件对应市场的选项数量（用于前端校验与兜底展示）';
+
+COMMENT ON TABLE public.event_views IS '用户浏览事件记录表';
+COMMENT ON COLUMN public.event_views.id IS '记录ID';
+COMMENT ON COLUMN public.event_views.user_id IS '用户ID';
+COMMENT ON COLUMN public.event_views.event_id IS '事件ID';
+COMMENT ON COLUMN public.event_views.viewed_at IS '浏览时间';

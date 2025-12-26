@@ -17,6 +17,7 @@ interface UserProfileContextValue {
   error: string | null;
   refreshProfile: () => Promise<void>;
   isAdmin: boolean;
+  isReviewer: boolean;
 }
 
 export const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
@@ -61,6 +62,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     error,
     refreshProfile: fetchProfile,
     isAdmin: !!profile?.is_admin,
+    isReviewer: !!profile?.is_reviewer,
   };
 
   return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>;

@@ -36,6 +36,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const profileCtx = useUserProfileOptional();
   const isAdmin = !!profileCtx?.isAdmin;
+  const isReviewer = !!profileCtx?.isReviewer;
   const t = useTranslations("nav");
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -85,11 +86,17 @@ export default function Sidebar() {
             icon: <Users className="w-4 h-4" />,
             requireWallet: true,
           },
-          ...(isAdmin
+          ...(isAdmin || isReviewer
             ? [
                 {
                   label: t("admin"),
                   href: "/admin/predictions/new",
+                  icon: <ShieldCheck className="w-4 h-4" />,
+                  requireWallet: true,
+                },
+                {
+                  label: "审核工作台",
+                  href: "/review",
                   icon: <ShieldCheck className="w-4 h-4" />,
                   requireWallet: true,
                 },
@@ -98,7 +105,7 @@ export default function Sidebar() {
         ],
       },
     ],
-    [isAdmin, t, tCommon]
+    [isAdmin, isReviewer, t, tCommon]
   );
 
   const isActive = (href?: string) => !!href && pathname === href;

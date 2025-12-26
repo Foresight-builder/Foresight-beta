@@ -48,6 +48,17 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   } else {
     timeAgo = createdAt.toLocaleDateString();
   }
+  const statusRaw = String(proposal.review_status || "").trim();
+  let statusLabel = "待审核";
+  let statusClass = "bg-amber-50 text-amber-600 border border-amber-200";
+  if (statusRaw === "approved") {
+    statusLabel = "已通过";
+    statusClass = "bg-emerald-50 text-emerald-600 border border-emerald-200";
+  } else if (statusRaw === "rejected") {
+    statusLabel = "被拒绝";
+    statusClass = "bg-rose-50 text-rose-600 border border-rose-200";
+  }
+
   const onShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const url = `${window.location.origin}/proposals/${proposal.id}`;
@@ -81,6 +92,12 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
               <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
               <span className="truncate max-w-[96px]">{proposal.category || "General"}</span>
             </div>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusClass}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+              {statusLabel}
+            </span>
             {isHot && (
               <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold">
                 <FlameIcon className="w-3 h-3" />

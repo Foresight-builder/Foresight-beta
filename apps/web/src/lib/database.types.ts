@@ -128,6 +128,7 @@ export interface Database {
           username: string | null;
           email: string | null;
           is_admin: boolean;
+          is_reviewer: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -136,6 +137,7 @@ export interface Database {
           username?: string | null;
           email?: string | null;
           is_admin?: boolean;
+          is_reviewer?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -144,6 +146,7 @@ export interface Database {
           username?: string | null;
           email?: string | null;
           is_admin?: boolean;
+          is_reviewer?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -252,6 +255,10 @@ export interface Database {
           created_at: string;
           upvotes: number;
           downvotes: number;
+          review_status: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_reason: string | null;
         };
         Insert: {
           id?: number;
@@ -262,6 +269,10 @@ export interface Database {
           created_at?: string;
           upvotes?: number;
           downvotes?: number;
+          review_status?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_reason?: string | null;
         };
         Update: {
           id?: number;
@@ -272,6 +283,10 @@ export interface Database {
           created_at?: string;
           upvotes?: number;
           downvotes?: number;
+          review_status?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_reason?: string | null;
         };
       };
       forum_comments: {
