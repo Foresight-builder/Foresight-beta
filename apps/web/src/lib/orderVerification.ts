@@ -79,7 +79,7 @@ export function validateOrderParams(order: EIP712Order): { valid: boolean; error
     return { valid: false, error: "Invalid maker address format" };
   }
 
-  // 验证价格范围 (假设使用 6 位小数的 USDC)
+  // 验证价格范围 (USDC 6 decimals, per 1e18 share)
   const price = BigInt(order.price);
   const amount = BigInt(order.amount);
   const MAX_PRICE = BigInt(1_000_000); // 1 USDC = 1,000,000 (6 decimals)
@@ -91,6 +91,11 @@ export function validateOrderParams(order: EIP712Order): { valid: boolean; error
   // 验证数量
   if (amount <= BigInt(0)) {
     return { valid: false, error: "Amount must be greater than 0" };
+  }
+  // shares are 18 decimals; enforce 6-decimal share steps so on-chain USDC conversions are exact
+  const SHARE_GRANULARITY = 1_000_000_000_000n; // 1e12
+  if (amount % SHARE_GRANULARITY !== 0n) {
+    return { valid: false, error: "Amount precision too fine (max 6 decimals)" };
   }
 
   // 验证 outcomeIndex

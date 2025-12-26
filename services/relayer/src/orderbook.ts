@@ -155,7 +155,7 @@ export async function cancelSalt(input: z.infer<typeof InputSchemaCancelSalt>) {
 
   const recovered = ethers.verifyTypedData(
     domainFor(chainId, vc),
-    { Order: [...Types.Order] },
+    { CancelSaltRequest: [...Types.CancelSaltRequest] },
     {
       maker,
       salt: parsed.salt,

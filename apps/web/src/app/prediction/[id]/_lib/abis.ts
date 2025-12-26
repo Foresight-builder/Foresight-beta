@@ -5,10 +5,13 @@ export const erc20Abi = [
 ] as const;
 
 export const marketAbi = [
-  "function mintCompleteSet(uint256 amount) external",
-  "function depositCompleteSet(uint256 amount) external",
+  "function mintCompleteSet(uint256 amount18) external",
+  "function redeem(uint256 amount18) external",
+  "function redeemCompleteSetOnInvalid(uint256 amount18PerOutcome) external",
+  "function state() view returns (uint8)",
   "function outcomeToken() view returns (address)",
-  "function fillOrderSigned(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 expiry,uint256 salt) req, bytes signature, uint256 fillAmount) external",
+  "function fillOrderSigned(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 salt,uint256 expiry) order, bytes signature, uint256 fillAmount) external",
+  "function batchFill(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 salt,uint256 expiry)[] orders, bytes[] signatures, uint256[] fillAmounts) external",
 ] as const;
 
 export const erc1155Abi = [

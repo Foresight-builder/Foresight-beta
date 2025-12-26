@@ -6,6 +6,7 @@ pragma solidity ^0.8.24;
 interface IOracle {
     /// @notice Returns the outcome of the market.
     /// @dev Should revert if the outcome is not yet available.
-    /// @return The outcome of the market. -1 for invalid/undecided, 0 for NO, 1 for YES.
+    /// @return outcomeIndex The resolved outcome index.
+    ///         Implementations MAY return `type(uint256).max` to signal INVALID/UNRESOLVABLE outcome.
     function getOutcome(bytes32 marketId) external view returns (uint256);
 }

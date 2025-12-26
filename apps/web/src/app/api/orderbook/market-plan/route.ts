@@ -48,13 +48,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let targetAmount: bigint;
+    let targetAmount18: bigint;
     try {
-      const parsedAmount = Math.floor(Number(amountRaw));
-      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      // amount is in shares (1e18)
+      const parsed = BigInt(String(amountRaw));
+      if (parsed <= 0n) {
         return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });
       }
-      targetAmount = BigInt(parsedAmount);
+      targetAmount18 = parsed;
     } catch {
       return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });
     }
@@ -130,7 +131,7 @@ export async function GET(req: NextRequest) {
       return 0;
     });
 
-    let remainingToFill = targetAmount;
+    let remainingToFill = targetAmount18;
     let filledAmount = 0n;
     let totalCost = 0n;
     let bestPrice: bigint | null = null;
@@ -148,7 +149,8 @@ export async function GET(req: NextRequest) {
       if (bestPrice === null) bestPrice = item.price;
       worstPrice = item.price;
       filledAmount += take;
-      totalCost += take * item.price;
+      // totalCost (USDC6) = sum(amount18 * price6Per1e18 / 1e18)
+      totalCost += (take * item.price) / 1_000_000_000_000_000_000n;
       remainingToFill -= take;
 
       const expiryUnix =
@@ -176,7 +178,7 @@ export async function GET(req: NextRequest) {
         success: true,
         data: {
           side: takerSide,
-          amount: targetAmount.toString(),
+          amount: targetAmount18.toString(),
           filledAmount: "0",
           total: "0",
           avgPrice: "0",
@@ -189,7 +191,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const avgPrice = totalCost / filledAmount;
+    // avgPrice in price6Per1e18
+    const avgPrice = (totalCost * 1_000_000_000_000_000_000n) / filledAmount;
     let slippageBps = 0n;
     if (takerSide === "buy") {
       if (worstPrice > bestPrice) slippageBps = ((worstPrice - bestPrice) * 10000n) / bestPrice;
@@ -203,7 +206,7 @@ export async function GET(req: NextRequest) {
       success: true,
       data: {
         side: takerSide,
-        amount: targetAmount.toString(),
+        amount: targetAmount18.toString(),
         filledAmount: filledAmount.toString(),
         total: totalCost.toString(),
         avgPrice: avgPrice.toString(),

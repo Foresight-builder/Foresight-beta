@@ -190,9 +190,13 @@ export function usePredictionDetail() {
 
       const amountVal = parseFloat(amountInput);
       if (isNaN(amountVal) || amountVal <= 0) throw new Error("数量无效");
-      const amountInt = Math.floor(amountVal);
-      if (amountInt <= 0) throw new Error("数量无效");
-      const amountBN = BigInt(amountInt);
+      // shares are 1e18
+      const amountBN = parseUnitsByDecimals(amountInput, 18);
+      if (amountBN <= 0n) throw new Error("数量无效");
+      // enforce max 6 decimals on shares (so on-chain USDC conversions are exact)
+      if (amountBN % 1_000_000_000_000n !== 0n) {
+        throw new Error("数量精度过高：最多支持 6 位小数");
+      }
 
       let priceBN: bigint | null = null;
       let priceFloat = 0;
@@ -225,7 +229,7 @@ export function usePredictionDetail() {
           marketKey,
           outcome: String(tradeOutcome),
           side: tradeSide,
-          amount: String(amountInt),
+          amount: amountBN.toString(),
         });
         // 一次性拉取“成交计划”（包含将要吃掉的具体订单及每单 fillAmount）
         const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
@@ -253,7 +257,7 @@ export function usePredictionDetail() {
         };
         const formatAmountNumber = (v: bigint) => {
           try {
-            return Number(v);
+            return Number(ethers.formatUnits(v, 18));
           } catch {
             return Number(v);
           }
@@ -267,7 +271,9 @@ export function usePredictionDetail() {
         const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
         const slippagePercent = (slippageBpsNum || 0) / 100;
         const partialNote =
-          filledBN < BigInt(amountInt) ? `（仅可成交 ${filledHuman}/${amountInt} 份）` : "";
+          filledBN < amountBN
+            ? `（仅可成交 ${filledHuman}/${formatAmountNumber(amountBN)} 份）`
+            : "";
         const confirmMsg = `预计以均价 ${avgPriceHuman.toFixed(
           4
         )} USDC 成交 ${filledHuman} 份${partialNote}，最大价格 ${worstPriceHuman.toFixed(
@@ -305,45 +311,44 @@ export function usePredictionDetail() {
         }
 
         const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-        let remainingToFill = filledBN;
-        let fillsDone = 0;
-
+        const ordersArr: any[] = [];
+        const sigArr: string[] = [];
+        const fillArr: bigint[] = [];
         for (const f of fills) {
-          if (remainingToFill <= 0n) break;
           const fillAmount = BigInt(String(f.fillAmount || "0"));
           if (fillAmount <= 0n) continue;
           const req = f.req || {};
-          const reqStruct = {
+          ordersArr.push({
             maker: String(req.maker),
             outcomeIndex: Number(req.outcomeIndex),
             isBuy: Boolean(req.isBuy),
             price: BigInt(String(req.price)),
             amount: BigInt(String(req.amount)),
-            expiry: BigInt(String(req.expiry || "0")),
             salt: BigInt(String(req.salt)),
-          };
-
-          setOrderMsg(`正在成交中... (${fillsDone + 1}/${fills.length})`);
-          const tx = await marketContract.fillOrderSigned(reqStruct, String(f.signature), fillAmount);
-          const receipt = await tx.wait();
-
-          // 以链上事件为准，服务端 ingestTrade 会幂等落库并更新 maker 订单 remaining/status
-          try {
-            await fetch(`${API_BASE}/orderbook/report-trade`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chainId: market.chain_id,
-                txHash: receipt.hash,
-              }),
-            });
-          } catch {}
-
-          remainingToFill -= fillAmount;
-          fillsDone += 1;
+            expiry: BigInt(String(req.expiry || "0")),
+          });
+          sigArr.push(String(f.signature));
+          fillArr.push(fillAmount);
         }
 
-        if (remainingToFill > 0n) setOrderMsg("部分成交，剩余数量未能成交");
+        if (ordersArr.length === 0) throw new Error("无可成交订单");
+        setOrderMsg(`正在成交中... (batch ${ordersArr.length})`);
+        const tx = await marketContract.batchFill(ordersArr, sigArr, fillArr);
+        const receipt = await tx.wait();
+
+        // 仍保留回灌兜底（relayer 后续会自动索引，这里留一层兼容）
+        try {
+          await fetch(`${API_BASE}/orderbook/report-trade`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chainId: market.chain_id,
+              txHash: receipt.hash,
+            }),
+          });
+        } catch {}
+
+        if (filledBN < amountBN) setOrderMsg("部分成交，剩余数量未能成交");
         else setOrderMsg("成交成功");
         setAmountInput("");
         await refreshUserOrders();
@@ -353,7 +358,8 @@ export function usePredictionDetail() {
       priceBN = parseUnitsByDecimals(priceFloat.toString(), decimals);
 
       if (tradeSide === "buy") {
-        const cost = amountBN * priceBN;
+        // cost6 = amount18 * price6Per1e18 / 1e18
+        const cost = (amountBN * priceBN) / 1_000_000_000_000_000_000n;
 
         const allowance = await tokenContract.allowance(account, market.market);
         if (allowance < cost) {

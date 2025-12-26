@@ -18,7 +18,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /// @notice The role identifier for administrators who can manage templates and fees.
     bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
 
-    /// @dev The fixed address of the UMA Oracle contract.
+    /// @dev Default oracle adapter address used when a caller doesn't provide an oracle for a new market.
+    /// NOTE: historically named `umaOracle` in storage; kept for backwards-compatible storage layout.
     address public umaOracle;
 
     /// @dev Represents a registered market template.
@@ -106,6 +107,12 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         emit FeeChanged(newFeeBps, newFeeTo);
     }
 
+    /// @notice Sets the default oracle adapter used by createMarket when `oracle` is zero.
+    function setDefaultOracle(address newOracle) external onlyRole(ADMIN_ROLE) {
+        require(newOracle != address(0), "oracle cannot be the zero address");
+        umaOracle = newOracle;
+    }
+
     // ----------------------
     // Template management
     // ----------------------
@@ -152,6 +159,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /// @param data ABI-encoded data specific to the template's initialization function.
     /// @return market The address of the newly created market.
     /// @return marketId The sequential ID assigned to the new market.
+    /// @notice Creates a new prediction market by cloning a registered template.
+    /// @dev Backwards-compatible overload: uses the factory default oracle adapter.
     function createMarket(
         bytes32 templateId,
         address collateralToken,
@@ -159,6 +168,19 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 resolutionTime,
         bytes calldata data
     ) external returns (address market, uint256 marketId) {
+        return createMarket(templateId, collateralToken, address(0), _feeBps, resolutionTime, data);
+    }
+
+    /// @notice Creates a new prediction market by cloning a registered template.
+    /// @param oracle Oracle adapter address to use. If zero, uses the factory default oracle adapter.
+    function createMarket(
+        bytes32 templateId,
+        address collateralToken,
+        address oracle,
+        uint256 _feeBps,
+        uint256 resolutionTime,
+        bytes calldata data
+    ) public returns (address market, uint256 marketId) {
         Template memory t = templates[templateId];
         require(t.exists, "template does not exist");
         require(collateralToken != address(0), "collateralToken cannot be the zero address");
@@ -171,12 +193,15 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 feeBpsToUse = _feeBps == 0 ? feeBps : _feeBps;
         require(feeBpsToUse <= 10000, "fee too high");
 
+        address oracleToUse = oracle == address(0) ? umaOracle : oracle;
+        require(oracleToUse != address(0), "oracle cannot be the zero address");
+
         IMarket(market).initialize(
             bytes32(marketId),
             address(this),
             msg.sender,
             collateralToken,
-            umaOracle, // Force use of the UMA oracle
+            oracleToUse,
             feeBpsToUse,
             resolutionTime,
             data
@@ -186,7 +211,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             templateId: templateId,
             creator: msg.sender,
             collateralToken: collateralToken,
-            oracle: umaOracle, // Record the UMA oracle
+            oracle: oracleToUse,
             feeBps: feeBpsToUse,
             resolutionTime: resolutionTime
         });
@@ -198,7 +223,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             templateId,
             msg.sender,
             collateralToken,
-            umaOracle, // Emit the UMA oracle address
+            oracleToUse,
             feeBpsToUse,
             resolutionTime
         );

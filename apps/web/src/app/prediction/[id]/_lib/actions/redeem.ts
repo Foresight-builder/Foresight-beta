@@ -36,8 +36,11 @@ export async function redeemAction(args: {
     await ensureNetwork(provider, market.chain_id, switchNetwork);
     const signer = await provider.getSigner();
 
-    const { decimals } = await getCollateralTokenContract(market, signer, erc20Abi);
-    const amountBN = parseUnitsByDecimals(amountStr, decimals);
+    // amount is in shares (1e18)
+    const amount18 = parseUnitsByDecimals(amountStr, 18);
+    if (amount18 % 1_000_000_000_000n !== 0n) {
+      throw new Error("数量精度过高：最多支持 6 位小数");
+    }
 
     const marketContract = new ethers.Contract(market.market, marketAbi, signer);
     const outcomeTokenAddress = await marketContract.outcomeToken();
@@ -51,7 +54,16 @@ export async function redeemAction(args: {
     }
 
     setOrderMsg("正在赎回...");
-    const tx = await marketContract.depositCompleteSet(amountBN);
+    const state = Number(await marketContract.state());
+    // OffchainMarketBase.State: 0=TRADING, 1=RESOLVED, 2=INVALID
+    let tx;
+    if (state === 1) {
+      tx = await marketContract.redeem(amount18);
+    } else if (state === 2) {
+      tx = await marketContract.redeemCompleteSetOnInvalid(amount18);
+    } else {
+      throw new Error("市场尚未结算，无法赎回");
+    }
     await tx.wait();
 
     setOrderMsg("赎回成功！USDC 已退回。");

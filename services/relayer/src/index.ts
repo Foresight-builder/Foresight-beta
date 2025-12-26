@@ -247,9 +247,72 @@ app.get("/orderbook/types", (req, res) => {
   res.json({ success: true, types: getOrderTypes() });
 });
 
+/**
+ * Optional: background indexer to ingest trades automatically (no need to call /report-trade manually).
+ * Enabled via RELAYER_AUTO_INGEST=1 and requires RPC_URL + SUPABASE service role key.
+ *
+ * Implementation strategy:
+ * - This minimal version watches recent blocks and ingests any tx that contains OrderFilledSigned.
+ * - It is conservative and idempotent because SQL function `ingest_trade_event` is idempotent.
+ *
+ * NOTE: For production, persist lastProcessedBlock (e.g. in Supabase) and use getLogs by topic.
+ */
+async function startAutoIngestLoop() {
+  if (process.env.RELAYER_AUTO_INGEST !== "1") return;
+  if (!supabaseAdmin) {
+    console.warn("[auto-ingest] Supabase not configured, disabled");
+    return;
+  }
+  if (!provider) {
+    console.warn("[auto-ingest] Provider not configured (RPC_URL), disabled");
+    return;
+  }
+
+  let last = Number(process.env.RELAYER_AUTO_INGEST_FROM_BLOCK || "0") || 0;
+  const confirmations = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_CONFIRMATIONS || "1"));
+  const pollMs = Math.max(2000, Number(process.env.RELAYER_AUTO_INGEST_POLL_MS || "5000"));
+
+  const loop = async () => {
+    try {
+      const head = await provider!.getBlockNumber();
+      const target = Math.max(0, head - confirmations);
+      if (last === 0) last = target;
+      if (target <= last) return;
+
+      // Small step to avoid heavy RPC
+      const maxStep = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_MAX_STEP || "20"));
+      const to = Math.min(target, last + maxStep);
+
+      for (let b = last + 1; b <= to; b++) {
+        const block = await provider!.getBlock(b, true);
+        if (!block || !Array.isArray((block as any).transactions)) continue;
+        for (const tx of (block as any).transactions as any[]) {
+          const hash = String(tx?.hash || "");
+          if (!hash) continue;
+          // ingestTrade will scan receipt logs for OrderFilledSigned and upsert to supabase
+          try {
+            await ingestTrade(Number((await provider!.getNetwork()).chainId), hash);
+          } catch {
+            // ignore tx without events or transient errors
+          }
+        }
+      }
+      last = to;
+    } catch (e: any) {
+      console.warn("[auto-ingest] loop error:", String(e?.message || e));
+    }
+  };
+
+  // initial tick + interval
+  await loop();
+  setInterval(loop, pollMs);
+  console.log("[auto-ingest] enabled");
+}
+
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Relayer server listening on port ${PORT}`);
+    startAutoIngestLoop().catch((e) => console.warn("[auto-ingest] failed:", e));
   });
 }
 
