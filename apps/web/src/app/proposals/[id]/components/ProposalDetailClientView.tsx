@@ -3,12 +3,11 @@
 import React from "react";
 import { motion } from "framer-motion";
 import type { ThreadView } from "../useProposalDetail";
-import { ProposalShell } from "./ProposalShell";
 import { ProposalHeaderNav } from "./ProposalHeaderNav";
-import { ProposalIntroCard } from "./ProposalIntroCard";
 import { ErrorState, InvalidProposalFallback, LoadingState } from "./States";
-import { ProposalMainArticle } from "./ProposalMainArticle";
 import { ProposalDiscussionSection } from "./ProposalDiscussionSection";
+import { ProposalChatShell } from "./chat/ProposalChatShell";
+import { ChatSidebar } from "./chat/ChatSidebar";
 
 export type ProposalDetailClientViewProps = {
   isValidId: boolean;
@@ -54,7 +53,7 @@ export function ProposalDetailClientView({
   if (!isValidId) return <InvalidProposalFallback onBack={onBack} />;
 
   return (
-    <ProposalShell>
+    <ProposalChatShell>
       {thread && jsonLdMain && jsonLdBreadcrumb && (
         <>
           <script
@@ -68,43 +67,58 @@ export function ProposalDetailClientView({
         </>
       )}
 
-      <ProposalHeaderNav onBack={onBack} onCopyLink={onCopyLink} />
-
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState error={error} />
-      ) : thread ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 space-y-6"
-        >
-          <ProposalIntroCard />
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-5 py-4 sm:px-6 sm:py-5">
-            <ProposalMainArticle
-              thread={thread}
-              stats={stats}
-              userVoteTypes={userVoteTypes}
-              displayName={displayName}
-              vote={vote}
-            />
+      <div className="w-full flex flex-col lg:flex-row gap-4 lg:gap-0 px-4 sm:px-6 lg:px-10 py-4">
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <ProposalHeaderNav onBack={onBack} onCopyLink={onCopyLink} />
+            {thread && (
+              <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500">
+                <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
+                  #{thread.id}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
+                  {stats.commentsCount} 条讨论
+                </span>
+              </div>
+            )}
           </div>
-          <ProposalDiscussionSection
-            thread={thread}
-            stats={stats}
-            userVoteTypes={userVoteTypes}
-            displayName={displayName}
-            vote={vote}
-            postComment={postComment}
-            account={account}
-            connectWallet={connectWallet}
-            replyText={replyText}
-            onReplyTextChange={onReplyTextChange}
-            onSubmitReply={onSubmitReply}
-          />
-        </motion.div>
-      ) : null}
-    </ProposalShell>
+
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <LoadingState />
+            </div>
+          ) : error ? (
+            <div className="flex-1 flex items-center justify-center">
+              <ErrorState error={error} />
+            </div>
+          ) : thread ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex-1 flex flex-col min-h-0"
+            >
+              <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col lg:flex-row h-full overflow-hidden">
+                <div className="flex-1 flex flex-col">
+                  <ProposalDiscussionSection
+                    thread={thread}
+                    stats={stats}
+                    userVoteTypes={userVoteTypes}
+                    displayName={displayName}
+                    vote={vote}
+                    postComment={postComment}
+                    account={account}
+                    connectWallet={connectWallet}
+                    replyText={replyText}
+                    onReplyTextChange={onReplyTextChange}
+                    onSubmitReply={onSubmitReply}
+                  />
+                </div>
+                <ChatSidebar thread={thread} displayName={displayName} stats={stats} />
+              </div>
+            </motion.div>
+          ) : null}
+        </div>
+      </div>
+    </ProposalChatShell>
   );
 }
