@@ -290,6 +290,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
           {/* 2. Main Content (Left, 8 cols) */}
           <div className="lg:col-span-8 space-y-8">
+            <OnboardingBanner category={prediction.category} />
             {/* Chart */}
             <MarketChart
               market={market}
