@@ -16,9 +16,9 @@ interface PredictionSideRailProps {
   account: string | null | undefined;
 
   // Trading Data
-  bestBid: number | null;
-  bestAsk: number | null;
-  balance: any;
+  bestBid: string;
+  bestAsk: string;
+  balance: string;
   depthBuy: any[];
   depthSell: any[];
   openOrders: any[];
@@ -30,7 +30,7 @@ interface PredictionSideRailProps {
   tradeOutcome: number;
   priceInput: string;
   amountInput: string;
-  orderMode: "limit" | "market";
+  orderMode: "limit" | "best";
   isSubmitting: boolean;
   orderMsg: string | null;
   mintInput: string;
@@ -39,11 +39,11 @@ interface PredictionSideRailProps {
   setTradeOutcome: (outcome: number) => void;
   setPriceInput: (val: string) => void;
   setAmountInput: (val: string) => void;
-  setOrderMode: (mode: "limit" | "market") => void;
+  setOrderMode: (mode: "limit" | "best") => void;
   submitOrder: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
-  handleMint: () => Promise<void>;
-  handleRedeem: () => Promise<void>;
+  handleMint: (amount: string) => Promise<void>;
+  handleRedeem: (amount: string) => Promise<void>;
   setMintInput: (val: string) => void;
 
   // Additional
@@ -144,10 +144,18 @@ export function PredictionSideRail({
                 setPriceInput,
                 setAmountInput,
                 setOrderMode,
-                submitOrder,
-                cancelOrder,
-                handleMint,
-                handleRedeem,
+                submitOrder: () => {
+                  void submitOrder();
+                },
+                cancelOrder: (orderId: string) => {
+                  void cancelOrder(orderId);
+                },
+                handleMint: (amount: string) => {
+                  void handleMint(amount);
+                },
+                handleRedeem: (amount: string) => {
+                  void handleRedeem(amount);
+                },
                 setMintInput,
               }}
             />
