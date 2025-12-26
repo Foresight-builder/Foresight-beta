@@ -1,3 +1,6 @@
+/**
+ * @deprecated This script uses legacy CLOBMarket. Use new off-chain orderbook architecture.
+ */
 const { ethers } = require('ethers');
 
 async function main() {

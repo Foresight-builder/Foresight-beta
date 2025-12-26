@@ -2,9 +2,11 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IOracle.sol";
+import "../interfaces/IOracleRegistrar.sol";
 
 /**
  * @notice Minimal UMA Optimistic Oracle V3 interface.
@@ -39,7 +41,8 @@ interface IOptimisticOracleV3 {
  * Claim format is a plain text statement containing the marketId and outcomeIndex (k).
  * (You can standardize it off-chain to match your product/legal requirements.)
  */
-contract UMAOracleAdapterV2 is IOracle, AccessControl {
+/// @custom:security-contact security@foresight.io
+contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     bytes32 public constant REPORTER_ROLE = keccak256("REPORTER_ROLE");
@@ -86,6 +89,11 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
     error BadOutcomeIndex();
     error NotUmaOracle();
 
+    /// @notice Constructs the UMA Oracle Adapter.
+    /// @param umaOracleV3 Address of UMA Optimistic Oracle V3.
+    /// @param bondCurrency_ ERC20 token used for assertion bonds.
+    /// @param admin Address granted DEFAULT_ADMIN_ROLE and REGISTRAR_ROLE.
+    /// @param reporter Address granted REPORTER_ROLE for making assertions.
     constructor(
         address umaOracleV3,
         address bondCurrency_,
@@ -112,11 +120,12 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
         disregardProposals = false;
     }
 
-    /**
-     * @notice Registers market metadata used for policing assertions (resolution time & outcome range).
-     * @dev This mirrors the Polymarket-style practice: only allow assertions after market close.
-     */
-    function registerMarket(bytes32 marketId, uint64 resolutionTime, uint8 outcomeCount) external onlyRole(REGISTRAR_ROLE) {
+    /// @notice Registers market metadata used for policing assertions (resolution time & outcome range).
+    /// @dev This mirrors the Polymarket-style practice: only allow assertions after market close.
+    /// @param marketId Unique identifier for the market.
+    /// @param resolutionTime Unix timestamp after which assertions are allowed.
+    /// @param outcomeCount Number of possible outcomes (2-8).
+    function registerMarket(bytes32 marketId, uint64 resolutionTime, uint8 outcomeCount) external override onlyRole(REGISTRAR_ROLE) {
         require(marketId != bytes32(0), "marketId=0");
         require(outcomeCount >= 2 && outcomeCount <= 8, "outcomes range");
         require(resolutionTime > 0, "resolutionTime=0");
@@ -124,6 +133,12 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
         emit MarketRegistered(marketId, resolutionTime, outcomeCount);
     }
 
+    /// @notice Updates UMA oracle parameters. Admin only.
+    /// @param bond Bond amount in bondCurrency for assertions.
+    /// @param identifier UMA identifier bytes32.
+    /// @param escalationManager_ Address of escalation manager (or zero).
+    /// @param arbitrateViaEscalationManager_ Whether to use escalation manager for arbitration.
+    /// @param disregardProposals_ Whether to disregard proposals.
     function setOracleParams(
         uint256 bond,
         bytes32 identifier,
@@ -139,14 +154,15 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
         emit OracleParamsUpdated(bond, identifier, escalationManager_);
     }
 
-    /**
-     * @notice Reporter asserts that the market resolves to `outcomeIndex` (k).
-     *
-     * Polymarket-style semantics:
-     * - assertions are only allowed after the market's resolution time (close time)
-     * - settlement is permissionless via UMA (anyone can call settle), finality comes from UMA
-     */
-    function requestOutcome(bytes32 marketId, uint8 outcomeIndex, bytes calldata claim) external onlyRole(REPORTER_ROLE) returns (bytes32 assertionId) {
+    /// @notice Reporter asserts that the market resolves to `outcomeIndex` (k).
+    /// @dev Polymarket-style semantics:
+    ///      - assertions are only allowed after the market's resolution time (close time)
+    ///      - settlement is permissionless via UMA (anyone can call settle), finality comes from UMA
+    /// @param marketId Unique identifier for the market.
+    /// @param outcomeIndex The asserted winning outcome (0 to outcomeCount-1).
+    /// @param claim Human-readable claim bytes for UMA dispute resolution.
+    /// @return assertionId The UMA assertion ID for tracking.
+    function requestOutcome(bytes32 marketId, uint8 outcomeIndex, bytes calldata claim) external nonReentrant onlyRole(REPORTER_ROLE) returns (bytes32 assertionId) {
         if (marketStatus[marketId] != Status.NONE) revert AlreadyAsserted();
         MarketConfig memory cfg = marketConfig[marketId];
         require(cfg.exists, "market not registered");
@@ -176,30 +192,32 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
         emit OutcomeAsserted(marketId, assertionId, outcomeIndex, claim);
     }
 
-    /**
-     * @notice Permissionless: settles UMA assertion (UMA will call our callback).
-     */
-    function settleOutcome(bytes32 marketId) external {
+    /// @notice Permissionless: settles UMA assertion (UMA will call our callback).
+    /// @dev Anyone can call this after liveness period. UMA triggers assertionResolvedCallback.
+    /// @param marketId Unique identifier for the market to settle.
+    function settleOutcome(bytes32 marketId) external nonReentrant {
         bytes32 assertionId = marketToAssertion[marketId];
         require(assertionId != bytes32(0), "not asserted");
         uma.settle(assertionId);
         // Outcome gets finalized in callback
     }
 
-    /**
-     * @notice IOracle.getOutcome
-     * @dev Reverts if not finalized. Returns `type(uint256).max` on invalid.
-     */
+    /// @notice Returns the resolved outcome for a market.
+    /// @dev Reverts if not finalized. Returns `type(uint256).max` on invalid.
+    /// @param marketId Unique identifier for the market.
+    /// @return The winning outcome index, or type(uint256).max if invalid.
     function getOutcome(bytes32 marketId) external view override returns (uint256) {
         Status s = marketStatus[marketId];
         require(s == Status.RESOLVED || s == Status.INVALID, "not finalized");
         return marketOutcome[marketId];
     }
 
-    /**
-     * @notice UMA callback when an assertion is resolved.
-     * @dev Signature follows UMA OOv3 callback expectations.
-     */
+    /// @notice UMA callback when an assertion is resolved.
+    /// @dev Called by UMA OOv3 after liveness or dispute resolution.
+    ///      If assertedTruthfully=true, market resolves to the asserted outcome.
+    ///      If assertedTruthfully=false, market becomes INVALID.
+    /// @param assertionId The UMA assertion ID.
+    /// @param assertedTruthfully Whether the assertion was confirmed true.
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
         if (msg.sender != address(uma)) revert NotUmaOracle();
         bytes32 marketId = assertionToMarket[assertionId];
@@ -217,10 +235,10 @@ contract UMAOracleAdapterV2 is IOracle, AccessControl {
         }
     }
 
-    /**
-     * @notice UMA callback when an assertion is disputed.
-     * @dev Polymarket-style: dispute does NOT instantly invalidate; final outcome comes from settle.
-     */
+    /// @notice UMA callback when an assertion is disputed.
+    /// @dev Polymarket-style: dispute does NOT instantly invalidate; final outcome comes from settle.
+    ///      This only emits an event for off-chain tracking.
+    /// @param assertionId The UMA assertion ID that was disputed.
     function assertionDisputedCallback(bytes32 assertionId) external {
         if (msg.sender != address(uma)) revert NotUmaOracle();
         bytes32 marketId = assertionToMarket[assertionId];

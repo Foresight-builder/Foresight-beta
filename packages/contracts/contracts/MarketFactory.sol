@@ -11,7 +11,8 @@ import "./interfaces/IMarket.sol";
 /// @author Foresight
 /// @notice This factory contract is responsible for creating and managing prediction markets.
 /// @dev It uses a template-based approach with minimal proxies (clones) for gas efficiency.
-/// It maintains a registry of market templates and tracks all created markets.
+///      It maintains a registry of market templates and tracks all created markets.
+/// @custom:security-contact security@foresight.io
 contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     using Clones for address;
 
@@ -108,6 +109,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     }
 
     /// @notice Sets the default oracle adapter used by createMarket when `oracle` is zero.
+    /// @dev Can only be called by admin. This is the fallback oracle for markets that don't specify one.
+    /// @param newOracle The new default oracle adapter address.
     function setDefaultOracle(address newOracle) external onlyRole(ADMIN_ROLE) {
         require(newOracle != address(0), "oracle cannot be the zero address");
         umaOracle = newOracle;
@@ -149,9 +152,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     // Market creation
     // ----------------------
 
-    /// @notice Creates a new prediction market by cloning a registered template.
-    /// @dev This function deploys a minimal proxy (clone) of the template and initializes it.
-    /// It forces the use of the pre-configured UMA oracle.
+    /// @notice Creates a new prediction market by cloning a registered template (uses default oracle).
+    /// @dev Backwards-compatible overload: uses the factory default oracle adapter.
     /// @param templateId The ID of the registered template to use.
     /// @param collateralToken The ERC20 token to be used as collateral.
     /// @param _feeBps The trading fee for the market in basis points (1 bps = 0.01%).
@@ -159,8 +161,6 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /// @param data ABI-encoded data specific to the template's initialization function.
     /// @return market The address of the newly created market.
     /// @return marketId The sequential ID assigned to the new market.
-    /// @notice Creates a new prediction market by cloning a registered template.
-    /// @dev Backwards-compatible overload: uses the factory default oracle adapter.
     function createMarket(
         bytes32 templateId,
         address collateralToken,
@@ -172,7 +172,15 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     }
 
     /// @notice Creates a new prediction market by cloning a registered template.
+    /// @dev This function deploys a minimal proxy (clone) of the template and initializes it.
+    /// @param templateId The ID of the registered template to use.
+    /// @param collateralToken The ERC20 token to be used as collateral.
     /// @param oracle Oracle adapter address to use. If zero, uses the factory default oracle adapter.
+    /// @param _feeBps The trading fee for the market in basis points (1 bps = 0.01%).
+    /// @param resolutionTime The Unix timestamp after which the market can be resolved.
+    /// @param data ABI-encoded data specific to the template's initialization function.
+    /// @return market The address of the newly created market.
+    /// @return marketId The sequential ID assigned to the new market.
     function createMarket(
         bytes32 templateId,
         address collateralToken,

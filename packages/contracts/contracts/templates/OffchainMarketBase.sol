@@ -11,25 +11,23 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IOracle.sol";
+import "../interfaces/IOracleRegistrar.sol";
 import "../tokens/OutcomeToken1155.sol";
 
-interface IOracleRegistrar {
-    function registerMarket(bytes32 marketId, uint64 resolutionTime, uint8 outcomeCount) external;
-}
-
-/**
- * @notice Off-chain orderbook settlement market (no on-chain order storage / matching).
- * - Orders are EIP-712 signed by makers off-chain.
- * - Taker (msg.sender) submits fills on-chain (batchFill) to settle atomically.
- *
- * Pricing convention (USDC 6 decimals):
- * - amount is `amount18` (1e18 = 1 share)
- * - price is `price6Per1e18` (USDC base units per 1e18 share)
- * - cost6 = amount18 * price6Per1e18 / 1e18
- *
- * Fees: trading fee is not charged (per your requirement). Events include fee=0 for compatibility.
- * Invalid resolution: direct INVALID, no fee, users exit via complete set redemption.
- */
+/// @title OffchainMarketBase
+/// @author Foresight
+/// @notice Off-chain orderbook settlement market (no on-chain order storage / matching).
+/// @dev Orders are EIP-712 signed by makers off-chain. Taker (msg.sender) submits fills
+///      on-chain (batchFill) to settle atomically.
+///
+///      Pricing convention (USDC 6 decimals):
+///      - amount is `amount18` (1e18 = 1 share)
+///      - price is `price6Per1e18` (USDC base units per 1e18 share)
+///      - cost6 = amount18 * price6Per1e18 / 1e18
+///
+///      Fees: trading fee is not charged. Events include fee=0 for compatibility.
+///      Invalid resolution: direct INVALID, no fee, users exit via complete set redemption.
+/// @custom:security-contact security@foresight.io
 abstract contract OffchainMarketBase is
     IMarket,
     ReentrancyGuard,
@@ -44,6 +42,10 @@ abstract contract OffchainMarketBase is
     uint256 internal constant USDC_SCALE = 1e6; // USDC base units
     uint256 internal constant MAX_PRICE_6_PER_1E18 = 1e6; // 1 USDC max per share (binary & multi)
     uint256 internal constant SHARE_GRANULARITY = 1e12; // enforce 6-decimal share steps (so USDC conversions are exact)
+
+    // --- Outcome constraints ---
+    uint8 internal constant MIN_OUTCOMES = 2; // binary market minimum
+    uint8 internal constant MAX_OUTCOMES = 8; // multi-outcome market maximum
 
     enum State {
         TRADING,
@@ -96,7 +98,6 @@ abstract contract OffchainMarketBase is
     error InvalidOutcomeIndex();
     error InvalidState();
     error ResolutionTimeNotReached();
-    error AlreadyFinalized();
     error InvalidExpiry();
     error InvalidAmount();
     error InvalidPrice();
@@ -112,9 +113,17 @@ abstract contract OffchainMarketBase is
         _;
     }
 
-    /// @notice Computes the outcome token id for this market/outcome.
+    /// @notice Computes the outcome token id for this market/outcome (with bounds check).
     /// @dev Matches OutcomeToken1155.computeTokenId(address,uint256) but avoids an external call.
+    /// @param outcomeIndex The outcome index (0 to outcomeCount-1).
+    /// @return The unique token ID for this market/outcome combination.
     function outcomeTokenId(uint256 outcomeIndex) public view returns (uint256) {
+        if (outcomeIndex >= uint256(outcomeCount)) revert InvalidOutcomeIndex();
+        return _outcomeTokenIdUnchecked(outcomeIndex);
+    }
+
+    /// @dev Internal unchecked version for loops where bounds are already verified.
+    function _outcomeTokenIdUnchecked(uint256 outcomeIndex) internal view returns (uint256) {
         return (uint256(uint160(address(this))) << 32) | outcomeIndex;
     }
 
@@ -134,7 +143,7 @@ abstract contract OffchainMarketBase is
         require(_collateralToken != address(0) && _oracle != address(0), "bad addrs");
         require(outcome1155 != address(0), "outcome1155=0");
         require(_resolutionTime > block.timestamp, "resolution in past");
-        require(oc >= 2 && oc <= 8, "outcomes range");
+        require(oc >= MIN_OUTCOMES && oc <= MAX_OUTCOMES, "outcomes range");
 
         marketId = _marketId;
         factory = _factory;
@@ -158,10 +167,17 @@ abstract contract OffchainMarketBase is
         emit Initialized(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, oc);
     }
 
+    /// @notice Returns the EIP-712 domain separator for signature verification.
+    /// @return The domain separator bytes32.
     function domainSeparatorV4() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
 
+    /// @notice Cancels all orders with a specific salt for a maker.
+    /// @dev Requires EIP-712 signature from the maker.
+    /// @param maker The address of the order maker.
+    /// @param salt The salt value to cancel.
+    /// @param signature EIP-712 signature from the maker.
     function cancelSaltSigned(address maker, uint256 salt, bytes calldata signature) external nonReentrant inState(State.TRADING) {
         if (canceledSalt[maker][salt]) revert OrderCanceled();
         bytes32 structHash = keccak256(abi.encode(CANCEL_SALT_TYPEHASH, maker, salt));
@@ -172,10 +188,11 @@ abstract contract OffchainMarketBase is
         emit OrderSaltCanceled(maker, salt);
     }
 
-    /**
-     * @notice Batch settle signed orders. Taker is msg.sender.
-     * @dev orders/sigs/fillAmounts arrays must have same length.
-     */
+    /// @notice Batch settle signed orders. Taker is msg.sender.
+    /// @dev All arrays must have the same length. Each order is settled independently.
+    /// @param orders Array of Order structs containing maker, outcomeIndex, isBuy, price, amount, salt, expiry.
+    /// @param signatures Array of EIP-712 signatures from each order's maker.
+    /// @param fillAmounts Array of amounts to fill for each order (in 1e18 share units).
     function batchFill(
         Order[] calldata orders,
         bytes[] calldata signatures,
@@ -188,6 +205,10 @@ abstract contract OffchainMarketBase is
         }
     }
 
+    /// @notice Settle a single signed order. Taker is msg.sender.
+    /// @param order The Order struct containing maker, outcomeIndex, isBuy, price, amount, salt, expiry.
+    /// @param signature EIP-712 signature from the order's maker.
+    /// @param fillAmount Amount to fill (in 1e18 share units, must be multiple of SHARE_GRANULARITY).
     function fillOrderSigned(Order calldata order, bytes calldata signature, uint256 fillAmount) external nonReentrant inState(State.TRADING) {
         _fillOne(order, signature, fillAmount);
     }
@@ -224,7 +245,8 @@ abstract contract OffchainMarketBase is
 
         // cost6 = amount18 * price6Per1e18 / 1e18
         uint256 cost6 = Math.mulDiv(fillAmount, o.price, SHARE_SCALE);
-        uint256 tokenId = outcomeTokenId(o.outcomeIndex);
+        // outcomeIndex already validated above, use unchecked
+        uint256 tokenId = _outcomeTokenIdUnchecked(o.outcomeIndex);
 
         if (o.isBuy) {
             // maker buys outcome tokens; taker sells tokens and receives USDC
@@ -245,6 +267,10 @@ abstract contract OffchainMarketBase is
     // Complete set / redemption
     // -------------------------
 
+    /// @notice Mint a complete set of outcome tokens by depositing collateral.
+    /// @dev User deposits USDC and receives equal amounts of all outcome tokens.
+    ///      amount18 must be a multiple of SHARE_GRANULARITY (1e12).
+    /// @param amount18 Amount of each outcome token to mint (1e18 = 1 share).
     function mintCompleteSet(uint256 amount18) external nonReentrant inState(State.TRADING) {
         if (amount18 == 0) revert InvalidAmount();
         if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
@@ -256,22 +282,30 @@ abstract contract OffchainMarketBase is
         uint256[] memory ids = new uint256[](uint256(outcomeCount));
         uint256[] memory amts = new uint256[](uint256(outcomeCount));
         for (uint256 i = 0; i < uint256(outcomeCount); i++) {
-            ids[i] = outcomeTokenId(i);
+            ids[i] = _outcomeTokenIdUnchecked(i);
             amts[i] = amount18;
         }
         outcomeToken.mintBatch(msg.sender, ids, amts);
     }
 
+    /// @notice Redeem winning outcome tokens for collateral after market resolution.
+    /// @dev Only callable when state == RESOLVED. Burns winning tokens and pays out USDC.
+    /// @param amount18 Amount of winning outcome tokens to redeem (1e18 = 1 share).
     function redeem(uint256 amount18) external nonReentrant inState(State.RESOLVED) {
         if (amount18 == 0) revert InvalidAmount();
         if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         if (!outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this))) revert NoMinterRole();
-        uint256 idWin = outcomeTokenId(resolvedOutcome);
+        // resolvedOutcome is always < outcomeCount, use unchecked
+        uint256 idWin = _outcomeTokenIdUnchecked(resolvedOutcome);
         outcomeToken.burn(msg.sender, idWin, amount18);
         uint256 payout6 = Math.mulDiv(amount18, USDC_SCALE, SHARE_SCALE);
         collateral.safeTransfer(msg.sender, payout6);
     }
 
+    /// @notice Redeem a complete set of outcome tokens when market is INVALID.
+    /// @dev Only callable when state == INVALID. Burns equal amounts of all outcome tokens
+    ///      and returns the original collateral (no fees charged on invalid markets).
+    /// @param amount18PerOutcome Amount of each outcome token to burn (1e18 = 1 share).
     function redeemCompleteSetOnInvalid(uint256 amount18PerOutcome) external nonReentrant inState(State.INVALID) {
         if (amount18PerOutcome == 0) revert InvalidAmount();
         if (amount18PerOutcome % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
@@ -280,7 +314,7 @@ abstract contract OffchainMarketBase is
         uint256[] memory ids = new uint256[](uint256(outcomeCount));
         uint256[] memory amts = new uint256[](uint256(outcomeCount));
         for (uint256 i = 0; i < uint256(outcomeCount); i++) {
-            ids[i] = outcomeTokenId(i);
+            ids[i] = _outcomeTokenIdUnchecked(i);
             amts[i] = amount18PerOutcome;
         }
         outcomeToken.burnBatch(msg.sender, ids, amts);
@@ -293,13 +327,11 @@ abstract contract OffchainMarketBase is
     // Resolution
     // -------------------------
 
-    /**
-     * @notice Permissionless resolution. After `resolutionTime`, anyone can finalize to RESOLVED or INVALID.
-     * @dev Oracle adapter should revert if not finalized; return type(uint256).max on invalid.
-     */
+    /// @notice Permissionless resolution. After `resolutionTime`, anyone can finalize to RESOLVED or INVALID.
+    /// @dev Oracle adapter should revert if not finalized; return type(uint256).max on invalid.
+    ///      The inState modifier already ensures state == TRADING, so no redundant check needed.
     function resolve() external inState(State.TRADING) {
         if (block.timestamp < resolutionTime) revert ResolutionTimeNotReached();
-        if (state != State.TRADING) revert AlreadyFinalized();
 
         uint256 outcome = IOracle(oracle).getOutcome(marketId);
         if (outcome == type(uint256).max) {

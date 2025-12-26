@@ -1,3 +1,6 @@
+/**
+ * @deprecated This script uses legacy CLOBMarket. Use new off-chain orderbook architecture.
+ */
 const hre = require("hardhat");
 
 async function main() {

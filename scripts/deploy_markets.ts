@@ -1,3 +1,7 @@
+/**
+ * @deprecated This script uses legacy CLOBMarket and MultiOutcomeMarket1155 templates.
+ * Please use `deploy_offchain_sprint1.ts` for the new off-chain orderbook architecture.
+ */
 /// <reference types="@nomicfoundation/hardhat-ethers" />
 import hre from "hardhat";
 

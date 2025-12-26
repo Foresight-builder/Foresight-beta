@@ -1,3 +1,7 @@
+/**
+ * @deprecated This script uses legacy MultiOutcomeMarket1155 template.
+ * Please use `deploy_offchain_sprint1.ts` for the new off-chain orderbook architecture.
+ */
 const hre = require("hardhat");
 const fs = require("fs");
 
