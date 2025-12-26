@@ -73,6 +73,42 @@ import {
 } from "./orderbook.js";
 
 export const app = express();
+
+type RateLimitBucket = {
+  count: number;
+  windowStart: number;
+};
+
+function createRateLimiter(envPrefix: string, defaultMax: number, defaultWindowMs: number) {
+  const max = Math.max(1, Number(process.env[`${envPrefix}_MAX`] || String(defaultMax)));
+  const windowMs = Math.max(
+    100,
+    Number(process.env[`${envPrefix}_WINDOW_MS`] || String(defaultWindowMs))
+  );
+  const buckets = new Map<string, RateLimitBucket>();
+  return function rateLimit(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    const ip = (req.ip || "").toString() || "unknown";
+    const now = Date.now();
+    const bucket = buckets.get(ip);
+    if (!bucket || now - bucket.windowStart >= windowMs) {
+      buckets.set(ip, { count: 1, windowStart: now });
+      return next();
+    }
+    if (bucket.count < max) {
+      bucket.count += 1;
+      return next();
+    }
+    res.status(429).json({ success: false, message: "Too many requests" });
+  };
+}
+
+const limitOrders = createRateLimiter("RELAYER_RATE_LIMIT_ORDERS", 30, 60000);
+const limitReportTrade = createRateLimiter("RELAYER_RATE_LIMIT_REPORT_TRADE", 60, 60000);
+
 const allowedOriginsRaw = process.env.RELAYER_CORS_ORIGINS || "";
 const allowedOrigins = allowedOriginsRaw
   .split(",")
@@ -100,6 +136,7 @@ if (BUNDLER_PRIVATE_KEY) {
 }
 
 app.get("/", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
   res.send("Foresight Relayer is running!");
 });
 
@@ -134,7 +171,7 @@ app.post("/", async (req, res) => {
 });
 
 // Off-chain orderbook API
-app.post("/orderbook/orders", async (req, res) => {
+app.post("/orderbook/orders", limitOrders, async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
@@ -180,6 +217,7 @@ app.get("/orderbook/depth", async (req, res) => {
           ? req.query.market_key
           : undefined;
     const data = await getDepth(vc, chainId, outcome, side, levels, marketKey);
+    res.setHeader("Cache-Control", "public, max-age=2");
     res.json({ success: true, data });
   } catch (e: any) {
     res
@@ -206,6 +244,7 @@ app.get("/orderbook/queue", async (req, res) => {
           ? req.query.market_key
           : undefined;
     const data = await getQueue(vc, chainId, outcome, side, price, limit, offset, marketKey);
+    res.setHeader("Cache-Control", "public, max-age=2");
     res.json({ success: true, data });
   } catch (e: any) {
     res
@@ -214,14 +253,20 @@ app.get("/orderbook/queue", async (req, res) => {
   }
 });
 
-app.post("/orderbook/report-trade", async (req, res) => {
+const TradeReportSchema = z.object({
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+});
+
+app.post("/orderbook/report-trade", limitReportTrade, async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
-    const chainId = Number(req.body.chainId);
-    const txHash = String(req.body.txHash);
-    if (!chainId || !txHash) throw new Error("Missing chainId or txHash");
-    const data = await ingestTrade(chainId, txHash);
+    const body = TradeReportSchema.parse(req.body || {});
+    const data = await ingestTrade(body.chainId, body.txHash);
     res.json({ success: true, data });
   } catch (e: any) {
     console.error(e);
@@ -243,6 +288,7 @@ app.get("/orderbook/candles", async (req, res) => {
     const resolution = String(req.query.resolution || "15m");
     const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 100)));
     const data = await getCandles(market, chainId, outcome, resolution, limit);
+    res.setHeader("Cache-Control", "public, max-age=5");
     res.json({ success: true, data });
   } catch (e: any) {
     res.status(400).json({
@@ -254,6 +300,7 @@ app.get("/orderbook/candles", async (req, res) => {
 });
 
 app.get("/orderbook/types", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
   res.json({ success: true, types: getOrderTypes() });
 });
 
