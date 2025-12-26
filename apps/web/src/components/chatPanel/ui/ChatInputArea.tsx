@@ -42,10 +42,14 @@ export function ChatInputArea({
   error,
 }: ChatInputAreaProps) {
   return (
-    <div className="p-3 border-t border-brand-accent/25 bg-gradient-to-t from-brand-accent/30 via-brand-accent/15 to-white/90 relative pb-[env(safe-area-inset-bottom)] text-slate-800">
+    <div className="p-3 border-t border-[var(--card-border)] bg-[var(--card-bg)]/80 backdrop-blur-xl relative pb-[env(safe-area-inset-bottom)] text-[var(--foreground)]">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-accent/15 via-brand/8 to-transparent dark:from-brand-accent/12 dark:via-brand/10 dark:to-transparent opacity-60" />
+      <div className="relative z-10">
       {!account ? (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-700 font-medium">{tChat("input.walletRequired")}</div>
+          <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">
+            {tChat("input.walletRequired")}
+          </div>
           <Button
             size="sm"
             variant="cta"
@@ -67,7 +71,7 @@ export function ChatInputArea({
                 key={idx}
                 type="button"
                 onClick={() => setInput(p)}
-                className="text-xs px-2 py-1 rounded-full border border-brand-accent/30 bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 hover:text-white transition-colors shadow-sm"
+                className="text-xs px-2 py-1 rounded-full border border-[var(--card-border)] bg-[var(--card-bg)] text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10 transition-colors shadow-sm"
               >
                 {p}
               </button>
@@ -87,29 +91,29 @@ export function ChatInputArea({
                 }}
                 placeholder={tChat("input.placeholder")}
                 rows={2}
-                className="input-base w-full resize-none px-3 py-2 bg-brand-accent/5 border-brand-accent/30 text-slate-900 placeholder:text-slate-400"
+                className="input-base w-full resize-none px-3 py-2 bg-[var(--card-bg)] border-[var(--card-border)] text-[var(--foreground)] placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <div className="absolute right-2 bottom-2">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 text-gray-400 hover:text-indigo-600 transition-colors"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 dark:hover:bg-white/5 text-slate-400 hover:text-brand transition-colors"
                   onClick={() => setShowEmojis((v) => !v)}
                   aria-label={tChat("input.toggleEmojisAria")}
                 >
                   {sending ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                    <Loader2 className="w-4 h-4 animate-spin text-brand" />
                   ) : (
                     <Smile className="w-4 h-4" />
                   )}
                 </button>
               </div>
               {showEmojis && (
-                <div className="absolute right-0 bottom-14 z-10 bg-white/80 backdrop-blur-md border border-white/60 rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1">
+                <div className="absolute right-0 bottom-14 z-10 bg-[var(--card-bg)] backdrop-blur-md border border-[var(--card-border)] rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1">
                   {["🙂", "🔥", "🚀", "💡", "🎯", "👏", "📈", "🤔", "✅", "❗", "✨", "📌"].map(
                     (emo) => (
                       <button
                         key={emo}
-                        className="text-base px-1 py-1 hover:bg-gray-100 rounded"
+                        className="text-base px-1 py-1 hover:bg-white/10 dark:hover:bg-white/5 rounded"
                         type="button"
                         onClick={() => setInput((prev) => prev + emo)}
                       >
@@ -134,6 +138,7 @@ export function ChatInputArea({
         </>
       )}
       {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+      </div>
     </div>
   );
 }

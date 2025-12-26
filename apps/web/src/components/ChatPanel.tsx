@@ -96,7 +96,7 @@ export default function ChatPanel({
   };
 
   const containerCls =
-    "flex flex-col h-full bg-gradient-to-br from-white via-brand-accent/10 to-white backdrop-blur-sm border border-white/70 rounded-3xl text-slate-900 shadow-md shadow-brand/20";
+    "flex flex-col h-full rounded-3xl text-[var(--foreground)] glass-card shadow-md shadow-brand/20 relative overflow-hidden";
   const minH = String(
     minHeightPx && minHeightPx > 0
       ? `${minHeightPx}px`
@@ -107,6 +107,9 @@ export default function ChatPanel({
 
   return (
     <div className={containerCls} style={{ minHeight: minH }}>
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/15 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
+      <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/15 blur-3xl dark:bg-purple-500/10" />
+      <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-72 w-72 rounded-full bg-fuchsia-500/12 blur-3xl dark:bg-fuchsia-500/10" />
       {!hideHeader && (
         <ChatHeader
           roomLabel={roomLabel}
@@ -126,7 +129,7 @@ export default function ChatPanel({
       />
 
       {isProposalRoom ? (
-        <div className="mx-4 mt-3 mb-4 rounded-3xl border-2 border-pink-400 bg-pink-50/80 shadow-sm">
+        <div className="mx-4 mt-3 mb-4 rounded-3xl border border-[var(--card-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
           <div className="px-4 pb-4">
             <ForumSection eventId={eventId} />
           </div>

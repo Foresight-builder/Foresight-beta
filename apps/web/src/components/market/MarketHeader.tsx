@@ -131,52 +131,64 @@ export function MarketHeader({
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="flex flex-col gap-2 p-5 rounded-3xl bg-purple-50/50 border border-purple-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all hover:bg-purple-50">
-          <span className="text-xs font-bold text-purple-600 uppercase tracking-wider z-10 flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-purple-200/50 text-purple-700">
-              <TrendingUp className="w-3.5 h-3.5" />
+      {/* Stats Overview (non-card layout) */}
+      <div className="rounded-3xl border border-[var(--card-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-soft overflow-hidden">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-[var(--card-border)]">
+          <div className="p-4 md:p-5 flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-300 flex items-center justify-center border border-purple-500/15 flex-shrink-0">
+              <TrendingUp className="w-4 h-4" />
             </div>
-            {tMarketHeader("totalVolume")}
-          </span>
-          <span className="text-xl font-black text-gray-900 z-10">${volume.toLocaleString()}</span>
-        </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {tMarketHeader("totalVolume")}
+              </div>
+              <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
+                ${volume.toLocaleString()}
+              </div>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-2 p-5 rounded-3xl bg-blue-50/50 border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all hover:bg-blue-50">
-          <span className="text-xs font-bold text-blue-600 uppercase tracking-wider z-10 flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-blue-200/50 text-blue-700">
-              <ArrowLeftRight className="w-3.5 h-3.5" />
+          <div className="p-4 md:p-5 flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-300 flex items-center justify-center border border-sky-500/15 flex-shrink-0">
+              <ArrowLeftRight className="w-4 h-4" />
             </div>
-            {tMarketHeader("liquidity")}
-          </span>
-          <span className="text-xl font-black text-gray-900 z-10">
-            ${liquidity.toLocaleString()}
-          </span>
-        </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {tMarketHeader("liquidity")}
+              </div>
+              <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
+                ${liquidity.toLocaleString()}
+              </div>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-2 p-5 rounded-3xl bg-emerald-50/50 border border-emerald-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all hover:bg-emerald-50">
-          <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider z-10 flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-emerald-200/50 text-emerald-700">
-              <Users className="w-3.5 h-3.5" />
+          <div className="p-4 md:p-5 flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 flex items-center justify-center border border-emerald-500/15 flex-shrink-0">
+              <Users className="w-4 h-4" />
             </div>
-            {tMarketHeader("participants")}
-          </span>
-          <span className="text-xl font-black text-gray-900 z-10">
-            {prediction.stats?.participantCount || 0}
-          </span>
-        </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {tMarketHeader("participants")}
+              </div>
+              <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
+                {prediction.stats?.participantCount || 0}
+              </div>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-2 p-5 rounded-3xl bg-orange-50/50 border border-orange-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all hover:bg-orange-50">
-          <span className="text-xs font-bold text-orange-600 uppercase tracking-wider z-10 flex items-center gap-1.5">
-            <div className="p-1 rounded-md bg-orange-200/50 text-orange-700">
-              <Calendar className="w-3.5 h-3.5" />
+          <div className="p-4 md:p-5 flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-300 flex items-center justify-center border border-orange-500/15 flex-shrink-0">
+              <Calendar className="w-4 h-4" />
             </div>
-            {tMarketHeader("deadline")}
-          </span>
-          <span className="text-xl font-black text-gray-900 z-10 truncate">
-            {new Date(prediction.deadline).toLocaleDateString()}
-          </span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {tMarketHeader("deadline")}
+              </div>
+              <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
+                {new Date(prediction.deadline).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

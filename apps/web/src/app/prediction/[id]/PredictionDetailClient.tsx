@@ -203,72 +203,98 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           />
         </div>
 
-        <div className="mb-8 max-w-5xl px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-sm">
-          <div className="flex-1">
-            <p className="text-sm text-slate-800 leading-relaxed line-clamp-3">{descriptionText}</p>
-            <p className="mt-2 text-xs text-slate-500">
-              价格代表事件发生的隐含概率，你可以随时买入或卖出持仓，观点变化时也能快速调整。
-            </p>
-            {account && currentPosition && !portfolioLoading && (
-              <div className="mt-3 inline-flex items-center text-[11px] text-slate-500 gap-2 rounded-full bg-slate-50/80 px-2.5 py-1 border border-slate-100">
-                <span className="text-slate-400">我的持仓</span>
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
-                    String((currentPosition as any).outcome || "").toLowerCase() === "yes"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : String((currentPosition as any).outcome || "").toLowerCase() === "no"
-                        ? "bg-rose-50 text-rose-700"
-                        : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {(currentPosition as any).outcome}
-                </span>
-                <span>
-                  投入{" "}
-                  <span className="font-semibold text-slate-900">
-                    ${Number((currentPosition as any).stake || 0).toFixed(2)}
-                  </span>
-                </span>
-                <span>
-                  收益{" "}
+        <div className="mb-8 max-w-5xl">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+            <div className="flex-1 pl-4 border-l-2 border-brand/20">
+              <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed line-clamp-3">
+                {descriptionText}
+              </p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                价格代表事件发生的隐含概率，你可以随时买入或卖出持仓，观点变化时也能快速调整。
+              </p>
+              {account && currentPosition && !portfolioLoading && (
+                <div className="mt-3 inline-flex items-center text-[11px] text-slate-500 dark:text-slate-400 gap-2 rounded-full bg-[var(--card-bg)] px-2.5 py-1 border border-[var(--card-border)] backdrop-blur-md">
+                  <span className="text-slate-400 dark:text-slate-500">我的持仓</span>
                   <span
-                    className={`font-semibold ${
-                      String((currentPosition as any).pnl || "").startsWith("+")
-                        ? "text-emerald-600"
-                        : "text-rose-600"
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                      String((currentPosition as any).outcome || "").toLowerCase() === "yes"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : String((currentPosition as any).outcome || "").toLowerCase() === "no"
+                          ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                          : "bg-slate-500/10 text-slate-700 dark:text-slate-300"
                     }`}
                   >
-                    {(currentPosition as any).pnl}
+                    {(currentPosition as any).outcome}
                   </span>
-                </span>
-                {positionSideProbPercent !== null && (
-                  <span className="text-slate-400">隐含 {positionSideProbPercent.toFixed(1)}%</span>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:ml-6">
-            <div className="flex flex-col px-3 py-2 rounded-2xl bg-gradient-to-br from-emerald-50 via-emerald-50/70 to-teal-50 border border-emerald-100/80 shadow-sm shadow-emerald-500/10 min-w-[110px]">
-              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-                Yes
-              </span>
-              <span className="text-lg font-black text-slate-900">
-                {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}%` : "-"}
-              </span>
-              <span className="mt-0.5 text-[11px] text-emerald-600/80">
-                {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}¢` : ""}
-              </span>
+                  <span>
+                    投入{" "}
+                    <span className="font-semibold text-[var(--foreground)]">
+                      ${Number((currentPosition as any).stake || 0).toFixed(2)}
+                    </span>
+                  </span>
+                  <span>
+                    收益{" "}
+                    <span
+                      className={`font-semibold ${
+                        String((currentPosition as any).pnl || "").startsWith("+")
+                          ? "text-emerald-600"
+                          : "text-rose-600"
+                      }`}
+                    >
+                      {(currentPosition as any).pnl}
+                    </span>
+                  </span>
+                  {positionSideProbPercent !== null && (
+                    <span className="text-slate-400 dark:text-slate-500">
+                      隐含 {positionSideProbPercent.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex flex-col px-3 py-2 rounded-2xl bg-gradient-to-br from-rose-50 via-rose-50/70 to-orange-50 border border-rose-100/80 shadow-sm shadow-rose-500/10 min-w-[110px]">
-              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
-                No
-              </span>
-              <span className="text-lg font-black text-slate-900">
-                {Number.isFinite(noProb) ? `${noProb.toFixed(0)}%` : "-"}
-              </span>
-              <span className="mt-0.5 text-[11px] text-rose-600/80">
-                {Number.isFinite(noProb) ? `${noProb.toFixed(0)}¢` : ""}
-              </span>
+
+            <div className="sm:w-[280px] flex flex-col gap-4">
+              <div className="w-full">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Yes
+                  </span>
+                  <span className="text-[var(--foreground)] normal-case font-black text-sm">
+                    {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}%` : "-"}
+                  </span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/50 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                    style={{ width: `${Math.max(0, Math.min(100, yesProb))}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}¢` : ""}
+                </div>
+              </div>
+
+              <div className="w-full">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    No
+                  </span>
+                  <span className="text-[var(--foreground)] normal-case font-black text-sm">
+                    {Number.isFinite(noProb) ? `${noProb.toFixed(0)}%` : "-"}
+                  </span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-200/70 dark:bg-slate-700/50 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-500 to-orange-500"
+                    style={{ width: `${Math.max(0, Math.min(100, noProb))}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  {Number.isFinite(noProb) ? `${noProb.toFixed(0)}¢` : ""}
+                </div>
+              </div>
             </div>
           </div>
         </div>

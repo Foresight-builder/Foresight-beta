@@ -115,17 +115,21 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     frameSurfaceGradient: "from-slate-50/70 via-slate-50/60 to-white/0",
   },
   default: {
-    chip: "bg-brand-accent/15 text-brand-accent border-brand-accent/40 hover:bg-brand-accent/25",
+    chip: "bg-brand-accent/15 text-brand-accent border-brand-accent/40 hover:bg-brand-accent/25 dark:bg-brand-accent/10 dark:border-brand-accent/25 dark:hover:bg-brand-accent/15",
     chipActive: "bg-brand-accent/80 text-white border-brand-accent shadow-brand",
-    badge: "bg-brand-accent/15 text-brand-accent",
-    border: "border-brand-accent/20 hover:border-brand-accent/60",
-    softBg: "bg-gradient-to-br from-brand-accent/10 via-white/0 to-white/0",
+    badge: "bg-brand-accent/15 text-brand-accent dark:bg-brand-accent/15 dark:text-fuchsia-200",
+    border: "border-brand-accent/20 hover:border-brand-accent/60 dark:border-brand-accent/15 dark:hover:border-brand-accent/35",
+    softBg:
+      "bg-gradient-to-br from-brand-accent/10 via-white/0 to-white/0 dark:from-brand-accent/15 dark:via-transparent dark:to-transparent",
     accentText: "text-brand-accent",
-    activeCard: "bg-white/95 border-brand-accent/30 shadow-brand scale-[1.01]",
+    activeCard:
+      "bg-[var(--card-bg)] border-brand-accent/25 shadow-brand scale-[1.01] dark:bg-slate-900/45 dark:border-brand-accent/20",
     accentBar: "bg-brand-accent",
-    chatGradient: "from-brand-accent/30 via-brand-accent/15 to-white",
-    headerGradient: "bg-brand-accent/20",
-    frameSurfaceGradient: "from-brand-accent/10 via-brand-accent/10 to-white",
+    chatGradient:
+      "from-brand-accent/15 via-brand-accent/10 to-transparent dark:from-brand-accent/15 dark:via-brand-accent/10 dark:to-transparent",
+    headerGradient: "bg-brand-accent/10 dark:bg-brand-accent/10",
+    frameSurfaceGradient:
+      "from-brand-accent/10 via-brand-accent/10 to-white dark:from-brand-accent/10 dark:via-transparent dark:to-transparent",
   },
 };
 
