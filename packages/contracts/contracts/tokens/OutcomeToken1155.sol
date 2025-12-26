@@ -11,6 +11,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 /// @notice Shared ERC1155 token contract for multiple markets and outcomes.
 /// @dev Markets must be granted MINTER_ROLE to mint/burn users' outcome tokens.
 ///      Token IDs are computed as: (uint256(uint160(market)) << 32) | outcomeIndex
+///
+///      Gas optimizations:
+///      - Assembly for computeTokenId
+///      - Calldata arrays for batch operations
 /// @custom:security-contact security@foresight.io
 contract OutcomeToken1155 is Initializable, ERC1155Upgradeable, AccessControlUpgradeable, UUPSUpgradeable {
     /// @notice Role identifier for addresses allowed to mint and burn tokens.
@@ -86,12 +90,29 @@ contract OutcomeToken1155 is Initializable, ERC1155Upgradeable, AccessControlUpg
     }
 
     /// @notice Utility to compute a unique token id from market address and outcome index.
-    /// @dev Packs market address (160 bits) left-shifted by 32 and outcome index in lower 32 bits.
+    /// @dev Uses assembly for gas efficiency.
+    ///      Packs market address (160 bits) left-shifted by 32 and outcome index in lower 32 bits.
     /// @param market The market contract address.
     /// @param outcomeIndex The outcome index (0 to outcomeCount-1).
-    /// @return The unique token ID.
-    function computeTokenId(address market, uint256 outcomeIndex) external pure returns (uint256) {
-        return (uint256(uint160(market)) << 32) | outcomeIndex;
+    /// @return tokenId The unique token ID.
+    function computeTokenId(address market, uint256 outcomeIndex) external pure returns (uint256 tokenId) {
+        assembly {
+            tokenId := or(shl(32, market), outcomeIndex)
+        }
+    }
+
+    /// @notice Batch query balances for a user across multiple token IDs.
+    /// @dev Gas-efficient batch balance query.
+    /// @param user The address to query.
+    /// @param ids Array of token IDs to query.
+    /// @return balances Array of balances corresponding to each token ID.
+    function balanceOfBatch(address user, uint256[] calldata ids) external view returns (uint256[] memory balances) {
+        uint256 n = ids.length;
+        balances = new uint256[](n);
+        for (uint256 i; i < n;) {
+            balances[i] = balanceOf(user, ids[i]);
+            unchecked { ++i; }
+        }
     }
 
     /// @notice Checks if the contract supports a given interface.

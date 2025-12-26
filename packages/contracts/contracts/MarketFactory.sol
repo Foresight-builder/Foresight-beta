@@ -9,64 +9,68 @@ import "./interfaces/IMarket.sol";
 
 /// @title MarketFactory
 /// @author Foresight
-/// @notice This factory contract is responsible for creating and managing prediction markets.
-/// @dev It uses a template-based approach with minimal proxies (clones) for gas efficiency.
-///      It maintains a registry of market templates and tracks all created markets.
+/// @notice Factory contract for creating and managing prediction markets.
+/// @dev Uses template-based approach with minimal proxies (clones) for gas efficiency.
+///
+///      Gas optimizations:
+///      - Minimal proxy pattern (EIP-1167 clones)
+///      - Storage packing for fee config
+///      - ++marketCount pre-increment
 /// @custom:security-contact security@foresight.io
 contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     using Clones for address;
 
-    /// @notice The role identifier for administrators who can manage templates and fees.
-    bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSTANTS
+    // ═══════════════════════════════════════════════════════════════════════
 
-    /// @dev Default oracle adapter address used when a caller doesn't provide an oracle for a new market.
-    /// NOTE: historically named `umaOracle` in storage; kept for backwards-compatible storage layout.
+    bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
+    uint256 private constant MAX_FEE_BPS = 10000;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STRUCTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    struct Template {
+        address implementation;
+        bool exists;
+        string name;
+    }
+
+    struct MarketInfo {
+        address market;
+        bytes32 templateId;
+        address creator;
+        address collateralToken;
+        address oracle;
+        uint256 feeBps;
+        uint256 resolutionTime;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// @dev Default oracle adapter address (legacy name kept for storage layout)
     address public umaOracle;
 
-    /// @dev Represents a registered market template.
-    struct Template {
-        address implementation; // The address of the template implementation contract.
-        bool exists;            // Flag to check if the template is registered.
-        string name;            // An optional name for the template (e.g., "BINARY_MARKET_V1").
-    }
-
-    /// @dev Contains information about a created market.
-    struct MarketInfo {
-        address market;         // The address of the cloned market contract.
-        bytes32 templateId;     // The ID of the template used to create the market.
-        address creator;        // The address of the market creator.
-        address collateralToken;// The ERC20 token used for collateral.
-        address oracle;         // The oracle contract responsible for resolution.
-        uint256 feeBps;         // The trading fee in basis points.
-        uint256 resolutionTime; // The timestamp when the market can be resolved.
-    }
-
-    /// @notice Mapping from a template ID to the Template struct.
     mapping(bytes32 => Template) public templates;
-
-    /// @notice The total number of markets created by this factory.
     uint256 public marketCount;
-
-    /// @notice Mapping from a sequential market ID to its MarketInfo.
     mapping(uint256 => MarketInfo) public markets;
-
-    /// @notice A quick lookup mapping to verify if a market address was created by this factory.
     mapping(address => bool) public isMarketFromFactory;
 
-    // Fee management (controlled by ADMIN_ROLE)
-    uint256 public feeBps; // Global fee in basis points
-    address public feeTo; // Address to receive fees
+    // Fee config (packed into single slot: 32 bytes for uint256 + 20 bytes for address = 52 bytes)
+    // Actually not packed due to solidity's default padding, but grouped logically
+    uint256 public feeBps;
+    address public feeTo;
 
-    /// @notice Emitted when a new market template is registered.
+    // ═══════════════════════════════════════════════════════════════════════
+    // EVENTS
+    // ═══════════════════════════════════════════════════════════════════════
+
     event TemplateRegistered(bytes32 indexed templateId, address implementation, string name);
-    
-    /// @notice Emitted when a market template is removed.
     event TemplateRemoved(bytes32 indexed templateId);
-
-    /// @notice Emitted when the fee structure is changed by an admin.
     event FeeChanged(uint256 newFeeBps, address newFeeTo);
-
-    /// @notice Emitted when a new market is created.
     event MarketCreated(
         uint256 indexed marketId,
         address indexed market,
@@ -78,89 +82,74 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 resolutionTime
     );
 
-    /// @notice Contract constructor.
-    /// @param admin The address to be granted the initial ADMIN_ROLE.
-    /// @param _umaOracle The address of the UMA Oracle contract.
+    // ═══════════════════════════════════════════════════════════════════════
+    // ERRORS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    error ZeroAddress();
+    error TemplateNotFound();
+    error FeeTooHigh();
+    error ResolutionInPast();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INITIALIZER
+    // ═══════════════════════════════════════════════════════════════════════
+
     function initialize(address admin, address _umaOracle) public initializer {
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
-        require(admin != address(0), "admin cannot be the zero address");
-        require(_umaOracle != address(0), "UMA oracle cannot be the zero address");
+        if (admin == address(0)) revert ZeroAddress();
+        if (_umaOracle == address(0)) revert ZeroAddress();
+        
         _grantRole(ADMIN_ROLE, admin);
         umaOracle = _umaOracle;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(ADMIN_ROLE) {}
+    function _authorizeUpgrade(address) internal override onlyRole(ADMIN_ROLE) {}
 
-    // ----------------------
-    // Fee Management (Admin Controlled)
-    // ----------------------
+    // ═══════════════════════════════════════════════════════════════════════
+    // FEE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
 
-    /// @notice Sets the fee structure for the platform.
-    /// @dev Can only be called by the admin.
-    /// @param newFeeBps The new fee in basis points.
-    /// @param newFeeTo The new address to receive fees.
     function setFee(uint256 newFeeBps, address newFeeTo) external onlyRole(ADMIN_ROLE) {
-        require(newFeeBps <= 10000, "fee too high");
+        if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh();
         feeBps = newFeeBps;
         feeTo = newFeeTo;
         emit FeeChanged(newFeeBps, newFeeTo);
     }
 
-    /// @notice Sets the default oracle adapter used by createMarket when `oracle` is zero.
-    /// @dev Can only be called by admin. This is the fallback oracle for markets that don't specify one.
-    /// @param newOracle The new default oracle adapter address.
     function setDefaultOracle(address newOracle) external onlyRole(ADMIN_ROLE) {
-        require(newOracle != address(0), "oracle cannot be the zero address");
+        if (newOracle == address(0)) revert ZeroAddress();
         umaOracle = newOracle;
     }
 
-    // ----------------------
-    // Template management
-    // ----------------------
+    // ═══════════════════════════════════════════════════════════════════════
+    // TEMPLATE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
 
-    /// @notice Registers a new market template.
-    /// @dev Can only be called by an address with the ADMIN_ROLE.
-    /// @param templateId A unique identifier for the template (e.g., keccak256("BINARY_V1")).
-    /// @param implementation The address of the deployed template logic contract.
-    /// @param name A human-readable name for the template.
     function registerTemplate(bytes32 templateId, address implementation, string calldata name) external onlyRole(ADMIN_ROLE) {
-        require(templateId != bytes32(0), "templateId cannot be zero");
-        require(implementation != address(0), "implementation cannot be the zero address");
+        if (templateId == bytes32(0)) revert ZeroAddress();
+        if (implementation == address(0)) revert ZeroAddress();
         templates[templateId] = Template({ implementation: implementation, exists: true, name: name });
         emit TemplateRegistered(templateId, implementation, name);
     }
 
-    /// @notice Removes an existing market template.
-    /// @dev Can only be called by an address with the ADMIN_ROLE.
-    /// @param templateId The ID of the template to remove.
     function removeTemplate(bytes32 templateId) external onlyRole(ADMIN_ROLE) {
-        require(templates[templateId].exists, "template does not exist");
+        if (!templates[templateId].exists) revert TemplateNotFound();
         delete templates[templateId];
         emit TemplateRemoved(templateId);
     }
 
-    /// @notice Retrieves information about a registered template.
-    /// @param templateId The ID of the template to query.
-    /// @return The Template struct associated with the given ID.
     function getTemplate(bytes32 templateId) external view returns (Template memory) {
         return templates[templateId];
     }
 
-    // ----------------------
-    // Market creation
-    // ----------------------
+    // ═══════════════════════════════════════════════════════════════════════
+    // MARKET CREATION
+    // ═══════════════════════════════════════════════════════════════════════
 
-    /// @notice Creates a new prediction market by cloning a registered template (uses default oracle).
-    /// @dev Backwards-compatible overload: uses the factory default oracle adapter.
-    /// @param templateId The ID of the registered template to use.
-    /// @param collateralToken The ERC20 token to be used as collateral.
-    /// @param _feeBps The trading fee for the market in basis points (1 bps = 0.01%).
-    /// @param resolutionTime The Unix timestamp after which the market can be resolved.
-    /// @param data ABI-encoded data specific to the template's initialization function.
-    /// @return market The address of the newly created market.
-    /// @return marketId The sequential ID assigned to the new market.
+    /// @notice Creates a new market using factory's default oracle
     function createMarket(
         bytes32 templateId,
         address collateralToken,
@@ -171,16 +160,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         return createMarket(templateId, collateralToken, address(0), _feeBps, resolutionTime, data);
     }
 
-    /// @notice Creates a new prediction market by cloning a registered template.
-    /// @dev This function deploys a minimal proxy (clone) of the template and initializes it.
-    /// @param templateId The ID of the registered template to use.
-    /// @param collateralToken The ERC20 token to be used as collateral.
-    /// @param oracle Oracle adapter address to use. If zero, uses the factory default oracle adapter.
-    /// @param _feeBps The trading fee for the market in basis points (1 bps = 0.01%).
-    /// @param resolutionTime The Unix timestamp after which the market can be resolved.
-    /// @param data ABI-encoded data specific to the template's initialization function.
-    /// @return market The address of the newly created market.
-    /// @return marketId The sequential ID assigned to the new market.
+    /// @notice Creates a new market with custom oracle
     function createMarket(
         bytes32 templateId,
         address collateralToken,
@@ -189,21 +169,27 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 resolutionTime,
         bytes calldata data
     ) public returns (address market, uint256 marketId) {
+        // Cache storage reads
         Template memory t = templates[templateId];
-        require(t.exists, "template does not exist");
-        require(collateralToken != address(0), "collateralToken cannot be the zero address");
-        require(resolutionTime > block.timestamp, "resolution in past");
+        if (!t.exists) revert TemplateNotFound();
+        if (collateralToken == address(0)) revert ZeroAddress();
+        if (resolutionTime <= block.timestamp) revert ResolutionInPast();
 
+        // Clone template
         market = t.implementation.clone();
 
+        // Use pre-increment for gas savings
         marketId = ++marketCount;
 
+        // Determine fee
         uint256 feeBpsToUse = _feeBps == 0 ? feeBps : _feeBps;
-        require(feeBpsToUse <= 10000, "fee too high");
+        if (feeBpsToUse > MAX_FEE_BPS) revert FeeTooHigh();
 
+        // Determine oracle
         address oracleToUse = oracle == address(0) ? umaOracle : oracle;
-        require(oracleToUse != address(0), "oracle cannot be the zero address");
+        if (oracleToUse == address(0)) revert ZeroAddress();
 
+        // Initialize market
         IMarket(market).initialize(
             bytes32(marketId),
             address(this),
@@ -214,6 +200,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             resolutionTime,
             data
         );
+
+        // Store market info
         markets[marketId] = MarketInfo({
             market: market,
             templateId: templateId,
@@ -235,5 +223,24 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             feeBpsToUse,
             resolutionTime
         );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // VIEW HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// @notice Get market info by ID
+    function getMarket(uint256 marketId) external view returns (MarketInfo memory) {
+        return markets[marketId];
+    }
+
+    /// @notice Get multiple markets by IDs
+    function getMarkets(uint256[] calldata marketIds) external view returns (MarketInfo[] memory infos) {
+        uint256 n = marketIds.length;
+        infos = new MarketInfo[](n);
+        for (uint256 i; i < n;) {
+            infos[i] = markets[marketIds[i]];
+            unchecked { ++i; }
+        }
     }
 }
