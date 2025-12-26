@@ -76,7 +76,7 @@ export function ForumChatFrame({
                 </span>
                 <Link
                   href={`/prediction/${currentTopic.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline whitespace-nowrap"
                 >
                   查看市场
                   <ArrowUpRight size={14} />
@@ -102,9 +102,14 @@ export function ForumChatFrame({
             <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">
               Category
             </span>
-            <span className="text-sm font-bold text-[var(--foreground)] flex items-center gap-1">
+            <span className="text-sm font-bold text-[var(--foreground)] flex items-center gap-1 min-w-0 max-w-[9rem]">
               <TrendingUp size={14} className={style.accentText} />
-              {currentTopic?.category}
+              <span
+                className="min-w-0 truncate whitespace-nowrap"
+                title={currentTopic?.category || ""}
+              >
+                {currentTopic?.category}
+              </span>
             </span>
           </div>
 
