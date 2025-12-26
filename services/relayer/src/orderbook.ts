@@ -302,21 +302,11 @@ export async function ingestTrade(chainId: number, txHash: string) {
   const block = await rpcProvider.getBlock(receipt.blockNumber);
   if (!block) throw new Error("Block not found for trade tx");
 
-  const trades: {
-    network_id: number;
-    market_address: string;
-    outcome_index: number;
-    price: string;
-    amount: string;
-    taker_address: string;
-    maker_address: string;
-    is_buy: boolean;
-    tx_hash: string;
-    block_number: bigint;
-    block_timestamp: string;
-  }[] = [];
+  const blockTsIso = new Date(Number(block.timestamp) * 1000).toISOString();
+  const ingested: any[] = [];
 
-  for (const log of receipt.logs) {
+  for (let i = 0; i < receipt.logs.length; i++) {
+    const log = receipt.logs[i] as any;
     try {
       const parsed = clobIface.parseLog(log);
       if (!parsed || parsed.name !== "OrderFilledSigned") continue;
@@ -327,37 +317,46 @@ export async function ingestTrade(chainId: number, txHash: string) {
       const isBuy = Boolean((parsed.args as any).isBuy);
       const price = BigInt((parsed.args as any).price).toString();
       const amount = BigInt((parsed.args as any).amount).toString();
+      const fee = BigInt((parsed.args as any).fee).toString();
+      const salt = BigInt((parsed.args as any).salt).toString();
 
-      trades.push({
-        network_id: chainId,
-        market_address: normalizeAddr(log.address),
-        outcome_index: outcomeIndex,
-        price,
-        amount,
-        taker_address: taker,
-        maker_address: maker,
-        is_buy: isBuy,
-        tx_hash: txHash,
-        block_number: BigInt(receipt.blockNumber),
-        block_timestamp: new Date(Number(block.timestamp) * 1000).toISOString(),
+      const logIndexRaw =
+        typeof log.logIndex === "number"
+          ? log.logIndex
+          : typeof log.index === "number"
+            ? log.index
+            : i;
+      const logIndex = Number.isFinite(logIndexRaw) ? Number(logIndexRaw) : i;
+
+      // Idempotent ingest + maker order remaining update happens inside SQL (ingest_trade_event)
+      const { data, error } = await (supabaseAdmin as any).rpc("ingest_trade_event", {
+        p_network_id: chainId,
+        p_market_address: normalizeAddr(log.address),
+        p_outcome_index: outcomeIndex,
+        p_price: price,
+        p_amount: amount,
+        p_taker_address: taker,
+        p_maker_address: maker,
+        p_is_buy: isBuy,
+        p_tx_hash: normalizeAddr(txHash),
+        p_log_index: logIndex,
+        p_block_number: BigInt(receipt.blockNumber).toString(),
+        p_block_timestamp: blockTsIso,
+        p_fee: fee,
+        p_salt: salt,
       });
+      if (error) throw new Error(error.message || String(error));
+      ingested.push({ logIndex, maker, taker, outcomeIndex, isBuy, price, amount, fee, salt, result: data });
     } catch {
       continue;
     }
   }
 
-  if (trades.length === 0) {
+  if (ingested.length === 0) {
     throw new Error("No OrderFilledSigned events found in transaction");
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("trades")
-    .upsert(trades[0], { onConflict: "tx_hash" })
-    .select()
-    .maybeSingle();
-
-  if (error) throw new Error(error.message);
-  return data;
+  return { txHash, blockTimestamp: blockTsIso, ingestedCount: ingested.length, ingested };
 }
 
 export async function getCandles(

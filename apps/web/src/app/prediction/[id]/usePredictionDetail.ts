@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
@@ -50,7 +50,9 @@ export function usePredictionDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderMsg, setOrderMsg] = useState<string | null>(null);
 
-  const [balance] = useState<string>("0.00");
+  const [balance, setBalance] = useState<string>("0.00");
+  const [usdcBalance, setUsdcBalance] = useState<string>("0.00");
+  const [shareBalance, setShareBalance] = useState<string>("0");
   const [mintInput, setMintInput] = useState<string>("");
   const { trades } = useTradesPolling(market);
 
@@ -68,6 +70,70 @@ export function usePredictionDetail() {
 
   const { following, followersCount, followLoading, followError, toggleFollow } =
     useFollowPrediction(predictionId, account || undefined);
+
+  // 读取真实 USDC 余额（用于交易面板展示）
+  useEffect(() => {
+    let cancelled = false;
+    if (!market || !account || !walletProvider) return;
+
+    const run = async () => {
+      try {
+        const provider = await createBrowserProvider(walletProvider);
+        // 尽量确保读到的余额来自正确网络
+        await ensureNetwork(provider, market.chain_id, switchNetwork);
+        const signer = await provider.getSigner();
+        const { tokenContract, decimals } = await getCollateralTokenContract(market, signer, erc20Abi);
+        const bal = await tokenContract.balanceOf(account);
+        const human = Number(ethers.formatUnits(bal, decimals));
+        if (!cancelled) setUsdcBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+    const timer = setInterval(run, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [market, account, walletProvider, switchNetwork]);
+
+  // 读取当前 outcome 的可卖份额（ERC1155 balance）
+  useEffect(() => {
+    let cancelled = false;
+    if (!market || !account || !walletProvider) return;
+
+    const run = async () => {
+      try {
+        const provider = await createBrowserProvider(walletProvider);
+        await ensureNetwork(provider, market.chain_id, switchNetwork);
+        const signer = await provider.getSigner();
+        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+        const outcomeTokenAddress = await marketContract.outcomeToken();
+        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+        // OutcomeToken1155.computeTokenId(market, outcomeIndex) = (uint160(market) << 32) | outcomeIndex
+        const tokenId = (BigInt(market.market) << 32n) | BigInt(tradeOutcome);
+        const bal = await outcome1155.balanceOf(account, tokenId);
+        if (!cancelled) setShareBalance(BigInt(bal).toString());
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+    const timer = setInterval(run, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [market, account, walletProvider, switchNetwork, tradeOutcome]);
+
+  // 根据买/卖切换展示的余额：买显示 USDC，卖显示可卖份额
+  useEffect(() => {
+    if (tradeSide === "sell") setBalance(shareBalance);
+    else setBalance(`USDC ${usdcBalance}`);
+  }, [tradeSide, usdcBalance, shareBalance]);
 
   const cancelOrder = async (salt: string) => {
     if (!account || !market || !walletProvider || !predictionIdRaw) return;
@@ -161,27 +227,22 @@ export function usePredictionDetail() {
           side: tradeSide,
           amount: String(amountInt),
         });
-        const quoteRes = await fetch(`${API_BASE}/orderbook/quote?${qs.toString()}`);
-        const quoteJson = await safeJson(quoteRes);
-        if (!quoteJson.success || !quoteJson.data) {
-          throw new Error(quoteJson.message || "获取报价失败");
+        // 一次性拉取“成交计划”（包含将要吃掉的具体订单及每单 fillAmount）
+        const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
+        const planJson = await safeJson(planRes);
+        if (!planJson.success || !planJson.data) {
+          throw new Error(planJson.message || "获取成交计划失败");
         }
-        const q = quoteJson.data as any;
-        const filledStr = String(q.filledAmount || "0");
-        const totalStr = String(q.total || "0");
-        const avgPriceStr = String(q.avgPrice || "0");
-        const bestPriceStr = q.bestPrice != null ? String(q.bestPrice) : "0";
-        const worstPriceStr = q.worstPrice != null ? String(q.worstPrice) : bestPriceStr;
-        const slippageBpsStr = String(q.slippageBps || "0");
+        const plan = planJson.data as any;
+        const filledBN = BigInt(String(plan.filledAmount || "0"));
+        if (filledBN === 0n) throw new Error("当前订单簿流动性不足，无法成交");
 
-        const filledBN = BigInt(filledStr);
-        if (filledBN === 0n) {
-          throw new Error("当前订单簿流动性不足，无法成交");
-        }
-        const totalCostBN = BigInt(totalStr);
-        const avgPriceBN = BigInt(avgPriceStr);
-        const worstPriceBN = BigInt(worstPriceStr);
-        const slippageBpsNum = Number(slippageBpsStr);
+        const totalCostBN = BigInt(String(plan.total || "0"));
+        const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
+        const bestPriceBN = BigInt(String(plan.bestPrice || "0"));
+        const worstPriceBN = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
+        const slippageBpsNum = Number(String(plan.slippageBps || "0"));
+        const fills = Array.isArray(plan.fills) ? (plan.fills as any[]) : [];
 
         const formatPriceNumber = (v: bigint) => {
           try {
@@ -205,9 +266,11 @@ export function usePredictionDetail() {
 
         const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
         const slippagePercent = (slippageBpsNum || 0) / 100;
+        const partialNote =
+          filledBN < BigInt(amountInt) ? `（仅可成交 ${filledHuman}/${amountInt} 份）` : "";
         const confirmMsg = `预计以均价 ${avgPriceHuman.toFixed(
           4
-        )} USDC 成交 ${filledHuman} 份，最大价格 ${worstPriceHuman.toFixed(
+        )} USDC 成交 ${filledHuman} 份${partialNote}，最大价格 ${worstPriceHuman.toFixed(
           4
         )} USDC，总${tradeSide === "buy" ? "花费" : "收入"}约 ${totalHuman.toFixed(
           2
@@ -243,109 +306,45 @@ export function usePredictionDetail() {
 
         const marketContract = new ethers.Contract(market.market, marketAbi, signer);
         let remainingToFill = filledBN;
-        const levels = Array.isArray(q.levels) ? q.levels : [];
+        let fillsDone = 0;
 
-        for (const level of levels) {
+        for (const f of fills) {
           if (remainingToFill <= 0n) break;
-          const levelPrice = String((level as any).price);
-          const levelTakeQtyStr = String((level as any).takeQty || "0");
-          let levelTakeQty: bigint;
+          const fillAmount = BigInt(String(f.fillAmount || "0"));
+          if (fillAmount <= 0n) continue;
+          const req = f.req || {};
+          const reqStruct = {
+            maker: String(req.maker),
+            outcomeIndex: Number(req.outcomeIndex),
+            isBuy: Boolean(req.isBuy),
+            price: BigInt(String(req.price)),
+            amount: BigInt(String(req.amount)),
+            expiry: BigInt(String(req.expiry || "0")),
+            salt: BigInt(String(req.salt)),
+          };
+
+          setOrderMsg(`正在成交中... (${fillsDone + 1}/${fills.length})`);
+          const tx = await marketContract.fillOrderSigned(reqStruct, String(f.signature), fillAmount);
+          const receipt = await tx.wait();
+
+          // 以链上事件为准，服务端 ingestTrade 会幂等落库并更新 maker 订单 remaining/status
           try {
-            levelTakeQty = BigInt(levelTakeQtyStr);
-          } catch {
-            continue;
-          }
-          if (levelTakeQty <= 0n) continue;
+            await fetch(`${API_BASE}/orderbook/report-trade`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chainId: market.chain_id,
+                txHash: receipt.hash,
+              }),
+            });
+          } catch {}
 
-          const makerSide = tradeSide === "buy" ? "sell" : "buy";
-          const queueQs = new URLSearchParams({
-            contract: market.market,
-            chainId: String(market.chain_id),
-            outcome: String(tradeOutcome),
-            side: makerSide,
-            price: levelPrice,
-            limit: "200",
-            offset: "0",
-            marketKey,
-          });
-          const queueRes = await fetch(`${RELAYER_BASE}/orderbook/queue?${queueQs.toString()}`);
-          const queueJson = await queueRes.json().catch(() => null);
-          const queueData = queueJson && queueJson.success ? queueJson.data : null;
-          if (!Array.isArray(queueData) || queueData.length === 0) continue;
-
-          for (const row of queueData as any[]) {
-            if (remainingToFill <= 0n) break;
-            const remainingStr = String(row.remaining ?? "0");
-            let makerRemaining: bigint;
-            try {
-              makerRemaining = BigInt(remainingStr);
-            } catch {
-              continue;
-            }
-            if (makerRemaining <= 0n) continue;
-            const fillAmount = makerRemaining >= remainingToFill ? remainingToFill : makerRemaining;
-            if (fillAmount <= 0n) continue;
-
-            const orderId = row.id;
-            const orderRes = await fetch(`${API_BASE}/orderbook/order?id=${orderId}`);
-            const orderJson = await safeJson(orderRes);
-            if (!orderJson.success || !orderJson.data) {
-              continue;
-            }
-            const order = orderJson.data as any;
-
-            const reqStruct = {
-              maker: order.maker_address,
-              outcomeIndex: Number(order.outcome_index),
-              isBuy: Boolean(order.is_buy),
-              price: BigInt(order.price),
-              amount: BigInt(order.amount),
-              expiry: order.expiry
-                ? BigInt(Math.floor(new Date(order.expiry).getTime() / 1000))
-                : 0n,
-              salt: BigInt(order.maker_salt),
-            };
-
-            setOrderMsg("正在成交中...");
-            const tx = await marketContract.fillOrderSigned(reqStruct, order.signature, fillAmount);
-            const receipt = await tx.wait();
-
-            try {
-              await fetch(`${API_BASE}/orderbook/orders/fill`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chainId: market.chain_id,
-                  verifyingContract: market.market,
-                  contract: market.market,
-                  marketKey,
-                  maker: order.maker_address,
-                  salt: order.maker_salt,
-                  fillAmount: fillAmount.toString(),
-                }),
-              });
-            } catch {}
-
-            try {
-              await fetch(`${API_BASE}/orderbook/report-trade`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chainId: market.chain_id,
-                  txHash: receipt.hash,
-                }),
-              });
-            } catch {}
-
-            remainingToFill -= fillAmount;
-          }
+          remainingToFill -= fillAmount;
+          fillsDone += 1;
         }
 
-        if (remainingToFill > 0n) {
-          setOrderMsg("部分成交，剩余数量未能成交");
-        } else {
-          setOrderMsg("成交成功");
-        }
+        if (remainingToFill > 0n) setOrderMsg("部分成交，剩余数量未能成交");
+        else setOrderMsg("成交成功");
         setAmountInput("");
         await refreshUserOrders();
         return;

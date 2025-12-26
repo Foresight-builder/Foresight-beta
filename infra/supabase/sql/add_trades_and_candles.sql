@@ -9,10 +9,14 @@ CREATE TABLE IF NOT EXISTS public.trades (
   taker_address TEXT NOT NULL,
   maker_address TEXT NOT NULL,
   is_buy BOOLEAN NOT NULL, -- Matches the Order's direction (Maker's direction)
-  tx_hash TEXT NOT NULL UNIQUE,
+  tx_hash TEXT NOT NULL,
+  log_index INTEGER NOT NULL DEFAULT 0,
+  fee TEXT,
+  salt TEXT,
   block_number BIGINT NOT NULL,
   block_timestamp TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (tx_hash, log_index)
 );
 
 -- Indexes for trades

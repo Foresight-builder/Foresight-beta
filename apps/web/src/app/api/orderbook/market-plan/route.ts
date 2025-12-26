@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 
+type MarketPlanItem = {
+  orderId: number;
+  fillAmount: string;
+  maker: string;
+  signature: string;
+  req: {
+    maker: string;
+    outcomeIndex: number;
+    isBuy: boolean;
+    price: string;
+    amount: string;
+    expiry: string;
+    salt: string;
+  };
+};
+
 export async function GET(req: NextRequest) {
   try {
     const client = getClient();
@@ -48,7 +64,9 @@ export async function GET(req: NextRequest) {
 
     let query = client
       .from("orders")
-      .select("price, remaining")
+      .select(
+        "id, maker_address, maker_salt, outcome_index, is_buy, price, amount, remaining, expiry, signature, status, created_at, sequence"
+      )
       .eq("verifying_contract", contract.toLowerCase())
       .eq("chain_id", chainId)
       .eq("outcome_index", outcome)
@@ -59,118 +77,101 @@ export async function GET(req: NextRequest) {
       query = query.eq("market_key", marketKey);
     }
 
-    // 不依赖数据库对 TEXT price 的排序；拉取后再用 BigInt 做数值排序
-    let { data: orders, error } = await query;
-
+    // 不依赖数据库对 TEXT price 的排序，拉取后在服务端用 BigInt 排序保证数值正确
+    let { data: orders, error } = await query.limit(2000);
     if (error && (error as any).code === "42703" && marketKey) {
       const fallbackQuery = client
         .from("orders")
-        .select("price, remaining")
+        .select(
+          "id, maker_address, maker_salt, outcome_index, is_buy, price, amount, remaining, expiry, signature, status, created_at, sequence"
+        )
         .eq("verifying_contract", contract.toLowerCase())
         .eq("chain_id", chainId)
         .eq("outcome_index", outcome)
         .eq("is_buy", makerIsBuy)
-        .in("status", ["open", "filled_partial"]);
-
+        .in("status", ["open", "filled_partial"])
+        .limit(2000);
       const fallback = await fallbackQuery;
       orders = fallback.data || [];
       error = fallback.error as any;
     }
-
     if (error) {
       return NextResponse.json(
-        { success: false, message: error.message || "Depth query failed" },
+        { success: false, message: error.message || "Order query failed" },
         { status: 500 }
       );
     }
 
-    if (!orders || orders.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          side: takerSide,
-          amount: targetAmount.toString(),
-          filledAmount: "0",
-          total: "0",
-          avgPrice: "0",
-          bestPrice: null,
-          worstPrice: null,
-          slippageBps: "0",
-          levels: [],
-          hasMoreDepth: false,
-        },
-      });
-    }
-
-    const aggregated = new Map<string, bigint>();
-    for (const row of (orders as any[]) || []) {
-      const priceStr = String(row.price);
-      const remainingStr = String(row.remaining);
-      let remaining: bigint;
-      try {
-        remaining = BigInt(remainingStr);
-      } catch {
-        continue;
-      }
-      if (remaining <= 0n) continue;
-      aggregated.set(priceStr, (aggregated.get(priceStr) || 0n) + remaining);
-    }
-
-    const levelsSorted = Array.from(aggregated.entries())
-      .map(([price, qty]) => ({ price, qty }))
-      .sort((a, b) => {
-        const pa = BigInt(a.price);
-        const pb = BigInt(b.price);
-        if (makerIsBuy) {
-          return pa > pb ? -1 : pa < pb ? 1 : 0;
+    const rows = Array.isArray(orders) ? (orders as any[]) : [];
+    const normalized = rows
+      .map((row) => {
+        try {
+          const price = BigInt(String(row.price));
+          const remaining = BigInt(String(row.remaining));
+          const sequence = row.sequence != null ? BigInt(String(row.sequence)) : 0n;
+          return {
+            row,
+            price,
+            remaining,
+            sequence,
+          };
+        } catch {
+          return null;
         }
-        return pa < pb ? -1 : pa > pb ? 1 : 0;
-      });
+      })
+      .filter(Boolean) as Array<{ row: any; price: bigint; remaining: bigint; sequence: bigint }>;
 
-    if (levelsSorted.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          side: takerSide,
-          amount: targetAmount.toString(),
-          filledAmount: "0",
-          total: "0",
-          avgPrice: "0",
-          bestPrice: null,
-          worstPrice: null,
-          slippageBps: "0",
-          levels: [],
-          hasMoreDepth: false,
-        },
-      });
-    }
+    normalized.sort((a, b) => {
+      if (a.price !== b.price) {
+        if (makerIsBuy) return a.price > b.price ? -1 : 1; // 买盘：高价优先
+        return a.price < b.price ? -1 : 1; // 卖盘：低价优先
+      }
+      if (a.sequence !== b.sequence) return a.sequence < b.sequence ? -1 : 1; // 时间优先
+      return 0;
+    });
 
     let remainingToFill = targetAmount;
     let filledAmount = 0n;
     let totalCost = 0n;
     let bestPrice: bigint | null = null;
     let worstPrice: bigint | null = null;
-    const levelsOut: Array<{ price: string; qty: string; takeQty: string }> = [];
 
-    for (const level of levelsSorted) {
+    const fills: MarketPlanItem[] = [];
+
+    for (const item of normalized) {
       if (remainingToFill <= 0n) break;
-      const price = BigInt(level.price);
-      const qty = level.qty;
-      const takeQty = qty >= remainingToFill ? remainingToFill : qty;
-      if (takeQty <= 0n) continue;
-      if (bestPrice === null) bestPrice = price;
-      worstPrice = price;
-      filledAmount += takeQty;
-      totalCost += takeQty * price;
-      remainingToFill -= takeQty;
-      levelsOut.push({
-        price: level.price,
-        qty: qty.toString(),
-        takeQty: takeQty.toString(),
+      if (item.remaining <= 0n) continue;
+
+      const take = item.remaining >= remainingToFill ? remainingToFill : item.remaining;
+      if (take <= 0n) continue;
+
+      if (bestPrice === null) bestPrice = item.price;
+      worstPrice = item.price;
+      filledAmount += take;
+      totalCost += take * item.price;
+      remainingToFill -= take;
+
+      const expiryUnix =
+        item.row.expiry != null ? Math.floor(new Date(String(item.row.expiry)).getTime() / 1000) : 0;
+
+      fills.push({
+        orderId: Number(item.row.id),
+        fillAmount: take.toString(),
+        maker: String(item.row.maker_address),
+        signature: String(item.row.signature),
+        req: {
+          maker: String(item.row.maker_address),
+          outcomeIndex: Number(item.row.outcome_index),
+          isBuy: Boolean(item.row.is_buy),
+          price: String(item.row.price),
+          amount: String(item.row.amount),
+          expiry: String(expiryUnix),
+          salt: String(item.row.maker_salt),
+        },
       });
     }
 
-    if (filledAmount === 0n || !bestPrice || !worstPrice) {
+    if (filledAmount === 0n || bestPrice === null || worstPrice === null) {
       return NextResponse.json({
         success: true,
         data: {
@@ -182,26 +183,18 @@ export async function GET(req: NextRequest) {
           bestPrice: null,
           worstPrice: null,
           slippageBps: "0",
-          levels: [],
           hasMoreDepth: false,
+          fills: [],
         },
       });
     }
 
-    // 防御：避免任何情况下出现 BigInt 除 0（同时规避部分构建期静态分析误判导致的 /0n）
-    let avgPrice = 0n;
-    if (filledAmount > 0n) {
-      avgPrice = totalCost / filledAmount;
-    }
+    const avgPrice = totalCost / filledAmount;
     let slippageBps = 0n;
     if (takerSide === "buy") {
-      if (worstPrice > bestPrice) {
-        slippageBps = ((worstPrice - bestPrice) * 10000n) / bestPrice;
-      }
+      if (worstPrice > bestPrice) slippageBps = ((worstPrice - bestPrice) * 10000n) / bestPrice;
     } else {
-      if (worstPrice < bestPrice) {
-        slippageBps = ((bestPrice - worstPrice) * 10000n) / bestPrice;
-      }
+      if (worstPrice < bestPrice) slippageBps = ((bestPrice - worstPrice) * 10000n) / bestPrice;
     }
 
     const hasMoreDepth = remainingToFill > 0n;
@@ -217,11 +210,13 @@ export async function GET(req: NextRequest) {
         bestPrice: bestPrice.toString(),
         worstPrice: worstPrice.toString(),
         slippageBps: slippageBps.toString(),
-        levels: levelsOut,
         hasMoreDepth,
+        fills,
       },
     });
   } catch (e: any) {
     return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
   }
 }
+
+

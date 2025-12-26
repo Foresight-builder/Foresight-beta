@@ -12,6 +12,7 @@ export const marketAbi = [
 ] as const;
 
 export const erc1155Abi = [
+  "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function isApprovedForAll(address account, address operator) view returns (bool)",
   "function setApprovalForAll(address operator, bool approved) external",
 ] as const;
