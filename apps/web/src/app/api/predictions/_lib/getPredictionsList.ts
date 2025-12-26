@@ -9,6 +9,12 @@ export type GetPredictionsListArgs = {
   limit?: number;
 };
 
+/**
+ * 优化后的预测列表查询
+ * - 并行执行所有数据库查询（而不是串行）
+ * - 使用 Map 代替普通对象提升查找性能
+ * - 减少数据处理中的冗余计算
+ */
 export async function getPredictionsList(
   client: SupabaseClient,
   args: GetPredictionsListArgs
@@ -30,39 +36,49 @@ export async function getPredictionsList(
   if (error) throw error;
 
   const predictionRows = (predictions || []) as PredictionRow[];
+  if (predictionRows.length === 0) {
+    return { items: [], total: 0 };
+  }
+
   const ids = predictionRows.map((p) => Number(p.id)).filter((n) => Number.isFinite(n));
 
-  const followerCounts = await fetchFollowerCounts(client, ids);
-  const statsMap = await fetchPredictionStats(client, ids);
+  // 🚀 性能优化：并行执行查询而不是串行
+  const [followerCounts, statsMap] = await Promise.all([
+    fetchFollowerCounts(client, ids),
+    fetchPredictionStats(client, ids),
+  ]);
+
+  // 使用预计算的默认值减少条件判断
+  const defaultStat = {
+    yesAmount: 0,
+    noAmount: 0,
+    totalAmount: 0,
+    participantCount: 0,
+    betCount: 0,
+  };
 
   const items: PredictionListItem[] = predictionRows.map((p) => {
     const idNum = Number(p.id);
-    const followersCount = followerCounts[idNum] || 0;
-    const stat = statsMap[idNum];
+    const followersCount = followerCounts.get(idNum) ?? 0;
+    const stat = statsMap.get(idNum) ?? defaultStat;
 
-    const yesAmount = stat?.yesAmount ?? 0;
-    const noAmount = stat?.noAmount ?? 0;
-    const totalAmount = stat?.totalAmount ?? 0;
-    const participantCount = stat?.participantCount ?? 0;
-    const betCount = stat?.betCount ?? 0;
+    const { yesAmount, noAmount, totalAmount, participantCount, betCount } = stat;
 
-    let yesProbability = 0.5;
-    let noProbability = 0.5;
-    if (totalAmount > 0) {
-      yesProbability = yesAmount / totalAmount;
-      noProbability = noAmount / totalAmount;
-    }
+    // 避免重复计算
+    const hasAmount = totalAmount > 0;
+    const yesProbability = hasAmount ? yesAmount / totalAmount : 0.5;
+    const noProbability = hasAmount ? noAmount / totalAmount : 0.5;
 
     return {
       ...p,
       followers_count: followersCount,
       stats: {
-        yesAmount: parseFloat(yesAmount.toFixed(4)),
-        noAmount: parseFloat(noAmount.toFixed(4)),
-        totalAmount: parseFloat(totalAmount.toFixed(4)),
+        yesAmount: +yesAmount.toFixed(4),
+        noAmount: +noAmount.toFixed(4),
+        totalAmount: +totalAmount.toFixed(4),
         participantCount,
-        yesProbability: parseFloat(yesProbability.toFixed(4)),
-        noProbability: parseFloat(noProbability.toFixed(4)),
+        yesProbability: +yesProbability.toFixed(4),
+        noProbability: +noProbability.toFixed(4),
         betCount,
       },
     };
@@ -71,11 +87,22 @@ export async function getPredictionsList(
   return { items, total: count || 0 };
 }
 
+type StatsData = {
+  yesAmount: number;
+  noAmount: number;
+  totalAmount: number;
+  participantCount: number;
+  betCount: number;
+};
+
+/**
+ * 🚀 优化：使用 Map 代替普通对象，O(1) 查找性能更稳定
+ */
 async function fetchFollowerCounts(
   client: SupabaseClient,
   ids: number[]
-): Promise<Record<number, number>> {
-  const followerCounts: Record<number, number> = {};
+): Promise<Map<number, number>> {
+  const followerCounts = new Map<number, number>();
   if (ids.length === 0) return followerCounts;
 
   const { data: rows, error } = await (client as any)
@@ -85,41 +112,23 @@ async function fetchFollowerCounts(
 
   if (error || !rows) return followerCounts;
 
-  const followRows = rows as EventFollowRow[];
-  for (const r of followRows) {
+  for (const r of rows as EventFollowRow[]) {
     const eid = Number(r.event_id);
     if (Number.isFinite(eid)) {
-      followerCounts[eid] = (followerCounts[eid] || 0) + 1;
+      followerCounts.set(eid, (followerCounts.get(eid) ?? 0) + 1);
     }
   }
   return followerCounts;
 }
 
+/**
+ * 🚀 优化：使用 Map + 减少类型转换
+ */
 async function fetchPredictionStats(
   client: SupabaseClient,
   ids: number[]
-): Promise<
-  Record<
-    number,
-    {
-      yesAmount: number;
-      noAmount: number;
-      totalAmount: number;
-      participantCount: number;
-      betCount: number;
-    }
-  >
-> {
-  const statsMap: Record<
-    number,
-    {
-      yesAmount: number;
-      noAmount: number;
-      totalAmount: number;
-      participantCount: number;
-      betCount: number;
-    }
-  > = {};
+): Promise<Map<number, StatsData>> {
+  const statsMap = new Map<number, StatsData>();
   if (ids.length === 0) return statsMap;
 
   const { data: statsRows, error } = await (client as any)
@@ -130,15 +139,16 @@ async function fetchPredictionStats(
   if (error || !Array.isArray(statsRows)) return statsMap;
 
   for (const row of statsRows) {
-    const pid = Number((row as any).prediction_id);
+    const pid = Number(row.prediction_id);
     if (!Number.isFinite(pid)) continue;
-    statsMap[pid] = {
-      yesAmount: Number((row as any).yes_amount || 0),
-      noAmount: Number((row as any).no_amount || 0),
-      totalAmount: Number((row as any).total_amount || 0),
-      participantCount: Number((row as any).participant_count || 0),
-      betCount: Number((row as any).bet_count || 0),
-    };
+    
+    statsMap.set(pid, {
+      yesAmount: Number(row.yes_amount) || 0,
+      noAmount: Number(row.no_amount) || 0,
+      totalAmount: Number(row.total_amount) || 0,
+      participantCount: Number(row.participant_count) || 0,
+      betCount: Number(row.bet_count) || 0,
+    });
   }
   return statsMap;
 }

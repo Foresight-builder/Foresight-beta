@@ -128,13 +128,65 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
 
-  // 实验性特性
+  // 实验性特性 - 性能优化
   experimental: {
-    optimizePackageImports: ["lucide-react", "framer-motion"],
+    // 🚀 优化：自动按需导入大型库，减少 bundle 大小
+    optimizePackageImports: [
+      "lucide-react",
+      "framer-motion",
+      "@tanstack/react-query",
+      "ethers",
+      "date-fns",
+      "lodash",
+      "recharts",
+    ],
   },
 
   // Webpack 优化
   webpack: (config, { dev, isServer }) => {
+    // 🚀 生产环境优化
+    if (!dev) {
+      // 优化 chunk 分割策略
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: "all",
+          minSize: 20000,
+          maxSize: 244000,
+          cacheGroups: {
+            // 将 ethers 单独打包（大型库）
+            ethers: {
+              test: /[\\/]node_modules[\\/]ethers[\\/]/,
+              name: "ethers",
+              chunks: "all",
+              priority: 30,
+            },
+            // 将 react-query 单独打包
+            reactQuery: {
+              test: /[\\/]node_modules[\\/]@tanstack[\\/]/,
+              name: "react-query",
+              chunks: "all",
+              priority: 25,
+            },
+            // 将 framer-motion 单独打包
+            framer: {
+              test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+              name: "framer-motion",
+              chunks: "all",
+              priority: 20,
+            },
+            // 其他 vendor 库
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: "vendors",
+              chunks: "all",
+              priority: 10,
+            },
+          },
+        },
+      };
+    }
+
     return config;
   },
 };

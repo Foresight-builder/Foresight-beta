@@ -4,15 +4,19 @@ import { getClient, supabase } from "@/lib/supabase";
 import { getPredictionsList } from "./_lib/getPredictionsList";
 import { buildPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
+import {
+  createCachedResponse,
+  CachePresets,
+  getFromCache,
+  generateCacheKey,
+  setCache,
+} from "@/lib/apiCache";
 
 // 预测列表可以短暂缓存
 export const revalidate = 30; // 30秒缓存
 
 export async function GET(request: NextRequest) {
   try {
-    // 对于获取预测事件列表，允许匿名访问（不需要登录）
-    // 只有创建预测事件等敏感操作才需要登录验证
-
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const status = searchParams.get("status");
@@ -20,6 +24,33 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get("page");
     const pageSize = searchParams.get("pageSize");
     const includeOutcomes = (searchParams.get("includeOutcomes") || "0") !== "0";
+
+    // 🚀 生成缓存键并检查内存缓存
+    const cacheKey = generateCacheKey("predictions", {
+      category,
+      status,
+      limit,
+      page,
+      pageSize,
+      includeOutcomes,
+    });
+
+    const cached = getFromCache<{ items: unknown[]; total: number }>(cacheKey);
+    if (cached) {
+      const paging = parsePagination({ limit, page, pageSize });
+      return createCachedResponse(
+        {
+          success: true,
+          data: cached.items,
+          message: "获取预测事件列表成功 (cached)",
+          pagination:
+            page && pageSize
+              ? buildPaginationMeta(cached.total, paging.currentPage, paging.pageSize)
+              : undefined,
+        },
+        CachePresets.SHORT
+      );
+    }
 
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
@@ -39,24 +70,20 @@ export async function GET(request: NextRequest) {
       limit: paging.mode === "limit" ? paging.limit : undefined,
     });
 
-    return NextResponse.json(
+    // 🚀 存入内存缓存
+    setCache(cacheKey, { items, total }, CachePresets.SHORT.memoryTtl);
+
+    return createCachedResponse(
       {
         success: true,
         data: items,
         message: "获取预测事件列表成功",
         pagination:
           page && pageSize
-            ? {
-                ...buildPaginationMeta(total, paging.currentPage, paging.pageSize),
-              }
+            ? buildPaginationMeta(total, paging.currentPage, paging.pageSize)
             : undefined,
       },
-      {
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "Cache-Control": "public, max-age=5, stale-while-revalidate=20",
-        },
-      }
+      CachePresets.SHORT
     );
   } catch (error) {
     console.error("Unexpected error while fetching prediction list:", error);
