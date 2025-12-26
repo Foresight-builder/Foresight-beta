@@ -1,0 +1,24 @@
+{
+  "network": "polygonAmoy",
+  "chainId": 80002,
+  "deployer": "0x377f4bB22F0eBd9238C1A30A8872fd00fB0B6F43",
+  "collateralUSDC": "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+  "outcome1155": "0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087",
+  "umaOOv3": "0xC14eE1A093c5B715d5aC2E7F9bAEf1a50dB86148",
+  "umaAdapterV2": "0x5e42fce766Ad623cE175002B7b2528411C47cc92",
+  "marketFactory": "0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30",
+  "templates": {
+    "offchainBinary": "0x846145DC2850FfB97D14C4AF79675815b6D7AF0f",
+    "offchainMulti8": "0x1e8BeCF558Baf0F74cEc2D7fa7ba44F0335282e8",
+    "templateIds": {
+      "binary": "0xe9b26887110c681e1d3179e30256fc7379e2d347289ba85162e3a1737d89e248",
+      "multi": "0x6219a78692bdc3b7b83053b43743c08b9526a7c023d243e558cf34cf5884bef3"
+    }
+  },
+  "markets": {
+    "binary": "0x1A381ff02982c8dA0Be82Cb91928f45121806Fa9",
+    "multi": "0x6BCF1428Ff615C9C671A822a249b7bEE5361f05e",
+    "multiOutcomeCount": 3
+  },
+  "timestamp": "2025-12-26T15:28:44.400Z"
+}

@@ -2,15 +2,41 @@
 import hre from "hardhat";
 import fs from "fs";
 
-function getUSDC(chainId: number, env: NodeJS.ProcessEnv) {
+/**
+ * =================================================================
+ * Foresight 合约部署脚本 - 链下订单簿架构
+ * =================================================================
+ * 
+ * 使用方法:
+ * 
+ * 1. 配置环境变量 (.env 或 .env.local):
+ *    - PRIVATE_KEY: 部署者私钥
+ *    - AMOY_RPC_URL: Polygon Amoy RPC URL
+ *    - USDC_ADDRESS_AMOY: USDC 地址 (默认: 0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf)
+ *    - UMA_OO_V3_ADDRESS: UMA Oracle 地址 (测试网可用部署者地址)
+ *    - UMA_REPORTER_ADDRESS: Reporter 地址 (可选，默认用部署者)
+ * 
+ * 2. 运行部署:
+ *    npx hardhat run scripts/deploy_offchain_sprint1.ts --network polygonAmoy
+ * 
+ * 3. 部署后:
+ *    - 合约地址保存在 deployment_offchain_sprint1.json
+ *    - 将地址复制到前端 .env.local
+ * 
+ * =================================================================
+ */
+
+function getUSDC(chainId: number, env: NodeJS.ProcessEnv): string {
+  const addresses: Record<number, string> = {
+    137: env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON || "",
+    80002: env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY || "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+    11155111: env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA || "",
+    1337: env.USDC_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST || "",
+  };
+  
   return (
     env.COLLATERAL_TOKEN_ADDRESS ||
-    (chainId === 137 ? env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON : "") ||
-    (chainId === 80002 ? env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY : "") ||
-    (chainId === 11155111 ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA : "") ||
-    (chainId === 1337
-      ? env.USDC_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST
-      : "") ||
+    addresses[chainId] ||
     env.USDC_ADDRESS ||
     env.NEXT_PUBLIC_USDC_ADDRESS ||
     ""
@@ -89,7 +115,8 @@ async function main() {
 
   // Binary: data = abi.encode(outcome1155)
   const dataBin = new hre.ethers.AbiCoder().encode(["address"], [outcome1155Address]);
-  const receiptBin = await (await mf.createMarket(templateBinary, usdc, umaAdapterAddress, feeBps, resolutionTime, dataBin)).wait();
+  // 使用完整签名避免重载歧义
+  const receiptBin = await (await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](templateBinary, usdc, umaAdapterAddress, feeBps, resolutionTime, dataBin)).wait();
   const createdBinLog = receiptBin.logs.find((l: any) => {
     try { return mf.interface.parseLog(l).name === "MarketCreated"; } catch { return false; }
   });
@@ -100,7 +127,7 @@ async function main() {
   // Multi: data = abi.encode(outcome1155, uint8 outcomeCount)
   const outcomeCount = Math.max(2, Math.min(8, env.OUTCOME_COUNT ? Number(env.OUTCOME_COUNT) : 3));
   const dataMulti = new hre.ethers.AbiCoder().encode(["address", "uint8"], [outcome1155Address, outcomeCount]);
-  const receiptMulti = await (await mf.createMarket(templateMulti, usdc, umaAdapterAddress, feeBps, resolutionTime, dataMulti)).wait();
+  const receiptMulti = await (await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](templateMulti, usdc, umaAdapterAddress, feeBps, resolutionTime, dataMulti)).wait();
   const createdMultiLog = receiptMulti.logs.find((l: any) => {
     try { return mf.interface.parseLog(l).name === "MarketCreated"; } catch { return false; }
   });
@@ -121,12 +148,35 @@ async function main() {
     umaOOv3: umaOO,
     umaAdapterV2: umaAdapterAddress,
     marketFactory: mfAddress,
-    templates: { offchainBinary: binImplAddress, offchainMulti8: multiImplAddress },
+    templates: { 
+      offchainBinary: binImplAddress, 
+      offchainMulti8: multiImplAddress,
+      templateIds: {
+        binary: templateBinary,
+        multi: templateMulti,
+      }
+    },
     markets: { binary: binaryMarket, multi: multiMarket, multiOutcomeCount: outcomeCount },
     timestamp: new Date().toISOString(),
   };
+  
   fs.writeFileSync("deployment_offchain_sprint1.json", JSON.stringify(deploymentInfo, null, 2));
-  console.log("Saved deployment_offchain_sprint1.json");
+  
+  // 打印前端配置指南
+  console.log("\n" + "=".repeat(60));
+  console.log("✅ 部署完成！");
+  console.log("=".repeat(60));
+  console.log("\n📋 请将以下环境变量添加到前端 apps/web/.env.local:\n");
+  console.log(`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=${mfAddress}`);
+  console.log(`NEXT_PUBLIC_OUTCOME_TOKEN_ADDRESS=${outcome1155Address}`);
+  console.log(`NEXT_PUBLIC_UMA_ADAPTER_ADDRESS=${umaAdapterAddress}`);
+  console.log(`NEXT_PUBLIC_USDC_ADDRESS=${usdc}`);
+  console.log(`\n📋 示例市场地址（用于测试）:`);
+  console.log(`NEXT_PUBLIC_BINARY_MARKET_ADDRESS=${binaryMarket}`);
+  console.log(`NEXT_PUBLIC_MULTI_MARKET_ADDRESS=${multiMarket}`);
+  console.log("\n" + "=".repeat(60));
+  console.log("📄 完整部署信息已保存到 deployment_offchain_sprint1.json");
+  console.log("=".repeat(60) + "\n");
 }
 
 main().catch((err) => {

@@ -28,7 +28,7 @@ export function resolveAddresses(chainId: number): { foresight: string; usdc: st
     80002: {
       foresight:
         process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY ||
-        "0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02",
+        "0x1A381ff02982c8dA0Be82Cb91928f45121806Fa9", // Binary market from new deployment
       usdc:
         process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY || "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
     },

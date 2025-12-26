@@ -255,7 +255,7 @@ abstract contract OffchainMarketBase is
         uint256 _resolutionTime,
         address outcome1155,
         uint8 oc
-    ) internal initializer {
+    ) internal onlyInitializing {
         __EIP712_init("Foresight Market", "1");
 
         require(_factory != address(0) && _creator != address(0), "bad actors");
