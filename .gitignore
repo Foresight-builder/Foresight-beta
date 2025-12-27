@@ -70,3 +70,6 @@ build-info/
 services/relayer/dist/
 dist/
 foresight-main.bundle
+
+# Sentry bundle analyzer reports
+apps/web/analyze/
