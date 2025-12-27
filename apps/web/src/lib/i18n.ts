@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
