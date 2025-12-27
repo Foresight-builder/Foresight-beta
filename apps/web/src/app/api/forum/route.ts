@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
-import { parseRequestBody } from "@/lib/serverUtils";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+import { ApiResponses } from "@/lib/apiResponse";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -112,16 +113,23 @@ async function maybeAutoCreatePrediction(
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const eventId = normalizeId(searchParams.get("eventId"));
-  if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
+  if (eventId === null) {
+    return ApiResponses.invalidParameters("eventId 必填");
+  }
   try {
     const client = getClient();
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const { data: threads, error: tErr } = await client
       .from("forum_threads")
       .select("*")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
-    if (tErr)
-      return NextResponse.json({ message: "查询主题失败", detail: tErr.message }, { status: 500 });
+    if (tErr) {
+      logApiError("GET /api/forum query threads failed", tErr);
+      return ApiResponses.databaseError("查询主题失败", tErr.message);
+    }
     const ids = (threads || []).map((t: any) => t.id);
     let commentsByThread: Record<string, any[]> = {};
     let commentsArr: any[] = [];
@@ -131,11 +139,10 @@ export async function GET(req: Request) {
         .select("*")
         .in("thread_id", ids)
         .order("created_at", { ascending: true });
-      if (cErr)
-        return NextResponse.json(
-          { message: "查询评论失败", detail: cErr.message },
-          { status: 500 }
-        );
+      if (cErr) {
+        logApiError("GET /api/forum query comments failed", cErr);
+        return ApiResponses.databaseError("查询评论失败", cErr.message);
+      }
       commentsArr = comments || [];
       commentsArr.forEach((c: any) => {
         const k = String(c.thread_id);
@@ -169,10 +176,9 @@ export async function GET(req: Request) {
     }));
     return NextResponse.json({ threads: merged }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "查询失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    logApiError("GET /api/forum unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("查询失败", detail);
   }
 }
 
@@ -185,9 +191,12 @@ export async function POST(req: Request) {
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");
     if (eventId === null || !title.trim()) {
-      return NextResponse.json({ message: "eventId、title 必填" }, { status: 400 });
+      return ApiResponses.invalidParameters("eventId、title 必填");
     }
     const client = (supabaseAdmin || getClient()) as any;
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const subject_name = String(body?.subjectName || "");
     const action_verb = String(body?.actionVerb || "");
     const target_value = String(body?.targetValue || "");
@@ -212,13 +221,14 @@ export async function POST(req: Request) {
       })
       .select()
       .maybeSingle();
-    if (error)
-      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
+    if (error) {
+      logApiError("POST /api/forum insert thread failed", error);
+      return ApiResponses.databaseError("创建失败", error.message);
+    }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "创建失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    logApiError("POST /api/forum unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("创建失败", detail);
   }
 }

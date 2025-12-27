@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { logApiError } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function toNum(v: unknown): number | null {
   const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
@@ -56,9 +58,12 @@ export async function POST(req: Request) {
     const content = String((body as { content?: unknown }).content || "");
     const walletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
     if (!eventId || !threadId || !content.trim()) {
-      return NextResponse.json({ message: "eventId、threadId、content 必填" }, { status: 400 });
+      return ApiResponses.invalidParameters("eventId、threadId、content 必填");
     }
     const client = supabaseAdmin || getClient();
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const { data, error } = await (client as any)
       .from("forum_comments")
       .insert({
@@ -70,13 +75,14 @@ export async function POST(req: Request) {
       })
       .select()
       .maybeSingle();
-    if (error)
-      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
+    if (error) {
+      logApiError("POST /api/forum/comments insert failed", error);
+      return ApiResponses.databaseError("创建失败", error.message);
+    }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "创建失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    logApiError("POST /api/forum/comments unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("创建失败", detail);
   }
 }

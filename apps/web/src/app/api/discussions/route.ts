@@ -3,14 +3,19 @@ import { supabaseAdmin, getClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const proposalId = normalizeId(searchParams.get("proposalId"));
-    if (!proposalId) return NextResponse.json({ message: "proposalId 必填" }, { status: 400 });
+    if (!proposalId) {
+      return ApiResponses.invalidParameters("proposalId 必填");
+    }
     const client = getClient();
-    if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const { data, error } = await client
       .from("discussions")
       .select("*")
@@ -18,12 +23,13 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: true });
     if (error) {
       logApiError("[discussions:get]", error);
-      return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
+      return ApiResponses.databaseError("查询失败", error.message);
     }
     return NextResponse.json({ discussions: data || [] }, { status: 200 });
   } catch (e: unknown) {
+    logApiError("[discussions:get] unhandled error", e);
     const detail = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ message: "请求失败", detail }, { status: 500 });
+    return ApiResponses.internalError("请求失败", detail);
   }
 }
 
@@ -34,10 +40,12 @@ export async function POST(req: NextRequest) {
     const content = String(body?.content || "");
     const userId = String(body?.userId || "");
     if (!proposalId || !content.trim() || !userId.trim()) {
-      return NextResponse.json({ message: "proposalId、content、userId 必填" }, { status: 400 });
+      return ApiResponses.invalidParameters("proposalId、content、userId 必填");
     }
     const client = supabaseAdmin || getClient();
-    if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const { data, error } = await client
       .from("discussions")
       .insert({
@@ -49,11 +57,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (error) {
       logApiError("[discussions:post]", error);
-      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
+      return ApiResponses.databaseError("创建失败", error.message);
     }
     return NextResponse.json({ discussion: data }, { status: 200 });
   } catch (e: unknown) {
+    logApiError("[discussions:post] unhandled error", e);
     const detail = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ message: "请求失败", detail }, { status: 500 });
+    return ApiResponses.internalError("请求失败", detail);
   }
 }

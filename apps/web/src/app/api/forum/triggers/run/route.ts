@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+import { ApiResponses } from "@/lib/apiResponse";
 function actionLabel(v: string): string {
   const s = String(v || "");
   if (s === "价格达到") return "价格是否会达到";
@@ -15,9 +16,13 @@ export async function POST(req: NextRequest) {
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = normalizeId(body?.eventId ?? searchParams.get("eventId"));
-    if (eventId === null) return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
+    if (eventId === null) {
+      return ApiResponses.invalidParameters("eventId 必填");
+    }
     const client = getClient() as any;
-    if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+    if (!client) {
+      return ApiResponses.internalError("Supabase 未配置");
+    }
     const { data: rawThreads, error: tErr } = await client
       .from("forum_threads")
       .select("*")
@@ -37,8 +42,10 @@ export async function POST(req: NextRequest) {
       criteria_preview?: string;
     }> | null;
 
-    if (tErr)
-      return NextResponse.json({ message: "查询主题失败", detail: tErr.message }, { status: 500 });
+    if (tErr) {
+      logApiError("POST /api/forum/triggers/run query threads failed", tErr);
+      return ApiResponses.databaseError("查询主题失败", tErr.message);
+    }
     const ids = (threads || []).map((t) => t.id);
     let comments: any[] = [];
     if (ids.length > 0) {
@@ -46,11 +53,10 @@ export async function POST(req: NextRequest) {
         .from("forum_comments")
         .select("thread_id,user_id")
         .in("thread_id", ids);
-      if (cErr)
-        return NextResponse.json(
-          { message: "查询评论失败", detail: cErr.message },
-          { status: 500 }
-        );
+      if (cErr) {
+        logApiError("POST /api/forum/triggers/run query comments failed", cErr);
+        return ApiResponses.databaseError("查询评论失败", cErr.message);
+      }
       comments = rows || [];
     }
     const stat: Record<string, { comments: number; participants: Set<string> }> = {};
@@ -76,7 +82,9 @@ export async function POST(req: NextRequest) {
       }))
       .sort((a, b) => b.score - a.score);
     const top = ranked[0];
-    if (!top) return NextResponse.json({ message: "暂无主题" }, { status: 404 });
+    if (!top) {
+      return ApiResponses.notFound("暂无主题");
+    }
     const { data: topRowRaw } = await client
       .from("forum_threads")
       .select("*")
@@ -129,8 +137,10 @@ export async function POST(req: NextRequest) {
 
     const pred = predRaw as { id: number } | null;
 
-    if (error)
-      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
+    if (error) {
+      logApiError("POST /api/forum/triggers/run create prediction failed", error);
+      return ApiResponses.databaseError("创建失败", error.message);
+    }
     if (pred?.id)
       await client
         .from("forum_threads")
@@ -139,15 +149,10 @@ export async function POST(req: NextRequest) {
           hot_since: new Date().toISOString(),
         } as any)
         .eq("id", top.id);
-    return NextResponse.json(
-      { message: "ok", prediction: pred, thread_id: top.id },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "ok", prediction: pred, thread_id: top.id }, { status: 200 });
   } catch (e: any) {
-    logApiError("POST /api/forum/triggers/run", e);
-    return NextResponse.json(
-      { message: "触发失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    logApiError("POST /api/forum/triggers/run unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("触发失败", detail);
   }
 }

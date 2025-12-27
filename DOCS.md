@@ -1,6 +1,6 @@
 # 📚 Foresight 开发者文档
 
-> 完整的技术参考手册，涵盖智能合约、前端架构、API 设计与部署指南。
+> 完整的技术参考手册，涵盖智能合约、前端架构、API 设计、数据库模型与部署运维。
 
 ---
 
@@ -11,60 +11,88 @@
   - [合约架构](#合约架构)
   - [MarketFactory](#marketfactory)
   - [市场模板](#市场模板)
-  - [UMA 预言机](#uma-预言机)
+  - [代币系统](#代币系统)
+  - [预言机系统](#预言机系统)
   - [治理系统](#治理系统)
-  - [安全机制](#安全机制)
 - [链下订单簿](#链下订单簿)
-  - [订单类型](#订单类型)
+  - [订单生命周期](#订单生命周期)
   - [EIP-712 签名](#eip-712-签名)
-  - [撮合引擎](#撮合引擎)
-  - [Relayer API](#relayer-api)
-- [前端应用](#前端应用)
+  - [Relayer 服务](#relayer-服务)
+- [前端架构](#前端架构)
+  - [技术栈](#技术栈)
   - [目录结构](#目录结构)
-- [核心组件](#核心组件)
+  - [核心组件](#核心组件)
+  - [自定义 Hooks](#自定义-hooks)
   - [状态管理](#状态管理)
-  - [性能优化](#性能优化)
 - [API 参考](#api-参考)
 - [数据库设计](#数据库设计)
 - [部署指南](#部署指南)
-- [测试](#测试)
+- [安全规范](#安全规范)
+- [测试指南](#测试指南)
+- [性能优化](#性能优化)
 
 ---
 
 ## 架构概览
 
-Foresight 采用 **链下订单簿 + 链上结算** 的混合架构，与 Polymarket 技术方案一致：
+Foresight 采用 **链下撮合 + 链上结算** 的混合架构，实现了接近中心化交易所的用户体验，同时保持完全的去中心化结算。
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              用户操作流程                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  1. 挂单 (Maker)                    2. 吃单 (Taker)                         │
-│  ┌─────────────────────┐            ┌─────────────────────┐                │
-│  │ 用户签名 EIP-712    │            │ 获取订单簿深度      │                │
-│  │ 订单 (链下)         │ ────────►  │ 选择订单成交        │                │
-│  │ 0 Gas 成本          │            │ 提交 batchFill     │                │
-│  └─────────────────────┘            └─────────────────────┘                │
-│           │                                   │                             │
-│           ▼                                   ▼                             │
-│  ┌─────────────────────┐            ┌─────────────────────┐                │
-│  │    Relayer 服务     │            │    智能合约         │                │
-│  │  存储 & 广播订单    │ ◄───────── │  验证签名 & 结算    │                │
-│  └─────────────────────┘            └─────────────────────┘                │
-│                                                                             │
+│                              用户交互层                                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │  Web App    │  │  Mobile App │  │  API Client │  │  Bot/SDK    │         │
+│  │  (Next.js)  │  │  (Future)   │  │  (REST)     │  │  (Future)   │         │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘         │
+└─────────┼────────────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │                │
+          ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              服务层                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         Relayer Service                             │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │    │
+│  │  │ Order Book  │  │  Matching   │  │  Event      │                  │    │
+│  │  │ Management  │  │  Engine     │  │  Ingestion  │                  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘                  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                        │
+│  ┌─────────────────────────────────▼───────────────────────────────────┐    │
+│  │                         Supabase                                    │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │    │
+│  │  │  Orders     │  │  Trades     │  │  Candles    │                  │    │
+│  │  │  (待成交)   │  │  (历史成交) │  │  (K线数据)  │                  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘                  │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              区块链层                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                      Polygon Network                                │    │
+│  │                                                                     │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │    │
+│  │  │ Market      │  │ Outcome     │  │ UMA Oracle  │                  │    │
+│  │  │ Factory     │  │ Token 1155  │  │ Adapter V2  │                  │    │
+│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                  │    │
+│  │         │                │                │                         │    │
+│  │  ┌──────▼────────────────▼────────────────▼──────┐                  │    │
+│  │  │              Market Instances                 │                  │    │
+│  │  │  ┌─────────────────┐  ┌─────────────────┐     │                  │    │
+│  │  │  │ Binary Market   │  │ Multi Market    │     │                  │    │
+│  │  │  │ (Minimal Proxy) │  │ (Minimal Proxy) │     │                  │    │
+│  │  │  └─────────────────┘  └─────────────────┘     │                  │    │
+│  │  └───────────────────────────────────────────────┘                  │    │
+│  │                                                                     │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                        │
+│  ┌─────────────────────────────────▼───────────────────────────────────┐    │
+│  │                    UMA Optimistic Oracle V3                         │    │
+│  │              (去中心化结果验证 & 争议仲裁)                            │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
-### 核心设计原则
-
-| 原则 | 实现 |
-|------|------|
-| **零 Gas 挂单** | 用户仅签名，订单存储在链下 |
-| **原子结算** | batchFill 一次交易完成多笔成交 |
-| **去中心化裁决** | UMA 乐观预言机 + 2h 争议期 |
-| **可升级性** | UUPS 代理模式 + Timelock 延迟 |
-| **Gas 效率** | Minimal Proxy (EIP-1167) 部署市场 |
 
 ---
 
@@ -73,505 +101,508 @@ Foresight 采用 **链下订单簿 + 链上结算** 的混合架构，与 Polyma
 ### 合约架构
 
 ```
-packages/contracts/contracts/
-├── MarketFactory.sol              # 市场工厂 (UUPS 可升级)
+contracts/
+├── MarketFactory.sol              # 市场工厂（UUPS 可升级）
 ├── interfaces/
 │   ├── IOracle.sol                # 预言机接口
-│   ├── IOracleRegistrar.sol       # 市场注册接口
-│   └── IMarket.sol                # 市场接口
+│   └── IOracleRegistrar.sol       # 市场注册接口
+├── templates/
+│   ├── OffchainMarketBase.sol     # 市场基础合约
+│   ├── OffchainBinaryMarket.sol   # 二元市场模板
+│   └── OffchainMultiMarket8.sol   # 多元市场模板
 ├── tokens/
 │   └── OutcomeToken1155.sol       # ERC-1155 结果代币
-├── templates/
-│   ├── OffchainMarketBase.sol     # 市场基类
-│   ├── OffchainBinaryMarket.sol   # 二元市场模板
-│   └── OffchainMultiMarket8.sol   # 多元市场模板 (≤8结果)
 ├── oracles/
 │   └── UMAOracleAdapterV2.sol     # UMA 预言机适配器
 └── governance/
-    └── ForesightTimelock.sol      # 治理 Timelock
+    └── ForesightTimelock.sol      # 治理时间锁
 ```
 
 ### MarketFactory
 
-工厂合约负责创建和管理所有预测市场。
+市场工厂负责创建和管理所有预测市场实例。
 
 ```solidity
-/// @title MarketFactory
-/// @notice 创建和管理预测市场的工厂合约
-/// @dev 使用 UUPS 可升级模式，通过 Minimal Proxy 部署市场实例
-contract MarketFactory is 
-    Initializable, 
-    AccessControlUpgradeable, 
-    UUPSUpgradeable 
-{
-    // 角色定义
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    
-    // 模板注册: templateId => implementation
-    mapping(bytes32 => address) public templates;
-    
-    // 市场映射: marketId => market address
-    mapping(bytes32 => address) public markets;
-    
-    /// @notice 创建新市场
-    /// @param marketId 市场唯一标识
-    /// @param templateId 使用的模板 ID
-    /// @param oracle 预言机地址
-    /// @param resolutionTime 结算时间戳
-    /// @param outcomeCount 结果数量
-    /// @param initData 初始化数据
-    function createMarket(
-        bytes32 marketId,
-        bytes32 templateId,
-        address oracle,
-        uint256 resolutionTime,
-        uint256 outcomeCount,
-        bytes calldata initData
-    ) external returns (address market);
-}
+// 核心函数
+function createMarket(
+    bytes32 templateId,          // 模板ID（binary/multi8）
+    address oracle,              // 预言机地址
+    address collateral,          // 抵押代币（USDC）
+    uint256 resolutionTime,      // 结算时间
+    uint256 feeBps,              // 手续费（基点）
+    bytes calldata initData      // 初始化数据
+) external returns (address market);
+
+// 角色
+bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+// 事件
+event MarketCreated(
+    bytes32 indexed templateId,
+    address indexed market,
+    address indexed creator,
+    uint256 resolutionTime
+);
 ```
 
-**关键功能：**
-- `registerTemplate(templateId, implementation)` - 注册市场模板
-- `createMarket(...)` - 通过 Clone 创建市场实例
-- `setDefaultOracle(oracle)` - 设置默认预言机
-- `getMarkets(ids)` - 批量查询市场信息
+**使用示例**:
+
+```typescript
+import { ethers } from "ethers";
+
+const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
+
+// 创建二元市场
+const initData = ethers.AbiCoder.defaultAbiCoder().encode(
+  ["uint8", "string"],
+  [2, "Will BTC reach $100k by 2025?"]
+);
+
+const tx = await factory["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+  ethers.id("OffchainBinaryMarket"),  // templateId
+  UMA_ORACLE_ADDRESS,                  // oracle
+  USDC_ADDRESS,                        // collateral
+  Math.floor(Date.now() / 1000) + 86400 * 30,  // 30天后结算
+  0,                                   // 零手续费
+  initData
+);
+
+const receipt = await tx.wait();
+const marketAddress = receipt.logs[0].args.market;
+```
 
 ### 市场模板
 
 #### OffchainMarketBase
 
-所有市场模板的基类，定义了通用的结算逻辑。
+所有市场模板的基础合约，定义了核心交易逻辑。
+
+**关键常量**:
 
 ```solidity
-/// @title OffchainMarketBase
-/// @notice 链下订单簿市场的基础合约
-abstract contract OffchainMarketBase is 
-    IMarket, 
-    ReentrancyGuard, 
-    Initializable,
-    ERC1155Holder,
-    EIP712Upgradeable 
-{
-    // ========== 常量 ==========
-    uint256 public constant SHARE_SCALE = 1e18;      // 份额精度
-    uint256 public constant USDC_SCALE = 1e6;        // USDC 精度
-    uint256 public constant SHARE_GRANULARITY = 1e12; // 最小份额单位
-    uint256 public constant MAX_PRICE_6_PER_1E18 = 1e6; // 最高价格 (1 USDC)
-    
-    // ========== 安全限制 ==========
-    uint256 public constant MAX_VOLUME_PER_BLOCK = 1_000_000e6;  // 闪电贷保护
-    uint256 public constant MAX_BATCH_SIZE = 50;                  // 批量限制
-    uint256 public constant MIN_ORDER_LIFETIME = 5 seconds;       // 最短订单寿命
-    
-    // ========== 状态 ==========
-    enum State { TRADING, RESOLVED, INVALID }
-    
-    State public state;
-    uint8 public resolvedOutcome;
-    uint8 public outcomeCount;
-    bool public paused;
-    
-    // ========== 核心函数 ==========
-    
-    /// @notice 批量结算订单 (由 Relayer 调用)
-    function batchFill(SignedFill[] calldata fills) external nonReentrant whenNotPaused;
-    
-    /// @notice 铸造完整份额集
-    function mintCompleteSet(uint256 amount) external nonReentrant whenNotPaused;
-    
-    /// @notice 赎回获胜结果代币
-    function redeem(uint256 amount) external nonReentrant;
-    
-    /// @notice 市场无效时赎回完整集 (无手续费)
-    function redeemCompleteSetOnInvalid(uint256 amount) external nonReentrant;
-    
-    /// @notice 解决市场 (读取预言机结果)
-    function resolve() external;
+uint256 public constant SHARE_SCALE = 1e18;           // 份额精度
+uint256 public constant USDC_SCALE = 1e6;             // USDC 精度
+uint256 public constant SHARE_GRANULARITY = 1e12;     // 最小份额单位
+uint256 public constant MAX_PRICE_6_PER_1E18 = 1e6;   // 最大价格（1 USDC）
+
+// 安全限制
+uint256 public constant MAX_VOLUME_PER_BLOCK = 1e12 * 1e18;  // 单区块限额
+uint256 public constant MAX_BATCH_SIZE = 50;                  // 批量操作限制
+uint256 public constant MIN_ORDER_LIFETIME = 5;               // 最小订单生命周期
+```
+
+**核心函数**:
+
+```solidity
+// 铸造完整份额集（需先 approve USDC）
+function mintCompleteSet(uint256 amount18) external;
+
+// 批量成交（由 Relayer 调用）
+function batchFill(FillRequest[] calldata fills) external;
+
+// 单笔签名订单成交
+function fillOrderSigned(
+    Order calldata order,
+    bytes calldata signature,
+    uint256 fillAmount
+) external;
+
+// 取消订单
+function cancelSaltsBatch(bytes32[] calldata salts) external;
+
+// 赎回已结算份额
+function redeem(uint8 outcomeIndex, uint256 amount18) external;
+
+// 无效市场赎回（无手续费）
+function redeemCompleteSetOnInvalid(uint256 amount18) external;
+```
+
+**订单结构**:
+
+```solidity
+struct Order {
+    address maker;           // 挂单者
+    uint8 outcomeIndex;      // 结果索引
+    bool isBuy;              // true=买入，false=卖出
+    uint256 amount18;        // 份额数量（1e18 精度）
+    uint256 price6Per1e18;   // 价格（USDC/1e18份额）
+    uint256 expiry;          // 过期时间戳
+    bytes32 salt;            // 唯一标识符
 }
 ```
 
-**价格与数量单位标准：**
-
-| 字段 | 单位 | 示例 |
-|------|------|------|
-| `amount18` | 1e18 (份额) | 1 份 = `1000000000000000000` |
-| `price6Per1e18` | USDC/份额 | 0.65 USDC = `650000` |
-| `SHARE_GRANULARITY` | 最小单位 1e12 | 保证 6 位小数精度 |
-
 #### OffchainBinaryMarket
 
-二元市场模板 (Yes/No)。
+二元市场（YES/NO）的具体实现。
 
 ```solidity
-contract OffchainBinaryMarket is OffchainMarketBase {
-    function initialize(
-        bytes32 marketId_,
-        address factory_,
-        address creator_,
-        address collateralToken_,
-        address outcomeToken_,
-        address oracle_,
-        uint64 resolutionTime_,
-        uint256 feeBps_  // 必须为 0
-    ) external initializer {
-        require(feeBps_ == 0, "FeeNotSupported");
-        _initCommon(..., 2); // outcomeCount = 2
-    }
-}
+function initialize(
+    address factory_,
+    address oracle_,
+    address collateral_,
+    address outcomeToken_,
+    bytes32 marketId_,
+    uint64 resolutionTime_,
+    uint16 feeBps_,
+    uint8 outcomeCount_,      // 必须为 2
+    string calldata question_
+) external initializer;
 ```
 
 #### OffchainMultiMarket8
 
-多元市场模板 (2-8 种结果)。
+多元市场（2-8选项）的具体实现。
 
 ```solidity
-contract OffchainMultiMarket8 is OffchainMarketBase {
-    function initialize(
-        bytes32 marketId_,
-        address factory_,
-        address creator_,
-        address collateralToken_,
-        address outcomeToken_,
-        address oracle_,
-        uint64 resolutionTime_,
-        uint8 outcomeCount_,  // 2-8
-        uint256 feeBps_       // 必须为 0
-    ) external initializer {
-        require(outcomeCount_ >= 2 && outcomeCount_ <= 8, "InvalidOutcomeCount");
-        require(feeBps_ == 0, "FeeNotSupported");
-        _initCommon(..., outcomeCount_);
-    }
-}
+function initialize(
+    address factory_,
+    address oracle_,
+    address collateral_,
+    address outcomeToken_,
+    bytes32 marketId_,
+    uint64 resolutionTime_,
+    uint16 feeBps_,
+    uint8 outcomeCount_,      // 2-8
+    string calldata question_
+) external initializer;
 ```
 
-### UMA 预言机
+### 代币系统
+
+#### OutcomeToken1155
+
+ERC-1155 多代币标准，每个市场的每个结果对应一个 tokenId。
+
+```solidity
+// tokenId 计算方式
+function computeTokenId(
+    address market,
+    uint8 outcomeIndex
+) public pure returns (uint256) {
+    return uint256(keccak256(abi.encodePacked(market, outcomeIndex)));
+}
+
+// 角色
+bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+// 核心函数
+function mint(address to, uint256 tokenId, uint256 amount) external;
+function burn(address from, uint256 tokenId, uint256 amount) external;
+```
+
+### 预言机系统
 
 #### UMAOracleAdapterV2
 
-与 UMA Optimistic Oracle V3 集成的适配器。
+与 UMA Optimistic Oracle V3 的集成适配器。
 
 ```solidity
-/// @title UMAOracleAdapterV2
-/// @notice UMA 乐观预言机适配器，支持二元和多元市场
-contract UMAOracleAdapterV2 is 
-    IOracle, 
-    IOracleRegistrar, 
-    AccessControl, 
-    ReentrancyGuard 
-{
-    // ========== 角色 ==========
-    bytes32 public constant REPORTER_ROLE = keccak256("REPORTER_ROLE");
-    bytes32 public constant REGISTRAR_ROLE = keccak256("REGISTRAR_ROLE");
-    
-    // ========== 状态 ==========
-    enum MarketStatus { NONE, ASSERTING, RESOLVED, INVALID }
-    
-    struct MarketConfig {
-        uint64 resolutionTime;
-        uint8 outcomeCount;
-        MarketStatus status;
-        uint8 resolvedOutcome;
-        uint8 reassertionCount;
-    }
-    
-    mapping(bytes32 => MarketConfig) public marketConfigs;
-    
-    // ========== 核心流程 ==========
-    
-    /// @notice 市场注册 (由 Factory 调用)
-    function registerMarket(
-        bytes32 marketId, 
-        uint64 resolutionTime, 
-        uint8 outcomeCount
-    ) external onlyRole(REGISTRAR_ROLE);
-    
-    /// @notice 发起结算断言 (由 Reporter 调用)
-    function requestOutcome(
-        bytes32 marketId, 
-        uint8 outcomeIndex
-    ) external onlyRole(REPORTER_ROLE) nonReentrant;
-    
-    /// @notice 结算断言 (任何人可调用)
-    function settleOutcome(bytes32 marketId) external nonReentrant;
-    
-    /// @notice 重置无效市场以重新断言
-    function resetMarketForReassert(bytes32 marketId) external onlyRole(DEFAULT_ADMIN_ROLE);
-}
+// 市场状态
+enum Status { NONE, ASSERTED, RESOLVED, INVALID }
+
+// 注册市场（由 MarketFactory 调用）
+function registerMarket(
+    bytes32 marketId,
+    uint64 resolutionTime,
+    uint8 outcomeCount
+) external;
+
+// 请求结果断言（由 Reporter 调用）
+function requestOutcome(
+    bytes32 marketId,
+    uint8 outcomeIndex,
+    string calldata claim
+) external;
+
+// 结算（任何人可调用）
+function settleOutcome(bytes32 marketId) external;
+
+// 重置无效市场以重新断言
+function resetMarketForReassert(bytes32 marketId) external;
+
+// UMA 回调
+function assertionResolvedCallback(
+    bytes32 assertionId,
+    bool assertedTruthfully
+) external;
 ```
 
-**UMA 结算流程：**
+**结算流程**:
 
 ```
-1. Reporter 调用 requestOutcome(marketId, outcomeIndex)
-   └── 向 UMA OO V3 发起断言，附带 bond
+1. Reporter 调用 requestOutcome(marketId, outcomeIndex, "Resolved outcomeIndex = 0")
+   ├── 验证 resolutionTime 已过
+   ├── 向 UMA OO V3 提交断言
+   └── 状态变为 ASSERTED
 
 2. UMA Liveness Period (默认 2 小时)
-   └── 任何人可通过 disputeAssertion() 争议
+   ├── 任何人可以质疑断言（需要保证金）
+   └── 如果被质疑，进入 UMA 争议仲裁流程
 
-3a. 无争议 → assertionResolvedCallback(true)
-    └── 市场状态 = RESOLVED，可赎回
+3. Liveness 结束后
+   ├── 调用 settleOutcome(marketId)
+   ├── UMA 回调 assertionResolvedCallback
+   └── 状态变为 RESOLVED 或 INVALID
 
-3b. 有争议且 Disputer 胜出 → assertionResolvedCallback(false)
-    └── 市场状态 = INVALID，可赎回完整集 (无损失)
+4. 用户赎回
+   ├── RESOLVED: 调用 redeem(winningOutcome, amount)
+   └── INVALID: 调用 redeemCompleteSetOnInvalid(amount)
 ```
 
 ### 治理系统
 
 #### ForesightTimelock
 
-关键操作的延迟执行机制。
+基于 OpenZeppelin TimelockController，实现延迟执行的治理机制。
 
 ```solidity
-/// @title ForesightTimelock
-/// @notice 24 小时延迟的治理 Timelock
-contract ForesightTimelock is TimelockController {
-    constructor(
-        uint256 minDelay_,          // 24 * 3600 (24小时)
-        address[] memory proposers_, // Gnosis Safe 地址
-        address[] memory executors_, // address(0) = 任何人可执行
-        address admin_
-    ) TimelockController(minDelay_, proposers_, executors_, admin_) {}
-}
+constructor(
+    uint256 minDelay_,        // 最小延迟（如 24 小时 = 86400）
+    address[] memory proposers_,  // 提案者（Gnosis Safe）
+    address[] memory executors_,  // 执行者（address(0) = 任何人）
+    address admin_            // 管理员（部署后撤销）
+) TimelockController(minDelay_, proposers_, executors_, admin_);
 ```
 
-**治理架构：**
+**治理流程**:
 
 ```
-Gnosis Safe (3/5 多签)
-        │
-        ▼ 提案
-ForesightTimelock (24h 延迟)
-        │
-        ▼ 执行
-┌───────────────────────────────────────┐
-│  MarketFactory    UMAOracleAdapterV2  │
-│  (ADMIN_ROLE)     (DEFAULT_ADMIN_ROLE)│
-└───────────────────────────────────────┘
-```
+1. Gnosis Safe 创建提案
+   └── 收集 3/5 多签签名
 
-### 安全机制
+2. 提交到 Timelock
+   └── schedule(target, value, data, predecessor, salt, delay)
 
-#### 闪电贷保护
+3. 等待延迟期（24小时）
+   └── 社区审查窗口
 
-```solidity
-uint256 public constant MAX_VOLUME_PER_BLOCK = 1_000_000e6; // 100万 USDC
-
-mapping(uint256 => uint256) private _blockVolume;
-
-function _checkFlashLoanProtection(uint256 volume) internal {
-    uint256 currentVolume = _blockVolume[block.number] + volume;
-    if (currentVolume > MAX_VOLUME_PER_BLOCK) {
-        revert FlashLoanProtection();
-    }
-    _blockVolume[block.number] = currentVolume;
-}
-```
-
-#### 批量大小限制
-
-```solidity
-uint256 public constant MAX_BATCH_SIZE = 50;
-
-function batchFill(SignedFill[] calldata fills) external {
-    if (fills.length > MAX_BATCH_SIZE) revert BatchSizeExceeded();
-    // ...
-}
-```
-
-#### 订单最短寿命
-
-```solidity
-uint256 public constant MIN_ORDER_LIFETIME = 5 seconds;
-
-function _fillOne(...) internal {
-    if (order.expiry < block.timestamp + MIN_ORDER_LIFETIME) {
-        revert OrderLifetimeTooShort();
-    }
-    // ...
-}
-```
-
-#### 签名可塑性保护
-
-```solidity
-uint256 constant ECDSA_S_UPPER_BOUND = 
-    0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
-
-function _checkSignatureMalleability(bytes calldata sig) internal pure {
-    bytes32 s;
-    assembly { s := calldataload(add(sig.offset, 32)) }
-    if (uint256(s) > ECDSA_S_UPPER_BOUND) revert InvalidSignatureS();
-}
+4. 执行
+   └── execute(target, value, data, predecessor, salt)
 ```
 
 ---
 
 ## 链下订单簿
 
-### 订单类型
+### 订单生命周期
 
-```typescript
-interface Order {
-  marketId: string;      // bytes32 市场 ID
-  maker: string;         // 挂单者地址
-  isBuy: boolean;        // true = 买入, false = 卖出
-  outcomeIndex: number;  // 结果索引 (0-7)
-  amount: bigint;        // 数量 (1e18 单位)
-  price: bigint;         // 价格 (1e6 单位, USDC per 1e18 share)
-  nonce: bigint;         // 防重放
-  expiry: number;        // 过期时间戳
-  salt: bigint;          // 随机盐
-}
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   创建订单   │────▶│   签名订单   │────▶│   提交订单   │────▶│   存入DB    │
+│  (前端)     │     │  (钱包)     │     │  (Relayer)  │     │  (Supabase) │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+                                                                    │
+                                                                    ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   更新余额   │◀────│   链上结算   │◀────│   批量成交   │◀────│   订单匹配   │
+│  (前端)     │     │  (合约)     │     │  (Relayer)  │     │  (撮合引擎)  │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
 ### EIP-712 签名
 
-**Domain:**
+订单使用 EIP-712 结构化签名，确保安全性和可读性。
+
+**Domain 定义**:
+
 ```typescript
 const domain = {
   name: "Foresight",
   version: "1",
-  chainId: 80002, // Polygon Amoy
+  chainId: 80002,
   verifyingContract: marketAddress,
 };
 ```
 
-**Order Type:**
+**Order 类型**:
+
 ```typescript
 const types = {
   Order: [
-    { name: "marketId", type: "bytes32" },
     { name: "maker", type: "address" },
-    { name: "isBuy", type: "bool" },
     { name: "outcomeIndex", type: "uint8" },
-    { name: "amount", type: "uint256" },
-    { name: "price", type: "uint256" },
-    { name: "nonce", type: "uint256" },
+    { name: "isBuy", type: "bool" },
+    { name: "amount18", type: "uint256" },
+    { name: "price6Per1e18", type: "uint256" },
     { name: "expiry", type: "uint256" },
-    { name: "salt", type: "uint256" },
+    { name: "salt", type: "bytes32" },
   ],
 };
 ```
 
-**签名流程:**
+**签名示例**:
+
 ```typescript
-const signature = await signer.signTypedData(domain, types, order);
-```
+import { ethers } from "ethers";
 
-### 撮合引擎
+async function signOrder(signer, order, marketAddress) {
+  const domain = {
+    name: "Foresight",
+    version: "1",
+    chainId: await signer.provider.getNetwork().then(n => n.chainId),
+    verifyingContract: marketAddress,
+  };
 
-Relayer 服务负责订单存储和撮合。
+  const types = {
+    Order: [
+      { name: "maker", type: "address" },
+      { name: "outcomeIndex", type: "uint8" },
+      { name: "isBuy", type: "bool" },
+      { name: "amount18", type: "uint256" },
+      { name: "price6Per1e18", type: "uint256" },
+      { name: "expiry", type: "uint256" },
+      { name: "salt", type: "bytes32" },
+    ],
+  };
 
-```
-services/relayer/
-├── src/
-│   ├── index.ts          # Express 服务入口
-│   ├── orderbook.ts      # 订单簿逻辑
-│   └── supabase.ts       # 数据库操作
-```
-
-**撮合逻辑：**
-```typescript
-// 买单按价格降序排列 (高价优先)
-// 卖单按价格升序排列 (低价优先)
-
-function matchOrders(buyOrders: Order[], sellOrders: Order[]): Fill[] {
-  const fills: Fill[] = [];
-  
-  for (const buy of buyOrders) {
-    for (const sell of sellOrders) {
-      if (buy.price >= sell.price) {
-        // 可以成交
-        const fillAmount = min(buy.remainingAmount, sell.remainingAmount);
-        fills.push({ buy, sell, amount: fillAmount, price: sell.price });
-      }
-    }
-  }
-  
-  return fills;
+  const signature = await signer.signTypedData(domain, types, order);
+  return signature;
 }
 ```
 
-### Relayer API
+### Relayer 服务
 
-| 端点 | 方法 | 描述 |
+Relayer 是链下订单簿的核心服务，负责：
+- 接收和验证签名订单
+- 维护订单簿状态
+- 执行订单撮合
+- 提交链上结算交易
+
+**API 端点**:
+
+| 方法 | 路径 | 描述 |
 |------|------|------|
-| `/order` | POST | 提交新订单 |
-| `/order/:salt` | DELETE | 取消订单 |
-| `/depth/:marketId/:outcomeIndex` | GET | 获取订单簿深度 |
-| `/orders/:marketId` | GET | 获取市场所有订单 |
-| `/my-orders/:address` | GET | 获取用户订单 |
+| POST | `/order` | 提交新订单 |
+| DELETE | `/order/:salt` | 取消订单 |
+| GET | `/depth/:marketId` | 获取订单簿深度 |
+| GET | `/orders/:marketId` | 获取市场订单列表 |
+| POST | `/cancel-salt` | 签名取消订单 |
 
-**提交订单示例：**
-```bash
-curl -X POST http://localhost:3001/order \
-  -H "Content-Type: application/json" \
-  -d '{
-    "order": {
-      "marketId": "0x...",
-      "maker": "0x...",
-      "isBuy": true,
-      "outcomeIndex": 0,
-      "amount": "1000000000000000000",
-      "price": "650000",
-      "nonce": "1",
-      "expiry": 1735689600,
-      "salt": "12345"
-    },
-    "signature": "0x..."
-  }'
+**订单提交**:
+
+```typescript
+// POST /order
+{
+  "market": "0x...",
+  "order": {
+    "maker": "0x...",
+    "outcomeIndex": 0,
+    "isBuy": true,
+    "amount18": "1000000000000000000",  // 1 share
+    "price6Per1e18": "500000",          // 0.5 USDC
+    "expiry": 1735689600,
+    "salt": "0x..."
+  },
+  "signature": "0x..."
+}
+```
+
+**深度查询**:
+
+```typescript
+// GET /depth/:marketId
+{
+  "bids": [
+    { "price": 500000, "amount": "10000000000000000000" },
+    { "price": 490000, "amount": "5000000000000000000" }
+  ],
+  "asks": [
+    { "price": 510000, "amount": "8000000000000000000" },
+    { "price": 520000, "amount": "12000000000000000000" }
+  ]
+}
 ```
 
 ---
 
-## 前端应用
+## 前端架构
+
+### 技术栈
+
+| 类别 | 技术 | 版本 |
+|------|------|------|
+| 框架 | Next.js (App Router) | 15.5.4 |
+| UI | React | 19 |
+| 语言 | TypeScript | 5.0 |
+| 样式 | Tailwind CSS | 3.4 |
+| 动画 | Framer Motion | 11 |
+| 状态 | React Query | 5 |
+| Web3 | ethers.js | 6 |
+| 国际化 | next-intl | 3 |
+| 监控 | Sentry | 8 |
 
 ### 目录结构
 
 ```
 apps/web/src/
-├── app/                          # Next.js App Router
-│   ├── trending/                 # 热门预测列表
-│   ├── prediction/[id]/          # 预测详情 & 交易
-│   ├── proposals/                # 提案广场
-│   ├── leaderboard/              # 排行榜
-│   ├── forum/                    # 讨论论坛
-│   └── api/                      # API 路由
+├── app/                          # App Router 页面
+│   ├── api/                      # API 路由
+│   │   ├── predictions/          # 预测市场 API
+│   │   ├── orderbook/            # 订单簿 API
+│   │   └── user-profiles/        # 用户资料 API
+│   ├── prediction/[id]/          # 预测详情页
+│   ├── trending/                 # 热门列表页
+│   ├── leaderboard/              # 排行榜页
+│   └── proposals/                # 提案广场页
 │
-├── components/
+├── components/                   # React 组件
 │   ├── ui/                       # 基础 UI 组件
 │   │   ├── Button.tsx
 │   │   ├── Card.tsx
 │   │   ├── Modal.tsx
-│   │   ├── VirtualList.tsx       # 虚拟列表
-│   │   └── LazyImage.tsx         # 懒加载图片
+│   │   ├── LazyImage.tsx
+│   │   └── VirtualList.tsx       # 虚拟列表
 │   ├── market/                   # 市场相关组件
-│   │   ├── TradingPanel.tsx      # 交易面板
-│   │   ├── MarketChart.tsx       # K线图
-│   │   └── OutcomeList.tsx       # 结果列表
-│   └── skeletons/                # 骨架屏
+│   │   ├── MarketChart.tsx
+│   │   ├── TradingPanel.tsx
+│   │   └── OutcomeList.tsx
+│   ├── skeletons/                # 骨架屏组件
+│   └── LazyComponents.tsx        # 动态导入组件
 │
-├── contexts/
+├── contexts/                     # Context 状态管理
 │   ├── AuthContext.tsx           # 认证状态
-│   ├── WalletContext.tsx         # 钱包连接
+│   ├── WalletContext.tsx         # 钱包状态
 │   └── UserProfileContext.tsx    # 用户资料
 │
-├── hooks/
-│   ├── useInfiniteScroll.ts      # 无限滚动
-│   ├── usePersistedState.ts      # 持久化状态
+├── hooks/                        # 自定义 Hooks
+│   ├── useInfiniteScroll.ts
+│   ├── usePersistedState.ts
 │   ├── usePrefetch.ts            # 数据预取
-│   └── useQueries.ts             # React Query hooks
+│   └── useAccessibility.ts
 │
-└── lib/
-    ├── supabase.ts               # Supabase 客户端
-    ├── apiCache.ts               # API 缓存
-    ├── security.ts               # 安全工具
-    ├── rateLimit.ts              # 限流
-    └── toast.ts                  # Toast 通知
+├── lib/                          # 工具库
+│   ├── supabase.ts               # Supabase 客户端
+│   ├── apiCache.ts               # API 缓存
+│   ├── security.ts               # 安全工具
+│   ├── rateLimit.ts              # 限流工具
+│   └── toast.ts                  # Toast 通知
+│
+└── types/                        # TypeScript 类型
+    ├── api.ts
+    └── market.ts
 ```
 
 ### 核心组件
+
+#### VirtualList
+
+高性能虚拟列表，只渲染可见区域的项目。
+
+```tsx
+import { VirtualList } from "@/components/ui/VirtualList";
+
+<VirtualList
+  items={predictions}
+  estimatedItemHeight={200}
+  getKey={(item) => item.id}
+  renderItem={(item, index) => (
+    <PredictionCard prediction={item} />
+  )}
+  onLoadMore={loadMore}
+  hasMore={hasNextPage}
+  isLoadingMore={isLoading}
+/>
+```
 
 #### TradingPanel
 
@@ -581,49 +612,35 @@ apps/web/src/
 import { TradingPanel } from "@/components/market/TradingPanel";
 
 <TradingPanel
-  marketId={marketId}
+  market={market}
   outcomeIndex={0}
-  outcomeName="Yes"
-  currentPrice={0.65}
-  onOrderSubmit={handleOrderSubmit}
+  userBalance={balance}
+  onOrderSubmit={handleSubmit}
 />
 ```
 
-#### VirtualList
+#### LazyImage
 
-高性能虚拟列表，只渲染可见项。
+图片懒加载组件，支持 IntersectionObserver。
 
 ```tsx
-import { VirtualList } from "@/components/ui/VirtualList";
+import LazyImage from "@/components/ui/LazyImage";
 
-<VirtualList
-  items={predictions}
-  estimatedItemHeight={200}
-  getKey={(item) => item.id}
-  renderItem={(item) => <PredictionCard prediction={item} />}
-  onLoadMore={loadMore}
-  hasMore={hasNextPage}
+<LazyImage
+  src="/image.jpg"
+  alt="Description"
+  className="w-full h-48 object-cover"
+  rootMargin={100}    // 提前 100px 加载
+  fadeIn={true}       // 渐入动画
 />
 ```
 
-### 状态管理
+### 自定义 Hooks
 
-**React Query 配置：**
-```tsx
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 2 * 60 * 1000,      // 2分钟
-      gcTime: 15 * 60 * 1000,        // 15分钟
-      refetchOnWindowFocus: "always",
-      structuralSharing: true,        // 减少重渲染
-      networkMode: "offlineFirst",
-    },
-  },
-});
-```
+#### usePrefetch
 
-**数据预取：**
+数据预取 Hook，用于悬停预加载。
+
 ```tsx
 import { usePrefetch } from "@/hooks/usePrefetch";
 
@@ -631,90 +648,209 @@ function PredictionCard({ id }) {
   const { prefetchPrediction } = usePrefetch();
   
   return (
-    <Card onMouseEnter={() => prefetchPrediction(id)}>
-      {/* ... */}
+    <Card
+      onMouseEnter={() => prefetchPrediction(id)}
+      onClick={() => router.push(`/prediction/${id}`)}
+    >
+      ...
     </Card>
   );
 }
 ```
 
-### 性能优化
+#### usePersistedState
 
-| 优化 | 实现 |
-|------|------|
-| **Bundle 分割** | ethers, framer-motion, react-query 单独打包 |
-| **查询并行化** | Promise.all 并行数据库查询 |
-| **虚拟列表** | VirtualList 只渲染可见项 |
-| **图片懒加载** | LazyImage + IntersectionObserver |
-| **API 缓存** | 内存缓存 + HTTP Cache Headers |
-| **预取** | 悬停时预取详情数据 |
+持久化状态 Hook，支持 localStorage/sessionStorage。
+
+```tsx
+import { usePersistedState } from "@/hooks/usePersistedState";
+
+const [filters, setFilters] = usePersistedState("market-filters", {
+  category: null,
+  sortBy: "trending",
+});
+```
+
+#### useInfiniteScroll
+
+无限滚动 Hook。
+
+```tsx
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+
+const { loadMoreRef, isNearBottom } = useInfiniteScroll({
+  loading: isLoading,
+  hasNextPage,
+  onLoadMore: fetchNextPage,
+  threshold: 0.1,
+});
+
+return (
+  <div>
+    {items.map(item => <Card key={item.id} {...item} />)}
+    <div ref={loadMoreRef} />
+  </div>
+);
+```
+
+### 状态管理
+
+#### React Query
+
+数据获取和缓存使用 React Query。
+
+```tsx
+import { useQuery, useMutation } from "@tanstack/react-query";
+
+// 查询
+const { data, isLoading } = useQuery({
+  queryKey: ["prediction", id],
+  queryFn: () => fetch(`/api/predictions/${id}`).then(r => r.json()),
+  staleTime: 2 * 60 * 1000,  // 2分钟
+});
+
+// 变更
+const mutation = useMutation({
+  mutationFn: (order) => submitOrder(order),
+  onSuccess: () => {
+    queryClient.invalidateQueries(["orders"]);
+  },
+});
+```
+
+#### Context
+
+全局状态使用 React Context。
+
+```tsx
+// 钱包状态
+const { address, isConnected, connect, disconnect } = useWallet();
+
+// 认证状态
+const { user, isAuthenticated, signIn, signOut } = useAuth();
+
+// 用户资料
+const { profile, updateProfile } = useUserProfile();
+```
 
 ---
 
 ## API 参考
 
-### 预测列表
+### 预测市场 API
 
-```
-GET /api/predictions
-```
+#### GET /api/predictions
 
-**参数：**
-| 参数 | 类型 | 描述 |
-|------|------|------|
-| `page` | number | 页码 |
-| `pageSize` | number | 每页数量 |
-| `category` | string | 分类筛选 |
-| `status` | string | 状态筛选 |
-| `includeOutcomes` | boolean | 是否包含结果详情 |
+获取预测列表。
 
-**响应：**
-```json
+```typescript
+// 请求
+GET /api/predictions?category=crypto&status=active&page=1&pageSize=20
+
+// 响应
 {
   "success": true,
   "data": [
     {
       "id": "1",
-      "title": "BTC 会在 2025 年突破 $100k 吗？",
+      "title": "Will BTC reach $100k?",
       "category": "crypto",
       "status": "active",
-      "followers_count": 128,
+      "resolutionTime": "2025-12-31T00:00:00Z",
       "stats": {
-        "yesAmount": 15000.5,
-        "noAmount": 8500.25,
-        "totalAmount": 23500.75,
-        "yesProbability": 0.6383
+        "yesAmount": 10000,
+        "noAmount": 5000,
+        "totalAmount": 15000,
+        "participantCount": 150,
+        "yesProbability": 0.6667
       }
     }
   ],
   "pagination": {
+    "total": 100,
     "page": 1,
     "pageSize": 20,
-    "total": 100,
     "totalPages": 5
   }
 }
 ```
 
-### 订单簿深度
+#### GET /api/predictions/[id]
 
+获取预测详情。
+
+```typescript
+// 请求
+GET /api/predictions/1
+
+// 响应
+{
+  "success": true,
+  "data": {
+    "id": "1",
+    "title": "Will BTC reach $100k?",
+    "description": "...",
+    "outcomes": [
+      { "index": 0, "name": "Yes", "tokenId": "0x..." },
+      { "index": 1, "name": "No", "tokenId": "0x..." }
+    ],
+    "marketAddress": "0x...",
+    "resolutionTime": "2025-12-31T00:00:00Z",
+    "status": "active"
+  }
+}
 ```
+
+### 订单簿 API
+
+#### GET /api/orderbook/depth
+
+获取订单簿深度。
+
+```typescript
+// 请求
 GET /api/orderbook/depth?marketId=0x...&outcomeIndex=0
-```
 
-**响应：**
-```json
+// 响应
 {
   "success": true,
   "data": {
     "bids": [
-      { "price": "650000", "amount": "5000000000000000000" },
-      { "price": "640000", "amount": "3000000000000000000" }
+      { "price": 0.50, "amount": 1000, "orders": 5 },
+      { "price": 0.49, "amount": 500, "orders": 3 }
     ],
     "asks": [
-      { "price": "660000", "amount": "2000000000000000000" },
-      { "price": "670000", "amount": "4000000000000000000" }
+      { "price": 0.51, "amount": 800, "orders": 4 },
+      { "price": 0.52, "amount": 1200, "orders": 6 }
     ]
+  }
+}
+```
+
+#### POST /api/orderbook/market-plan
+
+获取市价单执行计划。
+
+```typescript
+// 请求
+POST /api/orderbook/market-plan
+{
+  "marketId": "0x...",
+  "outcomeIndex": 0,
+  "isBuy": true,
+  "amount": "1000000000000000000"
+}
+
+// 响应
+{
+  "success": true,
+  "data": {
+    "fills": [
+      { "orderId": "0x...", "amount": "500000000000000000", "price": 510000 },
+      { "orderId": "0x...", "amount": "500000000000000000", "price": 520000 }
+    ],
+    "totalCost": 515000,
+    "averagePrice": 515000
   }
 }
 ```
@@ -726,31 +862,41 @@ GET /api/orderbook/depth?marketId=0x...&outcomeIndex=0
 ### 核心表
 
 ```sql
--- 预测事件
+-- 预测市场
 CREATE TABLE predictions (
   id SERIAL PRIMARY KEY,
-  market_id TEXT UNIQUE,           -- 链上 marketId
   title TEXT NOT NULL,
   description TEXT,
   category TEXT,
   status TEXT DEFAULT 'active',
+  market_address TEXT,
   resolution_time TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 订单簿
+-- 市场结果选项
+CREATE TABLE prediction_outcomes (
+  id SERIAL PRIMARY KEY,
+  prediction_id INTEGER REFERENCES predictions(id),
+  outcome_index SMALLINT NOT NULL,
+  name TEXT NOT NULL,
+  token_id TEXT
+);
+
+-- 订单
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   market_id TEXT NOT NULL,
   maker TEXT NOT NULL,
-  is_buy BOOLEAN NOT NULL,
   outcome_index SMALLINT NOT NULL,
+  is_buy BOOLEAN NOT NULL,
   amount NUMERIC NOT NULL,
   price NUMERIC NOT NULL,
-  filled_amount NUMERIC DEFAULT 0,
   salt TEXT UNIQUE NOT NULL,
-  expiry TIMESTAMPTZ NOT NULL,
   signature TEXT NOT NULL,
+  expiry TIMESTAMPTZ NOT NULL,
+  filled_amount NUMERIC DEFAULT 0,
   status TEXT DEFAULT 'open',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -759,72 +905,155 @@ CREATE TABLE orders (
 CREATE TABLE trades (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   market_id TEXT NOT NULL,
-  outcome_index SMALLINT NOT NULL,
+  order_id UUID REFERENCES orders(id),
   maker TEXT NOT NULL,
   taker TEXT NOT NULL,
+  outcome_index SMALLINT NOT NULL,
+  is_buy BOOLEAN NOT NULL,
   amount NUMERIC NOT NULL,
   price NUMERIC NOT NULL,
   tx_hash TEXT,
-  block_number BIGINT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 索引
-CREATE INDEX idx_orders_market ON orders(market_id, outcome_index, status);
-CREATE INDEX idx_trades_market ON trades(market_id, outcome_index);
+-- K线数据
+CREATE TABLE candles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  market_id TEXT NOT NULL,
+  outcome_index SMALLINT NOT NULL,
+  interval TEXT NOT NULL,  -- '1m', '5m', '1h', '1d'
+  open_time TIMESTAMPTZ NOT NULL,
+  open NUMERIC NOT NULL,
+  high NUMERIC NOT NULL,
+  low NUMERIC NOT NULL,
+  close NUMERIC NOT NULL,
+  volume NUMERIC NOT NULL,
+  UNIQUE(market_id, outcome_index, interval, open_time)
+);
+
+-- 用户资料
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY,
+  wallet_address TEXT UNIQUE NOT NULL,
+  username TEXT,
+  avatar_url TEXT,
+  bio TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 事件关注
+CREATE TABLE event_follows (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  event_id INTEGER REFERENCES predictions(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, event_id)
+);
+```
+
+### 索引
+
+```sql
+-- 订单查询优化
+CREATE INDEX idx_orders_market_status ON orders(market_id, status);
+CREATE INDEX idx_orders_maker ON orders(maker);
+CREATE INDEX idx_orders_expiry ON orders(expiry) WHERE status = 'open';
+
+-- 成交查询优化
+CREATE INDEX idx_trades_market ON trades(market_id, created_at DESC);
+CREATE INDEX idx_trades_maker ON trades(maker);
+CREATE INDEX idx_trades_taker ON trades(taker);
+
+-- K线查询优化
+CREATE INDEX idx_candles_lookup ON candles(market_id, outcome_index, interval, open_time DESC);
 ```
 
 ---
 
 ## 部署指南
 
-### 1. 合约部署
+### 智能合约部署
 
 ```bash
-# 设置环境变量
-export PRIVATE_KEY=0x...
-export POLYGON_RPC_URL=https://...
-export UMA_OO_V3_ADDRESS=0x...
+# 1. 配置环境变量
+export PRIVATE_KEY=your_deployer_private_key
+export RPC_URL=https://rpc-amoy.polygon.technology
 export USDC_ADDRESS=0x...
+export UMA_OOV3_ADDRESS=0x...
 
-# 部署到 Polygon Amoy
+# 2. 编译合约
+npx hardhat compile
+
+# 3. 部署
 npx hardhat run scripts/deploy_offchain_sprint1.ts --network amoy
+
+# 4. 验证合约
+npx hardhat verify --network amoy DEPLOYED_ADDRESS
 ```
 
-### 2. 前端部署
+### 前端部署
 
 ```bash
+# 1. 构建
 cd apps/web
-
-# 配置环境变量
-cp .env.example .env.local
-# 编辑 .env.local
-
-# 构建
 npm run build
 
-# 部署到 Vercel
-vercel --prod
+# 2. 部署到 Vercel
+vercel deploy --prod
 ```
 
-### 3. Relayer 部署
+### Relayer 部署
 
 ```bash
+# 1. 构建
 cd services/relayer
+npm run build
 
-# 配置
-export BUNDLER_PRIVATE_KEY=0x...
-export RPC_URL=https://...
-export SUPABASE_URL=...
-export SUPABASE_SERVICE_KEY=...
+# 2. 使用 PM2 运行
+pm2 start dist/index.js --name foresight-relayer
 
-# 启动
-npm run start
+# 3. 或使用 Docker
+docker build -t foresight-relayer .
+docker run -d -p 3001:3001 foresight-relayer
 ```
 
 ---
 
-## 测试
+## 安全规范
+
+### 智能合约安全
+
+1. **重入保护**: 所有状态修改函数使用 `ReentrancyGuard`
+2. **访问控制**: 使用 OpenZeppelin AccessControl
+3. **闪电贷防护**: 单区块交易量限制
+4. **签名安全**: ECDSA 可延展性检查
+5. **熔断机制**: 紧急暂停功能
+
+### 前端安全
+
+1. **输入验证**: 使用 `validateAndSanitize` 清理用户输入
+2. **XSS 防护**: 不直接渲染用户原始输入
+3. **CSRF 防护**: API 使用签名验证
+4. **限流**: 使用 `withRateLimit` 包装 API
+
+```typescript
+import { validateAndSanitize } from "@/lib/security";
+import { withRateLimit, rateLimitPresets } from "@/lib/rateLimit";
+
+// 输入验证
+const result = validateAndSanitize(userInput, {
+  type: "text",
+  required: true,
+  maxLength: 200,
+});
+
+// API 限流
+export const POST = withRateLimit(handler, rateLimitPresets.strict);
+```
+
+---
+
+## 测试指南
 
 ### 合约测试
 
@@ -835,7 +1064,7 @@ npm run hardhat:test
 # 运行特定测试
 npx hardhat test test/OffchainMarket.test.ts
 
-# 覆盖率
+# 覆盖率报告
 npx hardhat coverage
 ```
 
@@ -854,72 +1083,66 @@ npm run test:watch
 npm run test:coverage
 ```
 
----
+**测试示例**:
 
-## 环境变量参考
+```typescript
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
 
-### 前端 (apps/web/.env.local)
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_KEY=eyJ...
-
-# 合约地址
-NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY=0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30
-NEXT_PUBLIC_USDC_ADDRESS_AMOY=0x...
-NEXT_PUBLIC_OUTCOME_TOKEN_ADDRESS_AMOY=0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087
-
-# Relayer
-NEXT_PUBLIC_RELAYER_URL=http://localhost:3001
-
-# RPC
-NEXT_PUBLIC_POLYGON_RPC_URL=https://...
-
-# 可选
-NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=...
-SENTRY_DSN=...
-```
-
-### Relayer (services/relayer/.env)
-
-```env
-PRIVATE_KEY=0x...
-RPC_URL=https://...
-PORT=3001
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...
+describe("TradingPanel", () => {
+  it("should display order form", () => {
+    render(<TradingPanel market={mockMarket} />);
+    expect(screen.getByText("Buy")).toBeInTheDocument();
+    expect(screen.getByText("Sell")).toBeInTheDocument();
+  });
+});
 ```
 
 ---
 
-## 常见问题
+## 性能优化
 
-### Q: 为什么使用链下订单簿而不是 AMM？
+### 已实现的优化
 
-**A:** 链下订单簿提供：
-- 零 Gas 挂单/撤单
-- 无滑点的精确定价
-- 毫秒级交易响应
-- 更好的做市商体验
+1. **数据库查询并行化**: 使用 `Promise.all` 并行执行多个查询
+2. **内存缓存**: API 响应内存缓存 + HTTP 缓存头
+3. **虚拟列表**: 大列表只渲染可见项
+4. **代码分割**: 大型库独立打包
+5. **数据预取**: 悬停时预加载数据
 
-### Q: UMA 预言机如何保证公正？
+### 性能指标
 
-**A:** UMA 采用乐观预言机机制：
-1. Reporter 提交结果并质押保证金
-2. 2小时争议期内任何人可挑战
-3. 争议由 UMA DVM (去中心化仲裁机制) 裁决
-4. 恶意 Reporter 将损失保证金
+| 指标 | 目标 | 当前 |
+|------|------|------|
+| LCP | < 2.5s | ~2.0s |
+| INP | < 200ms | ~150ms |
+| CLS | < 0.1 | ~0.05 |
+| Bundle Size | < 500KB | ~450KB |
 
-### Q: 如何处理市场无效 (Invalid) 状态？
+### 监控
 
-**A:** 当 UMA 争议成功但原断言被否决时：
-1. 市场进入 `INVALID` 状态
-2. 用户可调用 `redeemCompleteSetOnInvalid()` 赎回本金
-3. 无手续费，用户资金完全返还
+```typescript
+// Web Vitals 自动收集
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+
+// 在 layout.tsx 中使用
+<WebVitalsReporter />
+
+// 查看数据
+GET /api/admin/performance
+```
 
 ---
 
-**文档版本**: v2.0  
-**最后更新**: 2024-12-27
+## 更多资源
+
+- [Next.js 文档](https://nextjs.org/docs)
+- [React Query 文档](https://tanstack.com/query/latest)
+- [OpenZeppelin 合约](https://docs.openzeppelin.com/contracts)
+- [UMA 协议](https://docs.uma.xyz)
+- [EIP-712 规范](https://eips.ethereum.org/EIPS/eip-712)
+
+---
+
+**最后更新**: 2024-12-27  
+**文档版本**: v2.0
