@@ -9,7 +9,6 @@ import {
   Users,
   BarChart3,
   MessageSquare,
-  Heart,
   Pin,
   Flag,
   Trophy,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Lock, HelpCircle } from "lucide-react";
+import { X, Lock } from "lucide-react";
 import { OFFICIAL_STICKERS, StickerItem, isImageUrl } from "./StickerRevealModal";
 import { useTranslations } from "@/lib/i18n";
 

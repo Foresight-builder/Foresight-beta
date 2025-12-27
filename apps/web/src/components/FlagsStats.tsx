@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Flag, Zap, Trophy, TrendingUp, Target, Star } from "lucide-react";
+import { Flag, Zap, Trophy, TrendingUp } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 
 interface FlagsStatsProps {

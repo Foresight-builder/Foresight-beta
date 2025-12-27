@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Download, Share2 } from "lucide-react";
+import { X, Sparkles, Share2 } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export interface StickerItem {

@@ -3,7 +3,7 @@
 import React, { useState, memo, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Crown, Trophy, ChevronRight, TrendingUp } from "lucide-react";
+import { Crown, Trophy, ChevronRight } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
 import { useTranslations } from "@/lib/i18n";
 
