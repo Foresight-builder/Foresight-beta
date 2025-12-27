@@ -1,0 +1,118 @@
+version: "3.8"
+
+# Phase 1 监控栈: Prometheus + Grafana + Redis
+# 用于本地开发和测试
+
+services:
+  # ============================================================
+  # Redis - 订单簿快照持久化
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: foresight-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - foresight-network
+
+  # ============================================================
+  # Prometheus - 指标收集
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: foresight-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - foresight-network
+
+  # ============================================================
+  # Grafana - 可视化面板
+  # ============================================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: foresight-grafana
+    ports:
+      - "3030:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=foresight123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3030
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - foresight-network
+
+  # ============================================================
+  # Loki - 日志聚合 (可选)
+  # ============================================================
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: foresight-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - foresight-network
+    profiles:
+      - logging
+
+  # ============================================================
+  # Promtail - 日志收集 (可选)
+  # ============================================================
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: foresight-promtail
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - foresight-network
+    profiles:
+      - logging
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+
+networks:
+  foresight-network:
+    driver: bridge
+

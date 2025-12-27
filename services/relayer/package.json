@@ -1,28 +1,41 @@
 {
   "name": "relayer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "build": "tsc -p .",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:dev": "LOG_FORMAT=text LOG_LEVEL=debug node dist/index.js",
+    "start:prod": "LOG_FORMAT=json LOG_LEVEL=info node dist/index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "prediction-market",
+    "orderbook",
+    "relayer"
+  ],
+  "author": "Foresight Team",
   "license": "ISC",
-  "description": "",
+  "description": "Foresight prediction market relayer with off-chain orderbook and on-chain settlement",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "@types/express": "^5.0.5",
     "cors": "^2.8.5",
     "ethers": "^6.15.0",
     "express": "^5.1.0",
+    "prom-client": "^15.1.0",
+    "redis": "^4.6.13",
+    "ws": "^8.16.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/ws": "^8.5.10",
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
 }

@@ -8,6 +8,33 @@ const repoRoot = path.resolve(__dirname, "..", "..", "..");
 dotenv.config({ path: path.join(repoRoot, ".env") });
 dotenv.config({ path: path.join(repoRoot, ".env.local") });
 
+// 🚀 Phase 1: 导入监控和日志模块
+import { logger, matchingLogger } from "./monitoring/logger.js";
+import {
+  ordersTotal,
+  matchesTotal,
+  matchingLatency,
+  matchedVolumeTotal,
+  wsConnectionsActive,
+  wsSubscriptionsActive,
+} from "./monitoring/metrics.js";
+import {
+  healthService,
+  createSupabaseHealthChecker,
+  createRedisHealthChecker,
+  createRpcHealthChecker,
+  createMatchingEngineHealthChecker,
+  createOrderbookReadinessChecker,
+} from "./monitoring/health.js";
+import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
+import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
+import { healthRoutes } from "./routes/index.js";
+import {
+  metricsMiddleware,
+  requestIdMiddleware,
+  requestLoggerMiddleware,
+} from "./middleware/index.js";
+
 // 环境变量校验与读取
 const EnvSchema = z.object({
   BUNDLER_PRIVATE_KEY: z
@@ -92,13 +119,27 @@ matchingEngine.on("market_event", (event) => {
   wsServer.handleMarketEvent(event);
 });
 
-matchingEngine.on("trade", (trade) => {
-  console.log(`[Trade] ${trade.marketKey} - ${trade.amount} @ ${trade.price}`);
+matchingEngine.on("trade", (trade: { marketKey: string; outcomeIndex: number; amount: bigint; price: bigint; maker: string; taker: string }) => {
+  // 🚀 Phase 1: 结构化日志 + 指标
+  matchingLogger.info("Trade executed", {
+    marketKey: trade.marketKey,
+    outcomeIndex: trade.outcomeIndex,
+    amount: trade.amount.toString(),
+    price: trade.price.toString(),
+    maker: trade.maker,
+    taker: trade.taker,
+  });
+  
+  // 记录指标
+  matchesTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) });
+  const volumeBigInt = trade.amount * trade.price / 1_000_000_000_000_000_000n;
+  const volume = Number(volumeBigInt) / 1000000;
+  matchedVolumeTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) }, volume);
 });
 
 // 🚀 连接结算事件
 matchingEngine.on("settlement_event", (event) => {
-  console.log(`[Settlement] ${event.type}`, event);
+  logger.info("Settlement event", { type: event.type, ...event });
 });
 
 type RateLimitBucket = {
@@ -147,6 +188,14 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+
+// 🚀 Phase 1: 添加监控中间件
+app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
+app.use(metricsMiddleware);
+
+// 🚀 Phase 1: 添加健康检查路由
+app.use(healthRoutes);
 
 const PORT = RELAYER_PORT;
 
@@ -860,42 +909,121 @@ async function startAutoIngestLoop() {
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, async () => {
-    console.log(`Relayer server listening on port ${PORT}`);
+    logger.info("Relayer server starting", { port: PORT });
+    
+    // 🚀 Phase 1: 初始化 Redis
+    const redisEnabled = process.env.REDIS_ENABLED !== "false";
+    if (redisEnabled) {
+      try {
+        const connected = await initRedis();
+        if (connected) {
+          logger.info("Redis connected successfully");
+          // 启动订单簿快照同步
+          const snapshotService = getOrderbookSnapshotService();
+          snapshotService.startSync(5000);
+        } else {
+          logger.warn("Redis connection failed, running without Redis");
+        }
+      } catch (e: any) {
+        logger.warn("Redis initialization failed", {}, e);
+      }
+    }
+
+    // 🚀 Phase 1: 注册健康检查器
+    healthService.registerHealthCheck("supabase", createSupabaseHealthChecker(supabaseAdmin));
+    healthService.registerHealthCheck("matching_engine", createMatchingEngineHealthChecker(matchingEngine));
+    
+    if (redisEnabled) {
+      healthService.registerHealthCheck("redis", createRedisHealthChecker(getRedisClient()));
+    }
+    
+    if (provider) {
+      healthService.registerHealthCheck("rpc", createRpcHealthChecker(provider));
+    }
+    
+    healthService.registerReadinessCheck("orderbook", createOrderbookReadinessChecker(matchingEngine));
     
     // 🚀 启动 WebSocket 服务器
     try {
       wsServer.start();
-      console.log(`[WebSocket] Server started on port ${process.env.WS_PORT || 3006}`);
-    } catch (e) {
-      console.warn("[WebSocket] Failed to start:", e);
+      logger.info("WebSocket server started", { port: process.env.WS_PORT || 3006 });
+    } catch (e: any) {
+      logger.error("WebSocket server failed to start", {}, e);
     }
 
     // 🚀 从数据库恢复订单簿
     try {
       await matchingEngine.recoverFromDb();
-      console.log("[MatchingEngine] Order books recovered from database");
-    } catch (e) {
-      console.warn("[MatchingEngine] Failed to recover order books:", e);
+      logger.info("Order books recovered from database");
+    } catch (e: any) {
+      logger.error("Failed to recover order books", {}, e);
     }
 
     // 启动自动交易摄入
-    startAutoIngestLoop().catch((e) => console.warn("[auto-ingest] failed:", e));
+    startAutoIngestLoop().catch((e: any) => logger.warn("Auto-ingest failed to start", {}, e));
+    
+    logger.info("Relayer server started successfully", { 
+      port: PORT, 
+      wsPort: process.env.WS_PORT || 3006,
+      redisEnabled,
+    });
   });
 }
 
-// 优雅关闭
-process.on("SIGTERM", () => {
-  console.log("Received SIGTERM, shutting down gracefully...");
-  matchingEngine.shutdown();
-  wsServer.stop();
-  process.exit(0);
-});
+// 🚀 Phase 1: 优雅关闭 (增加 Redis 和快照服务关闭)
+async function gracefulShutdown(signal: string) {
+  logger.info("Graceful shutdown initiated", { signal });
+  
+  try {
+    // 停止接收新请求的时间
+    const shutdownTimeout = setTimeout(() => {
+      logger.error("Shutdown timeout, forcing exit");
+      process.exit(1);
+    }, 30000);
+    
+    // 关闭订单簿快照服务
+    try {
+      const snapshotService = getOrderbookSnapshotService();
+      await snapshotService.shutdown();
+      logger.info("Orderbook snapshot service stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop snapshot service", {}, e);
+    }
+    
+    // 关闭撮合引擎
+    try {
+      await matchingEngine.shutdown();
+      logger.info("Matching engine stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop matching engine", {}, e);
+    }
+    
+    // 关闭 WebSocket
+    try {
+      wsServer.stop();
+      logger.info("WebSocket server stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop WebSocket server", {}, e);
+    }
+    
+    // 关闭 Redis
+    try {
+      await closeRedis();
+      logger.info("Redis connection closed");
+    } catch (e: any) {
+      logger.error("Failed to close Redis", {}, e);
+    }
+    
+    clearTimeout(shutdownTimeout);
+    logger.info("Graceful shutdown completed");
+    process.exit(0);
+  } catch (error: any) {
+    logger.error("Error during shutdown", {}, error);
+    process.exit(1);
+  }
+}
 
-process.on("SIGINT", () => {
-  console.log("Received SIGINT, shutting down gracefully...");
-  matchingEngine.shutdown();
-  wsServer.stop();
-  process.exit(0);
-});
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 export default app;

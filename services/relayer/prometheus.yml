@@ -1,0 +1,75 @@
+# Prometheus 配置文件
+# Phase 1: 监控 Foresight Relayer
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+  # 全局标签
+  external_labels:
+    environment: development
+    service: foresight
+
+# Alertmanager 配置 (可选)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#             - alertmanager:9093
+
+# 告警规则文件
+# rule_files:
+#   - /etc/prometheus/rules/*.yml
+
+# 采集配置
+scrape_configs:
+  # ============================================================
+  # Prometheus 自身指标
+  # ============================================================
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: prometheus
+
+  # ============================================================
+  # Foresight Relayer 指标
+  # ============================================================
+  - job_name: "foresight-relayer"
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          service: relayer
+          environment: development
+    # 如果 relayer 运行在 Docker 网络中
+    # - targets: ["relayer:3000"]
+    
+    # 重命名指标标签
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "$1"
+
+    # 指标路径
+    metrics_path: /metrics
+    scheme: http
+
+  # ============================================================
+  # Redis 指标 (需要 redis_exporter)
+  # ============================================================
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+  #       labels:
+  #         service: redis
+
+  # ============================================================
+  # Node.js 应用指标 (额外实例)
+  # ============================================================
+  # - job_name: "foresight-api"
+  #   static_configs:
+  #     - targets: ["host.docker.internal:3001"]
+  #       labels:
+  #         service: api
+
