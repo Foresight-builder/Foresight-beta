@@ -1,0 +1,740 @@
+/**
+ * 核心订单撮合引擎
+ * 实现价格-时间优先撮合算法
+ */
+
+import { ethers } from "ethers";
+import { EventEmitter } from "events";
+import { OrderBookManager, OrderBook } from "./orderBook.js";
+import type {
+  Order,
+  Match,
+  MatchResult,
+  Trade,
+  MarketEvent,
+  MatchingEngineConfig,
+} from "./types.js";
+import { DEFAULT_CONFIG } from "./types.js";
+import { supabaseAdmin } from "../supabase.js";
+import { BatchSettler, type SettlementFill, type SettlementOrder } from "../settlement/index.js";
+
+// EIP-712 类型定义
+const ORDER_TYPES = {
+  Order: [
+    { name: "maker", type: "address" },
+    { name: "outcomeIndex", type: "uint256" },
+    { name: "isBuy", type: "bool" },
+    { name: "price", type: "uint256" },
+    { name: "amount", type: "uint256" },
+    { name: "salt", type: "uint256" },
+    { name: "expiry", type: "uint256" },
+  ],
+};
+
+/**
+ * 订单撮合引擎
+ */
+export class MatchingEngine extends EventEmitter {
+  private bookManager: OrderBookManager;
+  private config: MatchingEngineConfig;
+  private sequenceCounter: bigint = 0n;
+  private pendingMatches: Match[] = [];
+  private settlementTimer: NodeJS.Timeout | null = null;
+  
+  // 🚀 批量结算器 (Polymarket 模式)
+  private batchSettlers: Map<string, BatchSettler> = new Map();
+
+  constructor(config: Partial<MatchingEngineConfig> = {}) {
+    super();
+    this.bookManager = new OrderBookManager();
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.startSettlementLoop();
+  }
+
+  /**
+   * 🚀 注册市场的批量结算器
+   */
+  registerSettler(
+    marketKey: string,
+    chainId: number,
+    marketAddress: string,
+    operatorPrivateKey: string,
+    rpcUrl: string
+  ): BatchSettler {
+    const settler = new BatchSettler(
+      chainId,
+      marketAddress,
+      operatorPrivateKey,
+      rpcUrl,
+      {
+        maxBatchSize: 50,
+        minBatchSize: this.config.batchSettlementThreshold,
+        maxBatchWaitMs: this.config.batchSettlementInterval,
+      }
+    );
+
+    // 转发结算事件
+    settler.on("settlement_event", (event) => {
+      this.emit("settlement_event", event);
+    });
+
+    settler.start();
+    this.batchSettlers.set(marketKey, settler);
+    
+    console.log(`[MatchingEngine] Registered settler for market ${marketKey}`);
+    return settler;
+  }
+
+  /**
+   * 🚀 获取市场的结算器
+   */
+  getSettler(marketKey: string): BatchSettler | undefined {
+    return this.batchSettlers.get(marketKey);
+  }
+
+  /**
+   * 提交新订单并尝试撮合
+   */
+  async submitOrder(orderInput: OrderInput): Promise<MatchResult> {
+    try {
+      // 1. 验证订单
+      const validationResult = await this.validateOrder(orderInput);
+      if (!validationResult.valid) {
+        return {
+          success: false,
+          matches: [],
+          remainingOrder: null,
+          error: validationResult.error,
+        };
+      }
+
+      // 2. 创建内部订单对象
+      const order = this.createOrder(orderInput);
+
+      // 3. 尝试撮合
+      const matchResult = await this.matchOrder(order);
+
+      // 4. 如果有剩余,加入订单簿
+      if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
+        await this.addToOrderBook(matchResult.remainingOrder);
+      }
+
+      // 5. 广播事件
+      if (matchResult.matches.length > 0) {
+        for (const match of matchResult.matches) {
+          const trade = this.matchToTrade(match);
+          this.emit("trade", trade);
+          this.emitEvent({ type: "trade", trade });
+        }
+      }
+
+      return matchResult;
+    } catch (error: any) {
+      console.error("[MatchingEngine] submitOrder error:", error);
+      return {
+        success: false,
+        matches: [],
+        remainingOrder: null,
+        error: error.message || "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 核心撮合逻辑 - 价格时间优先
+   */
+  private async matchOrder(incomingOrder: Order): Promise<MatchResult> {
+    const matches: Match[] = [];
+    const book = this.bookManager.getOrCreateBook(
+      incomingOrder.marketKey,
+      incomingOrder.outcomeIndex
+    );
+
+    let order = { ...incomingOrder };
+
+    while (order.remainingAmount > 0n) {
+      // 获取对手盘最优订单
+      const counterOrder = book.getBestCounterOrder(order.isBuy);
+      
+      if (!counterOrder) {
+        // 没有对手盘,停止撮合
+        break;
+      }
+
+      // 检查价格是否匹配
+      if (!this.pricesMatch(order, counterOrder)) {
+        break;
+      }
+
+      // 检查订单是否过期
+      if (this.isExpired(counterOrder)) {
+        book.removeOrder(counterOrder.id);
+        await this.updateOrderStatus(counterOrder.id, "expired");
+        continue;
+      }
+
+      // 计算成交量 (取两者剩余量的较小值)
+      const matchAmount = order.remainingAmount < counterOrder.remainingAmount
+        ? order.remainingAmount
+        : counterOrder.remainingAmount;
+
+      // 成交价格使用 Maker 价格 (挂单方价格)
+      const matchPrice = counterOrder.price;
+
+      // 计算手续费
+      const { makerFee, takerFee } = this.calculateFees(matchAmount, matchPrice);
+
+      // 创建撮合记录
+      const match: Match = {
+        id: this.generateMatchId(),
+        makerOrder: counterOrder,
+        takerOrder: order,
+        matchedAmount: matchAmount,
+        matchedPrice: matchPrice,
+        makerFee,
+        takerFee,
+        timestamp: Date.now(),
+      };
+
+      matches.push(match);
+      this.pendingMatches.push(match);
+
+      // 🚀 发送到批量结算器
+      const settler = this.batchSettlers.get(order.marketKey);
+      if (settler) {
+        const settlementFill: SettlementFill = {
+          id: match.id,
+          order: {
+            maker: counterOrder.maker,
+            outcomeIndex: counterOrder.outcomeIndex,
+            isBuy: counterOrder.isBuy,
+            price: counterOrder.price,
+            amount: counterOrder.amount,
+            salt: BigInt(counterOrder.salt),
+            expiry: BigInt(counterOrder.expiry),
+          },
+          signature: counterOrder.signature,
+          fillAmount: matchAmount,
+          taker: order.maker, // Taker 是 incoming order 的 maker
+          matchedPrice: matchPrice,
+          makerFee,
+          takerFee,
+          timestamp: Date.now(),
+        };
+        settler.addFill(settlementFill);
+      }
+
+      // 更新订单剩余量
+      order.remainingAmount -= matchAmount;
+      counterOrder.remainingAmount -= matchAmount;
+
+      // 更新订单簿中的对手订单
+      if (counterOrder.remainingAmount === 0n) {
+        book.removeOrder(counterOrder.id);
+        counterOrder.status = "filled";
+      } else {
+        book.updateOrder(counterOrder);
+        counterOrder.status = "partially_filled";
+      }
+
+      // 记录成交
+      book.recordTrade(matchPrice, matchAmount);
+
+      // 持久化订单状态
+      await this.updateOrderInDb(counterOrder);
+
+      // 广播订单簿更新
+      this.emitDepthUpdate(book);
+    }
+
+    // 更新 incoming order 状态
+    if (order.remainingAmount === 0n) {
+      order.status = "filled";
+    } else if (order.remainingAmount < incomingOrder.amount) {
+      order.status = "partially_filled";
+    } else {
+      order.status = "open";
+    }
+
+    return {
+      success: true,
+      matches,
+      remainingOrder: order.remainingAmount > 0n ? order : null,
+    };
+  }
+
+  /**
+   * 检查价格是否匹配
+   */
+  private pricesMatch(takerOrder: Order, makerOrder: Order): boolean {
+    if (takerOrder.isBuy) {
+      // Taker 买入: Taker价格 >= Maker价格 (愿意付更高价)
+      return takerOrder.price >= makerOrder.price;
+    } else {
+      // Taker 卖出: Taker价格 <= Maker价格 (愿意接受更低价)
+      return takerOrder.price <= makerOrder.price;
+    }
+  }
+
+  /**
+   * 检查订单是否过期
+   */
+  private isExpired(order: Order): boolean {
+    if (order.expiry === 0) return false;
+    return Math.floor(Date.now() / 1000) >= order.expiry;
+  }
+
+  /**
+   * 计算手续费
+   */
+  private calculateFees(amount: bigint, price: bigint): { makerFee: bigint; takerFee: bigint } {
+    // 计算成交金额 (USDC, 6 decimals)
+    // cost = amount * price / 1e18
+    const cost = (amount * price) / BigInt(1e18);
+    
+    // 手续费 = cost * feeBps / 10000
+    const makerFee = (cost * BigInt(this.config.makerFeeBps)) / 10000n;
+    const takerFee = (cost * BigInt(this.config.takerFeeBps)) / 10000n;
+    
+    return { makerFee, takerFee };
+  }
+
+  /**
+   * 添加订单到订单簿
+   */
+  private async addToOrderBook(order: Order): Promise<void> {
+    const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+    book.addOrder(order);
+    
+    // 持久化到数据库
+    await this.saveOrderToDb(order);
+    
+    // 广播事件
+    this.emitEvent({ type: "order_placed", order });
+    this.emitDepthUpdate(book);
+  }
+
+  /**
+   * 取消订单
+   */
+  async cancelOrder(
+    orderId: string,
+    marketKey: string,
+    outcomeIndex: number,
+    maker: string,
+    signature: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const book = this.bookManager.getBook(marketKey, outcomeIndex);
+      if (!book) {
+        return { success: false, error: "Order book not found" };
+      }
+
+      const order = book.removeOrder(orderId);
+      if (!order) {
+        return { success: false, error: "Order not found" };
+      }
+
+      // 验证取消签名
+      // TODO: 实现签名验证
+
+      // 更新数据库
+      await this.updateOrderStatus(orderId, "canceled");
+
+      // 广播事件
+      this.emitEvent({ type: "order_canceled", orderId, marketKey });
+      this.emitDepthUpdate(book);
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 验证订单
+   */
+  private async validateOrder(input: OrderInput): Promise<{ valid: boolean; error?: string }> {
+    // 1. 验证基本参数
+    if (!ethers.isAddress(input.maker)) {
+      return { valid: false, error: "Invalid maker address" };
+    }
+
+    if (input.price <= 0n || input.price > 1_000_000n) {
+      return { valid: false, error: "Price must be between 0 and 1 USDC" };
+    }
+
+    if (input.amount < this.config.minOrderAmount) {
+      return { valid: false, error: "Amount below minimum" };
+    }
+
+    if (input.amount > this.config.maxOrderAmount) {
+      return { valid: false, error: "Amount exceeds maximum" };
+    }
+
+    // 2. 验证签名
+    const signatureValid = await this.verifySignature(input);
+    if (!signatureValid) {
+      return { valid: false, error: "Invalid signature" };
+    }
+
+    // 3. 检查订单是否已存在 (防止重放)
+    const exists = await this.checkOrderExists(input.salt, input.maker);
+    if (exists) {
+      return { valid: false, error: "Order with this salt already exists" };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * 验证 EIP-712 签名
+   */
+  private async verifySignature(input: OrderInput): Promise<boolean> {
+    try {
+      const domain = {
+        name: "Foresight Market",
+        version: "1",
+        chainId: input.chainId,
+        verifyingContract: input.verifyingContract.toLowerCase(),
+      };
+
+      const orderData = {
+        maker: input.maker.toLowerCase(),
+        outcomeIndex: input.outcomeIndex,
+        isBuy: input.isBuy,
+        price: input.price,
+        amount: input.amount,
+        salt: BigInt(input.salt),
+        expiry: BigInt(input.expiry),
+      };
+
+      const recovered = ethers.verifyTypedData(domain, ORDER_TYPES, orderData, input.signature);
+      return recovered.toLowerCase() === input.maker.toLowerCase();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 检查订单是否已存在
+   */
+  private async checkOrderExists(salt: string, maker: string): Promise<boolean> {
+    if (!supabaseAdmin) return false;
+    
+    const { data } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("maker_salt", salt)
+      .eq("maker_address", maker.toLowerCase())
+      .maybeSingle();
+    
+    return !!data;
+  }
+
+  /**
+   * 创建内部订单对象
+   */
+  private createOrder(input: OrderInput): Order {
+    const sequence = this.sequenceCounter++;
+    
+    return {
+      id: `${input.maker}-${input.salt}`,
+      marketKey: input.marketKey,
+      maker: input.maker.toLowerCase(),
+      outcomeIndex: input.outcomeIndex,
+      isBuy: input.isBuy,
+      price: input.price,
+      amount: input.amount,
+      remainingAmount: input.amount,
+      salt: input.salt,
+      expiry: input.expiry,
+      signature: input.signature,
+      chainId: input.chainId,
+      verifyingContract: input.verifyingContract.toLowerCase(),
+      sequence,
+      status: "pending",
+      createdAt: Date.now(),
+    };
+  }
+
+  /**
+   * 保存订单到数据库
+   */
+  private async saveOrderToDb(order: Order): Promise<void> {
+    if (!supabaseAdmin) return;
+
+    await supabaseAdmin.from("orders").upsert({
+      verifying_contract: order.verifyingContract,
+      chain_id: order.chainId,
+      market_key: order.marketKey,
+      maker_address: order.maker,
+      maker_salt: order.salt,
+      outcome_index: order.outcomeIndex,
+      is_buy: order.isBuy,
+      price: order.price.toString(),
+      amount: order.amount.toString(),
+      remaining: order.remainingAmount.toString(),
+      expiry: order.expiry === 0 ? null : new Date(order.expiry * 1000).toISOString(),
+      signature: order.signature,
+      status: order.status,
+      sequence: order.sequence.toString(),
+    }, {
+      onConflict: "verifying_contract,chain_id,maker_address,maker_salt",
+    });
+  }
+
+  /**
+   * 更新订单状态
+   */
+  private async updateOrderStatus(orderId: string, status: string): Promise<void> {
+    if (!supabaseAdmin) return;
+
+    const [maker, salt] = orderId.split("-");
+    await supabaseAdmin
+      .from("orders")
+      .update({ status })
+      .eq("maker_address", maker)
+      .eq("maker_salt", salt);
+  }
+
+  /**
+   * 更新订单到数据库
+   */
+  private async updateOrderInDb(order: Order): Promise<void> {
+    if (!supabaseAdmin) return;
+
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        remaining: order.remainingAmount.toString(),
+        status: order.status,
+      })
+      .eq("maker_address", order.maker)
+      .eq("maker_salt", order.salt);
+  }
+
+  /**
+   * 将撮合记录转换为交易记录
+   */
+  private matchToTrade(match: Match): Trade {
+    return {
+      id: match.id,
+      matchId: match.id,
+      marketKey: match.makerOrder.marketKey,
+      outcomeIndex: match.makerOrder.outcomeIndex,
+      maker: match.makerOrder.maker,
+      taker: match.takerOrder.maker,
+      isBuyerMaker: match.makerOrder.isBuy,
+      price: match.matchedPrice,
+      amount: match.matchedAmount,
+      makerFee: match.makerFee,
+      takerFee: match.takerFee,
+      timestamp: match.timestamp,
+    };
+  }
+
+  /**
+   * 生成撮合 ID
+   */
+  private generateMatchId(): string {
+    return `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * 广播事件
+   */
+  private emitEvent(event: MarketEvent): void {
+    this.emit("market_event", event);
+  }
+
+  /**
+   * 广播深度更新
+   */
+  private emitDepthUpdate(book: OrderBook): void {
+    const depth = book.getDepthSnapshot(20);
+    this.emitEvent({ type: "depth_update", depth });
+  }
+
+  /**
+   * 启动批量结算循环
+   */
+  private startSettlementLoop(): void {
+    this.settlementTimer = setInterval(async () => {
+      await this.processSettlement();
+    }, this.config.batchSettlementInterval);
+  }
+
+  /**
+   * 处理批量链上结算
+   */
+  private async processSettlement(): Promise<void> {
+    if (this.pendingMatches.length === 0) return;
+    if (this.pendingMatches.length < this.config.batchSettlementThreshold) return;
+
+    const matchesToSettle = [...this.pendingMatches];
+    this.pendingMatches = [];
+
+    try {
+      // 批量提交链上结算
+      // TODO: 实现链上批量结算逻辑
+      console.log(`[MatchingEngine] Settling ${matchesToSettle.length} matches`);
+      
+      // 保存交易记录到数据库
+      for (const match of matchesToSettle) {
+        await this.saveTradeToDb(match);
+      }
+    } catch (error) {
+      console.error("[MatchingEngine] Settlement error:", error);
+      // 失败的撮合放回队列
+      this.pendingMatches.push(...matchesToSettle);
+    }
+  }
+
+  /**
+   * 保存交易记录
+   */
+  private async saveTradeToDb(match: Match): Promise<void> {
+    if (!supabaseAdmin) return;
+
+    await supabaseAdmin.from("trades").insert({
+      network_id: match.makerOrder.chainId,
+      market_address: match.makerOrder.verifyingContract,
+      outcome_index: match.makerOrder.outcomeIndex,
+      price: match.matchedPrice.toString(),
+      amount: match.matchedAmount.toString(),
+      taker_address: match.takerOrder.maker,
+      maker_address: match.makerOrder.maker,
+      is_buy: match.takerOrder.isBuy,
+      tx_hash: `pending-${match.id}`, // 待链上确认后更新
+      log_index: 0,
+      fee: (match.makerFee + match.takerFee).toString(),
+      salt: match.makerOrder.salt,
+      block_number: 0,
+      block_timestamp: new Date(match.timestamp).toISOString(),
+    });
+  }
+
+  /**
+   * 获取订单簿快照
+   */
+  getOrderBookSnapshot(marketKey: string, outcomeIndex: number, maxLevels: number = 20) {
+    const book = this.bookManager.getBook(marketKey, outcomeIndex);
+    if (!book) return null;
+    return book.getDepthSnapshot(maxLevels);
+  }
+
+  /**
+   * 获取订单簿统计
+   */
+  getOrderBookStats(marketKey: string, outcomeIndex: number) {
+    const book = this.bookManager.getBook(marketKey, outcomeIndex);
+    if (!book) return null;
+    return book.getStats();
+  }
+
+  /**
+   * 从数据库恢复订单簿
+   */
+  async recoverFromDb(marketKey?: string): Promise<void> {
+    if (!supabaseAdmin) return;
+
+    let query = supabaseAdmin
+      .from("orders")
+      .select("*")
+      .in("status", ["open", "partially_filled"]);
+
+    if (marketKey) {
+      query = query.eq("market_key", marketKey);
+    }
+
+    const { data: orders, error } = await query;
+    if (error || !orders) {
+      console.error("[MatchingEngine] Failed to recover orders:", error);
+      return;
+    }
+
+    for (const row of orders) {
+      const order: Order = {
+        id: `${row.maker_address}-${row.maker_salt}`,
+        marketKey: row.market_key || `${row.chain_id}:unknown`,
+        maker: row.maker_address,
+        outcomeIndex: row.outcome_index,
+        isBuy: row.is_buy,
+        price: BigInt(row.price),
+        amount: BigInt(row.amount),
+        remainingAmount: BigInt(row.remaining),
+        salt: row.maker_salt,
+        expiry: row.expiry ? Math.floor(new Date(row.expiry).getTime() / 1000) : 0,
+        signature: row.signature,
+        chainId: row.chain_id,
+        verifyingContract: row.verifying_contract,
+        sequence: BigInt(row.sequence || "0"),
+        status: row.status as any,
+        createdAt: new Date(row.created_at).getTime(),
+      };
+
+      // 检查过期
+      if (!this.isExpired(order)) {
+        const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+        book.addOrder(order);
+      }
+    }
+
+    console.log(`[MatchingEngine] Recovered orders for ${marketKey || "all markets"}`);
+  }
+
+  /**
+   * 停止引擎
+   */
+  async shutdown(): Promise<void> {
+    console.log("[MatchingEngine] Shutting down...");
+    
+    if (this.settlementTimer) {
+      clearInterval(this.settlementTimer);
+      this.settlementTimer = null;
+    }
+
+    // 🚀 关闭所有结算器
+    const shutdownPromises: Promise<void>[] = [];
+    for (const [marketKey, settler] of this.batchSettlers.entries()) {
+      console.log(`[MatchingEngine] Shutting down settler for ${marketKey}`);
+      shutdownPromises.push(settler.shutdown());
+    }
+    await Promise.all(shutdownPromises);
+    this.batchSettlers.clear();
+
+    this.bookManager.clear();
+    console.log("[MatchingEngine] Shutdown complete");
+  }
+
+  /**
+   * 🚀 获取结算统计
+   */
+  getSettlementStats(): Record<string, any> {
+    const stats: Record<string, any> = {};
+    for (const [marketKey, settler] of this.batchSettlers.entries()) {
+      stats[marketKey] = settler.getStats();
+    }
+    return stats;
+  }
+}
+
+/**
+ * 订单输入类型
+ */
+export interface OrderInput {
+  marketKey: string;
+  maker: string;
+  outcomeIndex: number;
+  isBuy: boolean;
+  price: bigint;
+  amount: bigint;
+  salt: string;
+  expiry: number;
+  signature: string;
+  chainId: number;
+  verifyingContract: string;
+}
+
+

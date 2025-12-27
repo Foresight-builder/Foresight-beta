@@ -72,7 +72,34 @@ import {
   getCandles,
 } from "./orderbook.js";
 
+// 🚀 导入新的撮合引擎
+import { MatchingEngine, MarketWebSocketServer, type OrderInput } from "./matching/index.js";
+
 export const app = express();
+
+// 🚀 初始化撮合引擎和 WebSocket 服务器
+const matchingEngine = new MatchingEngine({
+  makerFeeBps: Number(process.env.MAKER_FEE_BPS || "0"),
+  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "50"),
+});
+
+const wsServer = new MarketWebSocketServer(
+  Number(process.env.WS_PORT || "3006")
+);
+
+// 🚀 连接撮合引擎事件到 WebSocket
+matchingEngine.on("market_event", (event) => {
+  wsServer.handleMarketEvent(event);
+});
+
+matchingEngine.on("trade", (trade) => {
+  console.log(`[Trade] ${trade.marketKey} - ${trade.amount} @ ${trade.price}`);
+});
+
+// 🚀 连接结算事件
+matchingEngine.on("settlement_event", (event) => {
+  console.log(`[Settlement] ${event.type}`, event);
+});
 
 type RateLimitBucket = {
   count: number;
@@ -170,7 +197,7 @@ app.post("/", async (req, res) => {
   }
 });
 
-// Off-chain orderbook API
+// Off-chain orderbook API (legacy - 保留兼容)
 app.post("/orderbook/orders", limitOrders, async (req, res) => {
   try {
     if (!supabaseAdmin)
@@ -182,6 +209,289 @@ app.post("/orderbook/orders", limitOrders, async (req, res) => {
     res
       .status(400)
       .json({ success: false, message: "place order failed", detail: String(e?.message || e) });
+  }
+});
+
+// ============================================================
+// 🚀 新撮合引擎 API v2 - 高性能链下撮合
+// ============================================================
+
+/**
+ * POST /v2/orders - 提交订单并撮合
+ * 新的撮合引擎入口，支持即时撮合
+ */
+app.post("/v2/orders", limitOrders, async (req, res) => {
+  try {
+    const body = req.body || {};
+    
+    // 构建订单输入
+    const orderInput: OrderInput = {
+      marketKey: body.marketKey || body.market_key || `${body.chainId}:${body.eventId || body.event_id || 'unknown'}`,
+      maker: String(body.order?.maker || ""),
+      outcomeIndex: Number(body.order?.outcomeIndex || 0),
+      isBuy: Boolean(body.order?.isBuy),
+      price: BigInt(String(body.order?.price || "0")),
+      amount: BigInt(String(body.order?.amount || "0")),
+      salt: String(body.order?.salt || ""),
+      expiry: Number(body.order?.expiry || 0),
+      signature: String(body.signature || ""),
+      chainId: Number(body.chainId || 0),
+      verifyingContract: String(body.verifyingContract || body.contract || ""),
+    };
+
+    // 提交到撮合引擎
+    const result = await matchingEngine.submitOrder(orderInput);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error || "Order submission failed",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        orderId: orderInput.salt,
+        matchesCount: result.matches.length,
+        matches: result.matches.map(m => ({
+          matchId: m.id,
+          matchedAmount: m.matchedAmount.toString(),
+          matchedPrice: m.matchedPrice.toString(),
+          makerFee: m.makerFee.toString(),
+          takerFee: m.takerFee.toString(),
+        })),
+        remainingAmount: result.remainingOrder?.remainingAmount.toString() || "0",
+        status: result.remainingOrder ? "partially_filled" : "filled",
+      },
+    });
+  } catch (e: any) {
+    console.error("[v2/orders] Error:", e);
+    res.status(400).json({
+      success: false,
+      message: "Order submission failed",
+      detail: String(e?.message || e),
+    });
+  }
+});
+
+/**
+ * GET /v2/depth - 获取订单簿深度 (从内存)
+ * 比数据库查询快 10-100 倍
+ */
+app.get("/v2/depth", async (req, res) => {
+  try {
+    const marketKey = String(req.query.marketKey || req.query.market_key || "");
+    const outcomeIndex = Number(req.query.outcome || 0);
+    const levels = Math.min(50, Math.max(1, Number(req.query.levels || 20)));
+
+    if (!marketKey) {
+      return res.status(400).json({ success: false, message: "marketKey required" });
+    }
+
+    const snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
+    
+    if (!snapshot) {
+      return res.json({
+        success: true,
+        data: { bids: [], asks: [], timestamp: Date.now() },
+      });
+    }
+
+    res.setHeader("Cache-Control", "public, max-age=1");
+    res.json({
+      success: true,
+      data: {
+        marketKey: snapshot.marketKey,
+        outcomeIndex: snapshot.outcomeIndex,
+        bids: snapshot.bids.map(l => ({
+          price: l.price.toString(),
+          qty: l.totalQuantity.toString(),
+          count: l.orderCount,
+        })),
+        asks: snapshot.asks.map(l => ({
+          price: l.price.toString(),
+          qty: l.totalQuantity.toString(),
+          count: l.orderCount,
+        })),
+        timestamp: snapshot.timestamp,
+      },
+    });
+  } catch (e: any) {
+    res.status(400).json({
+      success: false,
+      message: "Depth query failed",
+      detail: String(e?.message || e),
+    });
+  }
+});
+
+/**
+ * GET /v2/stats - 获取订单簿统计
+ */
+app.get("/v2/stats", async (req, res) => {
+  try {
+    const marketKey = String(req.query.marketKey || req.query.market_key || "");
+    const outcomeIndex = Number(req.query.outcome || 0);
+
+    if (!marketKey) {
+      return res.status(400).json({ success: false, message: "marketKey required" });
+    }
+
+    const stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
+    
+    if (!stats) {
+      return res.json({
+        success: true,
+        data: {
+          bestBid: null,
+          bestAsk: null,
+          spread: null,
+          bidDepth: "0",
+          askDepth: "0",
+          lastTradePrice: null,
+          volume24h: "0",
+        },
+      });
+    }
+
+    res.setHeader("Cache-Control", "public, max-age=1");
+    res.json({
+      success: true,
+      data: {
+        marketKey: stats.marketKey,
+        outcomeIndex: stats.outcomeIndex,
+        bestBid: stats.bestBid?.toString() || null,
+        bestAsk: stats.bestAsk?.toString() || null,
+        spread: stats.spread?.toString() || null,
+        bidDepth: stats.bidDepth.toString(),
+        askDepth: stats.askDepth.toString(),
+        lastTradePrice: stats.lastTradePrice?.toString() || null,
+        volume24h: stats.volume24h.toString(),
+      },
+    });
+  } catch (e: any) {
+    res.status(400).json({
+      success: false,
+      message: "Stats query failed",
+      detail: String(e?.message || e),
+    });
+  }
+});
+
+/**
+ * GET /v2/ws-info - WebSocket 连接信息
+ */
+app.get("/v2/ws-info", (req, res) => {
+  const stats = wsServer.getStats();
+  res.json({
+    success: true,
+    data: {
+      wsPort: Number(process.env.WS_PORT || "3006"),
+      connections: stats.connections,
+      subscriptions: stats.subscriptions,
+      channels: [
+        "depth:{marketKey}:{outcomeIndex}",
+        "trades:{marketKey}:{outcomeIndex}",
+        "stats:{marketKey}:{outcomeIndex}",
+      ],
+    },
+  });
+});
+
+/**
+ * POST /v2/register-settler - 注册市场结算器
+ * 由管理员调用,为市场配置 Operator
+ */
+app.post("/v2/register-settler", async (req, res) => {
+  try {
+    const { marketKey, chainId, marketAddress } = req.body;
+    
+    // 验证必要参数
+    if (!marketKey || !chainId || !marketAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: marketKey, chainId, marketAddress",
+      });
+    }
+
+    // 从环境变量获取 Operator 配置
+    const operatorKey = process.env.OPERATOR_PRIVATE_KEY || process.env.BUNDLER_PRIVATE_KEY;
+    const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+
+    if (!operatorKey) {
+      return res.status(500).json({
+        success: false,
+        message: "Operator private key not configured",
+      });
+    }
+
+    const settler = matchingEngine.registerSettler(
+      marketKey,
+      Number(chainId),
+      marketAddress,
+      operatorKey,
+      rpcUrl
+    );
+
+    res.json({
+      success: true,
+      data: {
+        marketKey,
+        operatorAddress: settler.getOperatorAddress(),
+        status: "registered",
+      },
+    });
+  } catch (e: any) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to register settler",
+      detail: String(e?.message || e),
+    });
+  }
+});
+
+/**
+ * GET /v2/settlement-stats - 获取结算统计
+ */
+app.get("/v2/settlement-stats", (req, res) => {
+  const stats = matchingEngine.getSettlementStats();
+  res.json({ success: true, data: stats });
+});
+
+/**
+ * GET /v2/operator-status - 获取 Operator 状态
+ */
+app.get("/v2/operator-status", async (req, res) => {
+  try {
+    const marketKey = String(req.query.marketKey || "");
+    const settler = matchingEngine.getSettler(marketKey);
+    
+    if (!settler) {
+      return res.status(404).json({
+        success: false,
+        message: "Settler not found for this market",
+      });
+    }
+
+    const balance = await settler.getOperatorBalance();
+    const stats = settler.getStats();
+
+    res.json({
+      success: true,
+      data: {
+        marketKey,
+        operatorAddress: settler.getOperatorAddress(),
+        balance,
+        stats,
+      },
+    });
+  } catch (e: any) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to get operator status",
+      detail: String(e?.message || e),
+    });
   }
 });
 
@@ -549,10 +859,43 @@ async function startAutoIngestLoop() {
 }
 
 if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Relayer server listening on port ${PORT}`);
+    
+    // 🚀 启动 WebSocket 服务器
+    try {
+      wsServer.start();
+      console.log(`[WebSocket] Server started on port ${process.env.WS_PORT || 3006}`);
+    } catch (e) {
+      console.warn("[WebSocket] Failed to start:", e);
+    }
+
+    // 🚀 从数据库恢复订单簿
+    try {
+      await matchingEngine.recoverFromDb();
+      console.log("[MatchingEngine] Order books recovered from database");
+    } catch (e) {
+      console.warn("[MatchingEngine] Failed to recover order books:", e);
+    }
+
+    // 启动自动交易摄入
     startAutoIngestLoop().catch((e) => console.warn("[auto-ingest] failed:", e));
   });
 }
+
+// 优雅关闭
+process.on("SIGTERM", () => {
+  console.log("Received SIGTERM, shutting down gracefully...");
+  matchingEngine.shutdown();
+  wsServer.stop();
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("Received SIGINT, shutting down gracefully...");
+  matchingEngine.shutdown();
+  wsServer.stop();
+  process.exit(0);
+});
 
 export default app;
