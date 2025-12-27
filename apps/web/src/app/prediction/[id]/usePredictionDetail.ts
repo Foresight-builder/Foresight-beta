@@ -7,7 +7,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useFollowPrediction } from "@/hooks/useFollowPrediction";
 import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";
@@ -82,7 +82,11 @@ export function usePredictionDetail() {
         // 尽量确保读到的余额来自正确网络
         await ensureNetwork(provider, market.chain_id, switchNetwork);
         const signer = await provider.getSigner();
-        const { tokenContract, decimals } = await getCollateralTokenContract(market, signer, erc20Abi);
+        const { tokenContract, decimals } = await getCollateralTokenContract(
+          market,
+          signer,
+          erc20Abi
+        );
         const bal = await tokenContract.balanceOf(account);
         const human = Number(ethers.formatUnits(bal, decimals));
         if (!cancelled) setUsdcBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
@@ -184,18 +188,18 @@ export function usePredictionDetail() {
     setOrderMsg(null);
 
     try {
-      if (!market) throw new Error("市场信息未加载");
-      if (!account) throw new Error("请先连接钱包");
-      if (!walletProvider) throw new Error("钱包未初始化");
+      if (!market) throw new Error(tTrading("orderFlow.marketNotLoaded"));
+      if (!account) throw new Error(tTrading("orderFlow.walletRequired"));
+      if (!walletProvider) throw new Error(tTrading("orderFlow.walletNotReady"));
 
       const amountVal = parseFloat(amountInput);
-      if (isNaN(amountVal) || amountVal <= 0) throw new Error("数量无效");
+      if (isNaN(amountVal) || amountVal <= 0) throw new Error(tTrading("orderFlow.invalidAmount"));
       // shares are 1e18
       const amountBN = parseUnitsByDecimals(amountInput, 18);
-      if (amountBN <= 0n) throw new Error("数量无效");
+      if (amountBN <= 0n) throw new Error(tTrading("orderFlow.invalidAmount"));
       // enforce max 6 decimals on shares (so on-chain USDC conversions are exact)
       if (amountBN % 1_000_000_000_000n !== 0n) {
-        throw new Error("数量精度过高：最多支持 6 位小数");
+        throw new Error(tTrading("orderFlow.invalidAmountPrecision"));
       }
 
       let priceBN: bigint | null = null;
@@ -203,7 +207,7 @@ export function usePredictionDetail() {
       if (orderMode === "limit") {
         priceFloat = parseFloat(priceInput);
         if (isNaN(priceFloat) || priceFloat <= 0 || priceFloat >= 1) {
-          throw new Error("价格无效 (0-1)");
+          throw new Error(tTrading("orderFlow.invalidPrice"));
         }
       }
 
@@ -211,7 +215,11 @@ export function usePredictionDetail() {
       try {
         await ensureNetwork(provider, market.chain_id, switchNetwork);
       } catch (e: any) {
-        throw new Error(`请切换到正确网络 (Chain ID: ${market.chain_id})`);
+        throw new Error(
+          formatTranslation(tTrading("orderFlow.switchNetwork"), {
+            chainId: market.chain_id,
+          })
+        );
       }
 
       const signer = await provider.getSigner();
@@ -235,11 +243,11 @@ export function usePredictionDetail() {
         const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
         const planJson = await safeJson(planRes);
         if (!planJson.success || !planJson.data) {
-          throw new Error(planJson.message || "获取成交计划失败");
+          throw new Error(planJson.message || tTrading("orderFlow.fetchPlanFailed"));
         }
         const plan = planJson.data as any;
         const filledBN = BigInt(String(plan.filledAmount || "0"));
-        if (filledBN === 0n) throw new Error("当前订单簿流动性不足，无法成交");
+        if (filledBN === 0n) throw new Error(tTrading("orderFlow.insufficientLiquidity"));
 
         const totalCostBN = BigInt(String(plan.total || "0"));
         const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
@@ -268,29 +276,26 @@ export function usePredictionDetail() {
         const worstPriceHuman = formatPriceNumber(worstPriceBN);
         const totalHuman = formatPriceNumber(totalCostBN);
 
-        const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
+        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
         const slippagePercent = (slippageBpsNum || 0) / 100;
         const partialNote =
           filledBN < amountBN
-            ? `（仅可成交 ${filledHuman}/${formatAmountNumber(amountBN)} 份）`
+            ? formatTranslation(tTrading("orderFlow.partialFilled"), {
+                filled: filledHuman,
+                total: formatAmountNumber(amountBN),
+              })
             : "";
-        const confirmMsg = `预计以均价 ${avgPriceHuman.toFixed(
-          4
-        )} USDC 成交 ${filledHuman} 份${partialNote}，最大价格 ${worstPriceHuman.toFixed(
-          4
-        )} USDC，总${tradeSide === "buy" ? "花费" : "收入"}约 ${totalHuman.toFixed(
-          2
-        )} USDC，预计滑点约 ${slippagePercent.toFixed(2)}%。是否确认${sideLabel}？`;
+        const confirmMsg = `${avgPriceHuman.toFixed(4)} USDC, ${filledHuman}, ${worstPriceHuman.toFixed(4)} USDC, ${totalHuman.toFixed(2)} USDC, ${slippagePercent.toFixed(2)}%, ${sideLabel}${partialNote}`;
         const ok = typeof window !== "undefined" ? window.confirm(confirmMsg) : true;
         if (!ok) {
-          setOrderMsg("已取消");
+          setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
           return;
         }
 
         if (tradeSide === "buy") {
           const allowance = await tokenContract.allowance(account, market.market);
           if (allowance < totalCostBN) {
-            setOrderMsg("正在请求授权...");
+            setOrderMsg(tTrading("orderFlow.approving"));
             const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
             await txApp.wait();
           }
@@ -300,14 +305,14 @@ export function usePredictionDetail() {
           const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
           const isApproved = await outcome1155.isApprovedForAll(account, market.market);
           if (!isApproved) {
-            setOrderMsg("请求预测代币授权...");
+            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
             const tx1155 = await outcome1155.setApprovalForAll(market.market, true);
             await tx1155.wait();
           }
         }
 
         if (!RELAYER_BASE) {
-          throw new Error("撮合服务未配置，无法完成市价成交");
+          throw new Error(tTrading("orderFlow.relayerNotConfigured"));
         }
 
         const marketContract = new ethers.Contract(market.market, marketAbi, signer);
@@ -331,8 +336,12 @@ export function usePredictionDetail() {
           fillArr.push(fillAmount);
         }
 
-        if (ordersArr.length === 0) throw new Error("无可成交订单");
-        setOrderMsg(`正在成交中... (batch ${ordersArr.length})`);
+        if (ordersArr.length === 0) throw new Error(tTrading("orderFlow.noFillableOrders"));
+        setOrderMsg(
+          formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+            count: ordersArr.length,
+          })
+        );
         const tx = await marketContract.batchFill(ordersArr, sigArr, fillArr);
         const receipt = await tx.wait();
 
@@ -348,8 +357,8 @@ export function usePredictionDetail() {
           });
         } catch {}
 
-        if (filledBN < amountBN) setOrderMsg("部分成交，剩余数量未能成交");
-        else setOrderMsg("成交成功");
+        if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
+        else setOrderMsg(tTrading("orderFlow.filled"));
         setAmountInput("");
         await refreshUserOrders();
         return;
@@ -363,10 +372,10 @@ export function usePredictionDetail() {
 
         const allowance = await tokenContract.allowance(account, market.market);
         if (allowance < cost) {
-          setOrderMsg("正在请求授权...");
+          setOrderMsg(tTrading("orderFlow.approving"));
           const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
           await tx.wait();
-          setOrderMsg("授权成功，正在下单...");
+          setOrderMsg(tTrading("orderFlow.approveThenPlace"));
         }
       } else {
         const marketContract = new ethers.Contract(market.market, marketAbi, signer);
@@ -375,10 +384,10 @@ export function usePredictionDetail() {
 
         const isApproved = await outcome1155.isApprovedForAll(account, market.market);
         if (!isApproved) {
-          setOrderMsg("请求预测代币授权...");
+          setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
           const tx = await outcome1155.setApprovalForAll(market.market, true);
           await tx.wait();
-          setOrderMsg("授权成功，正在下单...");
+          setOrderMsg(tTrading("orderFlow.approveThenPlace"));
         }
       }
 
@@ -425,14 +434,14 @@ export function usePredictionDetail() {
 
       const json = await safeJson(res);
       if (json.success) {
-        setOrderMsg("下单成功！");
+        setOrderMsg(tTrading("orderFlow.orderSuccess"));
         setAmountInput("");
         await refreshUserOrders();
       } else {
-        throw new Error(json.message || "下单失败");
+        throw new Error(json.message || tTrading("orderFlow.orderFailedFallback"));
       }
     } catch (e: any) {
-      let msg = e?.message || "交易失败";
+      let msg = e?.message || tTrading("orderFlow.tradeFailed");
       if (tradeSide === "sell") {
         const lower = msg.toLowerCase();
         const looksLikeNoBalance =
@@ -441,10 +450,9 @@ export function usePredictionDetail() {
           lower.includes("no tokens") ||
           lower.includes("not enough");
         if (looksLikeNoBalance) {
-          msg = "卖单失败：您的可卖预测代币数量不足，请先在下方完成铸币后再尝试挂卖单。";
+          msg = tTrading("orderFlow.sellNoBalance");
         } else {
-          msg =
-            msg + "。如果尚未在下方完成铸币，可能是因为当前没有可卖的预测代币，请先铸币再试一次。";
+          msg = `${msg} ${tTrading("orderFlow.sellMaybeNoMint")}`;
         }
       }
       setOrderMsg(msg);

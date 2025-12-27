@@ -209,6 +209,18 @@
       "marketButton": "Ir al mercado",
       "comments": "comentarios"
     },
+    "detailSidebar": {
+      "detailsTitle": "Detalles",
+      "statusLabel": "Estado",
+      "statusActive": "Activa",
+      "categoryLabel": "Categoría",
+      "categoryFallback": "General",
+      "createdLabel": "Creado",
+      "statsTitle": "Estadísticas",
+      "commentsLabel": "Comentarios",
+      "votesLabel": "Votos",
+      "proposalId": "ID de la propuesta: #{id}"
+    },
     "intro": {
       "description": "La página de detalle de la propuesta muestra la explicación completa, el contexto y el debate de un mercado de predicción o tema de gobernanza, para que los participantes puedan entenderlo antes de votar o crear un mercado.",
       "helperPrefix": "¿Quieres explorar otras propuestas? Vuelve a",
@@ -311,6 +323,10 @@
       "update": "¿Hay novedades recientes?",
       "opinion": "Creo que la probabilidad es mayor porque…"
     },
+    "message": {
+      "opBadge": "OP",
+      "reply": "Responder"
+    },
     "header": {
       "title": "Sala de chat",
       "withTopic": "Sala de chat · {title}",
@@ -330,7 +346,10 @@
     "input": {
       "walletRequired": "Conecta tu billetera para enviar mensajes",
       "connectAndSign": "Conectar y firmar",
+      "connectWalletCta": "Conecta tu billetera para unirte a la conversación",
       "placeholder": "Escribe un mensaje, pulsa Enter para enviar, Shift+Enter para nueva línea",
+      "markdownHint": "Compatible con Markdown",
+      "enterHint": "Pulsa Enter para enviar, Shift+Enter para nueva línea",
       "toggleEmojisAria": "Abrir selector de emojis",
       "sending": "Enviando…",
       "send": "Enviar"
@@ -349,6 +368,7 @@
     "signMessage": "Firmar mensaje",
     "welcome": "Bienvenido a Foresight",
     "signToConnect": "Firma para conectar",
+    "siweStatement": "Bienvenido a Foresight, firma para conectar tu billetera.",
     "loggedIn": "Sesión iniciada",
     "noEmail": "Sin correo electrónico"
   },
@@ -428,13 +448,64 @@
     "emptyBids": "Aún no hay ofertas",
     "emptyAsks": "Aún no hay demandas",
     "emptyOrders": "Aún no hay órdenes abiertas",
+    "emptyTrades": "Aún no hay operaciones",
     "bestBid": "Mejor oferta: {price}",
     "bestAsk": "Mejor demanda: {price}",
+    "tabHistory": "Operaciones",
+    "steps": {
+      "connectWallet": "Conectar billetera",
+      "placeOrder": "Elegir dirección y crear orden",
+      "manageOrders": "Gestionar órdenes y ejecuciones"
+    },
+    "preview": {
+      "title": "Vista previa de la orden",
+      "priceTimesAmount": "Precio × Cantidad",
+      "thisTradePay": "Esta operación pagará",
+      "thisTradeReceive": "Esta operación recibirá",
+      "ifOutcomeHappens": "Si se cumple este resultado",
+      "positionValuePrefix": "Valor de la posición aprox. ",
+      "positionValueMiddle": ", rentabilidad ",
+      "empty": "Introduce precio y cantidad para ver aquí la vista previa de la orden."
+    },
+    "mintPanel": {
+      "title": "Preparar venta",
+      "subtitle": "¿Necesitas tokens de resultado?",
+      "amountPlaceholder": "Importe (USDC)",
+      "mint": "Mintear",
+      "redeem": "Canjear",
+      "description": "Mintear convierte USDC en tokens Yes+No (1:1). Canjear quema Yes+No y devuelve USDC."
+    },
     "toast": {
       "cancelOrderSuccessTitle": "Orden cancelada",
       "cancelOrderSuccessDesc": "Tu orden se canceló correctamente.",
       "cancelOrderFailedTitle": "Error al cancelar la orden",
       "retryLater": "Inténtalo de nuevo más tarde"
+    },
+    "orderFlow": {
+      "marketNotLoaded": "La información del mercado no se ha cargado",
+      "walletRequired": "Conecta primero tu billetera",
+      "walletNotReady": "La billetera no está inicializada",
+      "invalidAmount": "Cantidad no válida",
+      "invalidAmountPrecision": "Precisión de la cantidad demasiado alta: se admiten hasta 6 decimales",
+      "invalidPrice": "Precio no válido (debe estar entre 0 y 1)",
+      "switchNetwork": "Cambia a la red correcta (Chain ID: {chainId})",
+      "fetchPlanFailed": "Error al obtener el plan de ejecución",
+      "insufficientLiquidity": "La liquidez del libro de órdenes es insuficiente para ejecutar esta operación",
+      "noFillableOrders": "No hay órdenes ejecutables",
+      "relayerNotConfigured": "El servicio de casación no está configurado, no se puede ejecutar la orden de mercado",
+      "matchingInProgress": "Casando órdenes... (lote {count})",
+      "partialFilled": "Ejecución parcial, la cantidad restante no se pudo ejecutar",
+      "filled": "Operación completada con éxito",
+      "approving": "Solicitando aprobación...",
+      "outcomeTokenApproving": "Solicitando aprobación de tokens de resultado...",
+      "approveThenPlace": "Aprobación confirmada, creando orden...",
+      "orderSuccess": "Orden creada correctamente",
+      "orderFailedFallback": "Error al crear la orden",
+      "tradeFailed": "La operación ha fallado",
+      "sellNoBalance": "Error en orden de venta: no tienes suficientes tokens de resultado para vender. Primero haz mint en la sección inferior y luego inténtalo de nuevo.",
+      "sellMaybeNoMint": "Si aún no has hecho mint abajo, es posible que no tengas tokens para vender. Haz mint primero e inténtalo de nuevo.",
+      "canceled": "Orden cancelada",
+      "cancelFailed": "Error al cancelar la orden"
     }
   },
   "market": {

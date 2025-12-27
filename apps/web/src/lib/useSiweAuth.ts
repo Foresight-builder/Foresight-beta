@@ -1,5 +1,6 @@
 "use client";
 import { ethers } from "ethers";
+import { t } from "./i18n";
 
 type Params = {
   providerRef: React.RefObject<any>;
@@ -16,7 +17,7 @@ export function useSiweAuth(params: Params) {
           ? (window as any).ethereum || (window as any).BinanceChain
           : null);
       if (!rawProvider) {
-        return { success: false, error: "钱包 provider 不可用" };
+        return { success: false, error: t("wallet.noWallet") };
       }
 
       const browserProvider = new ethers.BrowserProvider(rawProvider);
@@ -24,19 +25,19 @@ export function useSiweAuth(params: Params) {
       const signerAddress = await signer.getAddress().catch(() => null);
       const net = await browserProvider.getNetwork();
       const address = signerAddress || params.account;
-      if (!address) return { success: false, error: "请先连接钱包" };
+      if (!address) return { success: false, error: t("auth.connectWallet") };
 
       const nonceRes = await fetch("/api/siwe/nonce", { method: "GET" });
       const nonceJson = await nonceRes.json();
       const nonce: string = nonceJson?.nonce;
-      if (!nonce) return { success: false, error: "无法获取 nonce" };
+      if (!nonce) return { success: false, error: t("errors.somethingWrong") };
 
       const { SiweMessage } = await import("siwe");
       const chainIdNum = Number(net?.chainId?.toString?.() || params.chainIdHex || "1");
       const message = new SiweMessage({
         domain: typeof window !== "undefined" ? window.location.host : "localhost",
         address,
-        statement: "Welcome to Foresight! Sign to connect.",
+        statement: t("auth.siweStatement"),
         uri: typeof window !== "undefined" ? window.location.origin : "http://localhost",
         version: "1",
         chainId: Number.isFinite(chainIdNum) ? chainIdNum : 1,
@@ -61,7 +62,7 @@ export function useSiweAuth(params: Params) {
             });
           }
         } else {
-          return { success: false, error: "签名失败" };
+          return { success: false, error: t("errors.somethingWrong") };
         }
       }
 
@@ -77,12 +78,15 @@ export function useSiweAuth(params: Params) {
       });
       const verifyJson = await verifyRes.json();
       if (!verifyRes.ok || !verifyJson?.success) {
-        return { success: false, error: verifyJson?.message || "签名验证失败" };
+        return {
+          success: false,
+          error: verifyJson?.message || t("errors.somethingWrong"),
+        };
       }
 
       return { success: true, address };
     } catch (err: any) {
-      return { success: false, error: err?.message || "SIWE 登录失败" };
+      return { success: false, error: t("errors.somethingWrong") };
     }
   };
 

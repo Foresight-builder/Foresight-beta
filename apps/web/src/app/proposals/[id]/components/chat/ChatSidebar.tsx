@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { ExternalLink, Calendar, Tag, User, TrendingUp } from "lucide-react";
+import { ExternalLink, Tag, TrendingUp } from "lucide-react";
 import type { ThreadView } from "../../useProposalDetail";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 interface ChatSidebarProps {
   thread: ThreadView;
@@ -12,6 +13,8 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
+  const tProposals = useTranslations("proposals");
+
   return (
     <div className="w-80 border-l border-slate-200 p-6 overflow-y-auto hidden lg:flex flex-col gap-6 max-h-[520px] self-start">
       <div className="space-y-6 flex-1">
@@ -30,7 +33,7 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
             href={`/prediction/${thread.created_prediction_id}`}
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all"
           >
-            <span>View Prediction Market</span>
+            <span>{tProposals("detail.marketButton")}</span>
             <ExternalLink className="w-4 h-4" />
           </Link>
         )}
@@ -38,27 +41,27 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
         <div className="space-y-4">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <Tag className="w-3 h-3" />
-            Details
+            {tProposals("detailSidebar.detailsTitle")}
           </h3>
 
           <div className="bg-white rounded-xl border border-slate-100 p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Status</span>
+              <span className="text-slate-500">{tProposals("detailSidebar.statusLabel")}</span>
               <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Active
+                {tProposals("detailSidebar.statusActive")}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Category</span>
+              <span className="text-slate-500">{tProposals("detailSidebar.categoryLabel")}</span>
               <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 text-xs font-bold border border-purple-100">
-                {thread.category || "General"}
+                {thread.category || tProposals("detailSidebar.categoryFallback")}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Created</span>
+              <span className="text-slate-500">{tProposals("detailSidebar.createdLabel")}</span>
               <span className="text-slate-700 font-medium">
                 {new Date(thread.created_at).toLocaleDateString()}
               </span>
@@ -69,24 +72,32 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
         <div className="space-y-4">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="w-3 h-3" />
-            Stats
+            {tProposals("detailSidebar.statsTitle")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
               <div className="text-lg font-black text-slate-900">{stats.commentsCount}</div>
-              <div className="text-[10px] text-slate-500 font-medium uppercase">Comments</div>
+              <div className="text-[10px] text-slate-500 font-medium uppercase">
+                {tProposals("detailSidebar.commentsLabel")}
+              </div>
             </div>
             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm text-center">
               <div className="text-lg font-black text-slate-900">
                 {stats.upvotes + stats.downvotes}
               </div>
-              <div className="text-[10px] text-slate-500 font-medium uppercase">Votes</div>
+              <div className="text-[10px] text-slate-500 font-medium uppercase">
+                {tProposals("detailSidebar.votesLabel")}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="text-[10px] text-slate-400 text-center pb-2">Proposal ID: #{thread.id}</div>
+      <div className="text-[10px] text-slate-400 text-center pb-2">
+        {formatTranslation(tProposals("detailSidebar.proposalId"), {
+          id: thread.id,
+        })}
+      </div>
     </div>
   );
 }

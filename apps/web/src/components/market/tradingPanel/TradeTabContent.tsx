@@ -126,6 +126,7 @@ export function TradeTabContent({
           setMintInput={setMintInput}
           handleMint={handleMint}
           handleRedeem={handleRedeem}
+          tTrading={tTrading}
         />
       )}
     </div>
@@ -384,7 +385,7 @@ function TradeSummary({
   tTrading,
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
-  const sideLabel = tradeSide === "buy" ? "买入" : "卖出";
+  const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
   const sideColor =
     tradeSide === "buy"
       ? "text-emerald-600 bg-emerald-50 border-emerald-100"
@@ -409,7 +410,7 @@ function TradeSummary({
       </div>
       <div className="pt-3 border-t border-dashed border-gray-200 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-gray-600">模拟下单预览</span>
+          <span className="font-semibold text-gray-600">{tTrading("preview.title")}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${sideColor}`}
           >
@@ -419,26 +420,30 @@ function TradeSummary({
         {hasInput ? (
           <div className="space-y-1.5 text-xs text-gray-500">
             <div className="flex justify-between">
-              <span>价格 × 数量</span>
+              <span>{tTrading("preview.priceTimesAmount")}</span>
               <span className="font-medium text-gray-900">
                 ${price.toFixed(2)} × {amount.toFixed(2)} = ${total.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>本次{sideLabel === "买入" ? "预计支付" : "预计收到"}</span>
+              <span>
+                {tradeSide === "buy"
+                  ? tTrading("preview.thisTradePay")
+                  : tTrading("preview.thisTradeReceive")}
+              </span>
               <span className="font-medium text-gray-900">${total.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-[11px]">
-              <span className="text-gray-400">若该结局发生</span>
+              <span className="text-gray-400">{tTrading("preview.ifOutcomeHappens")}</span>
               <span className="font-medium text-emerald-600">
-                头寸价值约 ${potentialReturn.toFixed(2)}，收益率 {profitPercent.toFixed(0)}%
+                {tTrading("preview.positionValuePrefix")}${potentialReturn.toFixed(2)}
+                {tTrading("preview.positionValueMiddle")}
+                {profitPercent.toFixed(0)}%
               </span>
             </div>
           </div>
         ) : (
-          <div className="text-xs text-gray-400">
-            输入价格和数量后，将在这里看到本次下单的模拟预览。
-          </div>
+          <div className="text-xs text-gray-400">{tTrading("preview.empty")}</div>
         )}
       </div>
     </div>
@@ -464,6 +469,18 @@ function TradeSubmitSection({
   orderMsg,
   tTrading,
 }: TradeSubmitSectionProps) {
+  const positiveMessages = new Set([
+    tTrading("orderFlow.filled"),
+    tTrading("orderFlow.partialFilled"),
+    tTrading("orderFlow.orderSuccess"),
+    tTrading("orderFlow.canceled"),
+    tTrading("orderFlow.approving"),
+    tTrading("orderFlow.outcomeTokenApproving"),
+    tTrading("orderFlow.approveThenPlace"),
+    tTrading("orderFlow.matchingInProgress"),
+  ]);
+  const isPositiveMsg = !!orderMsg && positiveMessages.has(orderMsg);
+
   return (
     <div className="space-y-3">
       <button
@@ -485,7 +502,7 @@ function TradeSubmitSection({
       {orderMsg && (
         <div
           className={`text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 ${
-            orderMsg.includes("成功")
+            isPositiveMsg
               ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
               : "bg-rose-50 text-rose-600 border border-rose-100"
           }`}
@@ -503,6 +520,7 @@ type MintRedeemPanelProps = {
   setMintInput: (v: string) => void;
   handleMint: (amount: string) => void;
   handleRedeem: (amount: string) => void;
+  tTrading: (key: string) => string;
 };
 
 function MintRedeemPanel({
@@ -510,16 +528,17 @@ function MintRedeemPanel({
   setMintInput,
   handleMint,
   handleRedeem,
+  tTrading,
 }: MintRedeemPanelProps) {
   return (
     <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
       <div className="bg-purple-50/50 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-purple-800 uppercase tracking-wider">
-            Sell Prep
+            {tTrading("mintPanel.title")}
           </span>
           <span className="text-[10px] text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
-            Need outcome tokens?
+            {tTrading("mintPanel.subtitle")}
           </span>
         </div>
 
@@ -528,7 +547,7 @@ function MintRedeemPanel({
             type="number"
             value={mintInput}
             onChange={(e) => setMintInput(e.target.value)}
-            placeholder="Amount (USDC)"
+            placeholder={tTrading("mintPanel.amountPlaceholder")}
             className="flex-1 bg-white border border-purple-100 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500"
           />
           <div className="flex flex-col gap-1">
@@ -537,19 +556,19 @@ function MintRedeemPanel({
               disabled={!mintInput}
               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
             >
-              Mint
+              {tTrading("mintPanel.mint")}
             </button>
             <button
               onClick={() => mintInput && handleRedeem(mintInput)}
               disabled={!mintInput}
               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-purple-600 border border-purple-200 hover:bg-purple-50 disabled:opacity-50"
             >
-              Redeem
+              {tTrading("mintPanel.redeem")}
             </button>
           </div>
         </div>
         <p className="text-[10px] text-purple-500/80 leading-relaxed">
-          Mint converts USDC to Yes+No tokens (1:1). Redeem burns Yes+No to get USDC back.
+          {tTrading("mintPanel.description")}
         </p>
       </div>
     </div>

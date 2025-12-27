@@ -91,7 +91,9 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cat.bg} ${cat.color} ${cat.border}`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-              <span className="truncate max-w-[96px]">{proposal.category || "General"}</span>
+              <span className="truncate max-w-[96px]">
+                {proposal.category || tProposals("detailSidebar.categoryFallback")}
+              </span>
             </div>
             <span
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusClass}`}

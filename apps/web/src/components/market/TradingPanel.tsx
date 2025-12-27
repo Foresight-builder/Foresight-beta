@@ -136,7 +136,7 @@ export function TradingPanel(props: TradingPanelProps) {
               1
             </div>
             <span className={isWalletConnected ? "font-semibold text-slate-800" : ""}>
-              连接钱包
+              {tTrading("steps.connectWallet")}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -147,7 +147,9 @@ export function TradingPanel(props: TradingPanelProps) {
             >
               2
             </div>
-            <span className={isTradeTab ? "font-semibold text-slate-800" : ""}>选择方向并下单</span>
+            <span className={isTradeTab ? "font-semibold text-slate-800" : ""}>
+              {tTrading("steps.placeOrder")}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div
@@ -158,7 +160,7 @@ export function TradingPanel(props: TradingPanelProps) {
               3
             </div>
             <span className={isManageTab ? "font-semibold text-slate-800" : ""}>
-              管理订单与成交
+              {tTrading("steps.manageOrders")}
             </span>
           </div>
         </div>
@@ -203,7 +205,7 @@ export function TradingPanel(props: TradingPanelProps) {
               : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
           }`}
         >
-          成交
+          {tTrading("tabHistory")}
         </button>
       </div>
 

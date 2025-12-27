@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ThumbsUp, ThumbsDown, MessageCircle, MoreHorizontal } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 interface ChatMessageProps {
   isMainProposal?: boolean;
@@ -28,6 +29,8 @@ export function ChatMessage({
   onReply,
   isMe,
 }: ChatMessageProps) {
+  const tChat = useTranslations("chat");
+
   return (
     <div
       className={`group flex gap-3 sm:gap-4 px-4 py-3 sm:px-6 hover:bg-slate-50/50 transition-colors ${isMainProposal ? "bg-white border-b border-slate-100 pb-6 mb-2" : ""}`}
@@ -53,7 +56,7 @@ export function ChatMessage({
           </span>
           {isMainProposal && (
             <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-bold border border-purple-200">
-              OP
+              {tChat("message.opBadge")}
             </span>
           )}
           <span className="text-[10px] sm:text-xs text-slate-400">{timestamp}</span>
@@ -98,7 +101,7 @@ export function ChatMessage({
               className="flex items-center gap-1 text-xs text-slate-400 hover:text-purple-600 transition-colors font-medium hover:bg-purple-50 px-2 py-1 rounded-lg"
             >
               <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              Reply
+              {tChat("message.reply")}
             </button>
           )}
 

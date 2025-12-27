@@ -209,6 +209,18 @@
       "marketButton": "Go to market",
       "comments": "comments"
     },
+    "detailSidebar": {
+      "detailsTitle": "Details",
+      "statusLabel": "Status",
+      "statusActive": "Active",
+      "categoryLabel": "Category",
+      "categoryFallback": "General",
+      "createdLabel": "Created",
+      "statsTitle": "Stats",
+      "commentsLabel": "Comments",
+      "votesLabel": "Votes",
+      "proposalId": "Proposal ID: #{id}"
+    },
     "intro": {
       "description": "The proposal detail page shows the full context, explanation and discussion for a prediction market or governance topic, so participants can fully understand it before voting or creating a market.",
       "helperPrefix": "Want to explore other proposals? Go back to",
@@ -311,6 +323,10 @@
       "update": "Any latest updates?",
       "opinion": "I think the probability is higher because…"
     },
+    "message": {
+      "opBadge": "OP",
+      "reply": "Reply"
+    },
     "header": {
       "title": "Chat room",
       "withTopic": "Chat room · {title}",
@@ -330,7 +346,10 @@
     "input": {
       "walletRequired": "Connect your wallet to send messages",
       "connectAndSign": "Connect & sign",
+      "connectWalletCta": "Connect your wallet to join the discussion",
       "placeholder": "Type a message, press Enter to send, Shift+Enter for new line",
+      "markdownHint": "Markdown supported",
+      "enterHint": "Press Enter to send, Shift+Enter for new line",
       "toggleEmojisAria": "Toggle emoji picker",
       "sending": "Sending…",
       "send": "Send"
@@ -349,6 +368,7 @@
     "signMessage": "Sign Message",
     "welcome": "Welcome to Foresight",
     "signToConnect": "Sign to connect",
+    "siweStatement": "Welcome to Foresight! Sign to connect your wallet.",
     "loggedIn": "Logged in",
     "noEmail": "No email"
   },
@@ -428,13 +448,64 @@
     "emptyBids": "No bids yet",
     "emptyAsks": "No asks yet",
     "emptyOrders": "No open orders",
+    "emptyTrades": "No trades yet",
     "bestBid": "Best bid: {price}",
     "bestAsk": "Best ask: {price}",
+    "tabHistory": "Trades",
+    "steps": {
+      "connectWallet": "Connect wallet",
+      "placeOrder": "Choose direction and place order",
+      "manageOrders": "Manage orders and fills"
+    },
+    "preview": {
+      "title": "Order preview",
+      "priceTimesAmount": "Price × Quantity",
+      "thisTradePay": "This trade will pay",
+      "thisTradeReceive": "This trade will receive",
+      "ifOutcomeHappens": "If this outcome happens",
+      "positionValuePrefix": "Position value about ",
+      "positionValueMiddle": ", return ",
+      "empty": "Enter price and quantity to see a live preview of this order."
+    },
+    "mintPanel": {
+      "title": "Sell prep",
+      "subtitle": "Need outcome tokens?",
+      "amountPlaceholder": "Amount (USDC)",
+      "mint": "Mint",
+      "redeem": "Redeem",
+      "description": "Mint converts USDC to Yes+No tokens (1:1). Redeem burns Yes+No to get USDC back."
+    },
     "toast": {
       "cancelOrderSuccessTitle": "Order canceled",
       "cancelOrderSuccessDesc": "Your order has been canceled successfully.",
       "cancelOrderFailedTitle": "Failed to cancel order",
       "retryLater": "Please try again later"
+    },
+    "orderFlow": {
+      "marketNotLoaded": "Market data not loaded",
+      "walletRequired": "Please connect your wallet first",
+      "walletNotReady": "Wallet is not initialized",
+      "invalidAmount": "Invalid amount",
+      "invalidAmountPrecision": "Amount precision too high: up to 6 decimals supported",
+      "invalidPrice": "Invalid price (must be between 0 and 1)",
+      "switchNetwork": "Please switch to the correct network (Chain ID: {chainId})",
+      "fetchPlanFailed": "Failed to fetch execution plan",
+      "insufficientLiquidity": "Orderbook liquidity is insufficient to execute this trade",
+      "noFillableOrders": "No fillable orders",
+      "relayerNotConfigured": "Matching service is not configured, cannot execute market order",
+      "matchingInProgress": "Matching orders... (batch {count})",
+      "partialFilled": "Partially filled, remaining amount could not be executed",
+      "filled": "Filled successfully",
+      "approving": "Requesting approval...",
+      "outcomeTokenApproving": "Requesting outcome token approval...",
+      "approveThenPlace": "Approval confirmed, placing order...",
+      "orderSuccess": "Order placed successfully",
+      "orderFailedFallback": "Order placement failed",
+      "tradeFailed": "Trade failed",
+      "sellNoBalance": "Sell order failed: not enough outcome tokens to sell. Please mint tokens below first, then try again.",
+      "sellMaybeNoMint": "If you have not minted below yet, you may not have any tokens to sell. Please mint first and try again.",
+      "canceled": "Order canceled",
+      "cancelFailed": "Failed to cancel order"
     }
   },
   "market": {

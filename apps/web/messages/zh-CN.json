@@ -65,7 +65,7 @@
     "trending": "热门趋势",
     "leaderboard": "排行榜",
     "forum": "论坛",
-    "flags": "我的Flag",
+    "flags": "我的挑战",
     "proposals": "提案频道",
     "profile": "个人中心",
     "admin": "管理员中心",
@@ -209,6 +209,18 @@
       "marketButton": "前往预测市场",
       "comments": "条评论"
     },
+    "detailSidebar": {
+      "detailsTitle": "详情",
+      "statusLabel": "状态",
+      "statusActive": "进行中",
+      "categoryLabel": "分类",
+      "categoryFallback": "未分类",
+      "createdLabel": "创建时间",
+      "statsTitle": "数据概览",
+      "commentsLabel": "评论数",
+      "votesLabel": "投票数",
+      "proposalId": "提案 ID：#{id}"
+    },
     "intro": {
       "description": "提案详情页用于集中展示某个预测市场或治理议题的完整说明、上下文和社区讨论，方便参与者在链上投票或发起后续预测市场前充分了解背景。",
       "helperPrefix": "想浏览其他提案？返回",
@@ -241,7 +253,7 @@
       "featuredTitle": "精选",
       "featuredViewAll": "查看全部",
       "officialV2Title": "协议升级 v2.0",
-      "officialV2Desc": "重大架构升级和 Gas 优化",
+      "officialV2Desc": "重大架构升级和手续费优化",
       "officialTreasuryTitle": "Q3 财库报告",
       "officialTreasuryDesc": "下一季度预算分配回顾",
       "officialGrantsTitle": "社区资助计划",
@@ -251,7 +263,7 @@
       "randomNext": "下一条灵感",
       "governanceTitle": "治理参数",
       "governanceThresholdLabel": "提案门槛",
-      "governanceThresholdValue": "100 VP",
+      "governanceThresholdValue": "100 投票权",
       "governanceVotingPeriodLabel": "投票周期",
       "governanceVotingPeriodValue": "3 天",
       "governanceQuorumLabel": "法定参与率",
@@ -311,6 +323,10 @@
       "update": "有没有最新进展？",
       "opinion": "我认为概率更高的理由是…"
     },
+    "message": {
+      "opBadge": "楼主",
+      "reply": "回复"
+    },
     "header": {
       "title": "聊天室",
       "withTopic": "聊天室 · {title}",
@@ -330,7 +346,10 @@
     "input": {
       "walletRequired": "发送消息需连接钱包",
       "connectAndSign": "连接并签名",
+      "connectWalletCta": "连接钱包后即可参与讨论",
       "placeholder": "输入消息，按 Enter 发送，Shift+Enter 换行",
+      "markdownHint": "支持 Markdown 格式",
+      "enterHint": "按 Enter 发送，Shift+Enter 换行",
       "toggleEmojisAria": "选择表情",
       "sending": "发送中…",
       "send": "发送"
@@ -349,6 +368,7 @@
     "signMessage": "签名消息",
     "welcome": "欢迎来到 Foresight",
     "signToConnect": "签名以连接",
+    "siweStatement": "欢迎使用 Foresight，请签名以连接钱包。",
     "loggedIn": "已登录",
     "noEmail": "未绑定邮箱"
   },
@@ -428,13 +448,64 @@
     "emptyBids": "暂无买单",
     "emptyAsks": "暂无卖单",
     "emptyOrders": "暂无挂单",
+    "emptyTrades": "暂无成交记录",
     "bestBid": "买一: {price}",
     "bestAsk": "卖一: {price}",
+    "tabHistory": "成交",
+    "steps": {
+      "connectWallet": "连接钱包",
+      "placeOrder": "选择方向并下单",
+      "manageOrders": "管理订单与成交"
+    },
+    "preview": {
+      "title": "模拟下单预览",
+      "priceTimesAmount": "价格 × 数量",
+      "thisTradePay": "本次预计支付",
+      "thisTradeReceive": "本次预计收到",
+      "ifOutcomeHappens": "若该结局发生",
+      "positionValuePrefix": "头寸价值约 ",
+      "positionValueMiddle": "，收益率 ",
+      "empty": "输入价格和数量后，将在这里看到本次下单的模拟预览。"
+    },
+    "mintPanel": {
+      "title": "卖出准备",
+      "subtitle": "需要结局代币吗？",
+      "amountPlaceholder": "输入金额（USDC）",
+      "mint": "铸造",
+      "redeem": "赎回",
+      "description": "铸造会将 USDC 按 1:1 转换成 Yes+No 代币，赎回会销毁 Yes+No 并取回 USDC。"
+    },
     "toast": {
       "cancelOrderSuccessTitle": "订单已取消",
       "cancelOrderSuccessDesc": "您的订单已成功取消",
       "cancelOrderFailedTitle": "取消订单失败",
       "retryLater": "请稍后重试"
+    },
+    "orderFlow": {
+      "marketNotLoaded": "市场信息未加载",
+      "walletRequired": "请先连接钱包",
+      "walletNotReady": "钱包未初始化",
+      "invalidAmount": "数量无效",
+      "invalidAmountPrecision": "数量精度过高：最多支持 6 位小数",
+      "invalidPrice": "价格无效 (0-1)",
+      "switchNetwork": "请切换到正确网络 (Chain ID: {chainId})",
+      "fetchPlanFailed": "获取成交计划失败",
+      "insufficientLiquidity": "当前订单簿流动性不足，无法成交",
+      "noFillableOrders": "无可成交订单",
+      "relayerNotConfigured": "撮合服务未配置，无法完成市价成交",
+      "matchingInProgress": "正在成交中... (批次 {count})",
+      "partialFilled": "部分成交，剩余数量未能成交",
+      "filled": "成交成功",
+      "approving": "正在请求授权...",
+      "outcomeTokenApproving": "请求预测代币授权...",
+      "approveThenPlace": "授权成功，正在下单...",
+      "orderSuccess": "下单成功！",
+      "orderFailedFallback": "下单失败",
+      "tradeFailed": "交易失败",
+      "sellNoBalance": "卖单失败：您的可卖预测代币数量不足，请先在下方完成铸币后再尝试挂卖单。",
+      "sellMaybeNoMint": "如果尚未在下方完成铸币，可能当前没有可卖的预测代币，请先铸币再试一次。",
+      "canceled": "订单已取消",
+      "cancelFailed": "取消订单失败"
     }
   },
   "market": {
@@ -841,7 +912,7 @@
       "fieldMinStakeLabel": "最小参与金额 (USDC)",
       "fieldDescription": "事件背景描述",
       "fieldDescriptionPlaceholder": "请详细描述预测事件的背景、范围以及其他重要信息...",
-      "fieldCriteria": "判定标准 (Oracle Criteria)",
+      "fieldCriteria": "判定标准（预言机规则）",
       "fieldCriteriaPlaceholder": "例如：以 CoinMarketCap 在截止时刻的收盘价格为准",
       "confirmDelete": "确定删除该事件？",
       "updateFailed": "更新失败",
@@ -868,7 +939,7 @@
     },
     "stats": {
       "ongoingBadge": "进行中",
-      "flagsLabel": "Flags",
+      "flagsLabel": "挑战数",
       "activeDescription": "当前正在进行的挑战",
       "achievedBadge": "已达成",
       "goalsLabel": "目标",
@@ -996,31 +1067,31 @@
         "rejected": "已拒绝"
       },
       "reviewReason": {
-        "approved": "Looks good",
-        "rejected": "Witness rejected"
+        "approved": "看起来没问题",
+        "rejected": "见证人已拒绝"
       }
     },
     "toast": {
       "walletRequiredTitle": "需要连接钱包",
-      "walletRequiredDesc": "请先连接钱包才能创建 Flag",
+      "walletRequiredDesc": "请先连接钱包才能创建挑战",
       "titleRequiredTitle": "标题不能为空",
-      "titleRequiredDesc": "请输入 Flag 标题",
+      "titleRequiredDesc": "请输入挑战标题",
       "witnessRequiredTitle": "见证人信息缺失",
       "witnessRequiredDesc": "请填写见证人 ID 或地址",
       "createSuccessTitle": "创建成功",
-      "createSuccessDesc": "Flag 已创建，快去打卡吧！",
+      "createSuccessDesc": "挑战已创建，快去打卡吧！",
       "createFailedTitle": "创建失败",
       "createFailedDesc": "请检查网络连接后重试",
       "loadFailedTitle": "数据加载失败",
       "noDataTitle": "暂无数据",
-      "noDataDesc": "你还没有创建任何 Flag",
+      "noDataDesc": "你还没有创建任何挑战",
       "checkinFailedTitle": "打卡失败",
       "checkinFailedDesc": "网络错误，请稍后重试",
       "checkinExpiredTitle": "时间到啦",
-      "checkinExpiredDesc": "这个 Flag 已经完赛啦，去开启一个新的挑战吧～",
+      "checkinExpiredDesc": "这个挑战已经完赛啦，去开启一个新的挑战吧～",
       "reviewFailedTitle": "审核失败",
       "reviewFailedDesc": "请检查网络连接后重试",
-      "settleConfirmMessage": "确定要结算该 Flag 吗？结算后将根据完成情况退还押金。",
+      "settleConfirmMessage": "确定要结算该挑战吗？结算后将根据完成情况退还押金。",
       "settleSuccessTitle": "结算完成",
       "statusLabel": "状态",
       "approvedDaysLabel": "通过天数",
@@ -1031,11 +1102,11 @@
       "header": {
         "joinChallengeTitle": "加入挑战",
         "joinChallengeSubtitle": "一起坚持完成目标吧！",
-        "newFlagTitle": "创建新的 Flag",
+        "newFlagTitle": "创建新的挑战",
         "newFlagSubtitle": "从今天开始改变自己"
       },
       "form": {
-        "titleLabel": "Flag 标题",
+        "titleLabel": "挑战标题",
         "titlePlaceholder": "例如：每天阅读 10 页书",
         "descLabel": "详情与规则",
         "descPlaceholder": "描述你的计划...",
@@ -1050,7 +1121,7 @@
       "footer": {
         "cancel": "取消",
         "joinNow": "立即加入",
-        "createFlag": "创建 Flag"
+        "createFlag": "创建挑战"
       },
       "templates": {
         "early_morning": {

@@ -60,10 +60,10 @@ export async function cancelOrderAction(args: {
 
     const json = await safeJson(res);
     if (json.success) {
-      setOrderMsg("订单已取消");
+      setOrderMsg(tTrading("orderFlow.canceled"));
       setOpenOrders((prev) => prev.filter((o) => o.maker_salt !== salt));
     } else {
-      throw new Error(json.message || "取消失败");
+      throw new Error(json.message || tTrading("orderFlow.cancelFailed"));
     }
     toast.success(
       tTrading("toast.cancelOrderSuccessTitle"),

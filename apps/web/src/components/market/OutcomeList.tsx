@@ -46,6 +46,7 @@ export function OutcomeList({
   onTrade,
 }: OutcomeListProps) {
   const tCommon = useTranslations("common");
+  const tTrading = useTranslations("trading");
   const outcomes = prediction.outcomes || [];
   const stats = prediction.stats;
 
@@ -155,7 +156,9 @@ export function OutcomeList({
                   }}
                   className="flex flex-col items-center justify-center px-4 py-2 rounded-xl border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-all active:scale-95 min-w-[100px] shadow-sm hover:shadow"
                 >
-                  <span className="text-xs font-bold uppercase tracking-wider">Buy</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {tTrading("buy")}
+                  </span>
                   <span className="text-xs opacity-70 mt-0.5">{buyPrice.toFixed(0)}¢</span>
                 </button>
                 <button
@@ -165,7 +168,9 @@ export function OutcomeList({
                   }}
                   className="flex flex-col items-center justify-center px-4 py-2 rounded-xl border border-rose-100 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all active:scale-95 min-w-[100px] shadow-sm hover:shadow"
                 >
-                  <span className="text-xs font-bold uppercase tracking-wider">Sell</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {tTrading("sell")}
+                  </span>
                   <span className="text-xs opacity-70 mt-0.5">{sellPrice.toFixed(0)}¢</span>
                 </button>
               </div>

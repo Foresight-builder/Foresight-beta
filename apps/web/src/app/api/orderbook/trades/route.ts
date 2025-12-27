@@ -12,11 +12,21 @@ export async function GET(req: NextRequest) {
       return ApiResponses.internalError("Supabase not configured");
     }
 
-    const { searchParams } = new URL(req.url);
-    const chainId = searchParams.get("chainId");
-    const contract = searchParams.get("contract");
-    const marketKey = searchParams.get("marketKey"); // Optional, if we want to filter by marketKey directly
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const url = new URL(req.url);
+    const chainIdRaw = url.searchParams.get("chainId");
+    const contract = url.searchParams.get("contract") || undefined;
+    const limitRaw = url.searchParams.get("limit");
+    const limitParsed = limitRaw == null ? 50 : Number(limitRaw);
+    const limit = Number.isFinite(limitParsed) ? Math.max(1, Math.min(200, limitParsed)) : 50;
+
+    let chainId: string | undefined;
+    if (chainIdRaw != null) {
+      const parsed = Number(chainIdRaw);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return ApiResponses.badRequest("Invalid chainId");
+      }
+      chainId = String(parsed);
+    }
 
     let query = client
       .from("trades")
@@ -45,6 +55,9 @@ export async function GET(req: NextRequest) {
   } catch (e: unknown) {
     logApiError("GET /api/orderbook/trades unhandled error", e);
     const message = e instanceof Error ? e.message : String(e);
-    return ApiResponses.internalError("Failed to fetch trades", message);
+    return ApiResponses.internalError(
+      "Failed to fetch trades",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }

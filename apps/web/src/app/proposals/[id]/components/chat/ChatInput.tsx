@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { Send, Loader2, Sparkles } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 interface ChatInputProps {
   value: string;
@@ -23,6 +24,7 @@ export function ChatInput({
   isConnected,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const tChat = useTranslations("chat");
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -47,7 +49,7 @@ export function ChatInput({
           className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold shadow-lg shadow-purple-500/30 hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          Connect Wallet to Join Discussion
+          {tChat("input.connectWalletCta")}
         </button>
       </div>
     );
@@ -61,7 +63,7 @@ export function ChatInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || "Type your thoughts..."}
+          placeholder={placeholder || tChat("input.placeholder")}
           className="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[24px] py-2 px-2 text-sm text-slate-900 placeholder:text-slate-400"
           rows={1}
         />
@@ -74,8 +76,8 @@ export function ChatInput({
         </button>
       </div>
       <div className="max-w-4xl mx-auto mt-2 flex justify-between px-2">
-        <span className="text-[10px] text-slate-400">Markdown supported</span>
-        <span className="text-[10px] text-slate-400">Enter to send</span>
+        <span className="text-[10px] text-slate-400">{tChat("input.markdownHint")}</span>
+        <span className="text-[10px] text-slate-400">{tChat("input.enterHint")}</span>
       </div>
     </div>
   );
