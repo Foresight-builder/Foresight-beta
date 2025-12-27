@@ -1,5 +1,3 @@
-import { t } from "@/lib/i18n";
-
 export default function Loading() {
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-pink-50 overflow-hidden">
@@ -14,7 +12,7 @@ export default function Loading() {
       <div className="relative z-10 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t("loading.trendingEvents")}</p>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     </div>
