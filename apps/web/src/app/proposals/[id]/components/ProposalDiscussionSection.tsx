@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { MessageCircle } from "lucide-react";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import type { CommentView, ThreadView } from "../useProposalDetail";

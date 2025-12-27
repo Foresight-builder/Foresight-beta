@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ThumbsUp, ThumbsDown, MessageCircle, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 

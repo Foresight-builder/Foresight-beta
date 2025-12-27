@@ -1,4 +1,3 @@
-import React from "react";
 import { ListFilter } from "lucide-react";
 
 export type OrdersTabContentProps = {

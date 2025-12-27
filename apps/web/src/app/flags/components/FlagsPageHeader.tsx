@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { ShieldCheck, Smile } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";

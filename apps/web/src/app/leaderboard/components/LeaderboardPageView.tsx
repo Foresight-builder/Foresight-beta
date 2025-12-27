@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+
 import GradientPage from "@/components/ui/GradientPage";
 import type { LeaderboardUser } from "../data";
 import { FloatingShapes } from "./FloatingShapes";

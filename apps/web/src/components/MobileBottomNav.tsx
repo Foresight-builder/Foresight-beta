@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import { Home, TrendingUp, PlusCircle, MessageSquare, User } from "lucide-react";
 import Link from "next/link";

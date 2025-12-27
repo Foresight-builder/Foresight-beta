@@ -1,4 +1,3 @@
-import React from "react";
 import { Loader2, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FlagCard, type FlagItem } from "@/components/FlagCard";

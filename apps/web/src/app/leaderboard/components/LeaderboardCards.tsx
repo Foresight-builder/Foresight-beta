@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+
 import { motion } from "framer-motion";
 import { ArrowUpRight, Crown, Sparkles, Star, Target, Trophy, TrendingUp, Zap } from "lucide-react";
 import type { LeaderboardUser } from "../data";

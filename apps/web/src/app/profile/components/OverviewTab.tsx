@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ArrowRight, Clock, TrendingUp, Wallet, Trophy, Activity } from "lucide-react";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import type { PortfolioStats } from "../types";

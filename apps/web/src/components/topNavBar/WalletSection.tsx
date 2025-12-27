@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { createPortal } from "react-dom";
 import { Copy, ExternalLink, Eye, EyeOff, LogOut, Wallet } from "lucide-react";
 import WalletModal from "../WalletModal";

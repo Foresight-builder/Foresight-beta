@@ -1,4 +1,3 @@
-import React from "react";
 import CreateFlagModal from "@/components/CreateFlagModal";
 import StickerRevealModal, {
   OFFICIAL_STICKERS,

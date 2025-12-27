@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { ExternalLink, Tag, TrendingUp } from "lucide-react";
 import type { ThreadView } from "../../useProposalDetail";

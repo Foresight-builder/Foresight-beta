@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 
 export function Sparkline({ data, color = "#10B981" }: { data: number[]; color?: string }) {
   if (!data || data.length < 2) return null;

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+
 import type { LeaderboardUser } from "../data";
 import { TopThreeCard } from "./LeaderboardCards";
 

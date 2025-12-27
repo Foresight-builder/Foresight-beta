@@ -1,4 +1,3 @@
-import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Dices, Vote, Zap, Wallet } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";

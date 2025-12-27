@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, BarChart2, Search, Sparkles, Users } from "lucide-react";
 import type { LeaderboardUser } from "../data";

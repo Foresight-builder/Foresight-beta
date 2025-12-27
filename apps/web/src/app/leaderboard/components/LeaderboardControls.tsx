@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+
 import { Flame, Target, Trophy } from "lucide-react";
 
 export type LeaderboardControlsProps = {

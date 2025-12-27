@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import GradientPage from "@/components/ui/GradientPage";
 import { getCategoryStyle } from "./forumConfig";

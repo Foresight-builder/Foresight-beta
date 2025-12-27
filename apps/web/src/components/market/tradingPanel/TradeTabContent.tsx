@@ -1,4 +1,3 @@
-import React from "react";
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
 
 export type TradeTabContentProps = {

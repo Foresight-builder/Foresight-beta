@@ -1,4 +1,3 @@
-import React from "react";
 import type { OfficialTemplate } from "./flagsConfig";
 import type { FlagsData } from "./useFlagsData";
 import { FlagsBackgroundLayout } from "./components/FlagsBackgroundLayout";

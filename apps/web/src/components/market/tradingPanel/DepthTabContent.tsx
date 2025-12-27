@@ -1,5 +1,3 @@
-import React from "react";
-
 export type DepthTabContentProps = {
   depthBuy: Array<{ price: string; qty: string }>;
   depthSell: Array<{ price: string; qty: string }>;

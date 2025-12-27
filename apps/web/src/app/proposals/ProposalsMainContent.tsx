@@ -1,4 +1,3 @@
-import React from "react";
 import { Search, Activity, Plus } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import ProposalsList from "./ProposalsList";

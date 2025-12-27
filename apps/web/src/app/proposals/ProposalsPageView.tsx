@@ -1,4 +1,3 @@
-import React from "react";
 import GradientPage from "@/components/ui/GradientPage";
 import CreateProposalModal from "./CreateProposalModal";
 import ProposalsLeftSidebar from "./ProposalsLeftSidebar";

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ArrowLeft, Share2 } from "lucide-react";
 
 export function ProposalHeaderNav({

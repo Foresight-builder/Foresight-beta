@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslations } from "@/lib/i18n";
 
 interface PredictionDetail {

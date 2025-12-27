@@ -1,4 +1,3 @@
-import React from "react";
 import DatePicker from "@/components/ui/DatePicker";
 import type { TrendingEditForm } from "./hooks/useTrendingAdminEvents";
 

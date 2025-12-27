@@ -1,4 +1,3 @@
-import React from "react";
 import { ArrowRight, ShieldCheck, Trophy, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { OfficialTemplate } from "../flagsConfig";
