@@ -1,12 +1,11 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X, Mail, Wallet, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations } from "@/lib/i18n";
 import { Modal } from "@/components/ui/Modal";
 import WalletModal from "./WalletModal";
-import InstallPromptModal from "./InstallPromptModal";
 
 interface LoginModalProps {
   open: boolean;
@@ -16,15 +15,7 @@ interface LoginModalProps {
 
 export default function LoginModal({ open, onClose, defaultTab = "email" }: LoginModalProps) {
   const { user, requestEmailOtp, verifyEmailOtp, sendMagicLink, error } = useAuth();
-  const {
-    account,
-    availableWallets,
-    connectWallet,
-    isConnecting,
-    siweLogin,
-    requestWalletPermissions,
-    multisigSign,
-  } = useWallet();
+  const { account } = useWallet();
 
   const [tab, setTab] = useState<"email" | "wallet">(defaultTab);
   const [email, setEmail] = useState("");
@@ -32,21 +23,11 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
-  const [siweLoading, setSiweLoading] = useState(false);
-  const [permLoading, setPermLoading] = useState(false);
-  const [multiLoading, setMultiLoading] = useState(false);
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [installPromptOpen, setInstallPromptOpen] = useState(false);
-  const [installWalletName, setInstallWalletName] = useState<string>("");
-  const [installUrl, setInstallUrl] = useState<string>("");
 
   const tLogin = useTranslations("login");
 
   useEffect(() => {
     if (!open) return;
-    // 登录成功后自动关闭
     if (user || account) {
       onClose();
     }
@@ -59,6 +40,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
       setOtpRequested(false);
       setOtp("");
       setLoading(false);
+      setWalletModalOpen(false);
     }
   }, [open, defaultTab]);
 
@@ -96,61 +78,9 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
     setLoading(false);
   };
 
-  const installMap: Record<string, { name: string; url: string }> = {
-    metamask: { name: "MetaMask", url: "https://metamask.io/download/" },
-    coinbase: {
-      name: "Coinbase Wallet",
-      url: "https://chrome.google.com/webstore/detail/coinbase-wallet-extension/hnfanknocfeofbddgcijnmhnfnkdnaad",
-    },
-    binance: {
-      name: "Binance Wallet",
-      url: "https://chrome.google.com/webstore/detail/binance-wallet/fhbohimaelbohpjbbldcngcnapndodjp",
-    },
-    okx: {
-      name: "OKX Wallet",
-      url: "https://chrome.google.com/webstore/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge",
-    },
-  };
-
-  const handleWalletConnect = async (walletType: string, isAvailable?: boolean) => {
-    if (!isAvailable) {
-      const cfg = installMap[walletType] || {
-        name: walletType,
-        url: "https://metamask.io/download/",
-      };
-      setInstallWalletName(cfg.name);
-      setInstallUrl(cfg.url);
-      setInstallPromptOpen(true);
-      return;
-    }
-    setSelectedWallet(walletType);
-    try {
-      await connectWallet(walletType as any);
-      setPermLoading(true);
-      await requestWalletPermissions();
-      setPermLoading(false);
-      setSiweLoading(true);
-      const res = await siweLogin();
-      setSiweLoading(false);
-      if (!res.success) {
-        console.error("签名登录失败:", res.error);
-      }
-      setMultiLoading(true);
-      await multisigSign();
-      setMultiLoading(false);
-      onClose();
-    } catch (error) {
-      console.error("连接钱包失败:", error);
-    } finally {
-      setSelectedWallet(null);
-    }
-  };
-
-  const onScroll = () => {
-    const el = listRef.current;
-    if (!el) return;
-    const itemHeight = 80; // 约等于每个项的高度，便于计算当前位置
-    setActiveIndex(Math.round(el.scrollTop / itemHeight));
+  const openWalletFlow = () => {
+    setTab("wallet");
+    setWalletModalOpen(true);
   };
 
   if (!open) return null;
@@ -162,7 +92,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
         onClose={onClose}
         ariaLabelledby="login-modal-title"
         ariaDescribedby="login-modal-description"
-        containerClassName={`w-full max-w-md rounded-xl shadow-xl ${installPromptOpen ? "bg-gradient-to-r from-purple-600/62 to-pink-600/62" : "bg-white"}`}
+        containerClassName="w-full max-w-md rounded-xl shadow-xl bg-white"
       >
         <div>
           <div className="flex items-center justify-between border-b px-4 py-3">
@@ -175,7 +105,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
               </button>
               <button
                 className={`px-3 py-1.5 rounded-md text-sm font-medium ${tab === "wallet" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setTab("wallet")}
+                onClick={openWalletFlow}
               >
                 {tLogin("tabWallet")}
               </button>
@@ -299,89 +229,13 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
               <p id="login-modal-description" className="text-sm text-gray-600">
                 {tLogin("walletContinueDescription")}
               </p>
-
-              <div className="relative">
-                <div
-                  ref={listRef}
-                  onScroll={onScroll}
-                  className="h-56 overflow-y-auto snap-y snap-mandatory pr-2 -mr-2 scrollbar-beauty"
-                >
-                  {availableWallets && availableWallets.length > 0 ? (
-                    availableWallets.map((wallet, index) => (
-                      <button
-                        key={wallet.type}
-                        onClick={() => handleWalletConnect(wallet.type, wallet.isAvailable)}
-                        disabled={isConnecting}
-                        className={`snap-center w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group relative overflow-hidden mb-3
-                          ${
-                            wallet.isAvailable
-                              ? "border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer hover:shadow-sm"
-                              : "border-gray-200 bg-gray-50 opacity-60"
-                          }
-                          ${selectedWallet === wallet.type ? "border-gray-900 bg-gray-100 shadow-md" : ""}
-                        `}
-                        aria-label={`连接 ${wallet.name}`}
-                      >
-                        <div className="relative flex items-center space-x-4">
-                          <div className="flex-shrink-0 p-2 bg-white rounded-xl shadow-sm">
-                            <Wallet className="w-6 h-6 text-gray-900" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-semibold text-gray-900">{wallet.name}</div>
-                            {!wallet.isAvailable ? (
-                              <div className="text-sm text-red-500 font-medium">
-                                {tLogin("notInstalled")}
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500">
-                                {tLogin("clickToConnect")}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="relative">
-                          {selectedWallet === wallet.type &&
-                          (isConnecting || siweLoading || permLoading || multiLoading) ? (
-                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-900 border-t-transparent" />
-                          ) : wallet.isAvailable ? (
-                            <div className="w-6 h-6 rounded-full border-2 border-gray-300 group-hover:border-gray-900 transition-colors duration-300 flex items-center justify-center">
-                              <div className="w-2 h-2 rounded-full bg-gray-900 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            </div>
-                          ) : (
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 20 20"
-                              fill="none"
-                              className="text-red-400"
-                            >
-                              <path
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                                fill="currentColor"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-sm text-gray-500">{tLogin("detectingWallets")}</div>
-                  )}
-                </div>
-
-                {availableWallets && availableWallets.length > 1 && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 pr-1">
-                    {availableWallets.map((_, i) => (
-                      <span
-                        key={i}
-                        className={`w-2 h-2 rounded-full ring-2 transition-all duration-200 ${i === activeIndex ? "bg-gradient-to-r from-purple-500 to-pink-500 ring-purple-300 shadow-sm" : "bg-gray-300 ring-transparent opacity-70"}`}
-                      ></span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
+              <button
+                onClick={openWalletFlow}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-4 py-3 text-white"
+              >
+                <Wallet className="w-5 h-5" />
+                {tLogin("tabWallet")}
+              </button>
               <p className="text-xs text-gray-500">{tLogin("switchToEmail")}</p>
             </div>
           )}
@@ -391,12 +245,6 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
       {walletModalOpen && (
         <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       )}
-      <InstallPromptModal
-        open={installPromptOpen}
-        onClose={() => setInstallPromptOpen(false)}
-        walletName={installWalletName}
-        installUrl={installUrl}
-      />
     </>
   );
 }

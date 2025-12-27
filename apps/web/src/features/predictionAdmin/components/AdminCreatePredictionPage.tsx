@@ -28,6 +28,7 @@ import {
   ChevronUp,
   FileText,
 } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import { CATEGORY_MAPPING } from "@/features/trending/trendingModel";
 import type { PredictionForm, Outcome } from "../types";
 import { useAdminCreatePredictionPage } from "../hooks/useAdminCreatePredictionPage";
@@ -480,6 +481,7 @@ export default function AdminCreatePredictionPage() {
     onOutcomeChange,
     submit,
   } = useAdminCreatePredictionPage();
+  const tAdminRoles = useTranslations("adminRoles");
 
   return (
     <GradientPage className="relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
@@ -513,13 +515,22 @@ export default function AdminCreatePredictionPage() {
               {tTrendingAdmin("page.description")}
             </p>
           </div>
-          <Button
-            variant="subtle"
-            onClick={() => router.push("/trending")}
-            className="rounded-2xl shadow-soft"
-          >
-            {tTrendingAdmin("page.backToList")}
-          </Button>
+          <div className="flex flex-col items-end gap-3">
+            <Button
+              variant="subtle"
+              onClick={() => router.push("/admin/roles")}
+              className="rounded-2xl shadow-soft"
+            >
+              {tAdminRoles("title")}
+            </Button>
+            <Button
+              variant="subtle"
+              onClick={() => router.push("/trending")}
+              className="rounded-2xl shadow-soft"
+            >
+              {tTrendingAdmin("page.backToList")}
+            </Button>
+          </div>
         </div>
 
         <motion.div

@@ -1,32 +1,72 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { NextRequest } from "next/server";
+import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 
-export async function isAdminSession(client: SupabaseClient) {
-  const {
-    data: { session },
-  } = await client.auth.getSession();
+type AdminSessionOk = { ok: true; reason: "ok"; sessionUserId: string | null };
+type AdminSessionFailReason = "unauthorized" | "forbidden";
+type AdminSessionFail = { ok: false; reason: AdminSessionFailReason };
+type AdminSession = AdminSessionOk | AdminSessionFail;
 
-  if (!session || !session.user) return { ok: false as const, reason: "unauthorized" as const };
+export async function isAdminSession(
+  client: SupabaseClient,
+  req: NextRequest
+): Promise<AdminSession> {
+  try {
+    const {
+      data: { session },
+    } = await client.auth.getSession();
 
-  let isAdmin = false;
+    if (session && session.user) {
+      let isAdmin = false;
 
-  if (session.user.email) {
-    const { data: profile } = await (client as any)
-      .from("user_profiles")
-      .select("is_admin")
-      .eq("email", session.user.email)
-      .maybeSingle();
-    if ((profile as any)?.is_admin) isAdmin = true;
+      if (session.user.email) {
+        const { data: profile } = await (client as any)
+          .from("user_profiles")
+          .select("is_admin")
+          .eq("email", session.user.email)
+          .maybeSingle();
+        if ((profile as any)?.is_admin) isAdmin = true;
+      }
+
+      const walletFromMeta =
+        (session.user as any).user_metadata?.wallet_address || (session.user as any).wallet_address;
+      const walletAddress = normalizeAddress(String(walletFromMeta || ""));
+
+      if (!isAdmin && walletAddress) {
+        const { data: profile } = await (client as any)
+          .from("user_profiles")
+          .select("is_admin")
+          .eq("wallet_address", walletAddress)
+          .maybeSingle();
+        if ((profile as any)?.is_admin) isAdmin = true;
+      }
+
+      if (!isAdmin && walletAddress && isAdminAddress(walletAddress)) {
+        isAdmin = true;
+      }
+
+      if (isAdmin) {
+        return { ok: true, reason: "ok", sessionUserId: session.user.id };
+      }
+    }
+  } catch {}
+
+  const sessAddr = await getSessionAddress(req);
+  const addr = normalizeAddress(String(sessAddr || ""));
+  if (!/^0x[a-f0-9]{40}$/.test(addr)) {
+    return { ok: false, reason: "unauthorized" };
   }
 
-  if (!isAdmin && (session.user as any).user_metadata?.wallet_address) {
-    const { data: profile } = await (client as any)
-      .from("user_profiles")
-      .select("is_admin")
-      .eq("wallet_address", (session.user as any).user_metadata.wallet_address)
-      .maybeSingle();
-    if ((profile as any)?.is_admin) isAdmin = true;
+  const { data: prof } = await (client as any)
+    .from("user_profiles")
+    .select("is_admin")
+    .eq("wallet_address", addr)
+    .maybeSingle();
+  const isAdmin = !!(prof as any)?.is_admin || isAdminAddress(addr);
+
+  if (!isAdmin) {
+    return { ok: false, reason: "forbidden" };
   }
 
-  if (!isAdmin) return { ok: false as const, reason: "forbidden" as const };
-  return { ok: true as const, session };
+  return { ok: true, reason: "ok", sessionUserId: null };
 }

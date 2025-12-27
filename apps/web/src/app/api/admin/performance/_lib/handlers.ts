@@ -16,7 +16,7 @@ export async function handleAdminPerformanceGet(req: NextRequest) {
       return errorResponse("数据库连接失败", ApiErrorCode.DATABASE_ERROR, 500);
     }
 
-    const admin = await isAdminSession(client as any);
+    const admin = await isAdminSession(client as any, req);
     if (!admin.ok) {
       if (admin.reason === "unauthorized")
         return errorResponse("未授权", ApiErrorCode.UNAUTHORIZED, 401);

@@ -44,6 +44,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   inserted BOOLEAN := FALSE;
+  v_row_count INTEGER;
 BEGIN
   INSERT INTO public.trades (
     network_id,
@@ -78,7 +79,8 @@ BEGIN
   )
   ON CONFLICT (tx_hash, log_index) DO NOTHING;
 
-  GET DIAGNOSTICS inserted = ROW_COUNT > 0;
+  GET DIAGNOSTICS v_row_count = ROW_COUNT;
+  inserted := v_row_count > 0;
 
   IF inserted THEN
     -- Apply fill to maker order (idempotent because we only do it when the trade insert succeeds)
