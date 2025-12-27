@@ -76,6 +76,15 @@
     "title": "社区讨论",
     "loginRequired": "发帖需连接钱包",
     "connectAndSign": "连接并签名",
+    "chatRoom": "聊天室",
+    "relatedPrediction": "关联预测",
+    "viewMarket": "查看市场",
+    "loadingTopic": "加载话题中...",
+    "loadFailed": "加载失败，请稍后重试",
+    "selectTopic": "请选择一个话题开始讨论",
+    "searchPlaceholder": "搜索话题或讨论...",
+    "noTopics": "暂无可用话题",
+    "emptyTopics": "暂无话题",
     "form": {
       "subjectPlaceholder": "主体名称",
       "action": {
@@ -386,7 +395,13 @@
     "installMetaMask": "安装 MetaMask",
     "connectFailedTitle": "连接钱包失败",
     "installMetaMaskExtension": "安装 MetaMask 浏览器扩展",
-    "unknownNetwork": "未知网络"
+    "unknownNetwork": "未知网络",
+    "notDetected": "未检测到 {walletName} 扩展",
+    "installPrompt": "请安装官方扩展，安装完成后返回并刷新页面。",
+    "safeInstallHint": "仅从官方渠道安装以确保安全。",
+    "refreshAfterInstall": "安装完成后刷新页面即可继续连接。",
+    "goInstall": "去安装",
+    "later": "稍后"
   },
   "mobileNav": {
     "menuOpen": "打开菜单",
@@ -510,7 +525,9 @@
   },
   "market": {
     "breadcrumbs": {
-      "home": "首页"
+      "home": "首页",
+      "trending": "热门预测",
+      "predictionDetail": "预测详情"
     },
     "header": {
       "statusActive": "进行中",
@@ -569,7 +586,18 @@
       "pnl": "收益",
       "implied": "隐含",
       "proposalOriginHint": "该预测市场源自社区在提案广场中的讨论，你可以回到原始提案继续交流设计思路和后续迭代建议。",
-      "viewProposal": "查看对应提案"
+      "viewProposal": "查看对应提案",
+      "defaultDescription": "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。",
+      "defaultTitle": "Foresight 预测市场事件"
+    },
+    "searchPage": {
+      "metaTitle": "Foresight 全站搜索 - 预测市场与提案快速发现",
+      "metaDescription": "通过 Foresight 全站搜索快速发现热门预测市场、社区提案与讨论内容，用关键词联通事件、治理和策略研究。",
+      "jsonLdName": "Foresight 全站搜索",
+      "jsonLdDescription": "Foresight 全站搜索结果页，聚合链上预测市场、提案广场与讨论内容，帮助你快速找到相关事件和话题。",
+      "heading": "全站搜索",
+      "body": "你可以使用右上角的搜索框（⌘K）快速搜索预测市场、提案与讨论内容。当前页面用于承载外部跳转和 SEO 描述，当你在导航栏触发搜索时，会打开全局搜索面板。",
+      "queryHint": "当前 URL 中包含查询参数 q={query}，你可以在顶部搜索框中再次输入以获得实时结果。"
     }
   },
   "filters": {
@@ -1282,6 +1310,44 @@
         "deadline": "{date} 截止"
       }
     }
+  },
+  "onboarding": {
+    "closeGuide": "关闭指引",
+    "intro": "在这个{category}预测市场中，你可以通过买入不同选项来交易自己对事件结果的看法，价格代表市场对事件发生概率的共识。",
+    "tradingTip": "交易面板位于右侧（桌面端）或通过底部按钮唤起（移动端），图表和盘口数据可以帮助你观察市场情绪和价格变化。",
+    "browseMore": "想浏览更多事件？",
+    "trendingLink": "热门预测",
+    "forumLink": "讨论区"
+  },
+  "loading": {
+    "predictionDetail": "加载预测事件详情...",
+    "trendingEvents": "正在载入热门事件…"
+  },
+  "adminPerformance": {
+    "title": "性能监控仪表板",
+    "subtitle": "实时 Web Vitals 和性能指标",
+    "refresh": "刷新",
+    "period": {
+      "day1": "过去 1 天",
+      "day7": "过去 7 天",
+      "day30": "过去 30 天"
+    },
+    "metrics": {
+      "LCP": "最大内容绘制",
+      "INP": "交互到下一次绘制",
+      "CLS": "累积布局偏移",
+      "FCP": "首次内容绘制",
+      "TTFB": "首字节时间"
+    },
+    "rating": {
+      "good": "良好",
+      "needsImprovement": "一般",
+      "poor": "差"
+    },
+    "percentGood": "{percent}% 良好",
+    "sampleCount": "基于 {count} 个样本",
+    "noData": "暂无数据",
+    "noDataHint": "请稍后再试或确保前端已正确集成 Web Vitals"
   },
   "adminRoles": {
     "title": "角色管理",

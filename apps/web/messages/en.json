@@ -76,6 +76,15 @@
     "title": "Community discussions",
     "loginRequired": "Connect wallet to start a thread",
     "connectAndSign": "Connect & sign",
+    "chatRoom": "Chat room",
+    "relatedPrediction": "Related prediction",
+    "viewMarket": "View market",
+    "loadingTopic": "Loading topics...",
+    "loadFailed": "Failed to load, please try again later",
+    "selectTopic": "Select a topic to start the discussion",
+    "searchPlaceholder": "Search topics or discussions...",
+    "noTopics": "No topics available",
+    "emptyTopics": "No topics",
     "form": {
       "subjectPlaceholder": "Subject name",
       "action": {
@@ -386,7 +395,13 @@
     "installMetaMask": "Install MetaMask",
     "connectFailedTitle": "Wallet connection failed",
     "installMetaMaskExtension": "Install MetaMask browser extension",
-    "unknownNetwork": "Unknown network"
+    "unknownNetwork": "Unknown network",
+    "notDetected": "{walletName} extension not detected",
+    "installPrompt": "Please install the official extension, then return and refresh the page.",
+    "safeInstallHint": "Only install from official sources for security.",
+    "refreshAfterInstall": "Refresh the page after installation to continue connecting.",
+    "goInstall": "Install",
+    "later": "Later"
   },
   "mobileNav": {
     "menuOpen": "Open menu",
@@ -510,7 +525,9 @@
   },
   "market": {
     "breadcrumbs": {
-      "home": "Home"
+      "home": "Home",
+      "trending": "Trending",
+      "predictionDetail": "Prediction detail"
     },
     "header": {
       "statusActive": "Active",
@@ -569,7 +586,18 @@
       "pnl": "PnL",
       "implied": "Implied",
       "proposalOriginHint": "This prediction market originates from community discussions in the Proposals Square. You can go back to the original proposal to continue exchanging ideas and iteration suggestions.",
-      "viewProposal": "View proposal"
+      "viewProposal": "View proposal",
+      "defaultDescription": "On-chain prediction market event. Trade your views on a decentralized blockchain-based prediction market platform.",
+      "defaultTitle": "Foresight Prediction Market Event"
+    },
+    "searchPage": {
+      "metaTitle": "Foresight Global Search - Discover Prediction Markets & Proposals",
+      "metaDescription": "Quickly discover trending prediction markets, community proposals and discussions through Foresight global search. Connect events, governance and strategy research with keywords.",
+      "jsonLdName": "Foresight Global Search",
+      "jsonLdDescription": "Foresight global search results page, aggregating on-chain prediction markets, proposal square and discussion content to help you quickly find related events and topics.",
+      "heading": "Global Search",
+      "body": "You can use the search box in the top right corner (⌘K) to quickly search prediction markets, proposals and discussion content. This page is for external links and SEO descriptions. When you trigger search from the navigation bar, the global search panel will open.",
+      "queryHint": "The current URL contains query parameter q={query}. You can enter in the top search box again for real-time results."
     }
   },
   "filters": {
@@ -1282,6 +1310,44 @@
         "deadline": "Ends on {date}"
       }
     }
+  },
+  "onboarding": {
+    "closeGuide": "Close guide",
+    "intro": "In this {category}prediction market, you can trade your views on event outcomes by buying different options. The price represents the market consensus on the event's probability.",
+    "tradingTip": "The trading panel is on the right (desktop) or accessible via the bottom button (mobile). Charts and order book data help you observe market sentiment and price changes.",
+    "browseMore": "Want to browse more events?",
+    "trendingLink": "Trending",
+    "forumLink": "Forum"
+  },
+  "loading": {
+    "predictionDetail": "Loading prediction event details...",
+    "trendingEvents": "Loading trending events…"
+  },
+  "adminPerformance": {
+    "title": "Performance Dashboard",
+    "subtitle": "Real-time Web Vitals and performance metrics",
+    "refresh": "Refresh",
+    "period": {
+      "day1": "Past 1 day",
+      "day7": "Past 7 days",
+      "day30": "Past 30 days"
+    },
+    "metrics": {
+      "LCP": "Largest Contentful Paint",
+      "INP": "Interaction to Next Paint",
+      "CLS": "Cumulative Layout Shift",
+      "FCP": "First Contentful Paint",
+      "TTFB": "Time to First Byte"
+    },
+    "rating": {
+      "good": "Good",
+      "needsImprovement": "Needs improvement",
+      "poor": "Poor"
+    },
+    "percentGood": "{percent}% good",
+    "sampleCount": "Based on {count} samples",
+    "noData": "No data",
+    "noDataHint": "Please try again later or ensure Web Vitals is properly integrated in the frontend"
   },
   "adminRoles": {
     "title": "Role Management",

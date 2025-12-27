@@ -3,6 +3,7 @@ import { MessageSquare, Search, Users, TrendingUp } from "lucide-react";
 import { normalizeCategory } from "@/features/trending/trendingModel";
 import { getCategoryStyle } from "./forumConfig";
 import type { ForumCategory, PredictionItem } from "./useForumList";
+import { t } from "@/lib/i18n";
 
 type ForumSidebarProps = {
   categories: ForumCategory[];
@@ -110,7 +111,7 @@ export function ForumSidebar({
           />
           <input
             type="text"
-            placeholder="搜索话题或讨论..."
+            placeholder={t("forum.searchPlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl text-sm text-[var(--foreground)] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-4 focus:ring-brand/10 focus:border-brand/40 transition-all outline-none relative z-0 shadow-sm group-hover:shadow-md"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -121,7 +122,11 @@ export function ForumSidebar({
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-2 custom-scrollbar">
         {filtered.length === 0 ? (
           <div className="h-full flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
-            {loading ? "加载话题中..." : error ? "暂无可用话题" : "暂无话题"}
+            {loading
+              ? t("forum.loadingTopic")
+              : error
+                ? t("forum.noTopics")
+                : t("forum.emptyTopics")}
           </div>
         ) : (
           filtered.map((topic) => {

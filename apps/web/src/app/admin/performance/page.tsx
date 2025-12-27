@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Clock, Zap, BarChart3, RefreshCw } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 interface PerformanceStats {
   [key: string]: {
@@ -35,6 +36,7 @@ export default function PerformanceDashboard() {
  * 展示 Web Vitals 和性能指标统计
  */
 function PerformanceDashboardContent() {
+  const tPerf = useTranslations("adminPerformance");
   const [stats, setStats] = useState<PerformanceStats>({});
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
@@ -61,7 +63,7 @@ function PerformanceDashboardContent() {
   const metrics = [
     {
       name: "LCP",
-      label: "最大内容绘制",
+      label: tPerf("metrics.LCP"),
       icon: Activity,
       color: "purple",
       unit: "ms",
@@ -69,7 +71,7 @@ function PerformanceDashboardContent() {
     },
     {
       name: "INP",
-      label: "交互到下一次绘制",
+      label: tPerf("metrics.INP"),
       icon: Zap,
       color: "blue",
       unit: "ms",
@@ -77,7 +79,7 @@ function PerformanceDashboardContent() {
     },
     {
       name: "CLS",
-      label: "累积布局偏移",
+      label: tPerf("metrics.CLS"),
       icon: TrendingUp,
       color: "green",
       unit: "",
@@ -85,7 +87,7 @@ function PerformanceDashboardContent() {
     },
     {
       name: "FCP",
-      label: "首次内容绘制",
+      label: tPerf("metrics.FCP"),
       icon: Clock,
       color: "orange",
       unit: "ms",
@@ -93,7 +95,7 @@ function PerformanceDashboardContent() {
     },
     {
       name: "TTFB",
-      label: "首字节时间",
+      label: tPerf("metrics.TTFB"),
       icon: BarChart3,
       color: "pink",
       unit: "ms",
@@ -104,11 +106,11 @@ function PerformanceDashboardContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* 头部 */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">性能监控仪表板</h1>
-            <p className="text-gray-600 mt-2">实时 Web Vitals 和性能指标</p>
+            <h1 className="text-3xl font-bold text-gray-900">{tPerf("title")}</h1>
+            <p className="text-gray-600 mt-2">{tPerf("subtitle")}</p>
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -116,9 +118,9 @@ function PerformanceDashboardContent() {
               onChange={(e) => setDays(parseInt(e.target.value))}
               className="px-4 py-2 rounded-xl border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value={1}>过去 1 天</option>
-              <option value={7}>过去 7 天</option>
-              <option value={30}>过去 30 天</option>
+              <option value={1}>{tPerf("period.day1")}</option>
+              <option value={7}>{tPerf("period.day7")}</option>
+              <option value={30}>{tPerf("period.day30")}</option>
             </select>
             <button
               onClick={fetchStats}
@@ -126,16 +128,16 @@ function PerformanceDashboardContent() {
               className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              刷新
+              {tPerf("refresh")}
             </button>
           </div>
         </div>
 
-        {/* 指标卡片 */}
+        {/* Metric Cards */}
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-600">加载中...</p>
+            <p className="mt-4 text-gray-600">{tPerf("loading") || "Loading..."}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -171,7 +173,7 @@ function PerformanceDashboardContent() {
                             : "bg-red-50 text-red-700"
                       }`}
                     >
-                      {score.toFixed(0)}% 良好
+                      {tPerf("percentGood").replace("{percent}", score.toFixed(0))}
                     </div>
                   </div>
 
@@ -204,12 +206,12 @@ function PerformanceDashboardContent() {
                     </div>
                   </div>
 
-                  {/* 评分分布 */}
+                  {/* Rating distribution */}
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2 text-xs">
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="text-green-600">良好</span>
+                          <span className="text-green-600">{tPerf("rating.good")}</span>
                           <span className="font-semibold">{stat.good}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -221,7 +223,9 @@ function PerformanceDashboardContent() {
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="text-yellow-600">一般</span>
+                          <span className="text-yellow-600">
+                            {tPerf("rating.needsImprovement")}
+                          </span>
                           <span className="font-semibold">{stat.needsImprovement}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -233,7 +237,7 @@ function PerformanceDashboardContent() {
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="text-red-600">差</span>
+                          <span className="text-red-600">{tPerf("rating.poor")}</span>
                           <span className="font-semibold">{stat.poor}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -246,9 +250,9 @@ function PerformanceDashboardContent() {
                     </div>
                   </div>
 
-                  {/* 样本数量 */}
+                  {/* Sample count */}
                   <div className="mt-3 text-xs text-gray-500 text-center">
-                    基于 {stat.count} 个样本
+                    {tPerf("sampleCount").replace("{count}", String(stat.count))}
                   </div>
                 </motion.div>
               );
@@ -256,11 +260,11 @@ function PerformanceDashboardContent() {
           </div>
         )}
 
-        {/* 提示 */}
+        {/* Hint */}
         {!loading && Object.keys(stats).length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-600">暂无数据</p>
-            <p className="text-sm text-gray-500 mt-2">请稍后再试或确保前端已正确集成 Web Vitals</p>
+            <p className="text-gray-600">{tPerf("noData")}</p>
+            <p className="text-sm text-gray-500 mt-2">{tPerf("noDataHint")}</p>
           </div>
         )}
       </div>

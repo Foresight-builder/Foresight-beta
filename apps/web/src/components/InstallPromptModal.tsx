@@ -3,6 +3,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Puzzle } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function InstallPromptModal({ open, onClose, walletName, installUrl }: Props) {
+  const tWallet = useTranslations("wallet");
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -37,18 +39,16 @@ export default function InstallPromptModal({ open, onClose, walletName, installU
                 </div>
                 <div>
                   <div className="text-lg font-semibold text-gray-900">
-                    未检测到 {walletName} 扩展
+                    {tWallet("notDetected").replace("{walletName}", walletName)}
                   </div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    请安装官方扩展，安装完成后返回并刷新页面。
-                  </div>
+                  <div className="mt-1 text-sm text-gray-600">{tWallet("installPrompt")}</div>
                 </div>
               </div>
             </div>
             <div className="px-6 mt-4">
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="text-sm text-gray-700">仅从官方渠道安装以确保安全。</div>
-                <div className="mt-2 text-xs text-gray-500">安装完成后刷新页面即可继续连接。</div>
+                <div className="text-sm text-gray-700">{tWallet("safeInstallHint")}</div>
+                <div className="mt-2 text-xs text-gray-500">{tWallet("refreshAfterInstall")}</div>
               </div>
             </div>
             <div className="px-6 pb-6 mt-6 flex items-center justify-end gap-3">
@@ -56,7 +56,7 @@ export default function InstallPromptModal({ open, onClose, walletName, installU
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl bg-gray-100 text-gray-900 hover:bg-gray-200 transition"
               >
-                稍后
+                {tWallet("later")}
               </button>
               <a
                 href={installUrl}
@@ -65,7 +65,7 @@ export default function InstallPromptModal({ open, onClose, walletName, installU
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-95 transition"
               >
-                去安装
+                {tWallet("goInstall")}
               </a>
             </div>
           </motion.div>

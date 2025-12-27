@@ -11,6 +11,7 @@ import {
 import ChatPanel from "@/components/ChatPanel";
 import { getCategoryStyle } from "./forumConfig";
 import type { PredictionItem } from "./useForumList";
+import { t } from "@/lib/i18n";
 
 type ForumChatFrameProps = {
   account: string | null | undefined;
@@ -33,9 +34,7 @@ export function ForumChatFrame({
 
   return (
     <div className="flex-1 flex flex-col">
-      <header
-        className="h-16 px-6 border-b border-[var(--card-border)] flex items-center justify-between sticky top-0 z-20 bg-[var(--card-bg)] backdrop-blur-xl shadow-none relative overflow-hidden"
-      >
+      <header className="h-16 px-6 border-b border-[var(--card-border)] flex items-center justify-between sticky top-0 z-20 bg-[var(--card-bg)] backdrop-blur-xl shadow-none relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/12 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex-shrink-0 w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-brand/15 shadow-inner">
@@ -44,7 +43,7 @@ export function ForumChatFrame({
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-[var(--foreground)] truncate text-lg tracking-tight">
-                {currentTopic?.title || "聊天室"}
+                {currentTopic?.title || t("forum.chatRoom")}
               </h2>
               <Sparkles className="w-4 h-4 text-brand/80" />
             </div>
@@ -63,7 +62,9 @@ export function ForumChatFrame({
 
         <div className="flex items-center gap-6">
           <div className="text-xs font-medium bg-[var(--card-bg)] text-[var(--foreground)] px-3 py-1.5 rounded-xl border border-[var(--card-border)]">
-            {account ? `你：${displayName(account)}` : "未连接钱包"}
+            {account
+              ? t("chat.header.youLabel").replace("{name}", displayName(account))
+              : t("chat.header.walletDisconnected")}
           </div>
 
           <div className="w-px h-8 bg-[var(--card-border)]" />
@@ -72,13 +73,13 @@ export function ForumChatFrame({
             <>
               <div className="flex flex-col items-end">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">
-                  关联预测
+                  {t("forum.relatedPrediction")}
                 </span>
                 <Link
                   href={`/prediction/${currentTopic.id}`}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline whitespace-nowrap"
                 >
-                  查看市场
+                  {t("forum.viewMarket")}
                   <ArrowUpRight size={14} />
                 </Link>
               </div>
@@ -134,10 +135,10 @@ export function ForumChatFrame({
           ) : (
             <div className="h-full flex items-center justify-center text-sm text-slate-500 dark:text-slate-300 backdrop-blur-md">
               {loading
-                ? "加载话题中..."
+                ? t("forum.loadingTopic")
                 : error
-                  ? "加载失败，请稍后重试"
-                  : "请选择一个话题开始讨论"}
+                  ? t("forum.loadFailed")
+                  : t("forum.selectTopic")}
             </div>
           )}
         </div>

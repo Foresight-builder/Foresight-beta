@@ -76,6 +76,15 @@
     "title": "Debates de la comunidad",
     "loginRequired": "Conecta tu billetera para iniciar un hilo",
     "connectAndSign": "Conectar y firmar",
+    "chatRoom": "Sala de chat",
+    "relatedPrediction": "Predicción relacionada",
+    "viewMarket": "Ver mercado",
+    "loadingTopic": "Cargando temas...",
+    "loadFailed": "Error al cargar, inténtalo de nuevo más tarde",
+    "selectTopic": "Selecciona un tema para iniciar la discusión",
+    "searchPlaceholder": "Buscar temas o discusiones...",
+    "noTopics": "No hay temas disponibles",
+    "emptyTopics": "Sin temas",
     "form": {
       "subjectPlaceholder": "Nombre del tema",
       "action": {
@@ -386,7 +395,13 @@
     "installMetaMask": "Instalar MetaMask",
     "connectFailedTitle": "Error al conectar la billetera",
     "installMetaMaskExtension": "Instalar la extensión de MetaMask",
-    "unknownNetwork": "Red desconocida"
+    "unknownNetwork": "Red desconocida",
+    "notDetected": "Extensión de {walletName} no detectada",
+    "installPrompt": "Instala la extensión oficial, luego vuelve y actualiza la página.",
+    "safeInstallHint": "Instala solo desde fuentes oficiales para mayor seguridad.",
+    "refreshAfterInstall": "Actualiza la página después de instalar para continuar conectando.",
+    "goInstall": "Instalar",
+    "later": "Más tarde"
   },
   "mobileNav": {
     "menuOpen": "Abrir menú",
@@ -510,7 +525,9 @@
   },
   "market": {
     "breadcrumbs": {
-      "home": "Inicio"
+      "home": "Inicio",
+      "trending": "Tendencias",
+      "predictionDetail": "Detalle de predicción"
     },
     "header": {
       "statusActive": "Activa",
@@ -569,7 +586,18 @@
       "pnl": "Ganancia/Pérdida",
       "implied": "Implícito",
       "proposalOriginHint": "Este mercado de predicción surge de las discusiones de la comunidad en la Plaza de Propuestas. Puedes volver a la propuesta original para seguir intercambiando ideas y sugerencias de mejora.",
-      "viewProposal": "Ver propuesta"
+      "viewProposal": "Ver propuesta",
+      "defaultDescription": "Evento de mercado de predicciones on-chain. Opera con tus opiniones en una plataforma de predicciones descentralizada basada en blockchain.",
+      "defaultTitle": "Evento del mercado de predicciones de Foresight"
+    },
+    "searchPage": {
+      "metaTitle": "Búsqueda global de Foresight - Descubre mercados de predicción y propuestas",
+      "metaDescription": "Descubre rápidamente mercados de predicción en tendencia, propuestas de la comunidad y discusiones a través de la búsqueda global de Foresight. Conecta eventos, gobernanza e investigación de estrategias con palabras clave.",
+      "jsonLdName": "Búsqueda global de Foresight",
+      "jsonLdDescription": "Página de resultados de búsqueda global de Foresight, que agrega mercados de predicción on-chain, plaza de propuestas y contenido de discusión para ayudarte a encontrar rápidamente eventos y temas relacionados.",
+      "heading": "Búsqueda global",
+      "body": "Puedes usar la caja de búsqueda en la esquina superior derecha (⌘K) para buscar rápidamente mercados de predicción, propuestas y contenido de discusión. Esta página es para enlaces externos y descripciones SEO. Cuando actives la búsqueda desde la barra de navegación, se abrirá el panel de búsqueda global.",
+      "queryHint": "La URL actual contiene el parámetro de consulta q={query}. Puedes escribir de nuevo en la caja de búsqueda superior para obtener resultados en tiempo real."
     }
   },
   "filters": {
@@ -1282,6 +1310,44 @@
         "deadline": "Finaliza el {date}"
       }
     }
+  },
+  "onboarding": {
+    "closeGuide": "Cerrar guía",
+    "intro": "En este mercado de predicciones {category}, puedes operar con tus opiniones sobre los resultados de eventos comprando diferentes opciones. El precio representa el consenso del mercado sobre la probabilidad del evento.",
+    "tradingTip": "El panel de trading está a la derecha (escritorio) o accesible mediante el botón inferior (móvil). Los gráficos y los datos del libro de órdenes te ayudan a observar el sentimiento del mercado y los cambios de precio.",
+    "browseMore": "¿Quieres explorar más eventos?",
+    "trendingLink": "Tendencias",
+    "forumLink": "Foro"
+  },
+  "loading": {
+    "predictionDetail": "Cargando detalles del evento de predicción...",
+    "trendingEvents": "Cargando eventos en tendencia…"
+  },
+  "adminPerformance": {
+    "title": "Panel de rendimiento",
+    "subtitle": "Web Vitals y métricas de rendimiento en tiempo real",
+    "refresh": "Actualizar",
+    "period": {
+      "day1": "Último día",
+      "day7": "Últimos 7 días",
+      "day30": "Últimos 30 días"
+    },
+    "metrics": {
+      "LCP": "Largest Contentful Paint",
+      "INP": "Interaction to Next Paint",
+      "CLS": "Cumulative Layout Shift",
+      "FCP": "First Contentful Paint",
+      "TTFB": "Time to First Byte"
+    },
+    "rating": {
+      "good": "Bueno",
+      "needsImprovement": "Regular",
+      "poor": "Malo"
+    },
+    "percentGood": "{percent}% bueno",
+    "sampleCount": "Basado en {count} muestras",
+    "noData": "Sin datos",
+    "noDataHint": "Inténtalo de nuevo más tarde o asegúrate de que Web Vitals esté correctamente integrado en el frontend"
   },
   "adminRoles": {
     "title": "Gestión de roles",

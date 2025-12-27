@@ -9,19 +9,17 @@ import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
 import { Loader2 } from "lucide-react";
 import { useUserPortfolio } from "@/hooks/useQueries";
+import { useTranslations } from "@/lib/i18n";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
 };
 
-function buildJsonLd(prediction: any) {
+function buildJsonLd(prediction: any, defaultDescription: string, defaultTitle: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   const url = `${baseUrl}/prediction/${prediction.id}`;
   const imageUrl = prediction.image_url || `${baseUrl}/og-image.png`;
-  const description =
-    prediction.description ||
-    prediction.criteria ||
-    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+  const description = prediction.description || prediction.criteria || defaultDescription;
   const createdTime = prediction.createdAt || prediction.created_at;
   const updatedTime = prediction.updatedAt || prediction.updated_at || createdTime;
   const deadline = prediction.deadline;
@@ -29,7 +27,7 @@ function buildJsonLd(prediction: any) {
   const article: any = {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: prediction.title || "Foresight 预测市场事件",
+    headline: prediction.title || defaultTitle,
     description,
     image: [imageUrl],
     url,
@@ -61,25 +59,28 @@ function buildJsonLd(prediction: any) {
   return article;
 }
 
-function buildBreadcrumbJsonLd(prediction: any) {
+function buildBreadcrumbJsonLd(
+  prediction: any,
+  breadcrumbs: { home: string; trending: string; predictionDetail: string }
+) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   const items = [
     {
       "@type": "ListItem",
       position: 1,
-      name: "首页",
+      name: breadcrumbs.home,
       item: baseUrl + "/",
     },
     {
       "@type": "ListItem",
       position: 2,
-      name: "热门预测",
+      name: breadcrumbs.trending,
       item: baseUrl + "/trending",
     },
     {
       "@type": "ListItem",
       position: 3,
-      name: prediction.title || "预测详情",
+      name: prediction.title || breadcrumbs.predictionDetail,
       item: `${baseUrl}/prediction/${prediction.id}`,
     },
   ];
@@ -92,6 +93,7 @@ function buildBreadcrumbJsonLd(prediction: any) {
 }
 
 export default function PredictionDetailClient({ relatedProposalId }: PredictionDetailClientProps) {
+  const tMarket = useTranslations("market");
   const {
     loading,
     error,
@@ -143,7 +145,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   if (error || !prediction) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
-        {error || "未找到预测事件"}
+        {error || tMarket("detail.notFound")}
       </div>
     );
   }
@@ -154,9 +156,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   const yesProb = prediction.stats?.yesProbability ?? 0;
   const noProb = prediction.stats?.noProbability ?? 0;
   const descriptionText =
-    prediction.description ||
-    prediction.criteria ||
-    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+    prediction.description || prediction.criteria || tMarket("detail.defaultDescription");
 
   const predictionIdNum = Number(prediction.id);
   const currentPosition =
@@ -182,12 +182,26 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     <div className="min-h-screen relative text-gray-900 font-sans pb-20">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(prediction)) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            buildJsonLd(
+              prediction,
+              tMarket("detail.defaultDescription"),
+              tMarket("detail.defaultTitle")
+            )
+          ),
+        }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(buildBreadcrumbJsonLd(prediction)),
+          __html: JSON.stringify(
+            buildBreadcrumbJsonLd(prediction, {
+              home: tMarket("breadcrumbs.home"),
+              trending: tMarket("breadcrumbs.trending"),
+              predictionDetail: tMarket("breadcrumbs.predictionDetail"),
+            })
+          ),
         }}
       />
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/10" />
@@ -210,11 +224,13 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                 {descriptionText}
               </p>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                价格代表事件发生的隐含概率，你可以随时买入或卖出持仓，观点变化时也能快速调整。
+                {tMarket("detail.priceHint")}
               </p>
               {account && currentPosition && !portfolioLoading && (
                 <div className="mt-3 inline-flex items-center text-[11px] text-slate-500 dark:text-slate-400 gap-2 rounded-full bg-[var(--card-bg)] px-2.5 py-1 border border-[var(--card-border)] backdrop-blur-md">
-                  <span className="text-slate-400 dark:text-slate-500">我的持仓</span>
+                  <span className="text-slate-400 dark:text-slate-500">
+                    {tMarket("detail.myPosition")}
+                  </span>
                   <span
                     className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
                       String((currentPosition as any).outcome || "").toLowerCase() === "yes"
@@ -227,13 +243,13 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                     {(currentPosition as any).outcome}
                   </span>
                   <span>
-                    投入{" "}
+                    {tMarket("detail.stake")}{" "}
                     <span className="font-semibold text-[var(--foreground)]">
                       ${Number((currentPosition as any).stake || 0).toFixed(2)}
                     </span>
                   </span>
                   <span>
-                    收益{" "}
+                    {tMarket("detail.pnl")}{" "}
                     <span
                       className={`font-semibold ${
                         String((currentPosition as any).pnl || "").startsWith("+")
@@ -246,7 +262,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   </span>
                   {positionSideProbPercent !== null && (
                     <span className="text-slate-400 dark:text-slate-500">
-                      隐含 {positionSideProbPercent.toFixed(1)}%
+                      {tMarket("detail.implied")} {positionSideProbPercent.toFixed(1)}%
                     </span>
                   )}
                 </div>
@@ -302,13 +318,13 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
         {relatedProposalId && (
           <div className="mb-8 max-w-3xl rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-50/90 via-emerald-50/80 to-teal-50/80 px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm shadow-emerald-500/10">
             <p className="text-xs sm:text-sm text-emerald-900">
-              该预测市场源自社区在提案广场中的讨论，你可以回到原始提案继续交流设计思路和后续迭代建议。
+              {tMarket("detail.proposalOriginHint")}
             </p>
             <Link
               href={`/proposals/${relatedProposalId}`}
               className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-500/30 hover:bg-emerald-700 transition-colors whitespace-nowrap"
             >
-              查看对应提案
+              {tMarket("detail.viewProposal")}
             </Link>
           </div>
         )}
