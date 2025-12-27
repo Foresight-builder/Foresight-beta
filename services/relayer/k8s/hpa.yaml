@@ -1,0 +1,112 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: foresight-relayer-hpa
+  labels:
+    app: foresight-relayer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: foresight-relayer
+  
+  minReplicas: 3
+  maxReplicas: 20
+  
+  metrics:
+    # CPU 使用率
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    
+    # 内存使用率
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    
+    # 自定义指标：每秒请求数
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: 1000
+    
+    # 自定义指标：WebSocket 连接数
+    - type: Pods
+      pods:
+        metric:
+          name: websocket_connections
+        target:
+          type: AverageValue
+          averageValue: 500
+  
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
+    
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 120
+      selectPolicy: Min
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: foresight-relayer-pdb
+  labels:
+    app: foresight-relayer
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: foresight-relayer
+
+---
+# Vertical Pod Autoscaler (可选)
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: foresight-relayer-vpa
+  labels:
+    app: foresight-relayer
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: foresight-relayer
+  updatePolicy:
+    updateMode: "Off"  # 仅推荐，不自动更新
+  resourcePolicy:
+    containerPolicies:
+      - containerName: relayer
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: 4
+          memory: 4Gi
+        controlledResources:
+          - cpu
+          - memory
+

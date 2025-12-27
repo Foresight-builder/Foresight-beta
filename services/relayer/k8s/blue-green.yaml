@@ -1,0 +1,159 @@
+# Blue-Green 部署配置
+# 使用两个独立的 Deployment，通过 Service 切换流量
+
+---
+# Blue 环境 (当前生产)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foresight-relayer-blue
+  labels:
+    app: foresight-relayer
+    color: blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: foresight-relayer
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: foresight-relayer
+        color: blue
+        version: v2.0.0
+    spec:
+      containers:
+        - name: relayer
+          image: foresight/relayer:2.0.0
+          ports:
+            - containerPort: 3000
+            - containerPort: 3006
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLUSTER_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-master"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+
+---
+# Green 环境 (新版本)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foresight-relayer-green
+  labels:
+    app: foresight-relayer
+    color: green
+spec:
+  replicas: 0  # 初始为 0，部署新版本时扩展
+  selector:
+    matchLabels:
+      app: foresight-relayer
+      color: green
+  template:
+    metadata:
+      labels:
+        app: foresight-relayer
+        color: green
+        version: v2.1.0
+    spec:
+      containers:
+        - name: relayer
+          image: foresight/relayer:2.1.0
+          ports:
+            - containerPort: 3000
+            - containerPort: 3006
+          env:
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLUSTER_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-master"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+
+---
+# 生产 Service (指向活跃的颜色)
+apiVersion: v1
+kind: Service
+metadata:
+  name: foresight-relayer-prod
+  labels:
+    app: foresight-relayer
+spec:
+  type: ClusterIP
+  selector:
+    app: foresight-relayer
+    color: blue  # 切换时修改这里
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: websocket
+      port: 3006
+      targetPort: 3006
+
+---
+# 预览 Service (用于测试新版本)
+apiVersion: v1
+kind: Service
+metadata:
+  name: foresight-relayer-preview
+  labels:
+    app: foresight-relayer
+spec:
+  type: ClusterIP
+  selector:
+    app: foresight-relayer
+    color: green
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: websocket
+      port: 3006
+      targetPort: 3006
+
