@@ -1366,6 +1366,23 @@
     "noData": "Sin datos",
     "noDataHint": "Inténtalo de nuevo más tarde o asegúrate de que Web Vitals esté correctamente integrado en el frontend"
   },
+  "leaderboard": {
+    "title": "Clasificación de ganancias",
+    "subtitle": "Top Earners",
+    "week": "Esta semana",
+    "month": "Este mes",
+    "avatarAlt": "Avatar de {name}",
+    "viewAll": "Ver clasificación completa"
+  },
+  "stickerGallery": {
+    "title": "Colección de stickers",
+    "rarity": {
+      "legendary": "Legendario",
+      "epic": "Épico",
+      "rare": "Raro",
+      "common": "Común"
+    }
+  },
   "adminRoles": {
     "title": "Gestión de roles",
     "description": "Solo administradores. Otorga o revoca permisos de revisor para usuarios.",

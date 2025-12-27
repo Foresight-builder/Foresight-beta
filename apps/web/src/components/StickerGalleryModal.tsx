@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, HelpCircle } from "lucide-react";
 import { OFFICIAL_STICKERS, StickerItem, isImageUrl } from "./StickerRevealModal";
+import { useTranslations } from "@/lib/i18n";
 
 interface StickerGalleryModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export default function StickerGalleryModal({
   collectedIds,
   stickers = [],
 }: StickerGalleryModalProps) {
+  const tGallery = useTranslations("stickerGallery");
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
 
   const displayStickers = stickers.length > 0 ? stickers : OFFICIAL_STICKERS;
@@ -41,13 +43,13 @@ export default function StickerGalleryModal({
   const getRarityLabel = (r: string) => {
     switch (r) {
       case "legendary":
-        return "传说";
+        return tGallery("rarity.legendary");
       case "epic":
-        return "史诗";
+        return tGallery("rarity.epic");
       case "rare":
-        return "稀有";
+        return tGallery("rarity.rare");
       default:
-        return "普通";
+        return tGallery("rarity.common");
     }
   };
 
@@ -76,7 +78,7 @@ export default function StickerGalleryModal({
             <div className="flex items-center justify-between mb-6 shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                  表情包图鉴
+                  {tGallery("title")}
                   <span className="text-sm font-bold bg-purple-100 text-purple-600 px-3 py-1 rounded-full">
                     {collected}/{total}
                   </span>

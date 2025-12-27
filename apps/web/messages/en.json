@@ -1366,6 +1366,23 @@
     "noData": "No data",
     "noDataHint": "Please try again later or ensure Web Vitals is properly integrated in the frontend"
   },
+  "leaderboard": {
+    "title": "Earnings Leaderboard",
+    "subtitle": "Top Earners",
+    "week": "This Week",
+    "month": "This Month",
+    "avatarAlt": "{name}'s avatar",
+    "viewAll": "View full leaderboard"
+  },
+  "stickerGallery": {
+    "title": "Sticker Collection",
+    "rarity": {
+      "legendary": "Legendary",
+      "epic": "Epic",
+      "rare": "Rare",
+      "common": "Common"
+    }
+  },
   "adminRoles": {
     "title": "Role Management",
     "description": "Admin only. Grant or revoke reviewer permissions for users.",

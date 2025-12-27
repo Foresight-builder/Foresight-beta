@@ -1366,6 +1366,23 @@
     "noData": "暂无数据",
     "noDataHint": "请稍后再试或确保前端已正确集成 Web Vitals"
   },
+  "leaderboard": {
+    "title": "收益榜",
+    "subtitle": "Top Earners",
+    "week": "本周",
+    "month": "本月",
+    "avatarAlt": "{name} 头像",
+    "viewAll": "查看完整榜单"
+  },
+  "stickerGallery": {
+    "title": "表情包图鉴",
+    "rarity": {
+      "legendary": "传说",
+      "epic": "史诗",
+      "rare": "稀有",
+      "common": "普通"
+    }
+  },
   "adminRoles": {
     "title": "角色管理",
     "description": "仅管理员可访问，用于为用户开通或取消审核权限。",

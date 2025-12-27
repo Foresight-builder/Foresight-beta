@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Crown, Trophy, ChevronRight, TrendingUp } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
+import { useTranslations } from "@/lib/i18n";
 
 // Mock data
 const leaderboardData = [
@@ -60,9 +61,10 @@ const leaderboardData = [
 ];
 
 function Leaderboard() {
+  const tLeaderboard = useTranslations("leaderboard");
   const [period, setPeriod] = useState("week");
-  
-  // 使用 useMemo 优化数据切片
+
+  // Use useMemo to optimize data slicing
   const top3 = useMemo(() => leaderboardData.slice(0, 3), []);
   const others = useMemo(() => leaderboardData.slice(3), []);
 
@@ -81,10 +83,10 @@ function Leaderboard() {
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-800 leading-none mb-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
-              收益榜
+              {tLeaderboard("title")}
             </h3>
             <p className="text-xs text-gray-500 font-medium group-hover:text-purple-400 transition-colors">
-              Top Earners
+              {tLeaderboard("subtitle")}
             </p>
           </div>
         </div>
@@ -100,7 +102,7 @@ function Leaderboard() {
                   : "text-gray-500 hover:text-purple-600 hover:bg-purple-50/50"
               }`}
             >
-              {t === "week" ? "本周" : "本月"}
+              {t === "week" ? tLeaderboard("week") : tLeaderboard("month")}
             </button>
           ))}
         </div>
@@ -119,7 +121,7 @@ function Leaderboard() {
             >
               <LazyImage
                 src={top3[1].avatar}
-                alt={`${top3[1].name} 头像`}
+                alt={tLeaderboard("avatarAlt").replace("{name}", top3[1].name)}
                 className="w-full h-full rounded-full bg-white object-cover"
                 placeholderClassName="rounded-full bg-gradient-to-br from-slate-100 to-slate-200"
                 rootMargin={50}
@@ -152,7 +154,7 @@ function Leaderboard() {
             >
               <LazyImage
                 src={top3[0].avatar}
-                alt={`${top3[0].name} 头像`}
+                alt={tLeaderboard("avatarAlt").replace("{name}", top3[0].name)}
                 className="w-full h-full rounded-full bg-white object-cover"
                 placeholderClassName="rounded-full bg-gradient-to-br from-amber-100 to-yellow-100"
                 rootMargin={50}
@@ -183,7 +185,7 @@ function Leaderboard() {
             >
               <LazyImage
                 src={top3[2].avatar}
-                alt={`${top3[2].name} 头像`}
+                alt={tLeaderboard("avatarAlt").replace("{name}", top3[2].name)}
                 className="w-full h-full rounded-full bg-white object-cover"
                 placeholderClassName="rounded-full bg-gradient-to-br from-orange-100 to-orange-200"
                 rootMargin={50}
@@ -220,7 +222,7 @@ function Leaderboard() {
               </span>
               <LazyImage
                 src={item.avatar}
-                alt={`${item.name} 头像`}
+                alt={tLeaderboard("avatarAlt").replace("{name}", item.name)}
                 className="w-8 h-8 rounded-full bg-gray-100 object-cover group-hover/item:ring-2 ring-purple-100 transition-all"
                 placeholderClassName="rounded-full bg-gradient-to-br from-gray-100 to-gray-200"
                 rootMargin={100}
@@ -242,12 +244,12 @@ function Leaderboard() {
         href="/leaderboard"
         className="w-full mt-4 py-3 text-xs text-gray-400 font-medium hover:text-purple-600 flex items-center justify-center gap-1 transition-all border-t border-gray-100/50 hover:border-purple-100 group/link relative z-10"
       >
-        查看完整榜单
+        {tLeaderboard("viewAll")}
         <ChevronRight className="w-4 h-4 group-hover/link:translate-x-0.5 transition-transform" />
       </Link>
     </div>
   );
 }
 
-// 使用 memo 优化组件，避免不必要的重渲染
+// Use memo to optimize component, avoid unnecessary re-renders
 export default memo(Leaderboard);
