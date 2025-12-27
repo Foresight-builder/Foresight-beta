@@ -1,1173 +1,925 @@
-# 📚 Foresight 开发文档
+# 📚 Foresight 开发者文档
 
-> 唯一的开发者手册：面向日常开发与维护，覆盖组件与 Hooks、API、数据库、测试、国际化与 Sentry 等全部能力。
+> 完整的技术参考手册，涵盖智能合约、前端架构、API 设计与部署指南。
 
 ---
 
 ## 📑 目录
 
-- [🚀 快速上手](#-快速上手)
+- [架构概览](#架构概览)
+- [智能合约](#智能合约)
+  - [合约架构](#合约架构)
+  - [MarketFactory](#marketfactory)
+  - [市场模板](#市场模板)
+  - [UMA 预言机](#uma-预言机)
+  - [治理系统](#治理系统)
+  - [安全机制](#安全机制)
+- [链下订单簿](#链下订单簿)
+  - [订单类型](#订单类型)
+  - [EIP-712 签名](#eip-712-签名)
+  - [撮合引擎](#撮合引擎)
+  - [Relayer API](#relayer-api)
+- [前端应用](#前端应用)
+  - [目录结构](#目录结构)
 - [核心组件](#核心组件)
-- [自定义 Hooks](#自定义-hooks)
-- [工具函数](#工具函数)
-- [API 路由](#api-路由)
-- [数据库](#数据库)
-- [最佳实践](#最佳实践)
-- [🧠 高级能力](#-高级能力)
+  - [状态管理](#状态管理)
+  - [性能优化](#性能优化)
+- [API 参考](#api-参考)
+- [数据库设计](#数据库设计)
+- [部署指南](#部署指南)
+- [测试](#测试)
 
 ---
 
-## 使用方式
+## 架构概览
 
-- 新同学：优先阅读「🚀 快速上手」和「核心组件」了解常用能力。
-- 编写或重构页面：查阅对应的组件、自定义 Hooks 和工具函数章节。
-- 建立或增强质量体系：查阅「🧠 高级能力」中的测试、国际化与 Sentry 相关部分。
+Foresight 采用 **链下订单簿 + 链上结算** 的混合架构，与 Polymarket 技术方案一致：
 
----
-
-## 🚀 快速上手
-
-> 面向日常开发场景，帮助快速了解项目中可复用的基础能力。
-
-### 1. Toast 通知系统
-
-替代所有 `alert()` 使用：
-
-```typescript
-import { toast } from "@/lib/toast";
-
-// 成功提示
-toast.success("操作成功");
-
-// 错误提示
-toast.error("操作失败", "网络连接不稳定");
-
-// 警告提示
-toast.warning("注意", "此操作无法撤销");
-
-// 信息提示
-toast.info("提示", "数据已同步");
-
-// 异步操作
-toast.promise(fetchData(), {
-  loading: "加载中...",
-  success: "加载成功！",
-  error: "加载失败",
-});
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              用户操作流程                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. 挂单 (Maker)                    2. 吃单 (Taker)                         │
+│  ┌─────────────────────┐            ┌─────────────────────┐                │
+│  │ 用户签名 EIP-712    │            │ 获取订单簿深度      │                │
+│  │ 订单 (链下)         │ ────────►  │ 选择订单成交        │                │
+│  │ 0 Gas 成本          │            │ 提交 batchFill     │                │
+│  └─────────────────────┘            └─────────────────────┘                │
+│           │                                   │                             │
+│           ▼                                   ▼                             │
+│  ┌─────────────────────┐            ┌─────────────────────┐                │
+│  │    Relayer 服务     │            │    智能合约         │                │
+│  │  存储 & 广播订单    │ ◄───────── │  验证签名 & 结算    │                │
+│  └─────────────────────┘            └─────────────────────┘                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-建议用法：
+### 核心设计原则
 
-- 所有用户可见错误都用 `toast.error`，不要再出现浏览器 `alert`
-- 异步操作优先用 `toast.promise` 包裹，统一 loading / 成功 / 失败提示
+| 原则 | 实现 |
+|------|------|
+| **零 Gas 挂单** | 用户仅签名，订单存储在链下 |
+| **原子结算** | batchFill 一次交易完成多笔成交 |
+| **去中心化裁决** | UMA 乐观预言机 + 2h 争议期 |
+| **可升级性** | UUPS 代理模式 + Timelock 延迟 |
+| **Gas 效率** | Minimal Proxy (EIP-1167) 部署市场 |
 
 ---
 
-### 2. 骨架屏组件
+## 智能合约
 
-在数据加载时使用骨架屏替代「Loading...」：
+### 合约架构
 
-```typescript
-import { EventCardSkeleton } from "@/components/ui/Skeleton";
-
-{loading ? (
-  <EventCardSkeleton />
-) : (
-  <EventCard data={data} />
-)}
+```
+packages/contracts/contracts/
+├── MarketFactory.sol              # 市场工厂 (UUPS 可升级)
+├── interfaces/
+│   ├── IOracle.sol                # 预言机接口
+│   ├── IOracleRegistrar.sol       # 市场注册接口
+│   └── IMarket.sol                # 市场接口
+├── tokens/
+│   └── OutcomeToken1155.sol       # ERC-1155 结果代币
+├── templates/
+│   ├── OffchainMarketBase.sol     # 市场基类
+│   ├── OffchainBinaryMarket.sol   # 二元市场模板
+│   └── OffchainMultiMarket8.sol   # 多元市场模板 (≤8结果)
+├── oracles/
+│   └── UMAOracleAdapterV2.sol     # UMA 预言机适配器
+└── governance/
+    └── ForesightTimelock.sol      # 治理 Timelock
 ```
 
-建议用法：
+### MarketFactory
 
-- 列表、卡片、详情页等都优先使用对应的 Skeleton 组件
-- 骨架屏应与真实内容结构相似，避免跳闪
+工厂合约负责创建和管理所有预测市场。
 
----
-
-### 3. 输入验证与 XSS 防护
-
-统一使用安全工具函数处理用户输入：
-
-```typescript
-import { validateAndSanitize, sanitizeText } from "@/lib/security";
-
-// 验证用户输入
-const result = validateAndSanitize(userInput, {
-  type: "text",
-  required: true,
-  maxLength: 200,
-});
-
-if (!result.valid) {
-  toast.error("输入错误", result.error);
-  return;
-}
-
-// 清理用户输入
-const cleanText = sanitizeText(dirtyInput);
-```
-
-建议用法：
-
-- 所有进入数据库或展示在页面上的富文本，都先走 `validateAndSanitize`
-- 对外展示前永远不要直接渲染用户原始输入
-
----
-
-### 4. Rate Limiting（API Route 防刷）
-
-API Route 统一使用限流包装器：
-
-```typescript
-import { withRateLimit, rateLimitPresets } from "@/lib/rateLimit";
-
-export const POST = withRateLimit(
-  async (req) => {
-    // 处理请求...
-  },
-  rateLimitPresets.normal // 1 分钟 60 次
-);
-```
-
-建议用法：
-
-- 任何会产生写操作或对第三方接口发起请求的 API，都要加限流
-- 根据业务敏感度选择 `light` / `normal` / `strict` 预设
-
----
-
-### 5. 可访问性 Hooks
-
-使用内置可访问性 Hook 提升无障碍体验：
-
-```typescript
-import { useFocusTrap, useEscapeKey } from "@/hooks/useAccessibility";
-
-function Modal({ onClose }) {
-  const containerRef = useFocusTrap(true); // 焦点陷阱
-  useEscapeKey(onClose); // ESC 键关闭
-
-  return <div ref={containerRef}>...</div>;
+```solidity
+/// @title MarketFactory
+/// @notice 创建和管理预测市场的工厂合约
+/// @dev 使用 UUPS 可升级模式，通过 Minimal Proxy 部署市场实例
+contract MarketFactory is 
+    Initializable, 
+    AccessControlUpgradeable, 
+    UUPSUpgradeable 
+{
+    // 角色定义
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    
+    // 模板注册: templateId => implementation
+    mapping(bytes32 => address) public templates;
+    
+    // 市场映射: marketId => market address
+    mapping(bytes32 => address) public markets;
+    
+    /// @notice 创建新市场
+    /// @param marketId 市场唯一标识
+    /// @param templateId 使用的模板 ID
+    /// @param oracle 预言机地址
+    /// @param resolutionTime 结算时间戳
+    /// @param outcomeCount 结果数量
+    /// @param initData 初始化数据
+    function createMarket(
+        bytes32 marketId,
+        bytes32 templateId,
+        address oracle,
+        uint256 resolutionTime,
+        uint256 outcomeCount,
+        bytes calldata initData
+    ) external returns (address market);
 }
 ```
 
+**关键功能：**
+- `registerTemplate(templateId, implementation)` - 注册市场模板
+- `createMarket(...)` - 通过 Clone 创建市场实例
+- `setDefaultOracle(oracle)` - 设置默认预言机
+- `getMarkets(ids)` - 批量查询市场信息
+
+### 市场模板
+
+#### OffchainMarketBase
+
+所有市场模板的基类，定义了通用的结算逻辑。
+
+```solidity
+/// @title OffchainMarketBase
+/// @notice 链下订单簿市场的基础合约
+abstract contract OffchainMarketBase is 
+    IMarket, 
+    ReentrancyGuard, 
+    Initializable,
+    ERC1155Holder,
+    EIP712Upgradeable 
+{
+    // ========== 常量 ==========
+    uint256 public constant SHARE_SCALE = 1e18;      // 份额精度
+    uint256 public constant USDC_SCALE = 1e6;        // USDC 精度
+    uint256 public constant SHARE_GRANULARITY = 1e12; // 最小份额单位
+    uint256 public constant MAX_PRICE_6_PER_1E18 = 1e6; // 最高价格 (1 USDC)
+    
+    // ========== 安全限制 ==========
+    uint256 public constant MAX_VOLUME_PER_BLOCK = 1_000_000e6;  // 闪电贷保护
+    uint256 public constant MAX_BATCH_SIZE = 50;                  // 批量限制
+    uint256 public constant MIN_ORDER_LIFETIME = 5 seconds;       // 最短订单寿命
+    
+    // ========== 状态 ==========
+    enum State { TRADING, RESOLVED, INVALID }
+    
+    State public state;
+    uint8 public resolvedOutcome;
+    uint8 public outcomeCount;
+    bool public paused;
+    
+    // ========== 核心函数 ==========
+    
+    /// @notice 批量结算订单 (由 Relayer 调用)
+    function batchFill(SignedFill[] calldata fills) external nonReentrant whenNotPaused;
+    
+    /// @notice 铸造完整份额集
+    function mintCompleteSet(uint256 amount) external nonReentrant whenNotPaused;
+    
+    /// @notice 赎回获胜结果代币
+    function redeem(uint256 amount) external nonReentrant;
+    
+    /// @notice 市场无效时赎回完整集 (无手续费)
+    function redeemCompleteSetOnInvalid(uint256 amount) external nonReentrant;
+    
+    /// @notice 解决市场 (读取预言机结果)
+    function resolve() external;
+}
+```
+
+**价格与数量单位标准：**
+
+| 字段 | 单位 | 示例 |
+|------|------|------|
+| `amount18` | 1e18 (份额) | 1 份 = `1000000000000000000` |
+| `price6Per1e18` | USDC/份额 | 0.65 USDC = `650000` |
+| `SHARE_GRANULARITY` | 最小单位 1e12 | 保证 6 位小数精度 |
+
+#### OffchainBinaryMarket
+
+二元市场模板 (Yes/No)。
+
+```solidity
+contract OffchainBinaryMarket is OffchainMarketBase {
+    function initialize(
+        bytes32 marketId_,
+        address factory_,
+        address creator_,
+        address collateralToken_,
+        address outcomeToken_,
+        address oracle_,
+        uint64 resolutionTime_,
+        uint256 feeBps_  // 必须为 0
+    ) external initializer {
+        require(feeBps_ == 0, "FeeNotSupported");
+        _initCommon(..., 2); // outcomeCount = 2
+    }
+}
+```
+
+#### OffchainMultiMarket8
+
+多元市场模板 (2-8 种结果)。
+
+```solidity
+contract OffchainMultiMarket8 is OffchainMarketBase {
+    function initialize(
+        bytes32 marketId_,
+        address factory_,
+        address creator_,
+        address collateralToken_,
+        address outcomeToken_,
+        address oracle_,
+        uint64 resolutionTime_,
+        uint8 outcomeCount_,  // 2-8
+        uint256 feeBps_       // 必须为 0
+    ) external initializer {
+        require(outcomeCount_ >= 2 && outcomeCount_ <= 8, "InvalidOutcomeCount");
+        require(feeBps_ == 0, "FeeNotSupported");
+        _initCommon(..., outcomeCount_);
+    }
+}
+```
+
+### UMA 预言机
+
+#### UMAOracleAdapterV2
+
+与 UMA Optimistic Oracle V3 集成的适配器。
+
+```solidity
+/// @title UMAOracleAdapterV2
+/// @notice UMA 乐观预言机适配器，支持二元和多元市场
+contract UMAOracleAdapterV2 is 
+    IOracle, 
+    IOracleRegistrar, 
+    AccessControl, 
+    ReentrancyGuard 
+{
+    // ========== 角色 ==========
+    bytes32 public constant REPORTER_ROLE = keccak256("REPORTER_ROLE");
+    bytes32 public constant REGISTRAR_ROLE = keccak256("REGISTRAR_ROLE");
+    
+    // ========== 状态 ==========
+    enum MarketStatus { NONE, ASSERTING, RESOLVED, INVALID }
+    
+    struct MarketConfig {
+        uint64 resolutionTime;
+        uint8 outcomeCount;
+        MarketStatus status;
+        uint8 resolvedOutcome;
+        uint8 reassertionCount;
+    }
+    
+    mapping(bytes32 => MarketConfig) public marketConfigs;
+    
+    // ========== 核心流程 ==========
+    
+    /// @notice 市场注册 (由 Factory 调用)
+    function registerMarket(
+        bytes32 marketId, 
+        uint64 resolutionTime, 
+        uint8 outcomeCount
+    ) external onlyRole(REGISTRAR_ROLE);
+    
+    /// @notice 发起结算断言 (由 Reporter 调用)
+    function requestOutcome(
+        bytes32 marketId, 
+        uint8 outcomeIndex
+    ) external onlyRole(REPORTER_ROLE) nonReentrant;
+    
+    /// @notice 结算断言 (任何人可调用)
+    function settleOutcome(bytes32 marketId) external nonReentrant;
+    
+    /// @notice 重置无效市场以重新断言
+    function resetMarketForReassert(bytes32 marketId) external onlyRole(DEFAULT_ADMIN_ROLE);
+}
+```
+
+**UMA 结算流程：**
+
+```
+1. Reporter 调用 requestOutcome(marketId, outcomeIndex)
+   └── 向 UMA OO V3 发起断言，附带 bond
+
+2. UMA Liveness Period (默认 2 小时)
+   └── 任何人可通过 disputeAssertion() 争议
+
+3a. 无争议 → assertionResolvedCallback(true)
+    └── 市场状态 = RESOLVED，可赎回
+
+3b. 有争议且 Disputer 胜出 → assertionResolvedCallback(false)
+    └── 市场状态 = INVALID，可赎回完整集 (无损失)
+```
+
+### 治理系统
+
+#### ForesightTimelock
+
+关键操作的延迟执行机制。
+
+```solidity
+/// @title ForesightTimelock
+/// @notice 24 小时延迟的治理 Timelock
+contract ForesightTimelock is TimelockController {
+    constructor(
+        uint256 minDelay_,          // 24 * 3600 (24小时)
+        address[] memory proposers_, // Gnosis Safe 地址
+        address[] memory executors_, // address(0) = 任何人可执行
+        address admin_
+    ) TimelockController(minDelay_, proposers_, executors_, admin_) {}
+}
+```
+
+**治理架构：**
+
+```
+Gnosis Safe (3/5 多签)
+        │
+        ▼ 提案
+ForesightTimelock (24h 延迟)
+        │
+        ▼ 执行
+┌───────────────────────────────────────┐
+│  MarketFactory    UMAOracleAdapterV2  │
+│  (ADMIN_ROLE)     (DEFAULT_ADMIN_ROLE)│
+└───────────────────────────────────────┘
+```
+
+### 安全机制
+
+#### 闪电贷保护
+
+```solidity
+uint256 public constant MAX_VOLUME_PER_BLOCK = 1_000_000e6; // 100万 USDC
+
+mapping(uint256 => uint256) private _blockVolume;
+
+function _checkFlashLoanProtection(uint256 volume) internal {
+    uint256 currentVolume = _blockVolume[block.number] + volume;
+    if (currentVolume > MAX_VOLUME_PER_BLOCK) {
+        revert FlashLoanProtection();
+    }
+    _blockVolume[block.number] = currentVolume;
+}
+```
+
+#### 批量大小限制
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 50;
+
+function batchFill(SignedFill[] calldata fills) external {
+    if (fills.length > MAX_BATCH_SIZE) revert BatchSizeExceeded();
+    // ...
+}
+```
+
+#### 订单最短寿命
+
+```solidity
+uint256 public constant MIN_ORDER_LIFETIME = 5 seconds;
+
+function _fillOne(...) internal {
+    if (order.expiry < block.timestamp + MIN_ORDER_LIFETIME) {
+        revert OrderLifetimeTooShort();
+    }
+    // ...
+}
+```
+
+#### 签名可塑性保护
+
+```solidity
+uint256 constant ECDSA_S_UPPER_BOUND = 
+    0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
+
+function _checkSignatureMalleability(bytes calldata sig) internal pure {
+    bytes32 s;
+    assembly { s := calldataload(add(sig.offset, 32)) }
+    if (uint256(s) > ECDSA_S_UPPER_BOUND) revert InvalidSignatureS();
+}
+```
+
 ---
 
-### 6. 推荐代码风格
+## 链下订单簿
 
-推荐写法：
+### 订单类型
 
 ```typescript
-// 1. 使用 Toast 而不是 alert
-toast.error("创建失败", "请检查网络连接");
-
-// 2. 加载状态使用骨架屏
-{loading ? <Skeleton /> : <Content />}
-
-// 3. 验证用户输入
-const { valid, value, error } = validateAndSanitize(input, { type: "text" });
-
-// 4. 移动端适配
-<div className="mobile-safe-padding">...</div>
-
-// 5. 可访问性
-<button aria-label="关闭对话框" onClick={onClose}>
-  <X />
-</button>
+interface Order {
+  marketId: string;      // bytes32 市场 ID
+  maker: string;         // 挂单者地址
+  isBuy: boolean;        // true = 买入, false = 卖出
+  outcomeIndex: number;  // 结果索引 (0-7)
+  amount: bigint;        // 数量 (1e18 单位)
+  price: bigint;         // 价格 (1e6 单位, USDC per 1e18 share)
+  nonce: bigint;         // 防重放
+  expiry: number;        // 过期时间戳
+  salt: bigint;          // 随机盐
+}
 ```
 
-避免写法：
+### EIP-712 签名
 
+**Domain:**
 ```typescript
-// 不要使用 alert
-alert("操作失败");
+const domain = {
+  name: "Foresight",
+  version: "1",
+  chainId: 80002, // Polygon Amoy
+  verifyingContract: marketAddress,
+};
+```
 
-// 不要只显示简单 Loading 文本
-{loading && <div>Loading...</div>}
+**Order Type:**
+```typescript
+const types = {
+  Order: [
+    { name: "marketId", type: "bytes32" },
+    { name: "maker", type: "address" },
+    { name: "isBuy", type: "bool" },
+    { name: "outcomeIndex", type: "uint8" },
+    { name: "amount", type: "uint256" },
+    { name: "price", type: "uint256" },
+    { name: "nonce", type: "uint256" },
+    { name: "expiry", type: "uint256" },
+    { name: "salt", type: "uint256" },
+  ],
+};
+```
 
-// 不要直接使用未验证的用户输入
-await db.insert(userInput); // 危险！
+**签名流程:**
+```typescript
+const signature = await signer.signTypedData(domain, types, order);
+```
+
+### 撮合引擎
+
+Relayer 服务负责订单存储和撮合。
+
+```
+services/relayer/
+├── src/
+│   ├── index.ts          # Express 服务入口
+│   ├── orderbook.ts      # 订单簿逻辑
+│   └── supabase.ts       # 数据库操作
+```
+
+**撮合逻辑：**
+```typescript
+// 买单按价格降序排列 (高价优先)
+// 卖单按价格升序排列 (低价优先)
+
+function matchOrders(buyOrders: Order[], sellOrders: Order[]): Fill[] {
+  const fills: Fill[] = [];
+  
+  for (const buy of buyOrders) {
+    for (const sell of sellOrders) {
+      if (buy.price >= sell.price) {
+        // 可以成交
+        const fillAmount = min(buy.remainingAmount, sell.remainingAmount);
+        fills.push({ buy, sell, amount: fillAmount, price: sell.price });
+      }
+    }
+  }
+  
+  return fills;
+}
+```
+
+### Relayer API
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/order` | POST | 提交新订单 |
+| `/order/:salt` | DELETE | 取消订单 |
+| `/depth/:marketId/:outcomeIndex` | GET | 获取订单簿深度 |
+| `/orders/:marketId` | GET | 获取市场所有订单 |
+| `/my-orders/:address` | GET | 获取用户订单 |
+
+**提交订单示例：**
+```bash
+curl -X POST http://localhost:3001/order \
+  -H "Content-Type: application/json" \
+  -d '{
+    "order": {
+      "marketId": "0x...",
+      "maker": "0x...",
+      "isBuy": true,
+      "outcomeIndex": 0,
+      "amount": "1000000000000000000",
+      "price": "650000",
+      "nonce": "1",
+      "expiry": 1735689600,
+      "salt": "12345"
+    },
+    "signature": "0x..."
+  }'
 ```
 
 ---
 
-## 🧩 核心组件
+## 前端应用
 
-### 1. LazyImage
+### 目录结构
 
-**位置**: `apps/web/src/components/ui/LazyImage.tsx`
-
-图片懒加载组件，使用 IntersectionObserver 延迟加载图片。
-
-```tsx
-import LazyImage from "@/components/ui/LazyImage";
-
-<LazyImage
-  src="/images/banner.jpg"
-  alt="Banner"
-  width={800}
-  height={400}
-  className="rounded-lg"
-  priority={false} // 是否优先加载
-/>;
+```
+apps/web/src/
+├── app/                          # Next.js App Router
+│   ├── trending/                 # 热门预测列表
+│   ├── prediction/[id]/          # 预测详情 & 交易
+│   ├── proposals/                # 提案广场
+│   ├── leaderboard/              # 排行榜
+│   ├── forum/                    # 讨论论坛
+│   └── api/                      # API 路由
+│
+├── components/
+│   ├── ui/                       # 基础 UI 组件
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Modal.tsx
+│   │   ├── VirtualList.tsx       # 虚拟列表
+│   │   └── LazyImage.tsx         # 懒加载图片
+│   ├── market/                   # 市场相关组件
+│   │   ├── TradingPanel.tsx      # 交易面板
+│   │   ├── MarketChart.tsx       # K线图
+│   │   └── OutcomeList.tsx       # 结果列表
+│   └── skeletons/                # 骨架屏
+│
+├── contexts/
+│   ├── AuthContext.tsx           # 认证状态
+│   ├── WalletContext.tsx         # 钱包连接
+│   └── UserProfileContext.tsx    # 用户资料
+│
+├── hooks/
+│   ├── useInfiniteScroll.ts      # 无限滚动
+│   ├── usePersistedState.ts      # 持久化状态
+│   ├── usePrefetch.ts            # 数据预取
+│   └── useQueries.ts             # React Query hooks
+│
+└── lib/
+    ├── supabase.ts               # Supabase 客户端
+    ├── apiCache.ts               # API 缓存
+    ├── security.ts               # 安全工具
+    ├── rateLimit.ts              # 限流
+    └── toast.ts                  # Toast 通知
 ```
 
-**特性**:
+### 核心组件
 
-- ✅ 自动懒加载
-- ✅ 占位符支持
-- ✅ 加载动画
-- ✅ 错误处理
+#### TradingPanel
 
----
-
-### 2. EmptyState
-
-**位置**: `apps/web/src/components/EmptyState.tsx`
-
-统一的空状态展示组件。
+交易面板组件，支持限价单和市价单。
 
 ```tsx
-import EmptyState from "@/components/EmptyState";
+import { TradingPanel } from "@/components/market/TradingPanel";
 
-<EmptyState
-  icon={SearchIcon}
-  title="未找到结果"
-  description="尝试调整搜索条件"
-  action={{
-    label: "清除筛选",
-    onClick: handleClearFilters,
-  }}
-/>;
-```
-
-**预设类型**:
-
-- `no-data`: 无数据
-- `no-results`: 无搜索结果
-- `error`: 错误状态
-- `empty-cart`: 空购物车
-
----
-
-### 3. GlobalSearch
-
-**位置**: `apps/web/src/components/GlobalSearch.tsx`
-
-全局搜索组件，支持防抖和实时搜索。
-
-```tsx
-import GlobalSearch from "@/components/GlobalSearch";
-
-<GlobalSearch
-  placeholder="搜索预测..."
-  onSearch={(query) => console.log(query)}
-  debounceMs={300}
-/>;
-```
-
-**特性**:
-
-- ✅ 防抖搜索（300ms）
-- ✅ 键盘快捷键（Cmd/Ctrl + K）
-- ✅ 搜索历史
-- ✅ 实时建议
-
----
-
-### 4. FilterSort
-
-**位置**: `apps/web/src/components/FilterSort.tsx`
-
-筛选和排序组件。
-
-```tsx
-import FilterSort from '@/components/FilterSort';
-
-<FilterSort
-  filters={{
-    category: { label: "类别", options: [...] },
-    status: { label: "状态", options: [...] }
-  }}
-  sortOptions={[
-    { value: 'trending', label: '热门' },
-    { value: 'newest', label: '最新' }
-  ]}
-  onFilterChange={(filters) => console.log(filters)}
-  onSortChange={(sort) => console.log(sort)}
+<TradingPanel
+  marketId={marketId}
+  outcomeIndex={0}
+  outcomeName="Yes"
+  currentPrice={0.65}
+  onOrderSubmit={handleOrderSubmit}
 />
 ```
 
----
+#### VirtualList
 
-### 5. MobileMenu
-
-**位置**: `apps/web/src/components/MobileMenu.tsx`
-
-移动端汉堡菜单。
+高性能虚拟列表，只渲染可见项。
 
 ```tsx
-import MobileMenu from "@/components/MobileMenu";
+import { VirtualList } from "@/components/ui/VirtualList";
 
-<MobileMenu
-  isOpen={isMenuOpen}
-  onClose={() => setIsMenuOpen(false)}
-  menuItems={[
-    { label: "首页", href: "/" },
-    { label: "热门", href: "/trending" },
-  ]}
-/>;
+<VirtualList
+  items={predictions}
+  estimatedItemHeight={200}
+  getKey={(item) => item.id}
+  renderItem={(item) => <PredictionCard prediction={item} />}
+  onLoadMore={loadMore}
+  hasMore={hasNextPage}
+/>
 ```
 
-**特性**:
+### 状态管理
 
-- ✅ 滑动动画
-- ✅ 点击外部关闭
-- ✅ 滚动锁定
-- ✅ 键盘支持（ESC）
-
----
-
-### 6. MobileBottomNav
-
-**位置**: `apps/web/src/components/MobileBottomNav.tsx`
-
-移动端底部导航栏。
-
+**React Query 配置：**
 ```tsx
-import MobileBottomNav from "@/components/MobileBottomNav";
-
-<MobileBottomNav
-  items={[
-    { icon: HomeIcon, label: "首页", href: "/" },
-    { icon: TrendingIcon, label: "热门", href: "/trending" },
-    { icon: UserIcon, label: "我的", href: "/profile" },
-  ]}
-/>;
-```
-
-**特性**:
-
-- ✅ 固定底部
-- ✅ 安全区域适配
-- ✅ 活动状态高亮
-- ✅ 触摸优化（44x44px）
-
----
-
-### 7. PullToRefresh
-
-**位置**: `apps/web/src/components/PullToRefresh.tsx`
-
-下拉刷新组件（移动端）。
-
-```tsx
-import PullToRefresh from "@/components/PullToRefresh";
-
-<PullToRefresh
-  onRefresh={async () => {
-    await fetchData();
-  }}
-  threshold={80} // 触发距离
-  maxPullDistance={150}
->
-  <YourContent />
-</PullToRefresh>;
-```
-
-**特性**:
-
-- ✅ 手势识别
-- ✅ 加载动画
-- ✅ 触感反馈
-- ✅ iOS/Android 适配
-
----
-
-### 8. ProgressBar
-
-**位置**: `apps/web/src/components/ProgressBar.tsx`
-
-页面顶部进度条（NProgress）。
-
-```tsx
-// 自动在 layout.tsx 中使用
-// 页面切换时自动显示
-
-import { ProgressBar } from "@/components/ProgressBar";
-
-<ProgressBar
-  height="3px"
-  color="#3b82f6"
-  options={{
-    showSpinner: false,
-    speed: 300,
-  }}
-/>;
-```
-
----
-
-### 9. ErrorBoundary
-
-**位置**: `apps/web/src/components/ErrorBoundary.tsx`
-
-错误边界组件。
-
-```tsx
-import ErrorBoundary from "@/components/ErrorBoundary";
-
-<ErrorBoundary
-  fallback={(error, reset) => (
-    <div>
-      <h2>出错了</h2>
-      <button onClick={reset}>重试</button>
-    </div>
-  )}
->
-  <YourComponent />
-</ErrorBoundary>;
-```
-
----
-
-### 10. Skeleton 组件
-
-**位置**: `apps/web/src/components/skeletons/`
-
-各种骨架屏组件。
-
-```tsx
-import { FlagCardSkeleton } from "@/components/skeletons";
-
-<FlagCardSkeleton count={3} />;
-```
-
-**可用骨架屏**:
-
-- `FlagCardSkeleton`
-- `LeaderboardSkeleton`
-- `ChatSkeleton`
-- `ButtonSkeleton`
-- `InputSkeleton`
-
----
-
-## 🪝 自定义 Hooks
-
-### 1. useInfiniteScroll
-
-**位置**: `apps/web/src/hooks/useInfiniteScroll.ts`
-
-无限滚动 Hook（完整版）。
-
-```tsx
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
-
-const { loadMoreRef, isNearBottom } = useInfiniteScroll({
-  loading: isLoading,
-  hasNextPage: hasMore,
-  onLoadMore: handleLoadMore,
-  threshold: 0.1, // 距底部 10%
-  rootMargin: "100px", // 提前 100px
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,      // 2分钟
+      gcTime: 15 * 60 * 1000,        // 15分钟
+      refetchOnWindowFocus: "always",
+      structuralSharing: true,        // 减少重渲染
+      networkMode: "offlineFirst",
+    },
+  },
 });
+```
 
-// 使用方式 1: 观察特定元素
-<div ref={loadMoreRef}>{loading && <Spinner />}</div>;
+**数据预取：**
+```tsx
+import { usePrefetch } from "@/hooks/usePrefetch";
 
-// 使用方式 2: 监听全局滚动
-if (isNearBottom && !loading) {
-  loadMore();
+function PredictionCard({ id }) {
+  const { prefetchPrediction } = usePrefetch();
+  
+  return (
+    <Card onMouseEnter={() => prefetchPrediction(id)}>
+      {/* ... */}
+    </Card>
+  );
 }
 ```
 
+### 性能优化
+
+| 优化 | 实现 |
+|------|------|
+| **Bundle 分割** | ethers, framer-motion, react-query 单独打包 |
+| **查询并行化** | Promise.all 并行数据库查询 |
+| **虚拟列表** | VirtualList 只渲染可见项 |
+| **图片懒加载** | LazyImage + IntersectionObserver |
+| **API 缓存** | 内存缓存 + HTTP Cache Headers |
+| **预取** | 悬停时预取详情数据 |
+
 ---
 
-### 2. useWindowInfiniteScroll
+## API 参考
 
-**位置**: `apps/web/src/hooks/useInfiniteScroll.ts`
+### 预测列表
 
-简化版无限滚动 Hook（监听 window）。
-
-```tsx
-import { useWindowInfiniteScroll } from "@/hooks/useInfiniteScroll";
-
-const observerRef = useWindowInfiniteScroll({
-  loading: isLoading,
-  hasNextPage: hasMore,
-  onLoadMore: handleLoadMore,
-  threshold: 0.8, // 距底部 80%
-});
-
-<div ref={observerRef} />;
+```
+GET /api/predictions
 ```
 
----
+**参数：**
+| 参数 | 类型 | 描述 |
+|------|------|------|
+| `page` | number | 页码 |
+| `pageSize` | number | 每页数量 |
+| `category` | string | 分类筛选 |
+| `status` | string | 状态筛选 |
+| `includeOutcomes` | boolean | 是否包含结果详情 |
 
-### 3. usePersistedState
-
-**位置**: `apps/web/src/hooks/usePersistedState.ts`
-
-持久化状态 Hook（localStorage）。
-
-```tsx
-import { usePersistedState } from "@/hooks/usePersistedState";
-
-// 基础用法
-const [filters, setFilters] = usePersistedState("filters", {
-  category: null,
-  sortBy: "trending",
-});
-
-// 带过期时间（24小时）
-const [token, setToken] = usePersistedState("token", null, {
-  expiryMs: 24 * 60 * 60 * 1000,
-});
-
-// sessionStorage
-const [tempData, setTempData] = usePersistedState("temp", null, {
-  storage: "session",
-});
-```
-
----
-
-### 4. useDebounce
-
-**位置**: `apps/web/src/hooks/useDebounce.ts`
-
-防抖 Hook。
-
-```tsx
-import { useDebounce } from "@/hooks/useDebounce";
-
-const [search, setSearch] = useState("");
-const debouncedSearch = useDebounce(search, 500);
-
-useEffect(() => {
-  if (debouncedSearch) {
-    fetchResults(debouncedSearch);
-  }
-}, [debouncedSearch]);
-```
-
----
-
-## 🔧 工具函数
-
-### 1. apiWithFeedback
-
-**位置**: `apps/web/src/lib/apiWithFeedback.ts`
-
-API 调用加载反馈工具。
-
-```tsx
-import { apiWithFeedback } from "@/lib/apiWithFeedback";
-
-// 基础用法
-const data = await apiWithFeedback(() => fetch("/api/data").then((r) => r.json()));
-
-// 自定义提示
-const data = await apiWithFeedback(() => fetch("/api/data").then((r) => r.json()), {
-  loadingMessage: "加载中...",
-  successMessage: "加载成功！",
-  errorMessage: "加载失败",
-});
-
-// 配合 React Query
-const { data } = useQuery({
-  queryKey: ["data"],
-  queryFn: apiWithFeedback(() => fetch("/api/data").then((r) => r.json())),
-});
-```
-
-**特性**:
-
-- ✅ 自动显示 NProgress
-- ✅ 错误 Toast 提示
-- ✅ 成功 Toast（可选）
-- ✅ 自动错误处理
-
----
-
-### 2. webVitals
-
-**位置**: `apps/web/src/lib/webVitals.ts`
-
-Web Vitals 性能监控。
-
-```tsx
-import { reportWebVitals } from "@/lib/webVitals";
-
-// 自动在 layout.tsx 中使用
-// 收集 LCP, INP, CLS, FCP, TTFB
-
-// 查看数据
-// GET /api/analytics/vitals
-```
-
----
-
-### 3. errorTracking
-
-**位置**: `apps/web/src/lib/errorTracking.ts`
-
-错误追踪工具。
-
-```tsx
-import { ErrorTracker } from "@/lib/errorTracking";
-
-// 捕获错误
-try {
-  // 你的代码
-} catch (error) {
-  ErrorTracker.captureException(error, {
-    context: "user-action",
-    userId: user.id,
-  });
-}
-
-// 添加面包屑
-ErrorTracker.addBreadcrumb({
-  category: "navigation",
-  message: "User navigated to /trending",
-  level: "info",
-});
-```
-
----
-
-### 4. supabase
-
-**位置**: `apps/web/src/lib/supabase.ts`
-
-Supabase 客户端工具。
-
-```tsx
-import { supabase } from "@/lib/supabase";
-
-// 查询数据
-const { data, error } = await supabase.from("predictions").select("*").limit(10);
-
-// 实时订阅
-const subscription = supabase
-  .channel("predictions")
-  .on(
-    "postgres_changes",
+**响应：**
+```json
+{
+  "success": true,
+  "data": [
     {
-      event: "INSERT",
-      schema: "public",
-      table: "predictions",
-    },
-    (payload) => {
-      console.log("New prediction:", payload.new);
+      "id": "1",
+      "title": "BTC 会在 2025 年突破 $100k 吗？",
+      "category": "crypto",
+      "status": "active",
+      "followers_count": 128,
+      "stats": {
+        "yesAmount": 15000.5,
+        "noAmount": 8500.25,
+        "totalAmount": 23500.75,
+        "yesProbability": 0.6383
+      }
     }
-  )
-  .subscribe();
-```
-
----
-
-## 🛣️ API 路由
-
-### 预测 API
-
-#### GET /api/predictions
-
-获取预测列表。
-
-**查询参数**:
-
-```typescript
-{
-  page?: number;        // 页码（默认 1）
-  pageSize?: number;    // 每页数量（默认 20）
-  category?: string;    // 类别筛选
-  status?: string;      // 状态筛选
-  sortBy?: string;      // 排序方式
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 100,
+    "totalPages": 5
+  }
 }
 ```
 
-**响应**:
+### 订单簿深度
 
-```typescript
+```
+GET /api/orderbook/depth?marketId=0x...&outcomeIndex=0
+```
+
+**响应：**
+```json
 {
-  success: true,
-  data: {
-    predictions: Prediction[],
-    total: number,
-    page: number,
-    pageSize: number,
-    totalPages: number
+  "success": true,
+  "data": {
+    "bids": [
+      { "price": "650000", "amount": "5000000000000000000" },
+      { "price": "640000", "amount": "3000000000000000000" }
+    ],
+    "asks": [
+      { "price": "660000", "amount": "2000000000000000000" },
+      { "price": "670000", "amount": "4000000000000000000" }
+    ]
   }
 }
 ```
 
 ---
 
-#### GET /api/predictions/[id]
-
-获取单个预测详情。
-
-**响应**:
-
-```typescript
-{
-  success: true,
-  data: Prediction
-}
-```
-
----
-
-### 搜索 API
-
-#### GET /api/search
-
-全局搜索。
-
-**查询参数**:
-
-```typescript
-{
-  q: string;           // 搜索关键词
-  type?: string;       // 搜索类型（predictions/users）
-  limit?: number;      // 结果数量（默认 10）
-}
-```
-
-**响应**:
-
-```typescript
-{
-  success: true,
-  data: {
-    predictions: Prediction[],
-    users: User[],
-    total: number
-  }
-}
-```
-
----
-
-### 分析 API
-
-#### POST /api/analytics/vitals
-
-提交 Web Vitals 数据。
-
-**请求体**:
-
-```typescript
-{
-  name: string; // 指标名称（LCP/INP/CLS等）
-  value: number; // 指标值
-  rating: string; // 评级（good/needs-improvement/poor）
-  url: string; // 页面 URL
-  userAgent: string; // User Agent
-}
-```
-
----
-
-#### GET /api/admin/performance
-
-获取性能监控数据。
-
-**响应**:
-
-```typescript
-{
-  success: true,
-  data: {
-    vitals: {
-      lcp: { avg: number, p75: number, p95: number },
-      inp: { avg: number, p75: number, p95: number },
-      cls: { avg: number, p75: number, p95: number },
-      fcp: { avg: number, p75: number, p95: number },
-      ttfb: { avg: number, p75: number, p95: number }
-    },
-    trends: VitalsTrend[]
-  }
-}
-```
-
----
-
-## 🗄️ 数据库
+## 数据库设计
 
 ### 核心表
 
-#### predictions
-
 ```sql
+-- 预测事件
 CREATE TABLE predictions (
-  id UUID PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
+  market_id TEXT UNIQUE,           -- 链上 marketId
   title TEXT NOT NULL,
   description TEXT,
   category TEXT,
-  status TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP,
-  creator_id UUID REFERENCES users(id)
+  status TEXT DEFAULT 'active',
+  resolution_time TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
 
-#### users
-
-```sql
-CREATE TABLE users (
-  id UUID PRIMARY KEY,
-  wallet_address TEXT UNIQUE NOT NULL,
-  username TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP
+-- 订单簿
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  market_id TEXT NOT NULL,
+  maker TEXT NOT NULL,
+  is_buy BOOLEAN NOT NULL,
+  outcome_index SMALLINT NOT NULL,
+  amount NUMERIC NOT NULL,
+  price NUMERIC NOT NULL,
+  filled_amount NUMERIC DEFAULT 0,
+  salt TEXT UNIQUE NOT NULL,
+  expiry TIMESTAMPTZ NOT NULL,
+  signature TEXT NOT NULL,
+  status TEXT DEFAULT 'open',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
-```
 
-#### web_vitals
-
-```sql
-CREATE TABLE web_vitals (
-  id UUID PRIMARY KEY,
-  name TEXT NOT NULL,
-  value NUMERIC NOT NULL,
-  rating TEXT,
-  url TEXT,
-  user_agent TEXT,
-  created_at TIMESTAMP
+-- 成交记录
+CREATE TABLE trades (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  market_id TEXT NOT NULL,
+  outcome_index SMALLINT NOT NULL,
+  maker TEXT NOT NULL,
+  taker TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  price NUMERIC NOT NULL,
+  tx_hash TEXT,
+  block_number BIGINT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 索引
+CREATE INDEX idx_orders_market ON orders(market_id, outcome_index, status);
+CREATE INDEX idx_trades_market ON trades(market_id, outcome_index);
 ```
 
 ---
 
-## 💡 最佳实践
+## 部署指南
 
-### 1. 组件优化
-
-```tsx
-// ✅ 使用 React.memo 优化组件
-import { memo } from "react";
-
-export const MyComponent = memo(({ data }) => {
-  return <div>{data}</div>;
-});
-
-// ✅ 使用 useCallback 缓存函数
-const handleClick = useCallback(() => {
-  // 处理点击
-}, [dependencies]);
-
-// ✅ 使用 useMemo 缓存计算值
-const expensiveValue = useMemo(() => {
-  return computeExpensiveValue(data);
-}, [data]);
-```
-
----
-
-### 2. 图片优化
-
-```tsx
-// ✅ 使用 LazyImage 替代 Image
-import LazyImage from '@/components/ui/LazyImage';
-
-<LazyImage
-  src="/large-image.jpg"
-  alt="Description"
-  width={800}
-  height={600}
-  priority={false}  // 非首屏图片设为 false
-/>
-
-// ❌ 避免直接使用 <img>
-<img src="/large-image.jpg" />
-```
-
----
-
-### 3. API 缓存
-
-```tsx
-// ✅ 配置 React Query 缓存
-const { data } = useQuery({
-  queryKey: ["predictions"],
-  queryFn: fetchPredictions,
-  staleTime: 60 * 1000, // 1分钟内数据新鲜
-  cacheTime: 5 * 60 * 1000, // 缓存5分钟
-});
-
-// ✅ 使用 Next.js revalidate
-export const revalidate = 60; // 60秒重新验证
-```
-
----
-
-### 4. 移动端优化
-
----
-
-## 🧠 高级能力
-
-> 涵盖测试框架、国际化和 Sentry 监控等高级能力，支持构建稳定、可观测的生产环境。
-
-### 1. 测试与覆盖率（Vitest）
-
-文件结构（apps/web）：
+### 1. 合约部署
 
 ```bash
-apps/web/
-├── vitest.config.ts           # Vitest 配置
-├── src/
-│   ├── test/
-│   │   ├── setup.ts           # 测试环境设置
-│   │   └── mockData.ts        # Mock 数据
-│   ├── lib/__tests__/
-│   └── components/__tests__/  # 组件测试
+# 设置环境变量
+export PRIVATE_KEY=0x...
+export POLYGON_RPC_URL=https://...
+export UMA_OO_V3_ADDRESS=0x...
+export USDC_ADDRESS=0x...
+
+# 部署到 Polygon Amoy
+npx hardhat run scripts/deploy_offchain_sprint1.ts --network amoy
 ```
 
-常用命令：
+### 2. 前端部署
 
 ```bash
-# 开发模式（监听文件变化）
+cd apps/web
+
+# 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local
+
+# 构建
+npm run build
+
+# 部署到 Vercel
+vercel --prod
+```
+
+### 3. Relayer 部署
+
+```bash
+cd services/relayer
+
+# 配置
+export BUNDLER_PRIVATE_KEY=0x...
+export RPC_URL=https://...
+export SUPABASE_URL=...
+export SUPABASE_SERVICE_KEY=...
+
+# 启动
+npm run start
+```
+
+---
+
+## 测试
+
+### 合约测试
+
+```bash
+# 运行所有测试
+npm run hardhat:test
+
+# 运行特定测试
+npx hardhat test test/OffchainMarket.test.ts
+
+# 覆盖率
+npx hardhat coverage
+```
+
+### 前端测试
+
+```bash
+cd apps/web
+
+# 运行测试
 npm run test
 
-# 单次运行（CI）
-npm run test:run
-
-# UI 模式
-npm run test:ui
+# 监听模式
+npm run test:watch
 
 # 覆盖率
 npm run test:coverage
 ```
 
-示例：组件测试
-
-```typescript
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import MyComponent from "../MyComponent";
-
-describe("MyComponent", () => {
-  it("should render correctly", () => {
-    render(<MyComponent />);
-    expect(screen.getByText("Hello")).toBeInTheDocument();
-  });
-});
-```
-
-覆盖率目标（推荐）：
-
-- `lib/`：80%+
-- `components/`：60%+
-- `hooks/`：70%+
-- API routes：50%+
-- 整体：60%+ 以上
-
 ---
 
-### 2. 国际化（next-intl）
+## 环境变量参考
 
-文件结构：
-
-```bash
-apps/web/
-├── messages/
-│   ├── zh-CN.json       # 中文简体翻译
-│   └── en.json          # 英文翻译
-├── src/
-│   ├── i18n.ts          # 国际化配置
-│   ├── middleware.ts    # 路由中间件
-│   └── components/
-│       └── LanguageSwitcher.tsx  # 语言切换器
-```
-
-在组件中使用翻译：
-
-```typescript
-import { useTranslations } from "next-intl";
-
-export function MyComponent() {
-  const t = useTranslations("common");
-
-  return (
-    <div>
-      <h1>{t("welcome")}</h1>
-      <p>{t("loading")}</p>
-    </div>
-  );
-}
-```
-
-在服务器组件中使用：
-
-```typescript
-import { getTranslations } from "next-intl/server";
-
-export default async function Page() {
-  const t = await getTranslations("common");
-
-  return <h1>{t("welcome")}</h1>;
-}
-```
-
-添加新文案：
-
-```json
-{
-  "myFeature": {
-    "title": "My Feature Title",
-    "description": "My Feature Description"
-  }
-}
-```
-
-URL 路由模式：
-
-```text
-默认语言（中文）:
-https://foresight.market/trending
-
-英文:
-https://foresight.market/en/trending
-```
-
----
-
-### 3. Sentry 错误监控与性能
-
-相关文件：
-
-```bash
-apps/web/
-├── sentry.client.config.ts
-├── sentry.server.config.ts
-├── sentry.edge.config.ts
-└── src/
-    └── lib/sentry.ts
-```
-
-环境变量（`.env.local`）：
+### 前端 (apps/web/.env.local)
 
 ```env
-NEXT_PUBLIC_SENTRY_DSN=...
-SENTRY_ORG=your-org-name
-SENTRY_PROJECT=foresight-web
-SENTRY_AUTH_TOKEN=your-auth-token
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_KEY=eyJ...
+
+# 合约地址
+NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY=0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30
+NEXT_PUBLIC_USDC_ADDRESS_AMOY=0x...
+NEXT_PUBLIC_OUTCOME_TOKEN_ADDRESS_AMOY=0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087
+
+# Relayer
+NEXT_PUBLIC_RELAYER_URL=http://localhost:3001
+
+# RPC
+NEXT_PUBLIC_POLYGON_RPC_URL=https://...
+
+# 可选
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=...
+SENTRY_DSN=...
 ```
 
-手动上报错误：
+### Relayer (services/relayer/.env)
 
-```typescript
-import * as Sentry from "@sentry/nextjs";
-
-try {
-  await riskyOperation();
-} catch (error) {
-  Sentry.captureException(error, {
-    tags: { feature: "order-creation" },
-    extra: { orderId: "123" },
-  });
-}
-```
-
-使用辅助函数：
-
-```typescript
-import { SentryHelpers } from "@/lib/sentry";
-
-SentryHelpers.walletError(error, "metamask");
-SentryHelpers.orderError(error, orderId, chainId);
-SentryHelpers.apiError(error, "/api/orders", "POST");
-SentryHelpers.contractError(error, contractAddress, "mint");
-```
-
-典型看板：
-
-- Issues：错误列表与详情
-- Performance：接口和页面性能
-- Replays：Session 回放
-
----
-
-```tsx
-// ✅ 确保触摸目标足够大（44x44px）
-<button className="min-w-touch min-h-touch">
-  点击我
-</button>
-
-// ✅ 使用安全区域
-<div className="pb-safe">
-  内容
-</div>
-
-// ✅ 监听移动端手势
-import { useGesture } from '@use-gesture/react';
-
-const bind = useGesture({
-  onDrag: ({ offset: [x, y] }) => {
-    // 处理拖拽
-  }
-});
-
-<div {...bind()}>可拖拽内容</div>
+```env
+PRIVATE_KEY=0x...
+RPC_URL=https://...
+PORT=3001
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=eyJ...
 ```
 
 ---
 
-### 5. 性能监控
+## 常见问题
 
-```tsx
-// ✅ 在 layout.tsx 中启用 Web Vitals
-import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+### Q: 为什么使用链下订单簿而不是 AMM？
 
-export default function RootLayout({ children }) {
-  return (
-    <html>
-      <body>
-        <WebVitalsReporter />
-        {children}
-      </body>
-    </html>
-  );
-}
+**A:** 链下订单簿提供：
+- 零 Gas 挂单/撤单
+- 无滑点的精确定价
+- 毫秒级交易响应
+- 更好的做市商体验
 
-// ✅ 定期查看性能仪表板
-// 访问: /admin/performance
-```
+### Q: UMA 预言机如何保证公正？
 
----
+**A:** UMA 采用乐观预言机机制：
+1. Reporter 提交结果并质押保证金
+2. 2小时争议期内任何人可挑战
+3. 争议由 UMA DVM (去中心化仲裁机制) 裁决
+4. 恶意 Reporter 将损失保证金
 
-### 6. 错误处理
+### Q: 如何处理市场无效 (Invalid) 状态？
 
-```tsx
-// ✅ 使用 ErrorBoundary 包裹关键区域
-<ErrorBoundary fallback={<ErrorFallback />}>
-  <CriticalComponent />
-</ErrorBoundary>;
-
-// ✅ API 错误处理
-try {
-  const data = await apiWithFeedback(fetchData);
-} catch (error) {
-  ErrorTracker.captureException(error);
-  // 显示错误 UI
-}
-```
+**A:** 当 UMA 争议成功但原断言被否决时：
+1. 市场进入 `INVALID` 状态
+2. 用户可调用 `redeemCompleteSetOnInvalid()` 赎回本金
+3. 无手续费，用户资金完全返还
 
 ---
 
-## 📖 更多资源
-
-- [Next.js 文档](https://nextjs.org/docs)
-- [React Query 文档](https://tanstack.com/query/latest)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [Supabase 文档](https://supabase.com/docs)
-- [Web Vitals 指南](https://web.dev/vitals/)
-
----
-
-**最后更新**: 2024-12-19  
-**文档版本**: v1.0
+**文档版本**: v2.0  
+**最后更新**: 2024-12-27
