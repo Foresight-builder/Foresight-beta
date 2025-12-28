@@ -216,7 +216,13 @@
       "expandContent": "Ver propuesta completa",
       "marketHint": "Esta propuesta ya tiene un mercado de predicción asociado en la cadena. Puedes ir a la página del mercado para observar las señales de precios o participar directamente.",
       "marketButton": "Ir al mercado",
-      "comments": "comentarios"
+      "comments": "comentarios",
+      "discussionCount": "{count} discusiones"
+    },
+    "comment": {
+      "authorBadge": "Autor",
+      "replyButton": "Responder",
+      "replyPlaceholder": "Escribe tu respuesta..."
     },
     "detailSidebar": {
       "detailsTitle": "Detalles",

@@ -216,7 +216,13 @@
       "expandContent": "View full proposal",
       "marketHint": "This proposal already has a linked on-chain prediction market. You can go to the market page to observe price signals or trade directly.",
       "marketButton": "Go to market",
-      "comments": "comments"
+      "comments": "comments",
+      "discussionCount": "{count} discussions"
+    },
+    "comment": {
+      "authorBadge": "OP",
+      "replyButton": "Reply",
+      "replyPlaceholder": "Write your reply..."
     },
     "detailSidebar": {
       "detailsTitle": "Details",

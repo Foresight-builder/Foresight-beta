@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CornerDownRight, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { CommentView } from "../useProposalDetail";
+import { useTranslations } from "@/lib/i18n";
 
 export function CommentTree({
   comments,
@@ -24,6 +25,7 @@ export function CommentTree({
   displayName: (addr: string) => string;
   threadAuthorId?: string;
 }) {
+  const tProposals = useTranslations("proposals");
   const rootComments = comments.filter((c) => !c.parent_id);
   const getReplies = (parentId: number) => comments.filter((c) => c.parent_id === parentId);
 
@@ -43,6 +45,7 @@ export function CommentTree({
           floor={index + 1}
           depth={0}
           threadAuthorId={threadAuthorId}
+          tProposals={tProposals}
         />
       ))}
     </div>
@@ -73,6 +76,7 @@ function CommentNode({
   floor?: number;
   depth?: number;
   threadAuthorId?: string;
+  tProposals: (key: string) => string;
 }) {
   const replies = getReplies(comment.id);
   const [isReplying, setIsReplying] = useState(false);
@@ -99,7 +103,7 @@ function CommentNode({
               </span>
               {threadAuthorId && threadAuthorId === comment.user_id && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                  楼主
+                  {tProposals("comment.authorBadge")}
                 </span>
               )}
             </div>
@@ -141,7 +145,7 @@ function CommentNode({
               }}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
             >
-              回复
+              {tProposals("comment.replyButton")}
             </button>
           </div>
         </div>
@@ -161,7 +165,7 @@ function CommentNode({
                     autoFocus
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="写下你的回复……"
+                    placeholder={tProposals("comment.replyPlaceholder")}
                     className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-1 focus:ring-purple-200"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
@@ -209,6 +213,7 @@ function CommentNode({
                 floor={floor}
                 depth={(depth || 0) + 1}
                 threadAuthorId={threadAuthorId}
+                tProposals={tProposals}
               />
             ))}
           </div>

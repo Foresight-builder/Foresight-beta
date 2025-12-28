@@ -7,6 +7,13 @@ import { ErrorState, InvalidProposalFallback, LoadingState } from "./States";
 import { ProposalDiscussionSection } from "./ProposalDiscussionSection";
 import { ProposalChatShell } from "./chat/ProposalChatShell";
 import { ChatSidebar } from "./chat/ChatSidebar";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
+
+// 提取动画配置为模块级常量，避免每次渲染重新创建
+const FADE_IN_ANIMATION = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+} as const;
 
 export type ProposalDetailClientViewProps = {
   isValidId: boolean;
@@ -49,6 +56,8 @@ export function ProposalDetailClientView({
   jsonLdMain,
   jsonLdBreadcrumb,
 }: ProposalDetailClientViewProps) {
+  const tProposals = useTranslations("proposals");
+
   if (!isValidId) return <InvalidProposalFallback onBack={onBack} />;
 
   return (
@@ -76,7 +85,9 @@ export function ProposalDetailClientView({
                   #{thread.id}
                 </span>
                 <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
-                  {stats.commentsCount} 条讨论
+                  {formatTranslation(tProposals("detail.discussionCount"), {
+                    count: stats.commentsCount,
+                  })}
                 </span>
               </div>
             )}
@@ -92,8 +103,8 @@ export function ProposalDetailClientView({
             </div>
           ) : thread ? (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={FADE_IN_ANIMATION.initial}
+              animate={FADE_IN_ANIMATION.animate}
               className="flex-1 flex flex-col min-h-0"
             >
               <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col lg:flex-row h-full overflow-hidden">
