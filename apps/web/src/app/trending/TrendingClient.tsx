@@ -74,30 +74,30 @@ function TrendingPageView({
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
         <p className="max-w-2xl mx-auto text-xs sm:text-sm text-gray-600 text-center mb-6">
-          想从想法阶段就参与？可以先在{" "}
+          {i18n.tTrending("sections.descPart1")}{" "}
           <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
-            提案广场
+            {i18n.tNav("proposals")}
           </Link>{" "}
-          发起或投票，通过后对应市场会出现在这里；如果你更关注研究与观点，可以前往{" "}
+          {i18n.tTrending("sections.descPart2")}{" "}
           <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-            预测论坛
+            {i18n.tNav("forum")}
           </Link>{" "}
-          浏览与这些市场关联的讨论；想把交易行为沉淀成长期挑战，可以到{" "}
+          {i18n.tTrending("sections.descPart3")}{" "}
           <Link href="/flags" className="text-purple-600 hover:text-purple-700 hover:underline">
-            成就 Flags
+            {i18n.tNav("flags")}
           </Link>{" "}
-          为自己设定目标，并在{" "}
+          {i18n.tTrending("sections.descPart4")}{" "}
           <Link
             href="/leaderboard"
             className="text-purple-600 hover:text-purple-700 hover:underline"
           >
-            预测排行榜
+            {i18n.tNav("leaderboard")}
           </Link>{" "}
-          查看表现；还可以通过{" "}
+          {i18n.tTrending("sections.descPart5")}{" "}
           <Link href="/search" className="text-purple-600 hover:text-purple-700 hover:underline">
-            全站搜索
+            {i18n.tTrending("sections.searchLink")}
           </Link>{" "}
-          快速找到与你关注主题相关的事件。
+          {i18n.tTrending("sections.descPart6")}
         </p>
         <TrendingEventsSection
           loading={list.loading}

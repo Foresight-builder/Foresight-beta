@@ -882,7 +882,14 @@
     },
     "sections": {
       "popularCategories": "Popular Categories",
-      "hotEvents": "Trending Events"
+      "hotEvents": "Trending Events",
+      "descPart1": "Want to participate from the idea stage? Start at",
+      "descPart2": "to propose or vote, approved markets will appear here; for research and insights, visit the",
+      "descPart3": "to browse discussions linked to these markets; to turn trading into long-term challenges, go to",
+      "descPart4": "to set goals and check your performance on the",
+      "descPart5": "; you can also use",
+      "descPart6": "to quickly find events related to your interests.",
+      "searchLink": "Search"
     },
     "actions": {
       "viewAll": "View All",

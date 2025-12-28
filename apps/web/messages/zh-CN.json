@@ -882,7 +882,14 @@
     },
     "sections": {
       "popularCategories": "热门分类",
-      "hotEvents": "热门预测事件"
+      "hotEvents": "热门预测事件",
+      "descPart1": "想从想法阶段就参与？可以先在",
+      "descPart2": "发起或投票，通过后对应市场会出现在这里；如果你更关注研究与观点，可以前往",
+      "descPart3": "浏览与这些市场关联的讨论；想把交易行为沉淀成长期挑战，可以到",
+      "descPart4": "为自己设定目标，并在",
+      "descPart5": "查看表现；还可以通过",
+      "descPart6": "快速找到与你关注主题相关的事件。",
+      "searchLink": "全站搜索"
     },
     "actions": {
       "viewAll": "查看全部",

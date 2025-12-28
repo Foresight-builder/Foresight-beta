@@ -882,7 +882,14 @@
     },
     "sections": {
       "popularCategories": "Categorías populares",
-      "hotEvents": "Eventos en tendencia"
+      "hotEvents": "Eventos en tendencia",
+      "descPart1": "¿Quieres participar desde la etapa de ideas? Comienza en",
+      "descPart2": "para proponer o votar, los mercados aprobados aparecerán aquí; para investigación y opiniones, visita el",
+      "descPart3": "para ver discusiones vinculadas a estos mercados; para convertir el trading en desafíos a largo plazo, ve a",
+      "descPart4": "para establecer metas y ver tu rendimiento en el",
+      "descPart5": "; también puedes usar",
+      "descPart6": "para encontrar rápidamente eventos relacionados con tus intereses.",
+      "searchLink": "Búsqueda"
     },
     "actions": {
       "viewAll": "Ver todo",
