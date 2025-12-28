@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { AllLoadedNotice, InfiniteScrollSentinel, ListError } from "@/components/ui/ListStates";
+import { VirtualizedGrid } from "@/components/ui/VirtualizedGrid";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
 import { normalizeEventId, isValidEventId } from "@/features/trending/trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
@@ -77,6 +78,9 @@ type TrendingEventsGridProps = {
   tEvents: (key: string) => string;
 };
 
+// 虚拟化阈值：超过这个数量才使用虚拟列表
+const VIRTUALIZATION_THRESHOLD = 50;
+
 const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   visibleEvents,
   followedEvents,
@@ -93,43 +97,87 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
 }: TrendingEventsGridProps) {
   const router = useRouter();
 
+  // 渲染单个卡片的函数
+  const renderEventCard = useCallback(
+    (product: TrendingEvent) => {
+      const eventId = normalizeEventId(product.id);
+      const isValidId = isValidEventId(eventId);
+      const isFollowed = isValidId && followedEvents.has(eventId);
+      const isFollowPending = isValidId && pendingFollows.has(eventId);
+
+      return (
+        <TrendingEventCard
+          product={product}
+          eventId={isValidId ? eventId : null}
+          isFollowed={isFollowed}
+          isFollowPending={isFollowPending}
+          isAdmin={isAdmin}
+          deleteBusyId={deleteBusyId}
+          onCardClick={(e, category) => {
+            createCategoryParticlesAtCardClick(e, category);
+            if (isValidId) {
+              router.push(`/prediction/${eventId}`);
+            }
+          }}
+          onToggleFollow={(e, id) => {
+            toggleFollow(id, e);
+          }}
+          onEdit={(_, p) => {
+            openEdit(p);
+          }}
+          onDelete={(_, id) => {
+            deleteEvent(id);
+          }}
+          tTrending={tTrending}
+          tTrendingAdmin={tTrendingAdmin}
+          tEvents={tEvents}
+        />
+      );
+    },
+    [
+      followedEvents,
+      pendingFollows,
+      isAdmin,
+      deleteBusyId,
+      createCategoryParticlesAtCardClick,
+      toggleFollow,
+      openEdit,
+      deleteEvent,
+      router,
+      tTrending,
+      tTrendingAdmin,
+      tEvents,
+    ]
+  );
+
+  // 获取唯一 key
+  const getItemKey = useCallback((product: TrendingEvent) => {
+    const eventId = normalizeEventId(product.id);
+    const isValidId = isValidEventId(eventId);
+    return isValidId ? eventId : product.title;
+  }, []);
+
+  // 数据量大时使用虚拟列表
+  if (visibleEvents.length > VIRTUALIZATION_THRESHOLD) {
+    return (
+      <VirtualizedGrid
+        items={visibleEvents}
+        renderItem={renderEventCard}
+        getItemKey={getItemKey}
+        estimatedRowHeight={340}
+        overscan={2}
+        containerHeight="calc(100vh - 400px)"
+        gapClassName="gap-6 pb-4"
+      />
+    );
+  }
+
+  // 数据量小时使用普通网格
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {visibleEvents.map((product) => {
-        const eventId = normalizeEventId(product.id);
-        const isValidId = isValidEventId(eventId);
-        const isFollowed = isValidId && followedEvents.has(eventId);
-        const isFollowPending = isValidId && pendingFollows.has(eventId);
-
-        return (
-          <TrendingEventCard
-            key={isValidId ? eventId : product.title}
-            product={product}
-            eventId={isValidId ? eventId : null}
-            isFollowed={isFollowed}
-            isFollowPending={isFollowPending}
-            isAdmin={isAdmin}
-            deleteBusyId={deleteBusyId}
-            onCardClick={(e, category) => {
-              createCategoryParticlesAtCardClick(e, category);
-              if (isValidId) {
-                router.push(`/prediction/${eventId}`);
-              }
-            }}
-            onToggleFollow={(e, id) => {
-              toggleFollow(id, e);
-            }}
-            onEdit={(_, p) => {
-              openEdit(p);
-            }}
-            onDelete={(_, id) => {
-              deleteEvent(id);
-            }}
-            tTrending={tTrending}
-            tTrendingAdmin={tTrendingAdmin}
-            tEvents={tEvents}
-          />
-        );
+        const key = getItemKey(product);
+        return <div key={key}>{renderEventCard(product)}</div>;
       })}
     </div>
   );
