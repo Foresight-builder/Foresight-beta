@@ -160,6 +160,17 @@ export default function FilterSort({
     }
   }, [initialFilters]);
 
+  // 当 categories 加载完成后，验证 activeCategory 是否有效
+  useEffect(() => {
+    if (activeCategory && activeCategory !== "all" && categories.length > 0) {
+      const exists = categories.some((c) => c.id === activeCategory);
+      if (!exists) {
+        // 保存的分类不存在于当前列表，重置为 null
+        setActiveCategory(null);
+      }
+    }
+  }, [categories, activeCategory]);
+
   // 更新父组件
   useEffect(() => {
     onFilterChange({
@@ -377,29 +388,32 @@ export default function FilterSort({
       </AnimatePresence>
 
       {/* 当前筛选标签 */}
-      {activeCategory && activeCategory !== "all" && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
-          >
-            <span>{categories.find((c) => c.id === activeCategory)?.icon}</span>
-            <span>
-              {categories.find((c) => c.id === activeCategory)?.label
-                ? t(categories.find((c) => c.id === activeCategory)!.label)
-                : null}
-            </span>
-            <button
-              onClick={() => setActiveCategory("all")}
-              className="hover:bg-purple-100 rounded p-0.5 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </motion.div>
-        </div>
-      )}
+      {activeCategory &&
+        activeCategory !== "all" &&
+        (() => {
+          const activeCat = categories.find((c) => c.id === activeCategory);
+          // 如果找不到对应分类，不显示标签
+          if (!activeCat) return null;
+          return (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
+              >
+                <span>{activeCat.icon}</span>
+                <span>{t(activeCat.label)}</span>
+                <button
+                  onClick={() => setActiveCategory("all")}
+                  className="hover:bg-purple-100 rounded p-0.5 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </motion.div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
