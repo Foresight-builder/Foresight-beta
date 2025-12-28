@@ -5,7 +5,6 @@ import type { Dispatch, SetStateAction } from "react";
 import type { FilterSortState } from "@/components/FilterSort";
 import {
   HERO_EVENTS,
-  CATEGORY_MAPPING,
   getActiveHeroSlideData,
   type TrendingEvent,
   type TrendingCategory,
@@ -126,12 +125,9 @@ export function useTrendingHero(
         const fallbackIdx = HERO_EVENTS.findIndex((ev) => ev.category === categoryName);
         if (fallbackIdx >= 0) setCurrentHeroIndex(fallbackIdx);
       }
-      const categoryId = CATEGORY_MAPPING[categoryName as keyof typeof CATEGORY_MAPPING];
-      if (categoryId) {
-        setFilters((prev) => ({ ...prev, category: categoryId }));
-      }
+      // 热门分类点击只切换 Hero 展示，不影响筛选状态
     },
-    [heroSlideEvents, setFilters]
+    [heroSlideEvents]
   );
 
   const handleHeroMouseEnter = useCallback(() => {

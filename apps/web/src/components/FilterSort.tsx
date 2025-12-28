@@ -66,6 +66,18 @@ const DEFAULT_CATEGORIES = [
   { id: "more", label: "filters.categories.more", icon: "⋯", color: "from-gray-400 to-gray-500" },
 ];
 
+// 中文分类名到英文 id 的映射（与热门分类使用相同的映射）
+const CATEGORY_NAME_TO_ID: Record<string, string> = {
+  科技: "tech",
+  娱乐: "entertainment",
+  时政: "politics",
+  天气: "weather",
+  体育: "sports",
+  商业: "business",
+  加密货币: "crypto",
+  更多: "more",
+};
+
 export default function FilterSort({
   onFilterChange,
   initialFilters = { category: null, sortBy: "trending" },
@@ -95,8 +107,10 @@ export default function FilterSort({
               if (!name) {
                 return null;
               }
-              const legacy = DEFAULT_CATEGORIES.find((c) => c.label === name);
-              const id = legacy?.id || name.toLowerCase();
+              // 使用映射表获取正确的英文 id，确保与热门分类的点击逻辑一致
+              const mappedId = CATEGORY_NAME_TO_ID[name];
+              const legacy = mappedId ? DEFAULT_CATEGORIES.find((c) => c.id === mappedId) : null;
+              const id = mappedId || name.toLowerCase();
               const icon = legacy?.icon || "🏷️";
               const color = legacy?.color || "from-gray-400 to-gray-500";
               return {
@@ -150,7 +164,7 @@ export default function FilterSort({
     { id: "ended", label: t("filters.status.ended"), color: "bg-gray-100 text-gray-500" },
   ];
 
-  // 监听外部筛选条件变化
+  // 监听外部筛选条件变化（使用具体属性值作为依赖项，确保能正确检测变化）
   useEffect(() => {
     if (initialFilters) {
       // 只有当值有定义时才更新，避免重置为 undefined
@@ -158,7 +172,7 @@ export default function FilterSort({
       if (initialFilters.sortBy) setSortBy(initialFilters.sortBy);
       if (initialFilters.status !== undefined) setStatus(initialFilters.status);
     }
-  }, [initialFilters]);
+  }, [initialFilters?.category, initialFilters?.sortBy, initialFilters?.status]);
 
   // 更新父组件
   useEffect(() => {
@@ -378,30 +392,86 @@ export default function FilterSort({
         )}
       </AnimatePresence>
 
-      {/* 当前筛选标签 */}
-      {isValidCategory &&
-        (() => {
-          const activeCat = categories.find((c) => c.id === activeCategory)!;
-          return (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
-              >
-                <span>{activeCat.icon}</span>
-                <span>{t(activeCat.label)}</span>
-                <button
-                  onClick={() => setActiveCategory("all")}
-                  className="hover:bg-purple-100 rounded p-0.5 transition-colors"
+      {/* 当前筛选标签 - 显示所有已选择的筛选条件 */}
+      {activeFiltersCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
+
+          {/* 分类标签 */}
+          {isValidCategory &&
+            (() => {
+              const activeCat = categories.find((c) => c.id === activeCategory)!;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </motion.div>
-            </div>
-          );
-        })()}
+                  <span>{activeCat.icon}</span>
+                  <span>
+                    {activeCat.label.startsWith("filters.") ? t(activeCat.label) : activeCat.label}
+                  </span>
+                  <button
+                    onClick={() => setActiveCategory("all")}
+                    className="hover:bg-purple-100 rounded p-0.5 transition-colors"
+                    aria-label={t("filters.actions.clear")}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              );
+            })()}
+
+          {/* 排序标签（非默认时显示） */}
+          {sortBy !== "trending" &&
+            (() => {
+              const activeSortOption = sortOptions.find((o) => o.id === sortBy);
+              if (!activeSortOption) return null;
+              const SortIcon = activeSortOption.icon;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium"
+                >
+                  <SortIcon className="w-3.5 h-3.5" />
+                  <span>{activeSortOption.label}</span>
+                  <button
+                    onClick={() => setSortBy("trending")}
+                    className="hover:bg-blue-100 rounded p-0.5 transition-colors"
+                    aria-label={t("filters.actions.clear")}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              );
+            })()}
+
+          {/* 状态标签 */}
+          {status &&
+            (() => {
+              const activeStatusOption = statusOptions.find((o) => o.id === status);
+              if (!activeStatusOption) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium"
+                >
+                  <span className="w-2 h-2 rounded-full bg-current" />
+                  <span>{activeStatusOption.label}</span>
+                  <button
+                    onClick={() => setStatus(null)}
+                    className="hover:bg-amber-100 rounded p-0.5 transition-colors"
+                    aria-label={t("filters.actions.clear")}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              );
+            })()}
+        </div>
+      )}
     </div>
   );
 }
