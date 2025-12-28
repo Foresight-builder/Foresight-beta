@@ -159,11 +159,11 @@ const initData = ethers.AbiCoder.defaultAbiCoder().encode(
 );
 
 const tx = await factory["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
-  ethers.id("OffchainBinaryMarket"),  // templateId
-  UMA_ORACLE_ADDRESS,                  // oracle
-  USDC_ADDRESS,                        // collateral
-  Math.floor(Date.now() / 1000) + 86400 * 30,  // 30天后结算
-  0,                                   // 零手续费
+  ethers.id("OffchainBinaryMarket"), // templateId
+  UMA_ORACLE_ADDRESS, // oracle
+  USDC_ADDRESS, // collateral
+  Math.floor(Date.now() / 1000) + 86400 * 30, // 30天后结算
+  0, // 零手续费
   initData
 );
 
@@ -439,7 +439,7 @@ async function signOrder(signer, order, marketAddress) {
   const domain = {
     name: "Foresight",
     version: "1",
-    chainId: await signer.provider.getNetwork().then(n => n.chainId),
+    chainId: await signer.provider.getNetwork().then((n) => n.chainId),
     verifyingContract: marketAddress,
   };
 
@@ -463,6 +463,7 @@ async function signOrder(signer, order, marketAddress) {
 ### Relayer 服务
 
 Relayer 是链下订单簿的核心服务，负责：
+
 - 接收和验证签名订单
 - 维护订单簿状态
 - 执行订单撮合
@@ -470,13 +471,13 @@ Relayer 是链下订单簿的核心服务，负责：
 
 **API 端点**:
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | `/order` | 提交新订单 |
-| DELETE | `/order/:salt` | 取消订单 |
-| GET | `/depth/:marketId` | 获取订单簿深度 |
-| GET | `/orders/:marketId` | 获取市场订单列表 |
-| POST | `/cancel-salt` | 签名取消订单 |
+| 方法   | 路径                | 描述             |
+| ------ | ------------------- | ---------------- |
+| POST   | `/order`            | 提交新订单       |
+| DELETE | `/order/:salt`      | 取消订单         |
+| GET    | `/depth/:marketId`  | 获取订单簿深度   |
+| GET    | `/orders/:marketId` | 获取市场订单列表 |
+| POST   | `/cancel-salt`      | 签名取消订单     |
 
 **订单提交**:
 
@@ -519,17 +520,17 @@ Relayer 是链下订单簿的核心服务，负责：
 
 ### 技术栈
 
-| 类别 | 技术 | 版本 |
-|------|------|------|
-| 框架 | Next.js (App Router) | 15.5.4 |
-| UI | React | 19 |
-| 语言 | TypeScript | 5.0 |
-| 样式 | Tailwind CSS | 3.4 |
-| 动画 | Framer Motion | 11 |
-| 状态 | React Query | 5 |
-| Web3 | ethers.js | 6 |
-| 国际化 | next-intl | 3 |
-| 监控 | Sentry | 8 |
+| 类别   | 技术                 | 版本   |
+| ------ | -------------------- | ------ |
+| 框架   | Next.js (App Router) | 15.5.4 |
+| UI     | React                | 19     |
+| 语言   | TypeScript           | 5.0    |
+| 样式   | Tailwind CSS         | 3.4    |
+| 动画   | Framer Motion        | 11     |
+| 状态   | React Query          | 5      |
+| Web3   | ethers.js            | 6      |
+| 国际化 | next-intl            | 3      |
+| 监控   | Sentry               | 8      |
 
 ### 目录结构
 
@@ -595,13 +596,11 @@ import { VirtualList } from "@/components/ui/VirtualList";
   items={predictions}
   estimatedItemHeight={200}
   getKey={(item) => item.id}
-  renderItem={(item, index) => (
-    <PredictionCard prediction={item} />
-  )}
+  renderItem={(item, index) => <PredictionCard prediction={item} />}
   onLoadMore={loadMore}
   hasMore={hasNextPage}
   isLoadingMore={isLoading}
-/>
+/>;
 ```
 
 #### TradingPanel
@@ -616,7 +615,7 @@ import { TradingPanel } from "@/components/market/TradingPanel";
   outcomeIndex={0}
   userBalance={balance}
   onOrderSubmit={handleSubmit}
-/>
+/>;
 ```
 
 #### LazyImage
@@ -630,9 +629,9 @@ import LazyImage from "@/components/ui/LazyImage";
   src="/image.jpg"
   alt="Description"
   className="w-full h-48 object-cover"
-  rootMargin={100}    // 提前 100px 加载
-  fadeIn={true}       // 渐入动画
-/>
+  rootMargin={100} // 提前 100px 加载
+  fadeIn={true} // 渐入动画
+/>;
 ```
 
 ### 自定义 Hooks
@@ -646,7 +645,7 @@ import { usePrefetch } from "@/hooks/usePrefetch";
 
 function PredictionCard({ id }) {
   const { prefetchPrediction } = usePrefetch();
-  
+
   return (
     <Card
       onMouseEnter={() => prefetchPrediction(id)}
@@ -687,7 +686,9 @@ const { loadMoreRef, isNearBottom } = useInfiniteScroll({
 
 return (
   <div>
-    {items.map(item => <Card key={item.id} {...item} />)}
+    {items.map((item) => (
+      <Card key={item.id} {...item} />
+    ))}
     <div ref={loadMoreRef} />
   </div>
 );
@@ -705,8 +706,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 // 查询
 const { data, isLoading } = useQuery({
   queryKey: ["prediction", id],
-  queryFn: () => fetch(`/api/predictions/${id}`).then(r => r.json()),
-  staleTime: 2 * 60 * 1000,  // 2分钟
+  queryFn: () => fetch(`/api/predictions/${id}`).then((r) => r.json()),
+  staleTime: 2 * 60 * 1000, // 2分钟
 });
 
 // 变更
@@ -1112,11 +1113,11 @@ describe("TradingPanel", () => {
 
 ### 性能指标
 
-| 指标 | 目标 | 当前 |
-|------|------|------|
-| LCP | < 2.5s | ~2.0s |
-| INP | < 200ms | ~150ms |
-| CLS | < 0.1 | ~0.05 |
+| 指标        | 目标    | 当前   |
+| ----------- | ------- | ------ |
+| LCP         | < 2.5s  | ~2.0s  |
+| INP         | < 200ms | ~150ms |
+| CLS         | < 0.1   | ~0.05  |
 | Bundle Size | < 500KB | ~450KB |
 
 ### 监控
@@ -1144,5 +1145,5 @@ GET /api/admin/performance
 
 ---
 
-**最后更新**: 2024-12-27  
-**文档版本**: v2.0
+**最后更新**: 2025-12-28  
+**文档版本**: v2.1

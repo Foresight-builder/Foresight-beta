@@ -108,8 +108,10 @@ class MarketWebSocketManager {
         this.attemptReconnect();
       };
 
-      this.ws.onerror = (error) => {
-        console.error("[WebSocket] Error:", error);
+      this.ws.onerror = (event) => {
+        const errorEvent = event as ErrorEvent;
+        const detail = errorEvent.message || errorEvent.error || event;
+        console.warn("[WebSocket] Error event:", detail);
         this.setStatus("error");
       };
     } catch (e) {
@@ -439,4 +441,3 @@ export function useMarketData(
     bestAsk,
   };
 }
-

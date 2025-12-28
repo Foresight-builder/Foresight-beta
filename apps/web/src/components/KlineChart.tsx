@@ -114,46 +114,49 @@ export default function KlineChart({
   }, []);
 
   // 🚀 实时更新最后一根 K 线
-  const updateLastCandle = useCallback((trade: TradeData) => {
-    if (!seriesRef.current || !lastCandleRef.current) return;
+  const updateLastCandle = useCallback(
+    (trade: TradeData) => {
+      if (!seriesRef.current || !lastCandleRef.current) return;
 
-    const resolutionMs = getResolutionMs(resolution);
-    const tradeTime = trade.timestamp;
-    const price = Number(trade.price);
+      const resolutionMs = getResolutionMs(resolution);
+      const tradeTime = trade.timestamp;
+      const price = Number(trade.price);
 
-    if (isNaN(price) || price <= 0) return;
+      if (isNaN(price) || price <= 0) return;
 
-    const candleTime = Math.floor(tradeTime / resolutionMs) * (resolutionMs / 1000);
-    const lastCandle = lastCandleRef.current;
+      const candleTime = Math.floor(tradeTime / resolutionMs) * (resolutionMs / 1000);
+      const lastCandle = lastCandleRef.current;
 
-    if (candleTime === lastCandle.time) {
-      // 更新当前 K 线
-      const updatedCandle = {
-        ...lastCandle,
-        high: Math.max(lastCandle.high, price),
-        low: Math.min(lastCandle.low, price),
-        close: price,
-      };
-      seriesRef.current.update(updatedCandle);
-      lastCandleRef.current = updatedCandle;
-    } else if (candleTime > lastCandle.time) {
-      // 新的 K 线
-      const newCandle = {
-        time: candleTime as UTCTimestamp,
-        open: price,
-        high: price,
-        low: price,
-        close: price,
-      };
-      seriesRef.current.update(newCandle);
-      lastCandleRef.current = newCandle;
-    }
-  }, [resolution]);
+      if (candleTime === lastCandle.time) {
+        // 更新当前 K 线
+        const updatedCandle = {
+          ...lastCandle,
+          high: Math.max(lastCandle.high, price),
+          low: Math.min(lastCandle.low, price),
+          close: price,
+        };
+        seriesRef.current.update(updatedCandle);
+        lastCandleRef.current = updatedCandle;
+      } else if (candleTime > lastCandle.time) {
+        // 新的 K 线
+        const newCandle = {
+          time: candleTime as UTCTimestamp,
+          open: price,
+          high: price,
+          low: price,
+          close: price,
+        };
+        seriesRef.current.update(newCandle);
+        lastCandleRef.current = newCandle;
+      }
+    },
+    [resolution]
+  );
 
   // 🚀 监听 WebSocket 成交，实时更新 K 线
   useEffect(() => {
     if (wsStatus !== "connected" || wsTrades.length === 0) return;
-    
+
     // 只处理最新的成交
     const latestTrade = wsTrades[0];
     if (latestTrade) {
@@ -192,7 +195,8 @@ export default function KlineChart({
           lastCandleRef.current = data[data.length - 1];
         }
       } catch (e) {
-        console.error("Failed to fetch candles", e);
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn("KlineChart: failed to fetch candles:", message);
       }
     };
 

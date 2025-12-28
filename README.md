@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://foresight.market">官网</a> •
   <a href="./DOCS.md">开发文档</a> •
+  <a href="./CONTRIBUTING.md">贡献指南</a> •
   <a href="https://twitter.com/ForesightMarket">Twitter</a> •
   <a href="https://discord.gg/foresight">Discord</a>
 </p>
@@ -31,15 +32,15 @@
 
 ### 对标 Polymarket，超越 Polymarket
 
-| 特性 | Polymarket | Foresight |
-|------|------------|-----------|
-| **订单簿架构** | 链下撮合 + 链上结算 | ✅ 相同架构 |
-| **结算机制** | UMA 乐观预言机 | ✅ UMA Optimistic Oracle V3 |
-| **市场类型** | 二元市场为主 | ✅ 二元 + 多元（最多8选项） |
-| **抵押代币** | USDC | ✅ USDC |
-| **治理模式** | 多签 + Timelock | ✅ Gnosis Safe + Timelock |
-| **开源程度** | 部分开源 | ✅ 完全开源 |
-| **部署网络** | Polygon | ✅ Polygon（支持多链扩展） |
+| 特性           | Polymarket          | Foresight                   |
+| -------------- | ------------------- | --------------------------- |
+| **订单簿架构** | 链下撮合 + 链上结算 | ✅ 相同架构                 |
+| **结算机制**   | UMA 乐观预言机      | ✅ UMA Optimistic Oracle V3 |
+| **市场类型**   | 二元市场为主        | ✅ 二元 + 多元（最多8选项） |
+| **抵押代币**   | USDC                | ✅ USDC                     |
+| **治理模式**   | 多签 + Timelock     | ✅ Gnosis Safe + Timelock   |
+| **开源程度**   | 部分开源            | ✅ 完全开源                 |
+| **部署网络**   | Polygon             | ✅ Polygon（支持多链扩展）  |
 
 ### 核心优势
 
@@ -219,14 +220,14 @@ Foresight-beta/
 
 ### 智能合约
 
-| 合约 | 描述 | 审计状态 |
-|------|------|----------|
-| `MarketFactory` | UUPS 可升级市场工厂 | 🔄 进行中 |
-| `OffchainBinaryMarket` | 二元市场（YES/NO） | 🔄 进行中 |
+| 合约                   | 描述                | 审计状态  |
+| ---------------------- | ------------------- | --------- |
+| `MarketFactory`        | UUPS 可升级市场工厂 | 🔄 进行中 |
+| `OffchainBinaryMarket` | 二元市场（YES/NO）  | 🔄 进行中 |
 | `OffchainMultiMarket8` | 多元市场（2-8选项） | 🔄 进行中 |
-| `OutcomeToken1155` | ERC-1155 结果代币 | 🔄 进行中 |
-| `UMAOracleAdapterV2` | UMA 预言机集成 | 🔄 进行中 |
-| `ForesightTimelock` | 治理时间锁 | 🔄 进行中 |
+| `OutcomeToken1155`     | ERC-1155 结果代币   | 🔄 进行中 |
+| `UMAOracleAdapterV2`   | UMA 预言机集成      | 🔄 进行中 |
+| `ForesightTimelock`    | 治理时间锁          | 🔄 进行中 |
 
 ### 安全特性
 
@@ -240,12 +241,12 @@ Foresight-beta/
 
 ### 性能指标
 
-| 指标 | 目标值 |
-|------|--------|
-| 首屏加载 (LCP) | < 2.5s |
-| 交互响应 (INP) | < 200ms |
-| 布局稳定性 (CLS) | < 0.1 |
-| API 响应（缓存） | < 50ms |
+| 指标             | 目标值  |
+| ---------------- | ------- |
+| 首屏加载 (LCP)   | < 2.5s  |
+| 交互响应 (INP)   | < 200ms |
+| 布局稳定性 (CLS) | < 0.1   |
+| API 响应（缓存） | < 50ms  |
 
 ---
 
@@ -253,11 +254,11 @@ Foresight-beta/
 
 ### Polygon Amoy 测试网
 
-| 合约 | 地址 |
-|------|------|
-| MarketFactory | `0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30` |
-| OutcomeToken1155 | `0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087` |
-| UMAOracleAdapterV2 | `0x5e42fce766Ad623cE175002B7b2528411C47cc92` |
+| 合约                        | 地址                                         |
+| --------------------------- | -------------------------------------------- |
+| MarketFactory               | `0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30` |
+| OutcomeToken1155            | `0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087` |
+| UMAOracleAdapterV2          | `0x5e42fce766Ad623cE175002B7b2528411C47cc92` |
 | OffchainBinaryMarket (impl) | `0x846145DC2850FfB97D14C4AF79675815b6D7AF0f` |
 | OffchainMultiMarket8 (impl) | `0x1e8BeCF558Baf0F74cEc2D7fa7ba44F0335282e8` |
 
@@ -266,24 +267,28 @@ Foresight-beta/
 ## 🛣️ 路线图
 
 ### Phase 1: 基础设施 ✅
+
 - [x] 核心智能合约开发
 - [x] 链下订单簿服务
 - [x] 前端交易界面
 - [x] UMA 预言机集成
 
 ### Phase 2: 安全加固 ✅
+
 - [x] 多签治理系统
 - [x] Timelock 机制
 - [x] 安全审计准备
 - [x] 攻击防护措施
 
 ### Phase 3: 功能增强 🔄
+
 - [ ] 流动性挖矿
 - [ ] 社交功能增强
 - [ ] 移动端 App
 - [ ] API 开放平台
 
 ### Phase 4: 生态扩展 📅
+
 - [ ] 多链部署
 - [ ] DAO 治理
 - [ ] 预言机网络扩展
@@ -291,17 +296,30 @@ Foresight-beta/
 
 ---
 
+## 📚 文档导航
+
+| 文档                                         | 描述           |
+| -------------------------------------------- | -------------- |
+| [DOCS.md](./DOCS.md)                         | 完整开发者文档 |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)         | 贡献指南       |
+| [SECURITY.md](./SECURITY.md)                 | 安全政策       |
+| [CHANGELOG.md](./CHANGELOG.md)               | 变更日志       |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)   | 行为准则       |
+| [Relayer 文档](./services/relayer/README.md) | 订单簿服务文档 |
+
+---
+
 ## 🤝 参与贡献
 
-我们欢迎社区贡献！请查看 [DOCS.md](./DOCS.md) 了解开发指南。
+我们欢迎社区贡献！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解详细指南。
 
 ```bash
 # Fork 本仓库
 # 创建特性分支
 git checkout -b feature/amazing-feature
 
-# 提交变更
-git commit -m 'feat: add amazing feature'
+# 提交变更 (遵循 Conventional Commits)
+git commit -m 'feat(market): add amazing feature'
 
 # 推送到分支
 git push origin feature/amazing-feature
