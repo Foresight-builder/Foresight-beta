@@ -9,6 +9,7 @@ import {
 } from "./data";
 import { LeaderboardPageView } from "./components/LeaderboardPageView";
 import GradientPage from "@/components/ui/GradientPage";
+import { useTranslations } from "@/lib/i18n";
 
 // 分页配置
 const INITIAL_LOAD = 20; // 首屏加载条数
@@ -16,6 +17,7 @@ const PAGE_SIZE = 30; // 每次加载更多的条数
 const MAX_LOAD = 100; // 最大加载条数
 
 export default function LeaderboardPage() {
+  const t = useTranslations("leaderboard");
   const [timeRange, setTimeRange] = useState("weekly");
   const [category, setCategory] = useState("profit");
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
@@ -80,7 +82,7 @@ export default function LeaderboardPage() {
       <GradientPage className="w-full relative overflow-hidden font-sans min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-          <p className="text-gray-500 font-medium">加载排行榜数据...</p>
+          <p className="text-gray-500 font-medium">{t("loadingData")}</p>
         </div>
       </GradientPage>
     );

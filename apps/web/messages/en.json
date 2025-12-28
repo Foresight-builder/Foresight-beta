@@ -1417,12 +1417,16 @@
       "viewFullProfile": "View Full Profile",
       "searchPlaceholder": "Search traders...",
       "trendingNow": "Trending Now 🔥",
-      "activeUsers": "active users"
+      "activeUsers": "active users",
+      "connectToView": "Connect wallet to view your ranking",
+      "connectWallet": "Connect Wallet",
+      "comingSoon": "Coming Soon"
     },
     "loadMore": "Load More Traders",
     "allLoaded": "All traders displayed",
     "noData": "No leaderboard data",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "loadingData": "Loading leaderboard..."
   },
   "stickerGallery": {
     "title": "Sticker Collection",

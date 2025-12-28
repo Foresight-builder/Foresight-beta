@@ -1382,7 +1382,29 @@
     "loadMore": "Cargar más traders",
     "allLoaded": "Todos los traders mostrados",
     "noData": "Sin datos de clasificación",
-    "loading": "Cargando..."
+    "loading": "Cargando...",
+    "loadingData": "Cargando clasificación...",
+    "card": {
+      "rankTrader": "Rango / Trader",
+      "performanceTrend": "Rendimiento",
+      "winningsStatus": "Ganancias",
+      "trades": "trades"
+    },
+    "sidebar": {
+      "mySpot": "Mi Posición ✨",
+      "weekly": "Semanal",
+      "currentRank": "Rango Actual",
+      "currentProfit": "Ganancia Actual",
+      "nextRank": "Siguiente Rango",
+      "top100": "Top 100",
+      "viewFullProfile": "Ver Perfil Completo",
+      "searchPlaceholder": "Buscar traders...",
+      "trendingNow": "Tendencias 🔥",
+      "activeUsers": "usuarios activos",
+      "connectToView": "Conecta tu billetera para ver tu ranking",
+      "connectWallet": "Conectar Billetera",
+      "comingSoon": "Próximamente"
+    }
   },
   "stickerGallery": {
     "title": "Colección de stickers",

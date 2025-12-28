@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Activity,
   ArrowRightCircle,
   ChevronLeft,
   ChevronRight,
@@ -28,18 +27,6 @@ export type HeroMetricsBarProps = {
 export function HeroMetricsBar({ tTrending, tNav }: HeroMetricsBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full xl:w-auto">
-      <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/40 shadow-sm">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-100/50 px-2 py-0.5 rounded-md cursor-default">
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{tTrending("metrics.marketVol")}</span> $2.4M
-        </span>
-        <div className="w-px h-4 bg-gray-300" />
-        <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-md cursor-default">
-          <Activity className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{tTrending("metrics.greed")}</span> 76
-        </span>
-      </div>
-
       <Link href="/leaderboard">
         <button className="flex items-center gap-2 bg-gradient-to-r from-amber-100/80 to-yellow-100/80 hover:from-amber-200 hover:to-yellow-200 backdrop-blur-md px-4 py-2 rounded-full border border-amber-200/60 shadow-sm transition-all hover:scale-105 hover:shadow-amber-500/20 group">
           <div className="bg-white rounded-full p-1 shadow-sm">

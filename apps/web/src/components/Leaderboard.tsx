@@ -72,7 +72,7 @@ function Leaderboard() {
   if (!loading && leaderboardData.length === 0) {
     return (
       <div className="bg-gradient-to-br from-blue-50/80 via-purple-50/80 to-pink-50/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80 relative overflow-hidden min-h-[400px] flex items-center justify-center">
-        <p className="text-gray-500">暂无排行榜数据</p>
+        <p className="text-gray-500">{tLeaderboard("noData")}</p>
       </div>
     );
   }
@@ -247,7 +247,7 @@ function Leaderboard() {
                 {formatVolume(item.total_volume)}
               </div>
               <div className="text-xs text-gray-400">
-                {item.trades_count} 笔交易
+                {item.trades_count} {tLeaderboard("card.trades")}
               </div>
             </div>
           </motion.div>

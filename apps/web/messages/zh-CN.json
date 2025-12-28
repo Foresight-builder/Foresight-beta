@@ -1417,12 +1417,16 @@
       "viewFullProfile": "查看完整资料",
       "searchPlaceholder": "搜索交易者...",
       "trendingNow": "正在流行 🔥",
-      "activeUsers": "活跃用户"
+      "activeUsers": "活跃用户",
+      "connectToView": "连接钱包查看您的排名",
+      "connectWallet": "连接钱包",
+      "comingSoon": "敬请期待"
     },
     "loadMore": "加载更多交易者",
     "allLoaded": "已展示全部交易者",
     "noData": "暂无排行榜数据",
-    "loading": "加载中..."
+    "loading": "加载中...",
+    "loadingData": "加载排行榜数据..."
   },
   "stickerGallery": {
     "title": "表情包图鉴",
