@@ -1,12 +1,28 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, BarChart2, Search, Sparkles, Users } from "lucide-react";
+import { ArrowUpRight, BarChart2, ChevronDown, Loader2, Search, Sparkles, Users } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import type { LeaderboardUser } from "../data";
 import { RankItem } from "./LeaderboardCards";
 
-export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUser[] }) {
+export type LeaderboardMainSectionsProps = {
+  restRank: LeaderboardUser[];
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+  displayCount?: number;
+  totalCount?: number;
+};
+
+export function LeaderboardMainSections({
+  restRank,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+  displayCount = 0,
+  totalCount = 0,
+}: LeaderboardMainSectionsProps) {
   const t = useTranslations("leaderboard");
 
   return (
@@ -31,14 +47,38 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
           </motion.div>
         </AnimatePresence>
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-4 mt-8 rounded-3xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 group"
-        >
-          <Sparkles className="w-4 h-4 group-hover:animate-spin" />
-          {t("loadMore")}
-        </motion.button>
+        {/* 加载更多按钮 */}
+        {hasMore ? (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="w-full py-4 mt-8 rounded-3xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t("loading") || "加载中..."}
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                {t("loadMore")}
+                <span className="text-white/70 text-xs ml-1">
+                  ({displayCount}/{totalCount})
+                </span>
+              </>
+            )}
+          </motion.button>
+        ) : totalCount > 0 ? (
+          <div className="w-full py-4 mt-8 text-center">
+            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/60 backdrop-blur-sm border border-white/80 text-gray-500 text-sm font-medium">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              {t("allLoaded") || `已展示全部 ${totalCount} 位交易者`}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="lg:col-span-4 space-y-6">

@@ -1420,8 +1420,9 @@
       "activeUsers": "活跃用户"
     },
     "loadMore": "加载更多交易者",
+    "allLoaded": "已展示全部交易者",
     "noData": "暂无排行榜数据",
-    "loading": "加载排行榜数据..."
+    "loading": "加载中..."
   },
   "stickerGallery": {
     "title": "表情包图鉴",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
@@ -39,6 +39,9 @@ export function usePredictionDetail() {
   const predictionIdRaw = (params as any).id;
   const predictionId = predictionIdRaw ? Number(predictionIdRaw) : undefined;
 
+  // 用于记录浏览历史，防止重复记录
+  const viewRecordedRef = useRef<string | null>(null);
+
   const { prediction, loading, error } = usePredictionData(predictionIdRaw);
   const { market } = useMarketInfo(predictionIdRaw);
 
@@ -70,6 +73,29 @@ export function usePredictionDetail() {
 
   const { following, followersCount, followLoading, followError, toggleFollow } =
     useFollowPrediction(predictionId, account || undefined);
+
+  // 记录浏览历史（当用户登录且访问详情页时）
+  useEffect(() => {
+    if (!account || !predictionId) return;
+
+    // 避免同一用户对同一事件重复记录（在当前 mount 周期内）
+    const recordKey = `${account}:${predictionId}`;
+    if (viewRecordedRef.current === recordKey) return;
+    viewRecordedRef.current = recordKey;
+
+    // 异步记录浏览历史，不阻塞页面渲染
+    fetch("/api/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventId: predictionId,
+        walletAddress: account,
+      }),
+    }).catch((err) => {
+      // 静默失败，不影响用户体验
+      console.error("Failed to record view history:", err);
+    });
+  }, [account, predictionId]);
 
   // 读取真实 USDC 余额（用于交易面板展示）
   useEffect(() => {

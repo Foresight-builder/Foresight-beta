@@ -1420,8 +1420,9 @@
       "activeUsers": "active users"
     },
     "loadMore": "Load More Traders",
+    "allLoaded": "All traders displayed",
     "noData": "No leaderboard data",
-    "loading": "Loading leaderboard..."
+    "loading": "Loading..."
   },
   "stickerGallery": {
     "title": "Sticker Collection",

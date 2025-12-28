@@ -1378,7 +1378,11 @@
     "week": "Esta semana",
     "month": "Este mes",
     "avatarAlt": "Avatar de {name}",
-    "viewAll": "Ver clasificación completa"
+    "viewAll": "Ver clasificación completa",
+    "loadMore": "Cargar más traders",
+    "allLoaded": "Todos los traders mostrados",
+    "noData": "Sin datos de clasificación",
+    "loading": "Cargando..."
   },
   "stickerGallery": {
     "title": "Colección de stickers",

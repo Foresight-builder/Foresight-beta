@@ -16,6 +16,12 @@ export type LeaderboardPageViewProps = {
   topThree: LeaderboardUser[];
   restRank: LeaderboardUser[];
   jsonLd: any;
+  // 分页相关
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+  displayCount?: number;
+  totalCount?: number;
 };
 
 export function LeaderboardPageView({
@@ -26,6 +32,11 @@ export function LeaderboardPageView({
   topThree,
   restRank,
   jsonLd,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+  displayCount = 0,
+  totalCount = 0,
 }: LeaderboardPageViewProps) {
   return (
     <GradientPage className="w-full relative overflow-hidden font-sans selection:bg-purple-200">
@@ -46,7 +57,14 @@ export function LeaderboardPageView({
           onCategoryChange={onCategoryChange}
         />
         <LeaderboardPodium users={topThree} />
-        <LeaderboardMainSections restRank={restRank} />
+        <LeaderboardMainSections
+          restRank={restRank}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={onLoadMore}
+          displayCount={displayCount}
+          totalCount={totalCount}
+        />
       </div>
     </GradientPage>
   );
