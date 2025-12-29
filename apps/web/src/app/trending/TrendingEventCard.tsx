@@ -1,6 +1,7 @@
 import React from "react";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
+import { EventCardImage } from "@/components/ui/OptimizedImage";
 import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
 
@@ -96,19 +97,10 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
 
   const imageElement = (
     <div className="relative h-40 overflow-hidden bg-gray-100">
-      <img
+      <EventCardImage
         src={product.image}
         alt={product.title}
-        loading="lazy"
-        decoding="async"
-        width={800}
-        height={320}
-        className="w-full h-full object-cover transition-opacity duration-300"
-        onError={(e) => {
-          const img = e.currentTarget as HTMLImageElement;
-          img.onerror = null;
-          img.src = getFallbackEventImage(product.title);
-        }}
+        fallbackSrc={getFallbackEventImage(product.title)}
       />
     </div>
   );
