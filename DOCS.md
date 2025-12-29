@@ -25,7 +25,10 @@
   - [自定义 Hooks](#自定义-hooks)
   - [状态管理](#状态管理)
 - [API 参考](#api-参考)
+  - [社交系统 API](#社交系统-api)
+  - [Flag 系统 API](#flag-系统-api)
 - [数据库设计](#数据库设计)
+- [UI 模式与美学](#ui-模式与美学)
 - [部署指南](#部署指南)
 - [安全规范](#安全规范)
 - [测试指南](#测试指南)
@@ -856,6 +859,61 @@ POST /api/orderbook/market-plan
 }
 ```
 
+### 社交系统 API
+
+#### POST /api/user-follows/user
+
+关注或取消关注一名交易员。
+
+```typescript
+// 请求
+POST /api/user-follows/user
+{
+  "followerAddress": "0x...", // 关注者
+  "followingAddress": "0x..."  // 被关注者
+}
+
+// 响应
+{
+  "success": true,
+  "action": "followed" | "unfollowed"
+}
+```
+
+#### GET /api/user-follows/counts
+
+获取用户的粉丝数和关注数。
+
+```typescript
+// 请求
+GET /api/user-follows/counts?address=0x...
+
+// 响应
+{
+  "followersCount": 120,
+  "followingCount": 45
+}
+```
+
+### Flag 系统 API
+
+#### POST /api/flags
+
+创建一个新的成就 Flag。
+
+```typescript
+// 请求
+POST /api/flags
+{
+  "user_id": "0x...",
+  "title": "每天喝8杯水",
+  "description": "保持水分...",
+  "deadline": "2025-01-31",
+  "verification_type": "self" | "witness",
+  "witness_id": "0x..." // 可选
+}
+```
+
 ---
 
 ## 数据库设计
@@ -942,6 +1000,15 @@ CREATE TABLE user_profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 用户关注 (Social)
+CREATE TABLE user_follows (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  follower_address TEXT NOT NULL,      -- 关注者
+  following_address TEXT NOT NULL,     -- 被关注者
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(follower_address, following_address)
+);
+
 -- 事件关注
 CREATE TABLE event_follows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -968,6 +1035,25 @@ CREATE INDEX idx_trades_taker ON trades(taker);
 -- K线查询优化
 CREATE INDEX idx_candles_lookup ON candles(market_id, outcome_index, interval, open_time DESC);
 ```
+
+---
+
+## UI 模式与美学
+
+Foresight 追求极致的 Web3 原生美学，通过以下技术提升用户体验：
+
+### 1. 玻璃拟态 (Glassmorphism)
+
+广泛使用 `backdrop-blur-3xl` 和半透明边框，营造轻盈、浮动的视觉感受。配合 `apps/web/src/app/globals.css` 中的自定义光晕，实现深邃的背景层次。
+
+### 2. 流光渐变 (Mesh Gradient)
+
+在 `CreateFlagModal` 和 `CheckinModal` 中，通过多个模糊的 `motion.div` 叠加，实现了动态的网格渐变效果。配合 `mix-blend-overlay` 噪点纹理，提升了渐变的细腻度。
+
+### 3. 沉浸式交互
+
+- **React Portals**: `UserHoverCard` 使用 Portal 渲染至 `document.body`，彻底解决了复杂布局下的 z-index 遮挡问题。
+- **物理引擎动画**: 使用 `framer-motion` 的 `spring` 类型动画，模拟真实物理反馈（如点击缩放、弹窗回弹）。
 
 ---
 
@@ -1145,5 +1231,5 @@ GET /api/admin/performance
 
 ---
 
-**最后更新**: 2025-12-28  
-**文档版本**: v2.1
+**最后更新**: 2025-12-29  
+**文档版本**: v2.2
