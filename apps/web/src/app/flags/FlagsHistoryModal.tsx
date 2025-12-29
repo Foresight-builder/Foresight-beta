@@ -23,6 +23,9 @@ type FlagsHistoryModalProps = {
   onClose: () => void;
   onReview: (checkinId: string, action: "approve" | "reject") => void;
   tFlags: (key: string) => string;
+  tasksMode?: boolean;
+  tasksIndex?: number;
+  tasksTotal?: number;
 };
 
 export function FlagsHistoryModal({
@@ -35,6 +38,9 @@ export function FlagsHistoryModal({
   onClose,
   onReview,
   tFlags,
+  tasksMode,
+  tasksIndex,
+  tasksTotal,
 }: FlagsHistoryModalProps) {
   return (
     <AnimatePresence>
@@ -57,6 +63,14 @@ export function FlagsHistoryModal({
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0">
               <div>
                 <h3 className="text-2xl font-black text-gray-900">{tFlags("history.title")}</h3>
+                {tasksMode &&
+                  typeof tasksIndex === "number" &&
+                  typeof tasksTotal === "number" &&
+                  tasksTotal > 0 && (
+                    <div className="mt-1 text-[11px] font-black text-purple-500">
+                      监督任务 {tasksIndex + 1}/{tasksTotal}
+                    </div>
+                  )}
                 {flag.verification_type === "witness" && flag.witness_id && (
                   <div className="mt-1 text-xs font-bold text-gray-500 flex items-center gap-1">
                     <Users className="w-3 h-3" />

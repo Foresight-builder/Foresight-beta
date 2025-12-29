@@ -30,12 +30,12 @@ export async function GET(req: NextRequest) {
 
     const formatted = (data as any[]).map((e: any) => ({
       id: String(e.id),
-      emoji: e.url || "❓",
+      emoji: e.image_url || e.url || "❓",
       name: e.name,
       rarity: e.rarity || "common",
       desc: e.description || "",
       color: getRarityClass(e.rarity),
-      image_url: e.url,
+      image_url: e.image_url || e.url,
     }));
 
     return NextResponse.json({ data: formatted });

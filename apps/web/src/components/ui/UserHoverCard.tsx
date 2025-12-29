@@ -15,6 +15,7 @@ import {
   Star,
   UserMinus,
   Loader2,
+  Users,
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { useWallet } from "@/contexts/WalletContext";

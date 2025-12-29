@@ -16,6 +16,7 @@ export type FlagsPageHeaderProps = {
   collectedCount: number;
   onOpenGallery: () => void;
   onOpenHistory: (flag: FlagItem) => void;
+  onOpenWitnessTasks: () => void;
 };
 
 type FlagsHeaderTitleSectionProps = {
@@ -87,6 +88,7 @@ type FlagsInvitesBannerProps = {
   viewerId: string;
   flags: FlagItem[];
   onOpenHistory: (flag: FlagItem) => void;
+  onOpenWitnessTasks: () => void;
 };
 
 function FlagsInvitesBanner({
@@ -96,6 +98,7 @@ function FlagsInvitesBanner({
   viewerId,
   flags,
   onOpenHistory,
+  onOpenWitnessTasks,
 }: FlagsInvitesBannerProps) {
   if (invitesCount <= 0) return null;
 
@@ -112,14 +115,7 @@ function FlagsInvitesBanner({
       </div>
       <button
         onClick={() => {
-          if (!viewerId) return;
-          const pending = flags.filter(
-            (f) =>
-              f.status === "pending_review" &&
-              f.verification_type === "witness" &&
-              String(f.witness_id || "").toLowerCase() === viewerId
-          );
-          if (pending.length > 0) onOpenHistory(pending[0]);
+          onOpenWitnessTasks();
         }}
         className="text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-xl hover:bg-amber-200 transition-colors"
       >
@@ -269,6 +265,7 @@ export function FlagsPageHeader({
   collectedCount,
   onOpenGallery,
   onOpenHistory,
+  onOpenWitnessTasks,
 }: FlagsPageHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-6 px-8 pt-4">
@@ -285,6 +282,7 @@ export function FlagsPageHeader({
           viewerId={viewerId}
           flags={flags}
           onOpenHistory={onOpenHistory}
+          onOpenWitnessTasks={onOpenWitnessTasks}
         />
       </div>
 

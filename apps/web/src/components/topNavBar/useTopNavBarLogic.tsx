@@ -5,6 +5,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
+import { supabase } from "@/lib/supabase";
 
 export function useTopNavBarLogic() {
   const {
@@ -45,6 +46,18 @@ export function useTopNavBarLogic() {
     top: 0,
     left: 0,
   });
+  const [notificationsCount, setNotificationsCount] = useState(0);
+  const [notifications, setNotifications] = useState<
+    Array<{
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      created_at: string;
+      url?: string;
+    }>
+  >([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +72,171 @@ export function useTopNavBarLogic() {
       body.style.overflow = prevOverflow;
     };
   }, [connectError, mounted]);
+
+  const viewerId = useMemo(() => (account || user?.id || "").toLowerCase(), [account, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!viewerId) {
+        if (!cancelled) {
+          setNotifications([]);
+          setNotificationsCount(0);
+        }
+        return;
+      }
+      try {
+        let pendingCount = 0;
+        try {
+          const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(viewerId)}`, {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}) as any);
+            const list = Array.isArray(data?.flags) ? data.flags : [];
+            pendingCount = list.filter(
+              (f: any) =>
+                String(f.status || "") === "pending_review" &&
+                String(f.verification_type || "") === "witness" &&
+                String(f.witness_id || "").toLowerCase() === viewerId
+            ).length;
+          }
+        } catch {}
+        let inviteCount = 0;
+        let notificationItems: Array<{
+          id: string;
+          type: string;
+          title: string;
+          message: string;
+          created_at: string;
+          url?: string;
+        }> | null = null;
+        if (supabase) {
+          try {
+            const res = await supabase
+              .from("discussions")
+              .select("id, content, created_at")
+              .eq("user_id", viewerId)
+              .order("created_at", { ascending: false })
+              .limit(20);
+            const rows = Array.isArray(res.data) ? res.data : [];
+            notificationItems = rows.map((row: any) => {
+              let raw = row.content as any;
+              let parsed: any = {};
+              if (typeof raw === "string") {
+                try {
+                  parsed = JSON.parse(raw);
+                } catch {
+                  parsed = {};
+                }
+              } else if (raw && typeof raw === "object") {
+                parsed = raw;
+              }
+              const type = typeof parsed.type === "string" ? parsed.type : "";
+              const titleFallback =
+                type === "witness_invite"
+                  ? "挑战邀请"
+                  : type === "checkin_review"
+                    ? "打卡审核更新"
+                    : "通知";
+              const title =
+                typeof parsed.title === "string" && parsed.title.trim()
+                  ? parsed.title
+                  : titleFallback;
+              const message = typeof parsed.message === "string" ? parsed.message : "";
+              const url = typeof parsed.url === "string" && parsed.url ? parsed.url : "/flags";
+              return {
+                id: String(row.id),
+                type,
+                title,
+                message,
+                created_at: String(row.created_at),
+                url,
+              };
+            });
+            inviteCount = notificationItems.length;
+          } catch {}
+        }
+        if (!cancelled) {
+          if (notificationItems) {
+            setNotifications(notificationItems);
+          }
+          setNotificationsCount(pendingCount + inviteCount);
+        }
+      } catch {
+        if (!cancelled) {
+          setNotifications([]);
+          setNotificationsCount(0);
+        }
+      }
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [viewerId]);
+
+  useEffect(() => {
+    if (!viewerId || !supabase) return;
+    const client = supabase;
+    const channel = client
+      .channel(`discussions:nav:${viewerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "discussions",
+          filter: `user_id=eq.${viewerId}`,
+        },
+        (payload) => {
+          const row: any = payload.new;
+          if (!row) return;
+          let raw = row.content as any;
+          let parsed: any = {};
+          if (typeof raw === "string") {
+            try {
+              parsed = JSON.parse(raw);
+            } catch {
+              parsed = {};
+            }
+          } else if (raw && typeof raw === "object") {
+            parsed = raw;
+          }
+          const type = typeof parsed.type === "string" ? parsed.type : "";
+          const titleFallback =
+            type === "witness_invite"
+              ? "挑战邀请"
+              : type === "checkin_review"
+                ? "打卡审核更新"
+                : "通知";
+          const title =
+            typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : titleFallback;
+          const message = typeof parsed.message === "string" ? parsed.message : "";
+          const url = typeof parsed.url === "string" && parsed.url ? parsed.url : "/flags";
+          const item = {
+            id: String(row.id),
+            type,
+            title,
+            message,
+            created_at: String(row.created_at),
+            url,
+          };
+          setNotifications((prev) => {
+            const exists = prev.some((x) => x.id === item.id);
+            if (exists) return prev;
+            return [item, ...prev].slice(0, 50);
+          });
+          setNotificationsCount((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [viewerId]);
 
   const handleConnectWallet = useCallback(
     async (walletType?: "metamask" | "coinbase" | "binance") => {
@@ -337,6 +515,10 @@ export function useTopNavBarLogic() {
     openOnExplorer,
     switchToSepolia,
     modal,
+    notifications,
+    notificationsCount,
+    notificationsOpen,
+    setNotificationsOpen,
   };
 }
 

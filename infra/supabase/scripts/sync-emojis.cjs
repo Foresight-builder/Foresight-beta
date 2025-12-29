@@ -68,7 +68,7 @@ async function syncEmojis() {
     console.log(`Processing: ${name} -> ${publicUrl}`);
 
     // 4. Insert into database if not exists
-    // Check existence by URL (Note: table column is 'image_url' based on inspection, not 'url')
+    // Check existence by URL
     const { data: existing } = await supabase
       .from('emojis')
       .select('id')
@@ -84,7 +84,7 @@ async function syncEmojis() {
       .from('emojis')
       .insert({
         name: name,
-        image_url: publicUrl, // Changed from 'url' to 'image_url'
+        image_url: publicUrl,
         rarity: 'common', // Default
         description: `Uploaded emoji: ${name}`
       });

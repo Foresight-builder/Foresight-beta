@@ -21,8 +21,6 @@ export function useFlagsData(
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "success">("all");
   const [dbStickers, setDbStickers] = useState<StickerItem[]>([]);
   const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
-  const [inviteNotice, setInviteNotice] = useState<InviteNotice>(null);
-  const [invitesCount, setInvitesCount] = useState(0);
 
   const viewerId = String(account || userId || "").toLowerCase();
 
@@ -76,36 +74,6 @@ export function useFlagsData(
     }
   }, [account, userId]);
 
-  const checkInvites = useCallback(async () => {
-    try {
-      const me = account || userId || "";
-      if (!me) return;
-      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({ flags: [] }));
-      const list = (data.flags || []) as FlagItem[];
-      const lower = String(me).toLowerCase();
-      const pending = list.filter(
-        (f) =>
-          f.status === "pending_review" &&
-          f.verification_type === "witness" &&
-          String(f.witness_id || "").toLowerCase() === lower
-      );
-      setInvitesCount(pending.length);
-      if (pending.length > 0) {
-        setInviteNotice({
-          id: pending[0].id,
-          title: pending[0].title,
-        });
-      } else {
-        setInviteNotice(null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [account, userId]);
-
   useEffect(() => {
     fetch("/api/emojis")
       .then((res) => res.json())
@@ -120,13 +88,12 @@ export function useFlagsData(
   useEffect(() => {
     if (account || userId) {
       loadFlags();
-      checkInvites();
       loadCollectedStickers();
     } else {
       setFlags([]);
       setCollectedStickers([]);
     }
-  }, [account, userId, loadFlags, checkInvites, loadCollectedStickers]);
+  }, [account, userId, loadFlags, loadCollectedStickers]);
 
   const activeFlags = useMemo(() => flags.filter((f) => f.status === "active"), [flags]);
 
@@ -158,6 +125,32 @@ export function useFlagsData(
     [flags, viewerId]
   );
 
+  const pendingReviewFlagsForViewer = useMemo(
+    () =>
+      viewerId
+        ? flags.filter(
+            (f) =>
+              f.status === "pending_review" &&
+              f.verification_type === "witness" &&
+              String(f.witness_id || "").toLowerCase() === viewerId
+          )
+        : [],
+    [flags, viewerId]
+  );
+
+  const invitesCount = pendingReviewFlagsForViewer.length;
+
+  const inviteNotice: InviteNotice = useMemo(
+    () =>
+      invitesCount > 0
+        ? {
+            id: pendingReviewFlagsForViewer[0].id,
+            title: pendingReviewFlagsForViewer[0].title,
+          }
+        : null,
+    [invitesCount, pendingReviewFlagsForViewer]
+  );
+
   return {
     flags,
     loading,
@@ -167,14 +160,15 @@ export function useFlagsData(
     setStatusFilter,
     collectedStickers,
     dbStickers,
-    inviteNotice,
-    invitesCount,
     loadFlags,
     activeFlags,
     completedFlags,
     filteredFlags,
+    inviteNotice,
+    invitesCount,
     viewerId,
     witnessFlags,
+    pendingReviewFlagsForViewer,
   };
 }
 

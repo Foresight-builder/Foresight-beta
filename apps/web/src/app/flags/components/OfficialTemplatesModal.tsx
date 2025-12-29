@@ -1,5 +1,7 @@
 import { ArrowRight, ShieldCheck, Trophy, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { OfficialTemplate } from "../flagsConfig";
 
 export type OfficialTemplatesModalProps = {
@@ -112,7 +114,15 @@ export function OfficialTemplatesModal({
   onClose,
   onTemplateClick,
 }: OfficialTemplatesModalProps) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -120,7 +130,7 @@ export function OfficialTemplatesModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
             onClick={onClose}
           />
           <motion.div
@@ -130,7 +140,7 @@ export function OfficialTemplatesModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 sm:inset-10 z-50 bg-[#F0F2F5] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+            className="fixed inset-0 sm:inset-10 z-[100] bg-[#F0F2F5] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
           >
             <OfficialTemplatesModalHeader tFlags={tFlags} onClose={onClose} />
 
@@ -150,6 +160,7 @@ export function OfficialTemplatesModal({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

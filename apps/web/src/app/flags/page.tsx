@@ -81,6 +81,10 @@ export default function FlagsPage() {
   const [officialListOpen, setOfficialListOpen] = useState(false);
   const [selectedTplId, setSelectedTplId] = useState("");
   const [tplConfig, setTplConfig] = useState<any>({});
+  const [witnessTasksMode, setWitnessTasksMode] = useState(false);
+  const [witnessTaskIndex, setWitnessTaskIndex] = useState<number | null>(null);
+  const [witnessTaskTotal, setWitnessTaskTotal] = useState(0);
+  const [witnessTasksQueue, setWitnessTasksQueue] = useState<FlagItem[]>([]);
 
   const data = useFlagsData(account, user?.id || null, tFlags);
   const {
@@ -100,6 +104,7 @@ export default function FlagsPage() {
     filteredFlags,
     viewerId,
     witnessFlags,
+    pendingReviewFlagsForViewer,
   } = data;
 
   const handleCreateClick = () => {
@@ -204,7 +209,22 @@ export default function FlagsPage() {
         }),
       });
       if (!res.ok) throw new Error("Review failed");
-      if (historyFlag) openHistory(historyFlag);
+      if (witnessTasksMode && witnessTasksQueue.length > 0 && witnessTaskIndex !== null) {
+        const nextIndex = witnessTaskIndex + 1;
+        if (nextIndex < witnessTasksQueue.length) {
+          const nextFlag = witnessTasksQueue[nextIndex];
+          setWitnessTaskIndex(nextIndex);
+          openHistory(nextFlag);
+        } else {
+          setWitnessTasksMode(false);
+          setWitnessTaskIndex(null);
+          setWitnessTaskTotal(0);
+          setHistoryOpen(false);
+        }
+      } else if (historyFlag) {
+        openHistory(historyFlag);
+      }
+      loadFlags();
     } catch (e) {
       toast.error(tFlags("toast.reviewFailedTitle"), tFlags("toast.reviewFailedDesc"));
     } finally {
@@ -265,6 +285,18 @@ export default function FlagsPage() {
     setCreateOpen(true);
   };
 
+  const openWitnessTasks = () => {
+    const me = (account || user?.id || "").toLowerCase();
+    if (!me) return;
+    const tasks = pendingReviewFlagsForViewer;
+    if (!tasks || tasks.length === 0) return;
+    setWitnessTasksQueue(tasks);
+    setWitnessTaskTotal(tasks.length);
+    setWitnessTaskIndex(0);
+    setWitnessTasksMode(true);
+    openHistory(tasks[0]);
+  };
+
   const jsonLd = buildFlagsJsonLd(tFlags);
 
   return (
@@ -298,6 +330,9 @@ export default function FlagsPage() {
         officialListOpen,
         selectedTplId,
         tplConfig,
+        witnessTasksMode,
+        witnessTaskIndex,
+        witnessTaskTotal,
       }}
       uiActions={{
         handleCreateClick,
@@ -307,6 +342,7 @@ export default function FlagsPage() {
         handleReview,
         settleFlag,
         handleTemplateClick,
+        openWitnessTasks,
         setCreateOpen,
         setWalletModalOpen,
         setGalleryOpen,

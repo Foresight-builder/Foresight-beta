@@ -54,6 +54,7 @@ export function FlagsPageView({
     handleTemplateClick,
     setGalleryOpen,
     setOfficialListOpen,
+    openWitnessTasks,
   } = uiActions;
 
   return (
@@ -78,6 +79,7 @@ export function FlagsPageView({
             collectedCount={collectedStickers.length}
             onOpenGallery={() => setGalleryOpen(true)}
             onOpenHistory={openHistory}
+            onOpenWitnessTasks={openWitnessTasks}
           />
 
           <FlagsMainContent

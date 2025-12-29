@@ -43,6 +43,9 @@ export type FlagsPageViewUIState = {
   officialListOpen: boolean;
   selectedTplId: string;
   tplConfig: any;
+  witnessTasksMode: boolean;
+  witnessTaskIndex: number | null;
+  witnessTaskTotal: number;
 };
 
 export type FlagsPageViewUIActions = {
@@ -53,6 +56,7 @@ export type FlagsPageViewUIActions = {
   handleReview: (checkinId: string, action: "approve" | "reject") => void;
   settleFlag: (flag: FlagItem) => void;
   handleTemplateClick: (template: OfficialTemplate) => void;
+  openWitnessTasks: () => void;
   setCreateOpen: (open: boolean) => void;
   setWalletModalOpen: (open: boolean) => void;
   setGalleryOpen: (open: boolean) => void;
@@ -103,6 +107,9 @@ export function FlagsModals({
     officialListOpen,
     selectedTplId,
     tplConfig,
+    witnessTasksMode,
+    witnessTaskIndex,
+    witnessTaskTotal,
   } = uiState;
 
   const {
@@ -118,6 +125,7 @@ export function FlagsModals({
     setCheckinImage,
     submitCheckin,
     handleReview,
+    openWitnessTasks,
   } = uiActions;
 
   const allStickerList = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
@@ -184,6 +192,9 @@ export function FlagsModals({
         onClose={() => setHistoryOpen(false)}
         onReview={handleReview}
         tFlags={tFlags}
+        tasksMode={witnessTasksMode}
+        tasksIndex={witnessTaskIndex ?? undefined}
+        tasksTotal={witnessTaskTotal}
       />
     </>
   );
