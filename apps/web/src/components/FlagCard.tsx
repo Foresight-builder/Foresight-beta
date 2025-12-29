@@ -6,10 +6,8 @@ import {
   Target,
   Users,
   Sparkles,
-  MoreHorizontal,
   ArrowUpRight,
   Flame,
-  CalendarDays,
   Camera,
 } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
@@ -178,7 +176,6 @@ export const FlagCard = memo(function FlagCard({
               </div>
             </div>
 
-            {/* Giant Icon */}
             <div className="absolute bottom-[-10px] right-[-10px] opacity-25 rotate-12 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
               <StatusIcon className="w-36 h-36 text-white mix-blend-overlay" />
             </div>
@@ -196,7 +193,7 @@ export const FlagCard = memo(function FlagCard({
               )}
             </div>
 
-            <div className="mb-3">
+            <div className="mb-3 flex items-center justify-between">
               {flag.verification_type === "self" ? (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-[11px] font-bold text-purple-700">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -212,6 +209,18 @@ export const FlagCard = memo(function FlagCard({
                     </span>
                   )}
                 </div>
+              )}
+              {onViewHistory && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewHistory();
+                  }}
+                  className="text-xs font-bold text-gray-500 hover:text-purple-600 underline-offset-2 hover:underline"
+                >
+                  历史
+                </button>
               )}
             </div>
 
@@ -236,7 +245,6 @@ export const FlagCard = memo(function FlagCard({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-between mt-auto pt-2">
               <div className="flex -space-x-2 overflow-hidden">
                 {flag.proof_image_url ? (
@@ -256,19 +264,42 @@ export const FlagCard = memo(function FlagCard({
                 )}
               </div>
 
-              {isMine && flag.status === "active" && (
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCheckin?.();
-                  }}
-                  className="w-12 h-12 rounded-2xl bg-gray-900 text-white flex items-center justify-center shadow-xl shadow-gray-900/20 hover:bg-purple-600 hover:shadow-purple-500/30 transition-all"
-                >
-                  <ArrowUpRight className="w-6 h-6" />
-                </motion.button>
-              )}
+              <div className="flex items-center gap-2">
+                {isMine && flag.status === "active" && onCheckin && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCheckin();
+                    }}
+                    className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold flex items-center gap-1 shadow-md hover:bg-purple-600"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    <span>打卡</span>
+                  </motion.button>
+                )}
+                {isMine &&
+                  onSettle &&
+                  (() => {
+                    const now = Date.now();
+                    const end = new Date(flag.deadline).getTime();
+                    const canSettle = Number.isFinite(end) && end < now;
+                    return canSettle ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSettle();
+                        }}
+                        className="px-3 py-2 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 hover:bg-amber-200"
+                      >
+                        结算
+                      </button>
+                    ) : null;
+                  })()}
+              </div>
             </div>
           </div>
         </div>

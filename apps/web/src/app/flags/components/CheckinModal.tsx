@@ -22,7 +22,7 @@ type CheckinModalHeaderProps = {
 function CheckinModalHeader({ tFlags }: CheckinModalHeaderProps) {
   return (
     <div className="flex items-center gap-4 mb-6">
-      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+      <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-pink-600">
         <Camera className="w-6 h-6" />
       </div>
       <div>
@@ -48,7 +48,7 @@ function CheckinNoteField({ tFlags, note, onNoteChange }: CheckinNoteFieldProps)
         onChange={(e) => onNoteChange(e.target.value)}
         placeholder={tFlags("checkin.notePlaceholder")}
         rows={4}
-        className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 resize-none font-medium"
+        className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-pink-500 outline-none transition-all text-gray-900 resize-none font-medium"
       />
     </div>
   );
@@ -68,7 +68,7 @@ function CheckinImageField({ tFlags, image, onImageChange }: CheckinImageFieldPr
         value={image}
         onChange={(e) => onImageChange(e.target.value)}
         placeholder={tFlags("checkin.imagePlaceholder")}
-        className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 font-medium"
+        className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-pink-500 outline-none transition-all text-gray-900 font-medium"
       />
     </div>
   );
@@ -93,7 +93,7 @@ function CheckinModalActions({ tFlags, submitting, onClose, onSubmit }: CheckinM
       <button
         onClick={onSubmit}
         disabled={submitting}
-        className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:translate-y-0"
+        className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold hover:shadow-xl hover:shadow-pink-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-pink-500/20 disabled:opacity-50 disabled:translate-y-0"
       >
         {submitting ? tFlags("checkin.submitLoading") : tFlags("checkin.submit")}
       </button>
@@ -130,8 +130,8 @@ export function CheckinModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-purple-500/10 z-50 p-8 overflow-hidden border border-white/50"
           >
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-emerald-50/60 to-transparent pointer-events-none" />
-            <div className="absolute -top-20 -right-20 w-60 h-60 bg-emerald-200/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-pink-50/60 to-transparent pointer-events-none" />
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-pink-200/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-200/20 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative">

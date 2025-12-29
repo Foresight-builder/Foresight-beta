@@ -6,11 +6,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const user_id = searchParams.get("user_id");
     if (!user_id) {
-      return NextResponse.json({ data: [] });
+      return NextResponse.json({ stickers: [] });
     }
 
     const client = supabaseAdmin || getClient();
-    if (!client) return NextResponse.json({ data: [] });
+    if (!client) return NextResponse.json({ stickers: [] });
 
     // Use user_emojis table
     const { data, error } = await client
@@ -20,14 +20,16 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("Fetch stickers error:", error);
-      return NextResponse.json({ data: [] });
+      return NextResponse.json({ stickers: [] });
     }
 
     const ids = data ? data.map((r: any) => String(r.emoji_id)) : [];
-    // Deduplicate
-    return NextResponse.json({ data: Array.from(new Set(ids)) });
+    const uniqueIds = Array.from(new Set(ids));
+    const stickers = uniqueIds.map((id) => ({ sticker_id: id }));
+
+    return NextResponse.json({ stickers });
   } catch (e) {
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ stickers: [] });
   }
 }
 

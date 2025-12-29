@@ -29,18 +29,25 @@ export async function POST(req: NextRequest) {
     const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
-    const title = String(body?.title || "");
+    const title = String(body?.title || "").trim();
     const description = String(body?.description || "");
-    const deadlineRaw = String(body?.deadline || "");
+    const deadlineRaw = String(body?.deadline || "").trim();
     const verification_type =
       String(body?.verification_type || "self") === "witness" ? "witness" : "self";
     const witness_id = String(body?.witness_id || "").trim();
     const user_id = String(body?.user_id || "").trim() || "anonymous";
-    if (!title || !deadlineRaw)
+    if (!title)
       return NextResponse.json({ message: "Missing required parameters" }, { status: 400 });
-    const deadline = new Date(deadlineRaw);
-    if (Number.isNaN(deadline.getTime()))
-      return NextResponse.json({ message: "Invalid deadline format" }, { status: 400 });
+
+    let deadline: Date;
+    if (!deadlineRaw) {
+      const now = new Date();
+      deadline = new Date(now.getTime() + 30 * 86400000);
+    } else {
+      deadline = new Date(deadlineRaw);
+      if (Number.isNaN(deadline.getTime()))
+        return NextResponse.json({ message: "Invalid deadline format" }, { status: 400 });
+    }
 
     const payload: Database["public"]["Tables"]["flags"]["Insert"] = {
       user_id,

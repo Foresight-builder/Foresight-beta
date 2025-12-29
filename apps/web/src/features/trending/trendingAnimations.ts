@@ -267,41 +267,16 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   shockwave.style.border = `2px solid ${colors[0]}`;
   shockwave.style.borderRadius = "50%";
   shockwave.style.transform = "translate(-50%, -50%)";
-  shockwave.style.opacity = "0.8"; // Increased opacity
+  shockwave.style.opacity = "0.5"; // Reduced opacity
   particlesContainer.appendChild(shockwave);
 
   shockwave.animate(
     [
-      { width: "0px", height: "0px", opacity: 0.8, borderWidth: "6px" },
-      { width: "300px", height: "300px", opacity: 0, borderWidth: "0px" },
-    ],
-    {
-      duration: 600,
-      easing: "cubic-bezier(0, 0, 0.2, 1)",
-    }
-  );
-
-  // Secondary Shockwave (Delay)
-  const shockwave2 = document.createElement("div");
-  shockwave2.style.position = "absolute";
-  shockwave2.style.left = `${x}px`;
-  shockwave2.style.top = `${y}px`;
-  shockwave2.style.width = "0px";
-  shockwave2.style.height = "0px";
-  shockwave2.style.border = `1px solid ${colors[1]}`;
-  shockwave2.style.borderRadius = "50%";
-  shockwave2.style.transform = "translate(-50%, -50%)";
-  shockwave2.style.opacity = "0.6";
-  particlesContainer.appendChild(shockwave2);
-
-  shockwave2.animate(
-    [
-      { width: "0px", height: "0px", opacity: 0.6, borderWidth: "4px" },
+      { width: "0px", height: "0px", opacity: 0.5, borderWidth: "4px" },
       { width: "200px", height: "200px", opacity: 0, borderWidth: "0px" },
     ],
     {
       duration: 500,
-      delay: 100,
       easing: "cubic-bezier(0, 0, 0.2, 1)",
     }
   );

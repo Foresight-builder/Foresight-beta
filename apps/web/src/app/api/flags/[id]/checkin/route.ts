@@ -183,15 +183,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
     }
 
-    // For self-supervised flags, update status to 'success' immediately if checkin is approved
     let newStatus =
       flag.verification_type === "witness" && String(flag?.witness_id || "") !== "official"
         ? "pending_review"
         : "active";
-
-    if (isSelfSupervised && insertedCheckin?.id) {
-      newStatus = "success";
-    }
 
     let { data, error } = await client
       .from("flags")
