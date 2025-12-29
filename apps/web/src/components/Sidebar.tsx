@@ -172,12 +172,23 @@ export default function Sidebar() {
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
         <div className="relative flex flex-col h-full p-4 z-10">
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="relative w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center rotate-[-3deg] hover:rotate-0 transition-transform duration-300">
-              <Image src="/images/logo.png" alt="Foresight" width={24} height={24} priority />
-              <div className="absolute -top-1.5 -right-1.5 text-yellow-400 text-xs">✨</div>
+          {/* Logo & Tagline */}
+          <div className="mb-8 px-2">
+            <div className="flex items-start gap-3">
+              <div className="relative w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center rotate-[-3deg] hover:rotate-0 transition-transform duration-300 flex-shrink-0">
+                <Image src="/images/logo.png" alt="Foresight" width={24} height={24} priority />
+                <div className="absolute -top-1.5 -right-1.5 text-yellow-400 text-xs">✨</div>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-black text-xl text-gray-800 tracking-tight leading-tight">
+                  Foresight
+                </span>
+                <p className="text-[11px] font-medium leading-snug mt-0.5">
+                  <span className="text-purple-500">Your Insight,</span>
+                  <span className="text-gray-500 ml-0.5">The World&apos;s Foresight</span>
+                </p>
+              </div>
             </div>
-            <span className="font-black text-xl text-gray-800 tracking-tight">Foresight</span>
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 -mr-1 space-y-6">
