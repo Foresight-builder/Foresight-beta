@@ -1,10 +1,11 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { AllLoadedNotice, InfiniteScrollSentinel, ListError } from "@/components/ui/ListStates";
+import { AnimatedCounter } from "@/components/ui/AnimatedNumber";
 import { VirtualizedGrid } from "@/components/ui/VirtualizedGrid";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
 import { normalizeEventId, isValidEventId } from "@/features/trending/trendingModel";
@@ -264,6 +265,7 @@ type TrendingEventsFilterBarProps = {
   onFilterChange: (state: FilterSortState) => void;
   searchQuery: string;
   onClearSearch: () => void;
+  totalEvents: number;
   tTrending: (key: string) => string;
 };
 
@@ -274,20 +276,44 @@ function TrendingEventsFilterBar({
   onFilterChange,
   searchQuery,
   onClearSearch,
+  totalEvents,
   tTrending,
 }: TrendingEventsFilterBarProps) {
   if (loading || error) return null;
 
   const hasSearch = searchQuery.trim().length > 0;
+  const hasFilter = filters.category || filters.status || filters.sortBy !== "trending";
+  const showResultCount = hasSearch || hasFilter;
 
   return (
     <div className="mb-8 space-y-3">
       <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
+        {/* 筛选结果数量 */}
+        {showResultCount && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-100"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+            <span className="text-purple-700 font-medium">
+              {tTrending("search.resultPrefix")}
+              <AnimatedCounter
+                value={totalEvents}
+                className="text-purple-600 font-bold mx-1"
+                duration={0.5}
+              />
+              {tTrending("search.resultSuffix")}
+            </span>
+          </motion.div>
+        )}
+
+        {/* 搜索关键词 */}
         {hasSearch && (
           <div className="flex items-center gap-2 max-w-full">
             <span className="truncate max-w-[160px] sm:max-w-[260px]">
-              {tTrending("search.activeLabel")} {searchQuery}
+              {tTrending("search.activeLabel")} &quot;{searchQuery}&quot;
             </span>
             <button
               type="button"
@@ -486,6 +512,7 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
         onFilterChange={onFilterChange}
         searchQuery={searchQuery}
         onClearSearch={onClearSearch}
+        totalEvents={sortedEvents.length}
         tTrending={tTrending}
       />
 

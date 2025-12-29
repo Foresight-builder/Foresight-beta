@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CheckCircle, ChevronDown } from "lucide-react";
+import { AnimatedCounter } from "./AnimatedNumber";
 
 type ListLoadingProps = {
   message: string;
@@ -97,7 +98,7 @@ export function AllLoadedNotice({ totalCount, prefixLabel, suffixLabel }: AllLoa
         <CheckCircle className="w-4 h-4" />
         <span>
           {prefixLabel}
-          {totalCount}
+          <AnimatedCounter value={totalCount} className="font-bold text-purple-600 mx-1" />
           {suffixLabel}
         </span>
       </div>

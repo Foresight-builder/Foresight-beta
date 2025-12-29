@@ -903,7 +903,9 @@
     "search": {
       "placeholder": "Buscar eventos...",
       "activeLabel": "Búsqueda:",
-      "clear": "Borrar búsqueda"
+      "clear": "Borrar búsqueda",
+      "resultPrefix": "Se encontraron ",
+      "resultSuffix": " eventos"
     },
     "empty": {
       "title": "Aún no hay predicciones",
