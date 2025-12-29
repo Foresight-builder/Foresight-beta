@@ -11,7 +11,6 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { HeroImage } from "@/components/ui/OptimizedImage";
 import { getFallbackEventImage } from "@/features/trending/trendingModel";
 
 export type Category = {
@@ -272,12 +271,15 @@ export function HeroPreviewCard({
         }}
       >
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden">
-          <HeroImage
+          <img
             src={activeImage}
             alt={activeTitle}
-            fallbackSrc={getFallbackEventImage(activeTitle)}
-            className="transition-transform duration-700 group-hover:scale-110"
-            priority
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            onError={(e) => {
+              const img = e.currentTarget;
+              img.onerror = null;
+              img.src = getFallbackEventImage(activeTitle);
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
 
