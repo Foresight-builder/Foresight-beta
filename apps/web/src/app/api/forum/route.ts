@@ -3,6 +3,7 @@ import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
+import { normalizeCategory } from "@/features/trending/trendingModel";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -159,6 +160,7 @@ export async function GET(req: Request) {
       created_at: String(t.created_at || ""),
       upvotes: Number(t.upvotes || 0),
       downvotes: Number(t.downvotes || 0),
+      category: t.category ? normalizeCategory(String(t.category)) : undefined,
       created_prediction_id:
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       review_status: String(t.review_status || "pending_review"),
@@ -200,7 +202,8 @@ export async function POST(req: Request) {
     const subject_name = String(body?.subjectName || "");
     const action_verb = String(body?.actionVerb || "");
     const target_value = String(body?.targetValue || "");
-    const category = String(body?.category || "");
+    const categoryRaw = String(body?.category || "");
+    const category = categoryRaw ? normalizeCategory(categoryRaw) : "";
     const deadline = body?.deadline ? new Date(String(body.deadline)).toISOString() : null;
     const title_preview = String(body?.titlePreview || "");
     const criteria_preview = String(body?.criteriaPreview || "");

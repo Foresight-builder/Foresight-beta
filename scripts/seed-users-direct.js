@@ -1,4 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { ethers } from "ethers";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Initialize dotenv
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
 // 从环境变量读取配置
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -76,11 +85,81 @@ const realisticUsers = [
   },
 ];
 
+// 生成更多随机用户，总数达到 30+
+const userPrefixes = [
+  "Crypto",
+  "DeFi",
+  "NFT",
+  "Moon",
+  "Hodl",
+  "Diamond",
+  "Golden",
+  "Silver",
+  "Bronze",
+  "Paper",
+  "Smart",
+  "Dumb",
+  "Fast",
+  "Slow",
+  "Alpha",
+  "Beta",
+  "Gamma",
+  "Omega",
+  "Meta",
+  "Cyber",
+];
+const userSuffixes = [
+  "Trader",
+  "Investor",
+  "Whale",
+  "Shrimp",
+  "Hands",
+  "Bull",
+  "Bear",
+  "Wolf",
+  "Ape",
+  "Degen",
+  "King",
+  "Queen",
+  "Prince",
+  "Princess",
+  "Knight",
+  "Wizard",
+  "Ninja",
+  "Robot",
+  "Punk",
+  "Gamer",
+];
+
+function generateRandomUser() {
+  const prefix = userPrefixes[Math.floor(Math.random() * userPrefixes.length)];
+  const suffix = userSuffixes[Math.floor(Math.random() * userSuffixes.length)];
+  const num = Math.floor(Math.random() * 9999);
+  const username = `${prefix}_${suffix}_${num}`;
+
+  const wallet = ethers.Wallet.createRandom();
+
+  return {
+    wallet_address: wallet.address,
+    username: username,
+    email: `${username.toLowerCase()}@example.com`,
+    is_admin: false,
+    created_at: new Date(
+      Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 90)
+    ).toISOString(), // Past 90 days
+  };
+}
+
 async function seed() {
   console.log("Connecting to Supabase:", supabaseUrl);
   console.log("Inserting user profiles...");
 
-  const allUsers = [...fixedUsers, ...realisticUsers];
+  const randomUsersCount = 35; // Generate 35 more users
+  const randomUsers = Array.from({ length: randomUsersCount }, generateRandomUser);
+
+  const allUsers = [...fixedUsers, ...realisticUsers, ...randomUsers];
+
+  console.log(`Prepared ${allUsers.length} users for insertion.`);
 
   const { data, error } = await supabase
     .from("user_profiles")
@@ -91,7 +170,11 @@ async function seed() {
     console.error("Error seeding users:", error);
   } else {
     console.log(`Successfully inserted/updated ${data.length} users.`);
-    data.forEach((u) => console.log(` - ${u.username} (${u.wallet_address.slice(0, 6)}...)`));
+    // data.forEach((u) => console.log(` - ${u.username} (${u.wallet_address.slice(0, 6)}...)`));
+    console.log("First 10 users:");
+    data
+      .slice(0, 10)
+      .forEach((u) => console.log(` - ${u.username} (${u.wallet_address.slice(0, 6)}...)`));
   }
 }
 

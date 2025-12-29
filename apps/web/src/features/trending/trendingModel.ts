@@ -163,15 +163,18 @@ export const normalizeCategory = (raw?: string): string => {
       "finance",
       "经济",
       "宏观",
+      "macro",
       "market",
       "stocks",
+      "governance",
     ].includes(s)
   )
     return "时政";
   if (["weather", "气象", "天气", "climate", "气候"].includes(s)) return "天气";
   if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
   if (["business", "商业", "finance", "biz"].includes(s)) return "商业";
-  if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3"].includes(s)) return "加密货币";
+  if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3", "defi"].includes(s))
+    return "加密货币";
   if (["more", "更多", "other", "其他"].includes(s)) return "更多";
   return "科技";
 };

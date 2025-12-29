@@ -166,8 +166,14 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduceMotion) return;
 
+  const card = event.currentTarget as HTMLElement;
+  const rect = card.getBoundingClientRect();
   const x = event.clientX;
   const y = event.clientY;
+
+  // Calculate position relative to card for internal ripple
+  const localX = x - rect.left;
+  const localY = y - rect.top;
 
   const categoryConfig = TRENDING_CATEGORIES.find((c) => c.name === category);
   const icon = categoryConfig?.icon || "✨";
@@ -194,7 +200,55 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   };
 
   const colors = getColor(category || "");
+  const primaryColor = colors[0];
 
+  // --- 1. Internal Ripple Effect (Linked to Card) ---
+  const ripple = document.createElement("div");
+  const size = Math.max(rect.width, rect.height) * 2;
+
+  ripple.style.position = "absolute";
+  ripple.style.left = `${localX}px`;
+  ripple.style.top = `${localY}px`;
+  ripple.style.width = `${size}px`;
+  ripple.style.height = `${size}px`;
+  ripple.style.background = `radial-gradient(circle, ${primaryColor}20 0%, ${primaryColor}10 40%, transparent 70%)`;
+  ripple.style.transform = "translate(-50%, -50%) scale(0)";
+  ripple.style.borderRadius = "50%";
+  ripple.style.pointerEvents = "none";
+  ripple.style.transition = "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s linear";
+  ripple.style.opacity = "1";
+
+  // Append to card to ensure it's clipped and moves with card
+  if (getComputedStyle(card).position === "static") {
+    card.style.position = "relative";
+  }
+  card.appendChild(ripple);
+
+  // Trigger ripple animation
+  requestAnimationFrame(() => {
+    ripple.style.transform = "translate(-50%, -50%) scale(1)";
+    ripple.style.opacity = "0";
+  });
+
+  setTimeout(() => ripple.remove(), 500);
+
+  // --- 2. Card Highlight/Glow ---
+  const originalTransition = card.style.transition;
+  const originalBoxShadow = card.style.boxShadow;
+  const originalBorderColor = card.style.borderColor;
+
+  // Add a temporary glow matching the category
+  card.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+  card.style.borderColor = primaryColor;
+  card.style.boxShadow = `0 0 0 1px ${primaryColor}40, 0 10px 25px -5px ${primaryColor}30`;
+
+  setTimeout(() => {
+    card.style.borderColor = originalBorderColor || "";
+    card.style.boxShadow = originalBoxShadow || "";
+    card.style.transition = originalTransition || "";
+  }, 400);
+
+  // --- 3. External Particles (Refined) ---
   const particlesContainer = document.createElement("div");
   particlesContainer.className = "fixed pointer-events-none z-[9999]";
   particlesContainer.style.left = "0";
@@ -203,7 +257,7 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   particlesContainer.style.height = "100vh";
   document.body.appendChild(particlesContainer);
 
-  // 1. Shockwave
+  // Shockwave (Softer)
   const shockwave = document.createElement("div");
   shockwave.style.position = "absolute";
   shockwave.style.left = `${x}px`;
@@ -213,12 +267,12 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   shockwave.style.border = `2px solid ${colors[0]}`;
   shockwave.style.borderRadius = "50%";
   shockwave.style.transform = "translate(-50%, -50%)";
-  shockwave.style.opacity = "0.8";
+  shockwave.style.opacity = "0.8"; // Increased opacity
   particlesContainer.appendChild(shockwave);
 
   shockwave.animate(
     [
-      { width: "0px", height: "0px", opacity: 0.8, borderWidth: "10px" },
+      { width: "0px", height: "0px", opacity: 0.8, borderWidth: "6px" },
       { width: "300px", height: "300px", opacity: 0, borderWidth: "0px" },
     ],
     {
@@ -227,30 +281,55 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     }
   );
 
-  // 2. Icon Particles
-  const iconCount = 8;
+  // Secondary Shockwave (Delay)
+  const shockwave2 = document.createElement("div");
+  shockwave2.style.position = "absolute";
+  shockwave2.style.left = `${x}px`;
+  shockwave2.style.top = `${y}px`;
+  shockwave2.style.width = "0px";
+  shockwave2.style.height = "0px";
+  shockwave2.style.border = `1px solid ${colors[1]}`;
+  shockwave2.style.borderRadius = "50%";
+  shockwave2.style.transform = "translate(-50%, -50%)";
+  shockwave2.style.opacity = "0.6";
+  particlesContainer.appendChild(shockwave2);
+
+  shockwave2.animate(
+    [
+      { width: "0px", height: "0px", opacity: 0.6, borderWidth: "4px" },
+      { width: "200px", height: "200px", opacity: 0, borderWidth: "0px" },
+    ],
+    {
+      duration: 500,
+      delay: 100,
+      easing: "cubic-bezier(0, 0, 0.2, 1)",
+    }
+  );
+
+  // Icon Particles
+  const iconCount = 12; // Increased count
   for (let i = 0; i < iconCount; i++) {
     const p = document.createElement("div");
     p.innerText = icon;
     p.style.position = "absolute";
     p.style.left = `${x}px`;
     p.style.top = `${y}px`;
-    p.style.fontSize = "20px";
+    p.style.fontSize = "24px"; // Larger icons
     p.style.transform = "translate(-50%, -50%) scale(0)";
     particlesContainer.appendChild(p);
 
     const angle = (i / iconCount) * Math.PI * 2 + (Math.random() - 0.5);
-    const velocity = 100 + Math.random() * 100;
+    const velocity = 80 + Math.random() * 100; // Increased velocity
     const tx = Math.cos(angle) * velocity;
     const ty = Math.sin(angle) * velocity;
 
     p.animate(
       [
         { transform: "translate(-50%, -50%) scale(0) rotate(0deg)", opacity: 0 },
-        { transform: "translate(-50%, -50%) scale(1.5) rotate(0deg)", opacity: 1, offset: 0.2 },
+        { transform: "translate(-50%, -50%) scale(1.4) rotate(0deg)", opacity: 1, offset: 0.2 },
         {
-          transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1) rotate(${
-            Math.random() * 90 - 45
+          transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0) rotate(${
+            Math.random() * 120 - 60
           }deg)`,
           opacity: 0,
         },
@@ -263,21 +342,21 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     );
   }
 
-  // 3. Confetti Particles
-  const confettiCount = 16;
+  // Confetti Particles
+  const confettiCount = 20; // Increased count
   for (let i = 0; i < confettiCount; i++) {
     const p = document.createElement("div");
     p.style.position = "absolute";
     p.style.left = `${x}px`;
     p.style.top = `${y}px`;
-    p.style.width = "8px";
-    p.style.height = "8px";
+    p.style.width = `${4 + Math.random() * 4}px`; // Varied size
+    p.style.height = `${4 + Math.random() * 4}px`;
     p.style.backgroundColor = colors[i % colors.length];
-    p.style.borderRadius = i % 2 === 0 ? "50%" : "2px";
+    p.style.borderRadius = i % 3 === 0 ? "50%" : i % 3 === 1 ? "0%" : "2px";
     particlesContainer.appendChild(p);
 
     const angle = Math.random() * Math.PI * 2;
-    const velocity = 50 + Math.random() * 150;
+    const velocity = 60 + Math.random() * 120; // Increased velocity
     const tx = Math.cos(angle) * velocity;
     const ty = Math.sin(angle) * velocity;
 
@@ -285,7 +364,7 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
       [
         { transform: "translate(-50%, -50%) scale(0)", opacity: 1 },
         {
-          transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1)`,
+          transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`,
           opacity: 0,
         },
       ],
@@ -299,5 +378,5 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
 
   setTimeout(() => {
     particlesContainer.remove();
-  }, 1500);
+  }, 1000);
 };

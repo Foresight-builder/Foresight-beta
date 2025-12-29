@@ -1,5 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { ethers } from "ethers";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Initialize dotenv
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
 // 从环境变量读取配置
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,28 +20,29 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 固定的演示用户地址（包含所有8个仿真账号）
-const demoUsers = [
-  "0x1111111111111111111111111111111111111111", // Alice
-  "0x2222222222222222222222222222222222222222", // Bob
-  "0x3333333333333333333333333333333333333333", // Carol
-  "0x4444444444444444444444444444444444444444", // Dave
-  "0x5555555555555555555555555555555555555555", // Erin
-  "0x71C7656EC7ab88b098defB751B7401B5f6d8976F", // Satoshi_Fan_2024
-  "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Local_Whale
-  "0x90F79bf6EB2c4f870365E785982E1f101E93b906", // Prediction_Oracle
-];
-
-function randomUser() {
-  return demoUsers[Math.floor(Math.random() * demoUsers.length)];
-}
-
 function parseUnits(value, decimals = 18) {
   return ethers.parseUnits(value.toString(), decimals).toString();
 }
 
 async function seedTradesAndOrders() {
   console.log("Connecting to Supabase:", supabaseUrl);
+
+  // 0. Fetch all users from DB to use as makers/takers
+  const { data: users, error: usersError } = await supabase
+    .from("user_profiles")
+    .select("wallet_address");
+
+  if (usersError || !users || users.length === 0) {
+    console.error("Error fetching users or no users found:", usersError);
+    return;
+  }
+
+  const allUserAddresses = users.map((u) => u.wallet_address);
+  console.log(`Loaded ${allUserAddresses.length} users for seeding trades.`);
+
+  function randomUser() {
+    return allUserAddresses[Math.floor(Math.random() * allUserAddresses.length)];
+  }
 
   // 1. 获取所有市场映射
   const { data: markets, error: marketError } = await supabase.from("markets_map").select("*");
@@ -76,8 +85,8 @@ async function seedTradesAndOrders() {
     // 为每个 outcome 生成数据
     for (const outcome of eventOutcomes) {
       // --- 生成 Trades (历史成交) ---
-      // 每个 outcome 生成 3-5 条成交
-      const tradeCount = 3 + Math.floor(Math.random() * 3);
+      // 每个 outcome 生成 20-30 条成交 (Increased from 3-5)
+      const tradeCount = 20 + Math.floor(Math.random() * 11);
       for (let i = 0; i < tradeCount; i++) {
         const price = randomPrice();
         const amount = randomAmount();
@@ -96,17 +105,19 @@ async function seedTradesAndOrders() {
           maker_address: maker,
           is_buy: isBuy,
           tx_hash: `0xseed_trade_${market.event_id}_${outcome.outcome_index}_${i}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          log_index: 0,
           block_number: 1000000 + i,
           block_timestamp: new Date(
-            Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
-          ).toISOString(), // 过去7天内
+            Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000) // Increased to past 30 days
+          ).toISOString(),
           created_at: new Date().toISOString(),
         });
       }
 
       // --- 生成 Orders (订单簿深度) ---
       // 买单 (Bids): 价格较低，从 0.1 到 0.45
-      const bidCount = 3 + Math.floor(Math.random() * 3);
+      // Increased to 10-20 bids (from 3-6)
+      const bidCount = 10 + Math.floor(Math.random() * 11);
       for (let i = 0; i < bidCount; i++) {
         const price = 0.1 + Math.random() * 0.35; // 0.1 - 0.45
         const amount = randomAmount();
@@ -130,7 +141,8 @@ async function seedTradesAndOrders() {
       }
 
       // 卖单 (Asks): 价格较高，从 0.55 到 0.9
-      const askCount = 3 + Math.floor(Math.random() * 3);
+      // Increased to 10-20 asks (from 3-6)
+      const askCount = 10 + Math.floor(Math.random() * 11);
       for (let i = 0; i < askCount; i++) {
         const price = 0.55 + Math.random() * 0.35; // 0.55 - 0.9
         const amount = randomAmount();

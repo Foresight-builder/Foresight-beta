@@ -148,7 +148,10 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
           onCardClick={(e, category) => {
             createCategoryParticlesAtCardClick(e, category);
             if (isValidId) {
-              router.push(`/prediction/${eventId}`);
+              // Delay navigation slightly to allow the explosion animation to be seen
+              setTimeout(() => {
+                router.push(`/prediction/${eventId}`);
+              }, 300);
             }
           }}
           onToggleFollow={(e, id) => {

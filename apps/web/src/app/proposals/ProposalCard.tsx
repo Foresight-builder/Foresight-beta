@@ -17,18 +17,22 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const downvotes = proposal.downvotes || 0;
   const score = upvotes - downvotes;
 
-  // Determine status color based on category or heat
   const isHot = score > 10 || (proposal.comments?.length || 0) > 5;
 
   const categoryConfig: Record<string, { color: string; bg: string; border: string }> = {
-    General: { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
-    Tech: { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-    Crypto: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-    Sports: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    Politics: { color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100" },
+    科技: { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+    娱乐: { color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100" },
+    时政: { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
+    天气: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    体育: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    商业: { color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200" },
+    加密货币: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
+    更多: { color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
   };
 
-  const cat = categoryConfig[proposal.category || "General"];
+  const categoryKey =
+    proposal.category && categoryConfig[proposal.category] ? proposal.category : "科技";
+  const cat = categoryConfig[categoryKey];
   const author = String(proposal.user_id || "").trim();
   const authorLabel = author ? formatAddress(author) : "Anonymous";
   const createdAt = new Date(proposal.created_at);
