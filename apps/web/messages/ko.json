@@ -138,6 +138,40 @@
     }
   },
   "leaderboard": {
+    "title": "수익 리더보드",
+    "subtitle": "최고 수익자",
+    "week": "이번 주",
+    "month": "이번 달",
+    "avatarAlt": "{name}의 아바타",
+    "viewAll": "전체 리더보드 보기",
+    "pageTitle": "리더보드",
+    "seasonBadge": "시즌 4 · 12주차",
+    "heroSubtitle": "가장 똑똑한 예측가는 누구? 🧠",
+    "heroDescription": "최고의 전략을 따라가고 순위를 올려보세요!",
+    "introText": "Foresight 리더보드는 예측 수익과 승률을 기준으로 트레이더 순위를 매겨, 꾸준한 수익과 거래 스타일을 가진 지갑을 발견하는 데 도움을 줍니다.",
+    "linkHint": "이 최고 트레이더들이 어디에 베팅하는지 보고 싶으신가요?",
+    "linkTrending": "트렌딩 예측",
+    "linkMiddle": "에서 라이브 시장을 둘러보거나",
+    "linkForum": "포럼",
+    "linkSuffix": "에서 그들의 인사이트를 팔로우하세요.",
+    "timeRange": {
+      "weekly": "주간",
+      "monthly": "월간",
+      "all": "전체 기간"
+    },
+    "category": {
+      "profit": "수익",
+      "winrate": "정확도",
+      "streak": "연속 기록"
+    },
+    "card": {
+      "totalProfit": "총 거래량",
+      "winRate": "승률",
+      "tradesCount": "거래 수",
+      "rankTrader": "순위 & 트레이더",
+      "performanceTrend": "성과 추이",
+      "winningsStatus": "수익 & 상태"
+    },
     "sidebar": {
       "mySpot": "내 순위 ✨",
       "weekly": "주간",
@@ -160,7 +194,18 @@
       "connectWallet": "지갑 연결",
       "comingSoon": "곧 출시",
       "noTrending": "트렌딩 예측 없음"
-    }
+    },
+    "loadMore": "더 많은 트레이더 불러오기",
+    "allLoaded": "모든 트레이더 표시됨",
+    "noData": "리더보드 데이터 없음",
+    "loading": "로딩 중...",
+    "loadingData": "리더보드 로딩 중..."
+  },
+  "userCard": {
+    "volume": "거래량",
+    "winRate": "승률",
+    "trades": "거래 수",
+    "viewProfile": "전체 프로필 보기"
   },
   "proposals": {
     "sidebar": {
@@ -193,6 +238,236 @@
     "searchPlaceholder": "주제 또는 토론 검색...",
     "noTopics": "사용 가능한 주제 없음",
     "emptyTopics": "주제 없음"
+  },
+  "trending": {
+    "hero": {
+      "globalClimateSummit": {
+        "title": "글로벌 기후 정상회의",
+        "description": "기후 변화 대응을 위한 글로벌 전략 논의"
+      },
+      "aiSafetySummit": {
+        "title": "AI 안전 컨퍼런스",
+        "description": "AI 규제 및 안전 문제에 초점"
+      },
+      "globalFinanceForum": {
+        "title": "국제 금융 포럼",
+        "description": "디지털 화폐와 경제의 미래 탐구"
+      },
+      "charitySportsMatch": {
+        "title": "자선 스포츠 경기",
+        "description": "전 세계 선수들이 자선을 위해 힘을 모음"
+      },
+      "extremeWeatherAlert": {
+        "title": "이상 기후 경보",
+        "description": "여러 지역에서 이상 기후 경보 발령"
+      },
+      "techProductLaunch": {
+        "title": "신기술 제품 출시",
+        "description": "최신 기술 제품의 화려한 데뷔"
+      },
+      "worldChampionshipFinal": {
+        "title": "세계 선수권 결승전",
+        "description": "최강 팀들의 최종 대결"
+      }
+    },
+    "category": {
+      "tech": "기술",
+      "entertainment": "엔터테인먼트",
+      "politics": "정치",
+      "weather": "날씨",
+      "sports": "스포츠",
+      "business": "비즈니스",
+      "crypto": "암호화폐",
+      "more": "더 보기"
+    },
+    "metrics": {
+      "marketVol": "시장 거래량",
+      "greed": "탐욕 지수",
+      "poolSize": "풀 규모",
+      "participants": "참가자",
+      "events": "이벤트",
+      "successRate": "성공률"
+    },
+    "badges": {
+      "dailyPick": "오늘의 선택",
+      "trending": "트렌딩"
+    },
+    "platformDescription": "Foresight는 블록체인 기반의 탈중앙화 예측 시장 플랫폼입니다. 실제 이벤트에 대한 예측을 생성하고 거래하며, 암호화폐로 의견을 표현하고 잠재적 수익을 얻을 수 있습니다.",
+    "sections": {
+      "popularCategories": "인기 카테고리",
+      "hotEvents": "트렌딩 이벤트",
+      "descPart1": "아이디어 단계부터 참여하고 싶으신가요?",
+      "descPart2": "에서 제안하거나 투표하세요. 승인된 시장이 여기에 표시됩니다. 연구와 인사이트는",
+      "descPart3": "에서 이 시장과 연결된 토론을 찾아보세요. 거래를 장기 도전으로 바꾸려면",
+      "descPart4": "에서 목표를 설정하고",
+      "descPart5": "에서 성과를 확인하세요.",
+      "descPart6": "을 사용하여 관심 있는 이벤트를 빠르게 찾을 수도 있습니다.",
+      "searchLink": "검색"
+    },
+    "actions": {
+      "viewAll": "모두 보기",
+      "placePrediction": "예측하기",
+      "viewDetails": "상세 보기",
+      "createPrediction": "예측 생성"
+    },
+    "search": {
+      "placeholder": "이벤트 검색...",
+      "activeLabel": "검색:",
+      "clear": "검색 지우기",
+      "resultPrefix": "",
+      "resultSuffix": "개 이벤트 발견"
+    },
+    "empty": {
+      "title": "아직 예측이 없습니다",
+      "description": "사용 가능한 예측 이벤트가 없습니다. 카테고리를 변경하거나 새로 만들어 보세요!",
+      "searchTitle": "검색 결과 없음",
+      "searchDescription": "다른 키워드를 시도하거나 위의 검색을 지워보세요.",
+      "filteredTitle": "필터와 일치하는 이벤트가 없습니다",
+      "filteredDescription": "필터를 조정하거나 초기화하여 더 많은 이벤트를 확인해 보세요."
+    },
+    "footer": {
+      "copyright": "© 2025 Foresight. All rights reserved."
+    },
+    "state": {
+      "loading": "데이터 로딩 중...",
+      "errorTitle": "로딩 실패",
+      "reload": "다시 로드",
+      "loadMore": "더 불러오는 중...",
+      "scrollHint": "스크롤하여 더 불러오기",
+      "allLoadedPrefix": "총 ",
+      "allLoadedSuffix": "개 예측 표시 중"
+    },
+    "card": {
+      "volumePrefix": "거래량 $",
+      "optionFallbackPrefix": "옵션 "
+    },
+    "login": {
+      "title": "로그인해 주세요",
+      "description": "예측 이벤트를 팔로우하려면 지갑을 연결해야 합니다. 오른쪽 상단의 \"지갑 연결\" 버튼을 클릭하여 로그인하세요.",
+      "benefitsTitle": "로그인 후 가능한 기능:",
+      "benefitFollow": "관심 있는 예측 이벤트 팔로우",
+      "benefitParticipate": "예측 및 스테이킹 참여",
+      "benefitRewards": "예측 보상 획득",
+      "later": "나중에",
+      "now": "지금 로그인"
+    },
+    "admin": {
+      "page": {
+        "badge": "관리자 콘솔",
+        "description": "글로벌 예측 시장의 핵심 데이터를 여기서 구성합니다. 규칙이 정확하고 명확한지 확인해 주세요.",
+        "backToList": "목록으로 돌아가기",
+        "immutableWarning": "중요: 일부 핵심 필드(예: 제목, 마감일)는 게시 후 수정할 수 없습니다.",
+        "submit": "지금 생성"
+      },
+      "draft": {
+        "savedMsg": "초안 저장됨",
+        "savedToastTitle": "초안 저장됨",
+        "savedToastDesc": "진행 상황이 로컬에 안전하게 저장되었습니다.",
+        "restoreConfirm": "이전 초안이 발견되었습니다. 계속 편집하시겠습니까?",
+        "restoredToastTitle": "초안 복원됨",
+        "restoredToastDesc": "이전에 작업하던 곳에서 계속 편집할 수 있습니다.",
+        "clearConfirm": "이 초안을 삭제하시겠습니까? 이 작업은 취소할 수 없으며 모든 내용이 손실됩니다.",
+        "clearedMsg": "초안 삭제됨",
+        "autoSavedPrefix": "자동 저장됨:",
+        "menuLabel": "초안 작업",
+        "menuTitle": "초안 관리",
+        "saveCurrent": "현재 초안 저장",
+        "reset": "취소하고 초기화"
+      },
+      "section": {
+        "basicTitle": "기본 정보",
+        "basicSubtitle": "시장의 핵심 식별 매개변수 구성",
+        "detailsTitle": "세부 규칙",
+        "detailsSubtitle": "예측 배경 및 해결 기준 설명",
+        "typeTitle": "예측 유형 및 옵션",
+        "typeSubtitle": "사용자가 선택할 수 있는 결과 구성"
+      },
+      "type": {
+        "binary": "이진 예측",
+        "multi": "다중 결과 예측"
+      },
+      "multi": {
+        "optionsTitle": "옵션 목록",
+        "addOption": "옵션 추가",
+        "optionLabelPlaceholder": "옵션 이름 (예: 예, 아니오)",
+        "optionDescriptionPlaceholder": "추가 설명",
+        "optionImagePlaceholder": "이미지 URL",
+        "optionColorPlaceholder": "16진수 색상"
+      },
+      "createFailed": "생성 실패",
+      "createSuccess": "성공적으로 생성됨",
+      "editDialogTitle": "이벤트 편집",
+      "fieldTitle": "제목",
+      "fieldTitlePlaceholder": "예: 2025년까지 비트코인 가격이 $150,000를 돌파할까요?",
+      "fieldCategory": "카테고리",
+      "fieldStatus": "상태",
+      "fieldDeadline": "마감일",
+      "fieldMinStake": "최소 스테이크",
+      "fieldMinStakeLabel": "최소 스테이크 (USDC)",
+      "fieldDescription": "배경 설명",
+      "fieldDescriptionPlaceholder": "이 예측의 배경, 범위 및 기타 핵심 정보를 자세히 설명하세요...",
+      "fieldCriteria": "해결 기준 (오라클 기준)",
+      "fieldCriteriaPlaceholder": "예: 마감일의 CoinMarketCap 종가를 기준으로 합니다",
+      "confirmDelete": "이 이벤트를 삭제하시겠습니까?",
+      "updateFailed": "업데이트 실패",
+      "deleteFailed": "삭제 실패",
+      "updateSuccessTitle": "업데이트 성공",
+      "updateSuccessDesc": "예측 이벤트가 성공적으로 업데이트되었습니다",
+      "deleteSuccessTitle": "삭제 성공",
+      "deleteSuccessDesc": "예측 이벤트가 삭제되었습니다",
+      "retryLater": "나중에 다시 시도해 주세요",
+      "cancel": "취소",
+      "saving": "저장 중…",
+      "save": "저장",
+      "editAria": "편집",
+      "deleteAria": "삭제",
+      "deadlinePlaceholder": "마감일 선택"
+    }
+  },
+  "filters": {
+    "categoryLabel": "카테고리 필터",
+    "categories": {
+      "all": "전체",
+      "crypto": "암호화폐",
+      "sports": "스포츠",
+      "politics": "정치",
+      "tech": "기술",
+      "entertainment": "엔터테인먼트",
+      "weather": "날씨",
+      "business": "비즈니스",
+      "other": "기타",
+      "more": "더 보기"
+    },
+    "sort": {
+      "trending": {
+        "label": "트렌딩 우선",
+        "description": "관심도와 활동량 기준 정렬"
+      },
+      "newest": {
+        "label": "최신순",
+        "description": "생성 시간 기준 정렬 (최신 우선)"
+      },
+      "ending": {
+        "label": "마감 임박",
+        "description": "마감일 기준 정렬 (가장 빠른 것 우선)"
+      },
+      "popular": {
+        "label": "가장 많이 팔로우됨",
+        "description": "팔로워 수 기준 정렬"
+      }
+    },
+    "status": {
+      "all": "전체 상태",
+      "active": "진행 중",
+      "pending": "대기 중",
+      "ended": "종료됨"
+    },
+    "actions": {
+      "filter": "필터",
+      "clear": "지우기",
+      "statusFilter": "상태 필터",
+      "currentFilter": "현재 필터:"
+    }
   },
   "flags": {
     "sidebar": {
