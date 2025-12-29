@@ -148,6 +148,12 @@ export default function FlagsPage() {
       if (!res.ok) throw new Error("Checkin failed");
       const ret = await res.json();
       setCheckinOpen(false);
+      toast.success(
+        tFlags("toast.checkinSuccessTitle"),
+        ret.sticker_earned
+          ? tFlags("toast.checkinSuccessDesc")
+          : "本次打卡已记录，本次暂未抽中表情奖励，下次继续加油！"
+      );
       loadFlags();
       if (ret.sticker_earned) {
         if (ret.sticker) {
@@ -254,7 +260,7 @@ export default function FlagsPage() {
         const totalDays = ret?.metrics?.totalDays || 0;
         const desc = `${tFlags("toast.statusLabel")}: ${statusText}，${tFlags(
           "toast.approvedDaysLabel"
-        )} ${approvedDays}/${totalDays}`;
+        )} ${approvedDays}/${totalDays}，本次暂未抽中表情奖励，下次继续加油！`;
         toast.success(tFlags("toast.settleSuccessTitle"), desc);
       }
     } catch (e) {

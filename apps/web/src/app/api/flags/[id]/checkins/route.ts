@@ -52,58 +52,23 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (!res.error) {
-      const items = (res.data || []).map(
-        (r: Database["public"]["Tables"]["flag_checkins"]["Row"]) => ({
-          id: String(r.id),
-          note: String(r.note || ""),
-          image_url: String(r.image_url || ""),
-          created_at: String(r.created_at || ""),
-          review_status: String(r.review_status || "pending"),
-          reviewer_id: String(r.reviewer_id || ""),
-          review_reason: String(r.review_reason || ""),
-          reviewed_at: String(r.reviewed_at || ""),
-        })
-      );
-      return NextResponse.json({ items, total: items.length }, { status: 200 });
-    }
-
-    // 回退：使用 discussions 中 type=checkin 的记录
-    const d = await client
-      .from("discussions")
-      .select("id,content,created_at")
-      .eq("proposal_id", flagId)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (d.error)
+    if (res.error)
       return NextResponse.json(
-        { message: "Failed to query check-ins", detail: d.error.message },
+        { message: "Failed to query check-ins", detail: res.error.message },
         { status: 500 }
       );
-    const items = (d.data || [])
-      .map((r: Database["public"]["Tables"]["discussions"]["Row"]) => {
-        try {
-          const obj = JSON.parse(String(r.content || "{}"));
-          if (obj && obj.type === "checkin") {
-            return {
-              id: String(r.id),
-              note: String(obj.note || ""),
-              image_url: String(obj.image_url || ""),
-              created_at: String(r.created_at || ""),
-            };
-          }
-        } catch (e) {
-          logApiError("GET /api/flags/[id]/checkins parse fallback item failed", e);
-        }
-        return null;
+    const items = (res.data || []).map(
+      (r: Database["public"]["Tables"]["flag_checkins"]["Row"]) => ({
+        id: String(r.id),
+        note: String(r.note || ""),
+        image_url: String(r.image_url || ""),
+        created_at: String(r.created_at || ""),
+        review_status: String(r.review_status || "pending"),
+        reviewer_id: String(r.reviewer_id || ""),
+        review_reason: String(r.review_reason || ""),
+        reviewed_at: String(r.reviewed_at || ""),
       })
-      .filter(Boolean) as {
-      id: string;
-      note: string;
-      image_url: string;
-      created_at: string;
-    }[];
+    );
     return NextResponse.json({ items, total: items.length }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(

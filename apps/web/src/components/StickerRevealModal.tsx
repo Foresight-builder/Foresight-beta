@@ -14,7 +14,8 @@ export interface StickerItem {
 }
 
 // Helper to check if string is an image URL
-export const isImageUrl = (str: string) => {
+export const isImageUrl = (str: string | undefined | null) => {
+  if (!str) return false;
   return str.startsWith("http") || str.startsWith("/");
 };
 
@@ -89,50 +90,95 @@ export const OFFICIAL_STICKERS: StickerItem[] = [
 interface StickerRevealModalProps {
   isOpen: boolean;
   onClose: () => void;
-  sticker?: StickerItem; // 如果不传，组件内部可以随机或者显示加载状态
+  sticker?: StickerItem;
+  mode?: "auto" | "interactive";
 }
 
-export default function StickerRevealModal({ isOpen, onClose, sticker }: StickerRevealModalProps) {
+export default function StickerRevealModal({
+  isOpen,
+  onClose,
+  sticker,
+  mode = "interactive",
+}: StickerRevealModalProps) {
   const [step, setStep] = useState<"box" | "open" | "revealed">("box");
   const [currentSticker, setCurrentSticker] = useState<StickerItem | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setStep("box");
-      // 如果外部传入了sticker就用外部的，否则随机一个
+      const isAuto = mode === "auto";
+      const nextStep: "box" | "revealed" = isAuto ? "revealed" : "box";
+      let nextSticker: StickerItem;
       if (sticker) {
-        setCurrentSticker(sticker);
+        nextSticker = sticker;
       } else {
-        const random = OFFICIAL_STICKERS[Math.floor(Math.random() * OFFICIAL_STICKERS.length)];
-        setCurrentSticker(random);
+        nextSticker = OFFICIAL_STICKERS[Math.floor(Math.random() * OFFICIAL_STICKERS.length)];
+      }
+      setCurrentSticker(nextSticker);
+      setStep(nextStep);
+      if (isAuto) {
+        triggerConfetti(nextSticker.rarity);
       }
     }
-  }, [isOpen, sticker]);
+  }, [isOpen, sticker, mode]);
+
+  const getReducedMotion = () => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  };
 
   const handleBoxClick = () => {
     if (step === "box") {
       setStep("open");
       setTimeout(() => {
         setStep("revealed");
-        triggerConfetti();
+        if (currentSticker) {
+          triggerConfetti(currentSticker.rarity);
+        }
       }, 800);
     }
   };
 
-  const triggerConfetti = () => {
-    const duration = 3000;
+  const triggerConfetti = (rarity: string) => {
+    const reduced = getReducedMotion();
+    if (reduced) return;
+
+    let duration = 1500;
+    let baseParticles = 6;
+    switch (rarity) {
+      case "legendary":
+        duration = 2600;
+        baseParticles = 18;
+        break;
+      case "epic":
+        duration = 2200;
+        baseParticles = 14;
+        break;
+      case "rare":
+        duration = 1800;
+        baseParticles = 10;
+        break;
+      default:
+        duration = 1400;
+        baseParticles = 6;
+        break;
+    }
+
     const end = Date.now() + duration;
 
     const frame = () => {
       confetti({
-        particleCount: 5,
+        particleCount: Math.round(baseParticles / 2),
         angle: 60,
         spread: 55,
         origin: { x: 0 },
         colors: ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"],
       });
       confetti({
-        particleCount: 5,
+        particleCount: Math.round(baseParticles / 2),
         angle: 120,
         spread: 55,
         origin: { x: 1 },

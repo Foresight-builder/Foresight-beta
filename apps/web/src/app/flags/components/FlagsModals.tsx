@@ -160,6 +160,7 @@ export function FlagsModals({
         isOpen={stickerOpen}
         onClose={() => setStickerOpen(false)}
         sticker={earnedSticker || undefined}
+        mode="auto"
       />
 
       <StickerGalleryModal
