@@ -1,15 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import type { Prediction } from "@/features/trending/trendingModel";
 import { createCategoryParticlesAtCardClick } from "@/features/trending/trendingAnimations";
 import { TrendingHero } from "./TrendingHero";
-import { TrendingEditModal } from "./TrendingEditModal";
-import { TrendingLoginModal } from "./TrendingLoginModal";
 import { TrendingEventsSection } from "./TrendingEventsSection";
 import { useTrendingPage } from "./hooks/useTrendingPage";
+
+// 模态框懒加载 - 只在需要时加载，减少首屏 JS 体积
+const TrendingEditModal = dynamic(
+  () => import("./TrendingEditModal").then((mod) => mod.TrendingEditModal),
+  { ssr: false }
+);
+
+const TrendingLoginModal = dynamic(
+  () => import("./TrendingLoginModal").then((mod) => mod.TrendingLoginModal),
+  { ssr: false }
+);
 
 type TrendingPageProps = {
   initialPredictions?: Prediction[];
@@ -130,22 +140,27 @@ function TrendingPageView({
         />
       </section>
 
-      <TrendingEditModal
-        open={admin.editOpen}
-        editForm={admin.editForm}
-        savingEdit={admin.savingEdit}
-        onChangeField={admin.setEditField}
-        onClose={admin.closeEdit}
-        onSubmit={admin.submitEdit}
-        tTrendingAdmin={i18n.tTrendingAdmin}
-        tTrending={i18n.tTrending}
-      />
+      {/* 模态框懒加载 - 只在打开时才加载组件 */}
+      {admin.editOpen && (
+        <TrendingEditModal
+          open={admin.editOpen}
+          editForm={admin.editForm}
+          savingEdit={admin.savingEdit}
+          onChangeField={admin.setEditField}
+          onClose={admin.closeEdit}
+          onSubmit={admin.submitEdit}
+          tTrendingAdmin={i18n.tTrendingAdmin}
+          tTrending={i18n.tTrending}
+        />
+      )}
 
-      <TrendingLoginModal
-        open={modals.showLoginModal}
-        onClose={modals.handleCloseLoginModal}
-        tTrending={i18n.tTrending}
-      />
+      {modals.showLoginModal && (
+        <TrendingLoginModal
+          open={modals.showLoginModal}
+          onClose={modals.handleCloseLoginModal}
+          tTrending={i18n.tTrending}
+        />
+      )}
 
       <footer className="relative z-10 text-center py-8 text-black text-sm">
         {i18n.tTrending("footer.copyright")}
