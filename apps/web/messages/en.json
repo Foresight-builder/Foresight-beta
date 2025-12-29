@@ -74,6 +74,7 @@
   },
   "forum": {
     "title": "Community discussions",
+    "platformDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
     "loginRequired": "Connect wallet to start a thread",
     "connectAndSign": "Connect & sign",
     "chatRoom": "Chat room",

@@ -74,6 +74,7 @@
   },
   "forum": {
     "title": "社区讨论",
+    "platformDescription": "Foresight 论坛是预测市场参与者分享洞见和策略的核心社区。你可以围绕现实事件创建话题，也可以参与对现有预测的深度分析讨论。",
     "loginRequired": "发帖需连接钱包",
     "connectAndSign": "连接并签名",
     "chatRoom": "聊天室",

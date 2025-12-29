@@ -78,7 +78,7 @@ export const ForumSidebar = memo(function ForumSidebar({
 
       <div className="p-5 border-b border-purple-200/50 dark:border-slate-700/40 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-100/50 via-fuchsia-100/40 to-violet-50/30 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-80" />
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 bg-[var(--card-bg)] rounded-xl flex items-center justify-center text-brand shadow-lg shadow-indigo-200/20 border border-[var(--card-border)]">
             <MessageSquare size={20} fill="currentColor" />
           </div>
@@ -94,6 +94,11 @@ export const ForumSidebar = memo(function ForumSidebar({
             </div>
           </div>
         </div>
+
+        {/* 新手指引 */}
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+          {t("forum.platformDescription")}
+        </p>
 
         <div className="mb-4 space-y-3">
           {allCategory && (

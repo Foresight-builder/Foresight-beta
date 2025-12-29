@@ -403,6 +403,7 @@
   },
   "forum": {
     "title": "커뮤니티 토론",
+    "platformDescription": "Foresight 포럼은 예측 시장 참가자들이 인사이트와 전략을 공유하는 핵심 커뮤니티입니다. 실제 이벤트를 토론하는 주제를 만들거나 기존 예측에 대한 심층 분석에 참여할 수 있습니다.",
     "loginRequired": "스레드를 시작하려면 지갑을 연결하세요",
     "connectAndSign": "연결 및 서명",
     "chatRoom": "채팅방",
