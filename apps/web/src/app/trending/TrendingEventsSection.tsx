@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
@@ -8,6 +9,36 @@ import { VirtualizedGrid } from "@/components/ui/VirtualizedGrid";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
 import { normalizeEventId, isValidEventId } from "@/features/trending/trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
+
+// 卡片入场动画 variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    y: 24,
+    scale: 0.96,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 20,
+    },
+  },
+};
 
 type TrendingEventsSectionProps = {
   loading: boolean;
@@ -172,14 +203,24 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
     );
   }
 
-  // 数据量小时使用普通网格
+  // 数据量小时使用普通网格 + 入场动画
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <motion.div
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      key={visibleEvents.length} // 当列表变化时重新触发动画
+    >
       {visibleEvents.map((product) => {
         const key = getItemKey(product);
-        return <div key={key}>{renderEventCard(product)}</div>;
+        return (
+          <motion.div key={key} variants={cardVariants}>
+            {renderEventCard(product)}
+          </motion.div>
+        );
       })}
-    </div>
+    </motion.div>
   );
 });
 
@@ -189,22 +230,30 @@ type TrendingEventsSkeletonGridProps = {
 
 function TrendingEventsSkeletonGrid({ count = 8 }: TrendingEventsSkeletonGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <motion.div
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {Array.from({ length: count }).map((_, index) => (
-        <div
+        <motion.div
           key={index}
-          className="rounded-3xl border border-gray-100 bg-white/60 shadow-sm p-4 animate-pulse space-y-4"
+          variants={cardVariants}
+          className="rounded-3xl border border-gray-100 bg-white/60 shadow-sm p-4 space-y-4 overflow-hidden relative"
         >
-          <div className="h-40 rounded-2xl bg-gray-200" />
-          <div className="h-4 rounded-full bg-gray-200 w-3/4" />
-          <div className="h-3 rounded-full bg-gray-200 w-5/6" />
+          {/* Shimmer overlay */}
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+          <div className="h-40 rounded-2xl bg-gray-200/80" />
+          <div className="h-4 rounded-full bg-gray-200/80 w-3/4" />
+          <div className="h-3 rounded-full bg-gray-200/80 w-5/6" />
           <div className="flex items-center justify-between pt-2">
-            <div className="h-3 rounded-full bg-gray-200 w-1/3" />
-            <div className="h-8 rounded-full bg-gray-200 w-16" />
+            <div className="h-3 rounded-full bg-gray-200/80 w-1/3" />
+            <div className="h-8 rounded-full bg-gray-200/80 w-16" />
           </div>
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
