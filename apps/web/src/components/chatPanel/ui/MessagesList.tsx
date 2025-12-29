@@ -12,6 +12,7 @@ export type MessagesListProps = {
   tChat: (key: string) => string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   listRef: React.RefObject<HTMLDivElement | null>;
+  setReplyTo?: (msg: ChatMessageView | null) => void;
 };
 
 export const MessagesList = memo(function MessagesList({
@@ -21,6 +22,7 @@ export const MessagesList = memo(function MessagesList({
   tChat,
   setInput,
   listRef,
+  setReplyTo: onReply, // 重命名以避免任何潜在的作用域冲突
 }: MessagesListProps) {
   return (
     <div
@@ -58,38 +60,86 @@ export const MessagesList = memo(function MessagesList({
         const dateChanged =
           prev &&
           new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
+        
+        // 连续性判断：如果上一条消息也是同一个用户，且日期没变，且时间间隔在5分钟内
+        const isContinuation = 
+          !dateChanged && 
+          prev && 
+          prev.user_id === m.user_id &&
+          (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) < 5 * 60 * 1000;
+
         return (
           <React.Fragment key={m.id}>
             {dateChanged && (
-              <div className="flex justify-center">
+              <div className="flex justify-center my-2">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-full px-3 py-0.5 backdrop-blur-md">
                   {new Date(m.created_at).toLocaleDateString()}
                 </span>
               </div>
             )}
-            <div className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-center text-slate-700 dark:text-slate-200 text-xs font-semibold backdrop-blur-md">
-                  {displayName(m.user_id).slice(0, 2)}
-                </div>
+            <div className={`flex gap-3 group/msg ${mine ? "flex-row-reverse" : ""} ${isContinuation ? "mt-1" : "mt-4"}`}>
+              <div className="flex-shrink-0 w-8">
+                {!isContinuation && (
+                  <div className="w-8 h-8 rounded-full bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-center text-slate-700 dark:text-slate-200 text-xs font-semibold backdrop-blur-md">
+                    {displayName(m.user_id).slice(0, 2)}
+                  </div>
+                )}
               </div>
               <div
                 className={`flex flex-col gap-1 max-w-[80%] ${mine ? "items-end text-right" : "items-start text-left"}`}
               >
-                <div className="flex items-baseline gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="font-medium">{displayName(m.user_id)}</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    {new Date(m.created_at).toLocaleString()}
-                  </span>
-                </div>
-                <div
-                  className={`rounded-2xl px-3 py-2 leading-relaxed border ${
-                    mine
-                      ? "bg-brand/10 text-[var(--foreground)] border-brand/15"
-                      : "bg-[var(--card-bg)] text-[var(--foreground)] border-[var(--card-border)]"
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                {!isContinuation && (
+                  <div className="flex items-baseline gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="font-medium">{displayName(m.user_id)}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 group/bubble">
+                  {mine && (
+                    <button 
+                      onClick={() => onReply?.(m)}
+                      className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-opacity text-slate-400"
+                      title={tChat("action.reply")}
+                    >
+                      <MessageSquare size={14} />
+                    </button>
+                  )}
+                  <div
+                    className={`rounded-2xl px-3 py-2 leading-relaxed border shadow-sm transition-all ${
+                      mine
+                        ? "bg-brand/10 text-[var(--foreground)] border-brand/15 rounded-tr-none"
+                        : "bg-[var(--card-bg)] text-[var(--foreground)] border-[var(--card-border)] rounded-tl-none"
+                    } ${isContinuation ? (mine ? "rounded-tr-2xl" : "rounded-tl-2xl") : ""}`}
+                  >
+                    {m.reply_to_content && (
+                      <div className="mb-1 pb-1 border-b border-black/5 dark:border-white/5 text-[10px] opacity-60 italic line-clamp-1">
+                        {m.reply_to_user && <span className="font-bold mr-1">{displayName(m.reply_to_user)}:</span>}
+                        {m.reply_to_content}
+                      </div>
+                    )}
+                    {m.image_url && (
+                      <div className="mb-2 overflow-hidden rounded-lg border border-black/5 dark:border-white/5">
+                        <img 
+                          src={m.image_url} 
+                          alt="shared image" 
+                          className="max-w-full max-h-[300px] object-contain hover:scale-105 transition-transform cursor-pointer"
+                          onClick={() => window.open(m.image_url, '_blank')}
+                        />
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap break-words text-sm">{m.content}</div>
+                  </div>
+                  {!mine && (
+                    <button 
+                      onClick={() => onReply?.(m)}
+                      className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-opacity text-slate-400"
+                      title={tChat("action.reply")}
+                    >
+                      <MessageSquare size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

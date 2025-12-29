@@ -367,7 +367,10 @@
       "enterHint": "Pulsa Enter para enviar, Shift+Enter para nueva línea",
       "toggleEmojisAria": "Abrir selector de emojis",
       "sending": "Enviando…",
-      "send": "Enviar"
+      "send": "Enviar",
+      "uploadImage": "Subir imagen",
+      "stickers": "Stickers",
+      "uploadFailed": "Error al subir la imagen"
     },
     "errors": {
       "walletRequired": "Conecta tu billetera antes de enviar mensajes",

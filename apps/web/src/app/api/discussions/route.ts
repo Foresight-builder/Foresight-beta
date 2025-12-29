@@ -39,8 +39,13 @@ export async function POST(req: NextRequest) {
     const proposalId = normalizeId(body?.proposalId);
     const content = String(body?.content || "");
     const userId = String(body?.userId || "");
-    if (!proposalId || !content.trim() || !userId.trim()) {
-      return ApiResponses.invalidParameters("proposalId、content、userId 必填");
+    const image_url = body?.image_url ? String(body?.image_url) : null;
+    const replyToId = body?.replyToId ? String(body?.replyToId) : null;
+    const replyToUser = body?.replyToUser ? String(body?.replyToUser) : null;
+    const replyToContent = body?.replyToContent ? String(body?.replyToContent) : null;
+
+    if (!proposalId || (!content.trim() && !image_url) || !userId.trim()) {
+      return ApiResponses.invalidParameters("proposalId、(content 或 image_url)、userId 必填");
     }
     const client = supabaseAdmin || getClient();
     if (!client) {
@@ -52,7 +57,11 @@ export async function POST(req: NextRequest) {
         proposal_id: proposalId,
         user_id: userId,
         content,
-      } as Database["public"]["Tables"]["discussions"]["Insert"] as never)
+        image_url,
+        reply_to_id: replyToId,
+        reply_to_user: replyToUser,
+        reply_to_content: replyToContent,
+      } as any)
       .select()
       .maybeSingle();
     if (error) {

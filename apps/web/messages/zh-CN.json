@@ -367,7 +367,10 @@
       "enterHint": "按 Enter 发送，Shift+Enter 换行",
       "toggleEmojisAria": "选择表情",
       "sending": "发送中…",
-      "send": "发送"
+      "send": "发送",
+      "uploadImage": "上传图片",
+      "stickers": "表情包",
+      "uploadFailed": "图片上传失败"
     },
     "errors": {
       "walletRequired": "请先连接钱包后再发送消息",

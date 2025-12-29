@@ -367,7 +367,10 @@
       "enterHint": "Press Enter to send, Shift+Enter for new line",
       "toggleEmojisAria": "Toggle emoji picker",
       "sending": "Sending…",
-      "send": "Send"
+      "send": "Send",
+      "uploadImage": "Upload Image",
+      "stickers": "Stickers",
+      "uploadFailed": "Image upload failed"
     },
     "errors": {
       "walletRequired": "Please connect your wallet before sending messages",

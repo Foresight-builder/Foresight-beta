@@ -61,28 +61,28 @@ export default function ForumPage() {
 
           {/* 屏幕区域 */}
           <div className="relative flex rounded-[32px] overflow-hidden shadow-inner max-h-[720px] bg-gradient-to-br from-white via-purple-50/40 to-fuchsia-50/30 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 border border-purple-200/60 dark:border-slate-700/50">
-            {/* 内部渐变背景 - 增加活力 */}
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-purple-100/40 via-fuchsia-100/30 to-violet-50/40 dark:from-purple-900/30 dark:via-fuchsia-900/20 dark:to-violet-950/30 opacity-90" />
+            {/* 内部渐变背景 - 增加活力：提升亮度和透明度 */}
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-white via-purple-50/60 to-fuchsia-50/50 dark:from-slate-900 dark:via-purple-950/40 dark:to-slate-900 opacity-100" />
             {/* 增加光晕效果 */}
-            <div className="pointer-events-none absolute -z-10 top-0 right-0 w-96 h-96 rounded-full bg-fuchsia-200/40 blur-3xl dark:bg-fuchsia-600/15" />
-            <div className="pointer-events-none absolute -z-10 bottom-0 left-1/3 w-80 h-80 rounded-full bg-purple-200/50 blur-3xl dark:bg-purple-600/15" />
+            <div className="pointer-events-none absolute -z-10 top-0 right-0 w-96 h-96 rounded-full bg-fuchsia-200/50 blur-3xl dark:bg-fuchsia-600/20" />
+            <div className="pointer-events-none absolute -z-10 bottom-0 left-1/3 w-80 h-80 rounded-full bg-purple-200/60 blur-3xl dark:bg-purple-600/20" />
 
-            {/* CRT 扫描线效果 */}
+            {/* CRT 扫描线效果 - 大幅降低不透明度 */}
             <div
-              className="pointer-events-none absolute inset-0 z-50 opacity-[0.03] dark:opacity-[0.05]"
+              className="pointer-events-none absolute inset-0 z-50 opacity-[0.015] dark:opacity-[0.03]"
               style={{
                 backgroundImage:
-                  "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.3) 1px, rgba(0,0,0,0.3) 2px)",
+                  "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px)",
                 backgroundSize: "100% 2px",
               }}
             />
 
-            {/* 屏幕玻璃反光效果 */}
-            <div className="pointer-events-none absolute inset-0 z-40 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-60" />
-            <div className="pointer-events-none absolute top-0 left-0 right-0 h-32 z-40 bg-gradient-to-b from-white/5 to-transparent" />
+            {/* 屏幕玻璃反光效果 - 调淡，让内容更清晰 */}
+            <div className="pointer-events-none absolute inset-0 z-40 bg-gradient-to-br from-white/15 via-transparent to-transparent opacity-40" />
+            <div className="pointer-events-none absolute top-0 left-0 right-0 h-32 z-40 bg-gradient-to-b from-white/10 to-transparent opacity-30" />
 
-            {/* 屏幕边缘暗角 */}
-            <div className="pointer-events-none absolute inset-0 z-30 shadow-[inset_0_0_100px_rgba(0,0,0,0.3)] rounded-[32px]" />
+            {/* 屏幕边缘暗角 - 已彻底去除阴影以消除暗淡感 */}
+            <div className="pointer-events-none absolute inset-0 z-30 rounded-[32px]" />
 
             <ForumSidebar
               categories={categories}

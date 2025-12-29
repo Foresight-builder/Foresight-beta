@@ -43,6 +43,7 @@ export default function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
@@ -69,8 +70,8 @@ export default function ChatPanel({
     return tChat("header.withTopic").replace("{title}", t);
   }, [roomTitle, tChat]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
+  const sendMessage = async (imageUrl?: string) => {
+    if (!input.trim() && !imageUrl) return;
     if (!account) {
       setError(tChat("errors.walletRequired"));
       return;
@@ -81,13 +82,22 @@ export default function ChatPanel({
       const res = await fetch("/api/discussions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proposalId: eventId, content: input, userId: account }),
+        body: JSON.stringify({ 
+          proposalId: eventId, 
+          content: input, 
+          userId: account,
+          image_url: imageUrl,
+          replyToId: replyTo?.id,
+          replyToUser: replyTo?.user_id,
+          replyToContent: replyTo?.content.slice(0, 100) // 存储前100个字符作为摘要
+        }),
       });
       if (!res.ok) {
         const t = await res.text();
         throw new Error(t);
       }
       setInput("");
+      setReplyTo(null);
     } catch (e: any) {
       setError(e?.message || tChat("errors.sendFailed"));
     } finally {
@@ -143,6 +153,7 @@ export default function ChatPanel({
         tChat={tChat}
         setInput={setInput}
         listRef={listRef}
+        setReplyTo={setReplyTo} // 确保正确传递状态设置函数
       />
 
       <ChatInputArea
@@ -159,6 +170,9 @@ export default function ChatPanel({
         sending={sending}
         showEmojis={showEmojis}
         setShowEmojis={setShowEmojis}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
+        displayName={displayName}
         error={error}
       />
     </div>

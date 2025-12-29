@@ -47,6 +47,10 @@ export function useDiscussionMessages(eventId: number) {
                 user_id: String(r.user_id),
                 content: String(r.content),
                 created_at: String(r.created_at),
+                image_url: r.image_url ? String(r.image_url) : undefined,
+                reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
+                reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
+                reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
               }))
             );
             return;
@@ -64,6 +68,10 @@ export function useDiscussionMessages(eventId: number) {
             user_id: String(r.user_id),
             content: String(r.content),
             created_at: String(r.created_at),
+            image_url: r.image_url ? String(r.image_url) : undefined,
+            reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
+            reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
+            reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
           }))
         );
       } catch {}
@@ -90,6 +98,10 @@ export function useDiscussionMessages(eventId: number) {
               user_id: String(r.user_id),
               content: String(r.content),
               created_at: String(r.created_at),
+              image_url: r.image_url ? String(r.image_url) : undefined,
+              reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
+              reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
+              reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
             };
             setMessages((prev) => {
               // 检查是否已存在
@@ -118,6 +130,10 @@ export function useDiscussionMessages(eventId: number) {
               user_id: String(r.user_id),
               content: String(r.content),
               created_at: String(r.created_at),
+              image_url: r.image_url ? String(r.image_url) : undefined,
+              reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
+              reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
+              reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
             };
             setMessages((prev) => prev.map((x) => (x.id === m.id ? m : x)));
           }
