@@ -1,95 +1,170 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, Users, Target } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
+import { UserHoverCard } from "@/components/ui/UserHoverCard";
+
+type TabType = "events" | "users";
 
 export function FollowingTab() {
   const { account } = useWallet();
-  const [following, setFollowing] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("events");
+  const [events, setEvents] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
 
-  useEffect(() => {
-    if (!account) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchFollowing = async () => {
-      try {
+  const fetchData = useCallback(async () => {
+    if (!account) return;
+    setLoading(true);
+    try {
+      if (activeTab === "events") {
         const res = await fetch(`/api/following?address=${account}`);
-        if (!res.ok) throw new Error("Failed to fetch following");
         const data = await res.json();
-        setFollowing(data.following || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        setEvents(data.following || []);
+      } else {
+        const res = await fetch(`/api/user-follows/following-users?address=${account}`);
+        const data = await res.json();
+        setUsers(data.users || []);
       }
-    };
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [account, activeTab]);
 
-    fetchFollowing();
-  }, [account]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  if (loading) return <CenteredSpinner />;
+  const renderTabs = () => (
+    <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-2xl w-fit">
+      <button
+        onClick={() => setActiveTab("events")}
+        className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
+          activeTab === "events"
+            ? "bg-white text-purple-600 shadow-sm"
+            : "text-gray-500 hover:text-gray-700"
+        }`}
+      >
+        <Target className="w-4 h-4" />
+        {tProfile("following.tabEvents")}
+      </button>
+      <button
+        onClick={() => setActiveTab("users")}
+        className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
+          activeTab === "users"
+            ? "bg-white text-purple-600 shadow-sm"
+            : "text-gray-500 hover:text-gray-700"
+        }`}
+      >
+        <Users className="w-4 h-4" />
+        {tProfile("following.tabUsers")}
+      </button>
+    </div>
+  );
 
-  if (following.length === 0) {
+  if (loading) {
     return (
-      <EmptyState
-        icon={Heart}
-        title={tProfile("following.empty.title")}
-        description={tProfile("following.empty.description")}
-      />
+      <div>
+        {renderTabs()}
+        <CenteredSpinner />
+      </div>
+    );
+  }
+
+  const currentData = activeTab === "events" ? events : users;
+
+  if (currentData.length === 0) {
+    return (
+      <div>
+        {renderTabs()}
+        <EmptyState
+          icon={activeTab === "events" ? Target : Users}
+          title={tProfile("following.empty.title")}
+          description={tProfile("following.empty.description")}
+        />
+      </div>
     );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Heart className="w-5 h-5 text-purple-500" />
-        {tProfile("following.title")}
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {following.map((item) => (
-          <Link href={`/prediction/${item.id}`} key={item.id}>
-            <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group h-full flex flex-col">
-              <div className="flex justify-between items-start mb-4">
-                <img
-                  src={item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`}
-                  alt={item.title || tProfile("following.alt.cover")}
-                  className="w-10 h-10 rounded-full bg-gray-100 object-cover"
-                />
-                <button className="p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
-                  <Heart className="w-4 h-4 fill-current" />
-                </button>
-              </div>
-              <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
-                {tEvents(item.title)}
-              </h4>
-              <div className="mt-auto text-xs text-gray-500 flex items-center gap-2">
-                <span className="bg-gray-100 px-2 py-1 rounded-md">
-                  {formatTranslation(tProfile("following.labels.followers"), {
-                    count: item.followers_count,
-                  })}
-                </span>
-                {item.deadline && (
-                  <span>
-                    {formatTranslation(tProfile("following.labels.deadline"), {
-                      date: new Date(item.deadline).toLocaleDateString(),
+      {renderTabs()}
+
+      {activeTab === "events" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {events.map((item) => (
+            <Link href={`/prediction/${item.id}`} key={item.id}>
+              <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group h-full flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <img
+                    src={
+                      item.image_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${item.id}`
+                    }
+                    alt={item.title || tProfile("following.alt.cover")}
+                    className="w-10 h-10 rounded-full bg-gray-100 object-cover"
+                  />
+                  <div className="p-2 rounded-full bg-red-50 text-red-500">
+                    <Heart className="w-4 h-4 fill-current" />
+                  </div>
+                </div>
+                <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                  {tEvents(item.title)}
+                </h4>
+                <div className="mt-auto text-xs text-gray-500 flex items-center gap-2">
+                  <span className="bg-gray-100 px-2 py-1 rounded-md">
+                    {formatTranslation(tProfile("following.labels.followers"), {
+                      count: item.followers_count,
                     })}
                   </span>
-                )}
+                  {item.deadline && (
+                    <span>
+                      {formatTranslation(tProfile("following.labels.deadline"), {
+                        date: new Date(item.deadline).toLocaleDateString(),
+                      })}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {users.map((user) => (
+            <UserHoverCard key={user.wallet_address} user={user}>
+              <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex items-center gap-4">
+                <div className="relative">
+                  <img
+                    src={user.avatar}
+                    alt={user.username}
+                    className="w-12 h-12 rounded-2xl object-cover bg-gray-50"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
+                    <Heart className="w-2.5 h-2.5 text-red-500 fill-current" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-black text-gray-900 truncate group-hover:text-purple-600 transition-colors">
+                    {user.username}
+                  </h4>
+                  <p className="text-xs text-gray-400 font-bold">
+                    {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                  </p>
+                </div>
+              </div>
+            </UserHoverCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

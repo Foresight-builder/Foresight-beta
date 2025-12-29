@@ -2,16 +2,30 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, LogOut, Settings, Wallet } from "lucide-react";
+import {
+  ChevronRight,
+  LogOut,
+  Settings,
+  Wallet,
+  UserPlus,
+  UserMinus,
+  Loader2,
+  Target,
+  Users,
+  Zap,
+} from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
 import { formatAddress } from "@/lib/cn";
+import { useWallet } from "@/contexts/WalletContext";
+import { useState, useEffect, useCallback } from "react";
 import type { PortfolioStats, TabConfig, TabType } from "../types";
 import { SidebarStatCard } from "./ProfileUI";
 import { PredictionsTab } from "./PredictionsTab";
 import { HistoryTab } from "./HistoryTab";
 import { FollowingTab } from "./FollowingTab";
+import { FollowersTab } from "./FollowersTab";
 
 export type ProfilePageViewProps = {
   account: string | null | undefined;
@@ -38,12 +52,69 @@ export function ProfilePageView({
   tabs,
   historyCount,
   positionsCount,
-  followingCount,
+  followingCount: initialFollowingCount,
   portfolioStats,
   disconnect,
   history,
   isOwnProfile = true,
 }: ProfilePageViewProps) {
+  const { account: myAccount } = useWallet();
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+
+  // 获取关注状态和粉丝数
+  const fetchFollowData = useCallback(async () => {
+    if (!account) return;
+
+    try {
+      const countRes = await fetch(`/api/user-follows/counts?address=${account}`);
+      const countData = await countRes.json();
+      setFollowersCount(countData.followersCount || 0);
+
+      if (myAccount && !isOwnProfile) {
+        const statusRes = await fetch(
+          `/api/user-follows/user?targetAddress=${account}&followerAddress=${myAccount}`
+        );
+        const statusData = await statusRes.json();
+        setIsFollowed(!!statusData.followed);
+      }
+    } catch (error) {
+      console.error("Failed to fetch follow data:", error);
+    }
+  }, [account, myAccount, isOwnProfile]);
+
+  useEffect(() => {
+    fetchFollowData();
+  }, [fetchFollowData]);
+
+  // 处理关注/取消关注
+  const handleFollowToggle = async () => {
+    if (!myAccount) {
+      toast.error(tProfile("wallet.connectFirst") || "请先连接钱包");
+      return;
+    }
+
+    setIsFollowLoading(true);
+    try {
+      const res = await fetch("/api/user-follows/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetAddress: account }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsFollowed(data.followed);
+        setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
+        toast.success(data.followed ? "关注成功" : "已取消关注");
+      }
+    } catch (error) {
+      toast.error("操作失败");
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
   return (
     <GradientPage className="pb-24 pt-24">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -106,29 +177,53 @@ export function ProfilePageView({
                   </span>
                 </button>
 
-                <div className="grid grid-cols-3 gap-3 w-full mb-2">
-                  <SidebarStatCard
-                    value={positionsCount}
-                    label={tProfile("sidebar.stats.predictions")}
-                    containerClass="bg-violet-50/80 border border-violet-100 hover:bg-violet-100/80"
-                    valueClass="text-violet-600"
-                    labelClass="text-violet-400"
-                  />
-                  <SidebarStatCard
-                    value={followingCount}
-                    label={tProfile("sidebar.stats.following")}
-                    containerClass="bg-fuchsia-50/80 border border-fuchsia-100 hover:bg-fuchsia-100/80"
-                    valueClass="text-fuchsia-600"
-                    labelClass="text-fuchsia-400"
-                  />
-                  <SidebarStatCard
-                    value={historyCount}
-                    label={tProfile("sidebar.stats.history")}
-                    containerClass="bg-cyan-50/80 border border-cyan-100 hover:bg-cyan-100/80"
-                    valueClass="text-cyan-600"
-                    labelClass="text-cyan-400"
-                  />
+                <div className="grid grid-cols-3 gap-2.5 w-full mb-8">
+                  <div className="cursor-pointer" onClick={() => setActiveTab("predictions")}>
+                    <SidebarStatCard
+                      value={positionsCount}
+                      label={tProfile("sidebar.stats.predictions")}
+                      icon={Target}
+                      color="violet"
+                    />
+                  </div>
+                  <div className="cursor-pointer" onClick={() => setActiveTab("followers")}>
+                    <SidebarStatCard
+                      value={followersCount}
+                      label={tProfile("sidebar.stats.followers") || "粉丝"}
+                      icon={Users}
+                      color="emerald"
+                    />
+                  </div>
+                  <div className="cursor-pointer" onClick={() => setActiveTab("history")}>
+                    <SidebarStatCard
+                      value={historyCount}
+                      label={tProfile("sidebar.stats.history")}
+                      icon={Zap}
+                      color="cyan"
+                    />
+                  </div>
                 </div>
+
+                {!isOwnProfile && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={isFollowLoading}
+                    className={`w-full py-3.5 rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 mb-2 ${
+                      isFollowed
+                        ? "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
+                        : "bg-gray-900 text-white hover:bg-purple-600"
+                    }`}
+                  >
+                    {isFollowLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isFollowed ? (
+                      <UserMinus className="w-4 h-4" />
+                    ) : (
+                      <UserPlus className="w-4 h-4" />
+                    )}
+                    {isFollowLoading ? "处理中..." : isFollowed ? "取消关注" : "关注该交易员"}
+                  </button>
+                )}
               </div>
 
               <nav className="space-y-2 relative z-10">
@@ -189,6 +284,7 @@ export function ProfilePageView({
                 {activeTab === "predictions" && <PredictionsTab />}
                 {activeTab === "history" && <HistoryTab initialHistory={history} />}
                 {activeTab === "following" && <FollowingTab />}
+                {activeTab === "followers" && account && <FollowersTab address={account} />}
               </motion.div>
             </AnimatePresence>
           </div>

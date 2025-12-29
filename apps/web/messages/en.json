@@ -1273,9 +1273,10 @@
         "following": "Following"
       },
       "stats": {
-        "predictions": "Predictions",
+        "predictions": "Preds",
+        "followers": "Followers",
         "following": "Following",
-        "history": "Views"
+        "history": "History"
       },
       "settings": "Settings",
       "disconnect": "Disconnect"
@@ -1334,15 +1335,23 @@
     "following": {
       "empty": {
         "title": "No follows yet",
-        "description": "Discover prediction events you are interested in!"
+        "description": "Discover prediction events or traders you are interested in!"
       },
       "title": "Following",
+      "tabEvents": "Events",
+      "tabUsers": "Traders",
       "alt": {
-        "cover": "Followed event cover"
+        "cover": "Followed item cover"
       },
       "labels": {
         "followers": "{count} followers",
         "deadline": "Ends on {date}"
+      }
+    },
+    "followers": {
+      "empty": {
+        "title": "No followers yet",
+        "description": "Share your insights to attract followers!"
       }
     }
   },

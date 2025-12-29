@@ -1273,7 +1273,8 @@
         "following": "Siguiendo"
       },
       "stats": {
-        "predictions": "Predicciones",
+        "predictions": "Preds",
+        "followers": "Seguidores",
         "following": "Siguiendo",
         "history": "Vistas"
       },
@@ -1334,15 +1335,23 @@
     "following": {
       "empty": {
         "title": "Aún no sigues nada",
-        "description": "Descubre eventos de predicción que te interesen"
+        "description": "¡Descubre eventos de predicción o traders que te interesen!"
       },
       "title": "Siguiendo",
+      "tabEvents": "Eventos",
+      "tabUsers": "Traders",
       "alt": {
-        "cover": "Portada del evento seguido"
+        "cover": "Portada del elemento seguido"
       },
       "labels": {
         "followers": "{count} seguidores",
         "deadline": "Finaliza el {date}"
+      }
+    },
+    "followers": {
+      "empty": {
+        "title": "Aún no tienes seguidores",
+        "description": "¡Comparte tus opiniones para atraer seguidores!"
       }
     }
   },

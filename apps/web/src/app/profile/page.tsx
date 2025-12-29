@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Heart, History, TrendingUp } from "lucide-react";
+import { Heart, History, TrendingUp, Users } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
@@ -30,6 +30,7 @@ export default function ProfilePage() {
     { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
     { id: "history", label: tProfile("sidebar.tabs.history"), icon: History },
     { id: "following", label: tProfile("sidebar.tabs.following"), icon: Heart },
+    { id: "followers", label: tProfile("sidebar.stats.followers") || "粉丝", icon: Users },
   ];
 
   return (

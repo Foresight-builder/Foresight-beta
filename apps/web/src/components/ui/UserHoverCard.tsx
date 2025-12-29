@@ -4,8 +4,21 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Target, TrendingUp, Zap, ExternalLink, Trophy, Medal, UserPlus, Star } from "lucide-react";
+import {
+  Target,
+  TrendingUp,
+  Zap,
+  ExternalLink,
+  Trophy,
+  Medal,
+  UserPlus,
+  Star,
+  UserMinus,
+  Loader2,
+} from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import { useWallet } from "@/contexts/WalletContext";
+import { toast } from "@/lib/toast";
 
 // 用户预览数据类型
 export type UserPreviewData = {
@@ -63,9 +76,14 @@ export function UserHoverCard({
   disabled = false,
 }: UserHoverCardProps) {
   const t = useTranslations("userCard");
+  const { account: myAccount } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [cardPosition, setCardPosition] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -74,10 +92,76 @@ export function UserHoverCard({
     user.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${user.wallet_address}`;
   const profileUrl = `/profile/${user.wallet_address}`;
   const rankBadge = getRankBadge(user.rank);
+  const isOwnProfile = myAccount?.toLowerCase() === user.wallet_address?.toLowerCase();
+
+  // 获取关注状态和粉丝数
+  const fetchFollowData = useCallback(async () => {
+    if (!user.wallet_address) return;
+
+    try {
+      // 获取粉丝数
+      const countRes = await fetch(`/api/user-follows/counts?address=${user.wallet_address}`);
+      const countData = await countRes.json();
+      setFollowersCount(countData.followersCount || 0);
+
+      // 获取当前用户是否关注了该用户
+      if (myAccount && !isOwnProfile) {
+        const statusRes = await fetch(
+          `/api/user-follows/user?targetAddress=${user.wallet_address}&followerAddress=${myAccount}`
+        );
+        const statusData = await statusRes.json();
+        setIsFollowed(!!statusData.followed);
+      }
+    } catch (error) {
+      console.error("Failed to fetch follow data:", error);
+    }
+  }, [user.wallet_address, myAccount, isOwnProfile]);
+
+  // 处理关注/取消关注
+  const handleFollowToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!myAccount) {
+      toast.error(t("pleaseConnectWallet") || "请先连接钱包");
+      return;
+    }
+
+    setIsFollowLoading(true);
+    try {
+      const res = await fetch("/api/user-follows/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetAddress: user.wallet_address }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsFollowed(data.followed);
+        setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
+        toast.success(
+          data.followed ? t("followSuccess") || "关注成功" : t("unfollowSuccess") || "已取消关注"
+        );
+      } else {
+        toast.error(data.message || "操作失败");
+      }
+    } catch (error) {
+      toast.error("操作异常");
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 当卡片打开时获取数据
+  useEffect(() => {
+    if (isOpen) {
+      fetchFollowData();
+    }
+  }, [isOpen, fetchFollowData]);
 
   const calculatePosition = useCallback(() => {
     if (!containerRef.current) return;
@@ -192,10 +276,30 @@ export function UserHoverCard({
                   )}
                 </div>
 
-                <button className="mb-1 px-5 py-2.5 rounded-2xl bg-gray-900 text-white text-xs font-black hover:bg-purple-600 transition-colors shadow-lg active:scale-95 flex items-center gap-2 group">
-                  <UserPlus className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
-                  FOLLOW
-                </button>
+                {!isOwnProfile && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={isFollowLoading}
+                    className={`mb-1 px-5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-lg active:scale-95 flex items-center gap-2 group ${
+                      isFollowed
+                        ? "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
+                        : "bg-gray-900 text-white hover:bg-purple-600"
+                    }`}
+                  >
+                    {isFollowLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isFollowed ? (
+                      <UserMinus className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                    ) : (
+                      <UserPlus className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                    )}
+                    {isFollowLoading
+                      ? t("loading") || "LOADING..."
+                      : isFollowed
+                        ? t("unfollow") || "UNFOLLOW"
+                        : t("follow") || "FOLLOW"}
+                  </button>
+                )}
               </div>
 
               {/* Identity */}
@@ -241,12 +345,12 @@ export function UserHoverCard({
                   </div>
                 </div>
                 <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 text-center hover:bg-white hover:shadow-md transition-all">
-                  <Target className="w-4 h-4 text-emerald-500 mx-auto mb-1.5" />
+                  <Users className="w-4 h-4 text-emerald-500 mx-auto mb-1.5" />
                   <div className="text-sm font-black text-gray-900 leading-none mb-1">
-                    {user.win_rate !== undefined ? `${user.win_rate}%` : "--"}
+                    {followersCount}
                   </div>
                   <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                    {t("winRate")}
+                    {t("followers") || "Followers"}
                   </div>
                 </div>
                 <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 text-center hover:bg-white hover:shadow-md transition-all">
