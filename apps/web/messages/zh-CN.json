@@ -607,15 +607,17 @@
     }
   },
   "filters": {
+    "categoryLabel": "分类筛选",
     "categories": {
       "all": "全部",
       "crypto": "加密货币",
       "sports": "体育",
-      "politics": "政治",
+      "politics": "时政",
       "tech": "科技",
       "entertainment": "娱乐",
       "weather": "天气",
       "business": "商业",
+      "other": "其他",
       "more": "更多"
     },
     "sort": {

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, ArrowUpDown, Calendar, TrendingUp, Clock, X, ChevronDown } from "lucide-react";
-import { useCategories } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
 
 export interface FilterSortState {
@@ -19,64 +18,63 @@ interface FilterSortProps {
   className?: string;
 }
 
+// 分类定义：顺序与 hero 热门分类一致（科技、娱乐、时政、天气、体育、商业、加密货币、其他、更多）
 const DEFAULT_CATEGORIES = [
-  { id: "all", label: "filters.categories.all", icon: "🌐", color: "from-gray-500 to-gray-600" },
-  {
-    id: "crypto",
-    label: "filters.categories.crypto",
-    icon: "🪙",
-    color: "from-amber-500 to-orange-600",
-  },
-  {
-    id: "sports",
-    label: "filters.categories.sports",
-    icon: "⚽",
-    color: "from-green-500 to-emerald-600",
-  },
-  {
-    id: "politics",
-    label: "filters.categories.politics",
-    icon: "🗳️",
-    color: "from-blue-500 to-indigo-600",
-  },
   {
     id: "tech",
-    label: "filters.categories.tech",
+    labelKey: "filters.categories.tech",
     icon: "💻",
-    color: "from-purple-500 to-violet-600",
+    color: "from-blue-400 to-cyan-400",
   },
   {
     id: "entertainment",
-    label: "filters.categories.entertainment",
+    labelKey: "filters.categories.entertainment",
     icon: "🎬",
-    color: "from-pink-500 to-rose-600",
+    color: "from-pink-400 to-rose-400",
+  },
+  {
+    id: "politics",
+    labelKey: "filters.categories.politics",
+    icon: "🗳️",
+    color: "from-purple-400 to-indigo-400",
   },
   {
     id: "weather",
-    label: "filters.categories.weather",
+    labelKey: "filters.categories.weather",
     icon: "🌤️",
-    color: "from-cyan-500 to-sky-600",
+    color: "from-green-400 to-emerald-400",
+  },
+  {
+    id: "sports",
+    labelKey: "filters.categories.sports",
+    icon: "⚽",
+    color: "from-orange-400 to-red-400",
   },
   {
     id: "business",
-    label: "filters.categories.business",
+    labelKey: "filters.categories.business",
     icon: "💼",
-    color: "from-slate-500 to-gray-600",
+    color: "from-slate-400 to-gray-500",
   },
-  { id: "more", label: "filters.categories.more", icon: "⋯", color: "from-gray-400 to-gray-500" },
+  {
+    id: "crypto",
+    labelKey: "filters.categories.crypto",
+    icon: "🪙",
+    color: "from-yellow-400 to-amber-500",
+  },
+  {
+    id: "other",
+    labelKey: "filters.categories.other",
+    icon: "📦",
+    color: "from-gray-300 to-gray-400",
+  },
+  {
+    id: "more",
+    labelKey: "filters.categories.more",
+    icon: "⋯",
+    color: "from-gray-200 to-gray-300",
+  },
 ];
-
-// 中文分类名到英文 id 的映射（与热门分类使用相同的映射）
-const CATEGORY_NAME_TO_ID: Record<string, string> = {
-  科技: "tech",
-  娱乐: "entertainment",
-  时政: "politics",
-  天气: "weather",
-  体育: "sports",
-  商业: "business",
-  加密货币: "crypto",
-  更多: "more",
-};
 
 export default function FilterSort({
   onFilterChange,
@@ -95,39 +93,13 @@ export default function FilterSort({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
-  const { data: categoriesData } = useCategories();
-
-  const categories =
-    Array.isArray(categoriesData) && categoriesData.length > 0
-      ? [
-          DEFAULT_CATEGORIES[0],
-          ...((categoriesData as any[])
-            .map((item) => {
-              const name = String((item as any).name || "").trim();
-              if (!name) {
-                return null;
-              }
-              // 使用映射表获取正确的英文 id，确保与热门分类的点击逻辑一致
-              const mappedId = CATEGORY_NAME_TO_ID[name];
-              const legacy = mappedId ? DEFAULT_CATEGORIES.find((c) => c.id === mappedId) : null;
-              const id = mappedId || name.toLowerCase();
-              const icon = legacy?.icon || "🏷️";
-              const color = legacy?.color || "from-gray-400 to-gray-500";
-              return {
-                id,
-                label: name,
-                icon,
-                color,
-              };
-            })
-            .filter(Boolean) as {
-            id: string;
-            label: string;
-            icon: string;
-            color: string;
-          }[]),
-        ]
-      : DEFAULT_CATEGORIES;
+  // 使用翻译后的 label 构建分类列表（去掉 "all" 选项）
+  const categories = DEFAULT_CATEGORIES.map((cat) => ({
+    id: cat.id,
+    label: t(cat.labelKey),
+    icon: cat.icon,
+    color: cat.color,
+  }));
 
   const sortOptions = [
     {
@@ -184,8 +156,7 @@ export default function FilterSort({
   }, [activeCategory, sortBy, status, onFilterChange]);
 
   // 检查 activeCategory 是否有效
-  const isValidCategory =
-    activeCategory && activeCategory !== "all" && categories.some((c) => c.id === activeCategory);
+  const isValidCategory = activeCategory && categories.some((c) => c.id === activeCategory);
 
   // 选中的筛选项数量（只计算有效的筛选）
   const activeFiltersCount = [isValidCategory, sortBy !== "trending", status].filter(
@@ -284,18 +255,16 @@ export default function FilterSort({
                     <button
                       type="button"
                       key={cat.id}
-                      onClick={() => setActiveCategory(cat.id)}
+                      onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
                       className={`group relative px-4 py-2.5 rounded-xl text-sm font-medium transition-all overflow-hidden ${
-                        (cat.id === "all" && !activeCategory) || activeCategory === cat.id
+                        activeCategory === cat.id
                           ? "text-white shadow-lg scale-105"
                           : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                       }`}
-                      aria-pressed={
-                        (cat.id === "all" && !activeCategory) || activeCategory === cat.id
-                      }
+                      aria-pressed={activeCategory === cat.id}
                     >
                       {/* 渐变背景（选中时） */}
-                      {((cat.id === "all" && !activeCategory) || activeCategory === cat.id) && (
+                      {activeCategory === cat.id && (
                         <div
                           className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-100`}
                         />
@@ -408,11 +377,9 @@ export default function FilterSort({
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
                 >
                   <span>{activeCat.icon}</span>
-                  <span>
-                    {activeCat.label.startsWith("filters.") ? t(activeCat.label) : activeCat.label}
-                  </span>
+                  <span>{activeCat.label}</span>
                   <button
-                    onClick={() => setActiveCategory("all")}
+                    onClick={() => setActiveCategory(null)}
                     className="hover:bg-purple-100 rounded p-0.5 transition-colors"
                     aria-label={t("filters.actions.clear")}
                   >

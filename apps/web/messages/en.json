@@ -607,6 +607,7 @@
     }
   },
   "filters": {
+    "categoryLabel": "Category Filter",
     "categories": {
       "all": "All",
       "crypto": "Crypto",
@@ -616,6 +617,7 @@
       "entertainment": "Entertainment",
       "weather": "Weather",
       "business": "Business",
+      "other": "Other",
       "more": "More"
     },
     "sort": {

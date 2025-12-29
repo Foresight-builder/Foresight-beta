@@ -607,6 +607,7 @@
     }
   },
   "filters": {
+    "categoryLabel": "Filtro de Categoría",
     "categories": {
       "all": "Todo",
       "crypto": "Cripto",
@@ -616,6 +617,7 @@
       "entertainment": "Entretenimiento",
       "weather": "Clima",
       "business": "Negocios",
+      "other": "Otros",
       "more": "Más"
     },
     "sort": {
