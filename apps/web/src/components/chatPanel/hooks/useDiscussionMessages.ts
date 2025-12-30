@@ -47,6 +47,7 @@ export function useDiscussionMessages(eventId: number) {
                 user_id: String(r.user_id),
                 content: String(r.content),
                 created_at: String(r.created_at),
+                topic: r.topic ? String(r.topic) : undefined,
                 image_url: r.image_url ? String(r.image_url) : undefined,
                 reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
                 reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
@@ -68,6 +69,7 @@ export function useDiscussionMessages(eventId: number) {
             user_id: String(r.user_id),
             content: String(r.content),
             created_at: String(r.created_at),
+            topic: r.topic ? String(r.topic) : undefined,
             image_url: r.image_url ? String(r.image_url) : undefined,
             reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
             reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
@@ -98,6 +100,7 @@ export function useDiscussionMessages(eventId: number) {
               user_id: String(r.user_id),
               content: String(r.content),
               created_at: String(r.created_at),
+              topic: r.topic ? String(r.topic) : undefined,
               image_url: r.image_url ? String(r.image_url) : undefined,
               reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
               reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,
@@ -125,11 +128,12 @@ export function useDiscussionMessages(eventId: number) {
           (payload) => {
             if (!isSubscribed) return;
             const r: any = payload.new;
-            const m = {
+            const m: ChatMessageView = {
               id: String(r.id),
               user_id: String(r.user_id),
               content: String(r.content),
               created_at: String(r.created_at),
+              topic: r.topic ? String(r.topic) : undefined,
               image_url: r.image_url ? String(r.image_url) : undefined,
               reply_to_id: r.reply_to_id ? String(r.reply_to_id) : undefined,
               reply_to_user: r.reply_to_user ? String(r.reply_to_user) : undefined,

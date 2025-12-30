@@ -207,6 +207,7 @@
       "weekly": "주간",
       "currentRank": "현재 순위",
       "currentProfit": "거래량",
+      "followers": "팔로워",
       "nextRank": "다음 순위까지",
       "top100": "상위 100까지",
       "topRank": "1위",
@@ -521,6 +522,13 @@
     "message": {
       "opBadge": "OP",
       "reply": "답글"
+    },
+    "topics": {
+      "sectionTitle": "주제 구분",
+      "all": "전체",
+      "market": "이벤트 이야기",
+      "meta": "규칙·메커니즘",
+      "offtopic": "가벼운 잡담"
     },
     "header": {
       "title": "채팅방",

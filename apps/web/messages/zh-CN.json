@@ -357,6 +357,13 @@
       "opBadge": "楼主",
       "reply": "回复"
     },
+    "topics": {
+      "sectionTitle": "话题分区",
+      "all": "全部",
+      "market": "围绕事件本身",
+      "meta": "规则与玩法",
+      "offtopic": "轻松闲聊"
+    },
     "header": {
       "title": "聊天室",
       "withTopic": "聊天室 · {title}",
@@ -922,7 +929,7 @@
       "dailyPick": "今日精选",
       "trending": "热门"
     },
-    "platformDescription": "Foresight 是一个基于区块链的去中心化预测市场平台，你可以创建和交易各种现实世界事件的预测，使用加密货币表达观点并获得潜在收益。",
+    "platformDescription": "Foresight 是一个用预测市场帮你看清世界走向的小工具：把「我觉得会发生」变成有价格、有反馈的预测仓位，一边记录自己的判断，一边对比别人怎么定价，在结果揭晓前更早看见信号。",
     "sections": {
       "popularCategories": "热门分类",
       "hotEvents": "热门预测事件",

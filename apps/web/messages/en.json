@@ -357,6 +357,13 @@
       "opBadge": "OP",
       "reply": "Reply"
     },
+    "topics": {
+      "sectionTitle": "Topics",
+      "all": "All",
+      "market": "Market",
+      "meta": "Meta",
+      "offtopic": "Off-topic"
+    },
     "header": {
       "title": "Chat room",
       "withTopic": "Chat room · {title}",
@@ -922,7 +929,7 @@
       "dailyPick": "Daily Pick",
       "trending": "Trending"
     },
-    "platformDescription": "Foresight is a decentralized prediction market platform built on blockchain. You can create and trade predictions on real-world events, express your views using cryptocurrency, and earn potential returns.",
+    "platformDescription": "Foresight is a prediction market that helps you turn “I have a feeling…” into priced positions. Log your calls, see how others are pricing the same event, and get early signals before reality plays out.",
     "sections": {
       "popularCategories": "Popular Categories",
       "hotEvents": "Trending Events",
@@ -1477,6 +1484,7 @@
       "weekly": "Weekly",
       "currentRank": "Current Rank",
       "currentProfit": "Volume",
+      "followers": "Followers",
       "nextRank": "Gap to Next",
       "top100": "Gap to Top 100",
       "topRank": "Top 1",

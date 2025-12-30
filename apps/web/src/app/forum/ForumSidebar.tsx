@@ -2,7 +2,16 @@ import React, { memo, useMemo, useState, useEffect, useCallback, useRef } from "
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useInView } from "react-intersection-observer";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Search, Users, TrendingUp, Loader2, RefreshCw, Bell, ChevronUp } from "lucide-react";
+import {
+  MessageSquare,
+  Search,
+  Users,
+  TrendingUp,
+  Loader2,
+  RefreshCw,
+  Bell,
+  ChevronUp,
+} from "lucide-react";
 import { normalizeCategory } from "@/features/trending/trendingModel";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 import { TopicCardSkeletonList } from "./TopicCardSkeleton";
@@ -59,7 +68,7 @@ export const ForumSidebar = memo(function ForumSidebar({
 }: ForumSidebarProps) {
   // 虚拟列表容器 ref
   const parentRef = useRef<HTMLDivElement>(null);
-  
+
   // 下拉刷新状态
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -113,7 +122,7 @@ export const ForumSidebar = memo(function ForumSidebar({
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isPulling.current) return;
-    
+
     const currentY = e.touches[0].clientY;
     const distance = Math.max(0, Math.min(100, currentY - touchStartY.current));
     setPullDistance(distance);
@@ -192,7 +201,7 @@ export const ForumSidebar = memo(function ForumSidebar({
 
   // 虚拟列表配置 - 增加额外项目用于加载更多指示器
   const virtualItemCount = filtered.length + (hasNextPage ? 1 : 0);
-  
+
   const virtualizer = useVirtualizer({
     count: virtualItemCount,
     getScrollElement: () => parentRef.current,
@@ -223,13 +232,8 @@ export const ForumSidebar = memo(function ForumSidebar({
   }, [loading, filtered.length, total]);
 
   return (
-    <div className="w-64 flex-shrink-0 border-r border-purple-200/60 dark:border-slate-700/50 flex flex-col overflow-x-hidden relative overflow-hidden bg-gradient-to-b from-white/90 via-purple-50/50 to-fuchsia-50/40 dark:from-slate-900/90 dark:via-purple-950/30 dark:to-slate-900/80 backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-purple-100/60 via-fuchsia-100/40 to-violet-50/50 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-slate-900/50 opacity-90" />
-      <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-64 w-64 rounded-full bg-purple-300/50 blur-3xl dark:bg-purple-600/20" />
-      <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-64 w-64 rounded-full bg-fuchsia-300/40 blur-3xl dark:bg-fuchsia-600/15" />
-
-      <div className="p-5 border-b border-purple-200/50 dark:border-slate-700/40 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-100/50 via-fuchsia-100/40 to-violet-50/30 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-80" />
+    <div className="w-full md:w-56 lg:w-60 flex-shrink-0 border-r border-slate-200/70 dark:border-slate-800 flex flex-col overflow-x-hidden relative bg-white/80 dark:bg-slate-950/70">
+      <div className="p-4 border-b border-slate-200/60 dark:border-slate-800 bg-transparent relative">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 bg-[var(--card-bg)] rounded-xl flex items-center justify-center text-brand shadow-lg shadow-indigo-200/20 border border-[var(--card-border)]">
             <MessageSquare size={20} fill="currentColor" />
@@ -330,9 +334,7 @@ export const ForumSidebar = memo(function ForumSidebar({
             ) : (
               <Bell size={14} className="animate-bounce" />
             )}
-            <span>
-              {t("forum.newTopics").replace("{count}", String(newCount))}
-            </span>
+            <span>{t("forum.newTopics").replace("{count}", String(newCount))}</span>
             <ChevronUp size={14} />
           </motion.button>
         )}
@@ -351,26 +353,27 @@ export const ForumSidebar = memo(function ForumSidebar({
           {(pullDistance > 0 || isRefreshing) && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ 
-                opacity: 1, 
+              animate={{
+                opacity: 1,
                 height: isRefreshing ? 40 : pullDistance * 0.5,
               }}
               exit={{ opacity: 0, height: 0 }}
               className="flex items-center justify-center mb-2"
             >
-              <div className={`flex items-center gap-2 text-xs text-slate-500 ${pullDistance > 60 || isRefreshing ? 'text-brand' : ''}`}>
-                <RefreshCw 
-                  size={14} 
-                  className={isRefreshing ? 'animate-spin' : ''} 
+              <div
+                className={`flex items-center gap-2 text-xs text-slate-500 ${pullDistance > 60 || isRefreshing ? "text-brand" : ""}`}
+              >
+                <RefreshCw
+                  size={14}
+                  className={isRefreshing ? "animate-spin" : ""}
                   style={{ transform: `rotate(${pullDistance * 2}deg)` }}
                 />
                 <span>
-                  {isRefreshing 
-                    ? t("forum.refreshing") 
-                    : pullDistance > 60 
-                      ? t("forum.releaseToRefresh") 
-                      : t("forum.pullToRefresh")
-                  }
+                  {isRefreshing
+                    ? t("forum.refreshing")
+                    : pullDistance > 60
+                      ? t("forum.releaseToRefresh")
+                      : t("forum.pullToRefresh")}
                 </span>
               </div>
             </motion.div>
@@ -430,7 +433,7 @@ export const ForumSidebar = memo(function ForumSidebar({
 
               const topic = filtered[virtualItem.index];
               if (!topic) return null;
-              
+
               const catName = normalizeCategory(topic.category);
               const isActive = selectedTopicId === topic.id;
 

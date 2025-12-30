@@ -44,6 +44,7 @@ export default function ChatPanel({
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
+  const [activeTopic, setActiveTopic] = useState<string>("all");
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
@@ -62,6 +63,14 @@ export default function ChatPanel({
   const mergedMessages = useMemo(
     () => mergeMessages(messages, forumMessages),
     [messages, forumMessages]
+  );
+
+  const filteredMessages = useMemo(
+    () =>
+      activeTopic === "all"
+        ? mergedMessages
+        : mergedMessages.filter((m) => m.topic === activeTopic),
+    [mergedMessages, activeTopic]
   );
 
   const roomLabel = useMemo(() => {
@@ -90,6 +99,7 @@ export default function ChatPanel({
           replyToId: replyTo?.id,
           replyToUser: replyTo?.user_id,
           replyToContent: replyTo?.content.slice(0, 100), // 存储前100个字符作为摘要
+          topic: activeTopic === "all" ? null : activeTopic,
         }),
       });
       if (!res.ok) {
@@ -146,13 +156,15 @@ export default function ChatPanel({
       ) : null}
 
       <MessagesList
-        mergedMessages={mergedMessages}
+        mergedMessages={filteredMessages}
         account={account}
         displayName={displayName}
         tChat={tChat}
         setInput={setInput}
         listRef={listRef}
         setReplyTo={setReplyTo} // 确保正确传递状态设置函数
+        activeTopic={activeTopic}
+        onTopicChange={setActiveTopic}
       />
 
       <ChatInputArea

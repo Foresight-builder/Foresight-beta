@@ -13,6 +13,8 @@ export type MessagesListProps = {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   listRef: React.RefObject<HTMLDivElement | null>;
   setReplyTo?: (msg: ChatMessageView | null) => void;
+  activeTopic?: string;
+  onTopicChange?: (topic: string) => void;
 };
 
 export const MessagesList = memo(function MessagesList({
@@ -23,12 +25,46 @@ export const MessagesList = memo(function MessagesList({
   setInput,
   listRef,
   setReplyTo: onReply, // 重命名以避免任何潜在的作用域冲突
+  activeTopic = "all",
+  onTopicChange,
 }: MessagesListProps) {
+  const topics = ["all", "market", "meta", "offtopic"];
+
   return (
     <div
       ref={listRef}
       className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4 bg-transparent custom-scrollbar"
     >
+      <div className="sticky top-0 z-10 -mx-4 mb-2 px-4 pt-2 pb-3 bg-[var(--card-bg)]/95 backdrop-blur-md border-b border-[var(--card-border)] flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+          {tChat("topics.sectionTitle")}
+        </span>
+        {topics.map((topic) => {
+          const isActive = activeTopic === topic;
+          const labelKey =
+            topic === "all"
+              ? "topics.all"
+              : topic === "market"
+                ? "topics.market"
+                : topic === "meta"
+                  ? "topics.meta"
+                  : "topics.offtopic";
+          return (
+            <button
+              key={topic}
+              type="button"
+              onClick={() => onTopicChange && onTopicChange(topic)}
+              className={`px-2 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                isActive
+                  ? "bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300"
+                  : "bg-[var(--card-bg)] border-[var(--card-border)] text-slate-500 hover:border-brand/30 hover:text-brand-700 dark:hover:text-brand-300"
+              }`}
+            >
+              {tChat(labelKey)}
+            </button>
+          );
+        })}
+      </div>
       {mergedMessages.length === 0 && (
         <EmptyState
           icon={MessageSquare}
@@ -60,13 +96,13 @@ export const MessagesList = memo(function MessagesList({
         const dateChanged =
           prev &&
           new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
-        
+
         // 连续性判断：如果上一条消息也是同一个用户，且日期没变，且时间间隔在5分钟内
-        const isContinuation = 
-          !dateChanged && 
-          prev && 
+        const isContinuation =
+          !dateChanged &&
+          prev &&
           prev.user_id === m.user_id &&
-          (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) < 5 * 60 * 1000;
+          new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60 * 1000;
 
         return (
           <React.Fragment key={m.id}>
@@ -77,7 +113,9 @@ export const MessagesList = memo(function MessagesList({
                 </span>
               </div>
             )}
-            <div className={`flex gap-3 group/msg ${mine ? "flex-row-reverse" : ""} ${isContinuation ? "mt-1" : "mt-4"}`}>
+            <div
+              className={`flex gap-3 group/msg ${mine ? "flex-row-reverse" : ""} ${isContinuation ? "mt-1" : "mt-4"}`}
+            >
               <div className="flex-shrink-0 w-8">
                 {!isContinuation && (
                   <div className="w-8 h-8 rounded-full bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-center text-slate-700 dark:text-slate-200 text-xs font-semibold backdrop-blur-md">
@@ -92,16 +130,19 @@ export const MessagesList = memo(function MessagesList({
                   <div className="flex items-baseline gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <span className="font-medium">{displayName(m.user_id)}</span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(m.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 group/bubble">
                   {mine && (
-                    <button 
+                    <button
                       onClick={() => onReply?.(m)}
                       className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-opacity text-slate-400"
-                      title={tChat("action.reply")}
+                      title={tChat("message.reply")}
                     >
                       <MessageSquare size={14} />
                     </button>
@@ -115,27 +156,29 @@ export const MessagesList = memo(function MessagesList({
                   >
                     {m.reply_to_content && (
                       <div className="mb-1 pb-1 border-b border-black/5 dark:border-white/5 text-[10px] opacity-60 italic line-clamp-1">
-                        {m.reply_to_user && <span className="font-bold mr-1">{displayName(m.reply_to_user)}:</span>}
+                        {m.reply_to_user && (
+                          <span className="font-bold mr-1">{displayName(m.reply_to_user)}:</span>
+                        )}
                         {m.reply_to_content}
                       </div>
                     )}
                     {m.image_url && (
                       <div className="mb-2 overflow-hidden rounded-lg border border-black/5 dark:border-white/5">
-                        <img 
-                          src={m.image_url} 
-                          alt="shared image" 
+                        <img
+                          src={m.image_url}
+                          alt="shared image"
                           className="max-w-full max-h-[300px] object-contain hover:scale-105 transition-transform cursor-pointer"
-                          onClick={() => window.open(m.image_url, '_blank')}
+                          onClick={() => window.open(m.image_url, "_blank")}
                         />
                       </div>
                     )}
                     <div className="whitespace-pre-wrap break-words text-sm">{m.content}</div>
                   </div>
                   {!mine && (
-                    <button 
+                    <button
                       onClick={() => onReply?.(m)}
                       className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-opacity text-slate-400"
-                      title={tChat("action.reply")}
+                      title={tChat("message.reply")}
                     >
                       <MessageSquare size={14} />
                     </button>

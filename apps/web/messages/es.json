@@ -81,6 +81,7 @@
     "categoryLabel": "Categoría",
     "selectTopicMobile": "Seleccionar tema",
     "topicCount": "{count} temas",
+    "platformDescription": "El foro de Foresight es el lugar donde los participantes del mercado de predicciones comparten ideas y estrategias. Puedes crear hilos sobre eventos del mundo real o sumarte a análisis profundos de predicciones existentes.",
     "loginRequired": "Conecta tu billetera para iniciar un hilo",
     "connectAndSign": "Conectar y firmar",
     "chatRoom": "Sala de chat",
@@ -355,6 +356,13 @@
     "message": {
       "opBadge": "OP",
       "reply": "Responder"
+    },
+    "topics": {
+      "sectionTitle": "Temas",
+      "all": "Todos",
+      "market": "Mercado",
+      "meta": "Meta",
+      "offtopic": "Off-topic"
     },
     "header": {
       "title": "Sala de chat",
@@ -1459,6 +1467,7 @@
       "weekly": "Semanal",
       "currentRank": "Rango Actual",
       "currentProfit": "Volumen",
+      "followers": "Seguidores",
       "nextRank": "Para el siguiente",
       "top100": "Para Top 100",
       "topRank": "Nº 1",

@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     const replyToId = body?.replyToId ? String(body?.replyToId) : null;
     const replyToUser = body?.replyToUser ? String(body?.replyToUser) : null;
     const replyToContent = body?.replyToContent ? String(body?.replyToContent) : null;
+    const topic = body?.topic ? String(body?.topic) : null;
 
     if (!proposalId || (!content.trim() && !image_url) || !userId.trim()) {
       return ApiResponses.invalidParameters("proposalId、(content 或 image_url)、userId 必填");
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
         reply_to_id: replyToId,
         reply_to_user: replyToUser,
         reply_to_content: replyToContent,
+        topic,
       } as any)
       .select()
       .maybeSingle();
