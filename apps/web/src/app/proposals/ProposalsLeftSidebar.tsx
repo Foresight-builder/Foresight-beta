@@ -25,11 +25,13 @@ export default function ProposalsLeftSidebar({
 }: ProposalsLeftSidebarProps) {
   const tProposals = useTranslations("proposals");
   const myPostsCount = React.useMemo(() => {
+    const me = account || "";
+    if (!me) return 0;
+    const normalizedMe = String(me).toLowerCase();
     return proposals.filter((p: any) => {
-      const me = account || user?.id || "";
-      return me && String(p.user_id || "").toLowerCase() === String(me).toLowerCase();
+      return String(p.user_id || "").toLowerCase() === normalizedMe;
     }).length;
-  }, [account, user?.id, proposals]);
+  }, [account, proposals]);
   return (
     <div className="hidden lg:flex flex-col w-64 shrink-0 gap-6 z-10 pb-20">
       <div className="bg-white border border-gray-200 rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-4 relative">

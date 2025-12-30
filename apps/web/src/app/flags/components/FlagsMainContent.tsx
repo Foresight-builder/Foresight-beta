@@ -7,7 +7,6 @@ export type FlagsMainContentProps = {
   loading: boolean;
   filteredFlags: FlagItem[];
   account: string | null | undefined;
-  userId: string | null | undefined;
   onCreate: () => void;
   onCheckin: (flag: FlagItem) => void;
   onOpenHistory: (flag: FlagItem) => void;
@@ -50,7 +49,6 @@ function FlagsCreateCard({ tFlags, onCreate }: FlagsCreateCardProps) {
 type FlagsListContainerProps = {
   filteredFlags: FlagItem[];
   account: string | null | undefined;
-  userId: string | null | undefined;
   onCheckin: (flag: FlagItem) => void;
   onOpenHistory: (flag: FlagItem) => void;
   onSettle: (flag: FlagItem) => void;
@@ -59,7 +57,6 @@ type FlagsListContainerProps = {
 function FlagsListContainer({
   filteredFlags,
   account,
-  userId,
   onCheckin,
   onOpenHistory,
   onSettle,
@@ -79,9 +76,8 @@ function FlagsListContainer({
           <FlagCard
             flag={flag}
             isMine={
-              Boolean(account || userId) &&
-              String(flag.user_id || "").toLowerCase() ===
-                String(account || userId || "").toLowerCase()
+              Boolean(account) &&
+              String(flag.user_id || "").toLowerCase() === String(account || "").toLowerCase()
             }
             onCheckin={() => onCheckin(flag)}
             onViewHistory={() => onOpenHistory(flag)}
@@ -98,7 +94,6 @@ export function FlagsMainContent({
   loading,
   filteredFlags,
   account,
-  userId,
   onCreate,
   onCheckin,
   onOpenHistory,
@@ -117,7 +112,6 @@ export function FlagsMainContent({
           <FlagsListContainer
             filteredFlags={filteredFlags}
             account={account}
-            userId={userId}
             onCheckin={onCheckin}
             onOpenHistory={onOpenHistory}
             onSettle={onSettle}

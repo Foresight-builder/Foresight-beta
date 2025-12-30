@@ -120,7 +120,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     // 若 flags 当前为 pending_review，审核后回到 active
     if (String(flag?.status || "") === "pending_review") {
-      await client.from("flags").update({ status: "active" }).eq("id", chk.flag_id);
+      const pending = await client
+        .from("flag_checkins")
+        .select("id", { count: "exact", head: true })
+        .eq("flag_id", chk.flag_id)
+        .eq("review_status", "pending");
+
+      if (!pending.error && Number(pending.count || 0) === 0) {
+        await client.from("flags").update({ status: "active" }).eq("id", chk.flag_id);
+      }
     }
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });

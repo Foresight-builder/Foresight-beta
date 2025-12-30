@@ -178,7 +178,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       // 步骤 1: 连接钱包
       setWalletStep("connecting");
       await connectWallet(walletType as any);
-      
+
       // 步骤 2: 请求权限（可选，快速跳过）
       setPermLoading(true);
       setWalletStep("permissions");
@@ -188,27 +188,24 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         // 权限请求失败不阻塞流程
       }
       setPermLoading(false);
-      
+
       // 步骤 3: SIWE 签名认证
       setSiweLoading(true);
       setWalletStep("sign");
       const res = await siweLogin();
       setSiweLoading(false);
-      
+
       if (!res.success) {
         console.error("Sign-in with wallet failed:", res.error);
-        // SIWE 失败，重置状态让用户可以重试
         setWalletStep("select");
         setSelectedWallet(null);
         return;
       }
-      
-      // SIWE 成功，刷新会话
+
       if (auth?.refreshSession) {
         await auth.refreshSession();
       }
-      
-      // 检查用户 profile
+
       const addrCheck = String(res.address || account || "").toLowerCase();
       if (addrCheck) {
         try {
@@ -216,7 +213,6 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
           const d = await r.json();
           const p = d?.profile;
           if (!p?.username || !p?.email) {
-            // 需要完善 profile
             setShowProfileForm(true);
             setWalletStep("profile");
             setUsername(String(p?.username || ""));
@@ -226,12 +222,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
           }
         } catch {}
       }
-      
-      // 登录完成
+
       setWalletStep("completed");
       setSelectedWallet(null);
       onClose();
-      
     } catch (error) {
       console.error("Wallet connection failed:", error);
       // 出错时重置状态

@@ -15,7 +15,6 @@ export type FlagsPageViewProps = {
   officialTemplates: OfficialTemplate[];
   jsonLd: any;
   account: string | null | undefined;
-  userId: string | null | undefined;
   data: FlagsData;
   uiState: FlagsPageViewUIState;
   uiActions: FlagsPageViewUIActions;
@@ -26,7 +25,6 @@ export function FlagsPageView({
   officialTemplates,
   jsonLd,
   account,
-  userId,
   data,
   uiState,
   uiActions,
@@ -87,7 +85,6 @@ export function FlagsPageView({
             loading={loading}
             filteredFlags={filteredFlags}
             account={account}
-            userId={userId}
             onCreate={handleCreateClick}
             onCheckin={openCheckin}
             onOpenHistory={openHistory}

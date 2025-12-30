@@ -73,7 +73,7 @@ export function useTopNavBarLogic() {
     };
   }, [connectError, mounted]);
 
-  const viewerId = useMemo(() => (account || user?.id || "").toLowerCase(), [account, user]);
+  const viewerId = useMemo(() => String(account || "").toLowerCase(), [account]);
 
   useEffect(() => {
     let cancelled = false;

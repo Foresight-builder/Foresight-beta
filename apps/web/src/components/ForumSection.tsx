@@ -217,7 +217,6 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     await connectWallet();
     await requestWalletPermissions();
     await siweLogin();
-    await multisigSign();
   };
 
   return (

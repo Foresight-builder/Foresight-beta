@@ -74,13 +74,15 @@ export default function Error({
         {/* 错误信息 */}
         <p className="text-gray-600 text-center mb-2">{tErrors("serverError")}</p>
 
-        {/* 错误详情（开发环境） */}
-        {process.env.NODE_ENV === "development" && error.message && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <p className="text-xs font-mono text-gray-700 break-all">{error.message}</p>
-            {error.digest && <p className="text-xs text-gray-500 mt-2">错误 ID: {error.digest}</p>}
-          </div>
-        )}
+        {/* 强制显示错误详情以便调试 */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-left">
+          <p className="text-sm font-bold text-red-600 mb-2">Debug Info:</p>
+          <p className="text-xs font-mono text-gray-700 break-all whitespace-pre-wrap">
+            {error.message || "No error message"}
+          </p>
+          {error.digest && <p className="text-xs text-gray-500 mt-2">Digest: {error.digest}</p>}
+          <pre className="text-xs text-gray-500 mt-2 overflow-auto max-h-40">{error.stack}</pre>
+        </div>
 
         {/* 生产环境友好提示 */}
         {process.env.NODE_ENV === "production" && (

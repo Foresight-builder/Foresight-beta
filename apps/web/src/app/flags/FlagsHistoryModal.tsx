@@ -47,6 +47,29 @@ export function FlagsHistoryModal({
   const isWitnessMode =
     typeof tasksIndex === "number" && typeof tasksTotal === "number" && tasksTotal > 0;
 
+  const startDate = flag ? new Date(flag.created_at) : null;
+  const endDate = flag ? new Date(flag.deadline) : null;
+  let challengeDurationText = "";
+  let challengeRangeText = "";
+  if (
+    startDate &&
+    endDate &&
+    !Number.isNaN(startDate.getTime()) &&
+    !Number.isNaN(endDate.getTime())
+  ) {
+    const msDay = 86400000;
+    const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
+    challengeDurationText = `${totalDays} 天`;
+    const format = (d: Date) =>
+      `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+    challengeRangeText = `${format(startDay)} - ${format(endDay)}`;
+  }
+
+  const successConditionText =
+    "至少有 10 天打卡记录被你判定为通过，并且通过天数占整个挑战周期的 80% 以上时，本次挑战记为成功。";
+
   return (
     <AnimatePresence>
       {isOpen && flag && (
@@ -122,46 +145,79 @@ export function FlagsHistoryModal({
                       }`}
                     >
                       {isWitnessMode
-                        ? "请仔细审核打卡内容，你的判断将决定挑战是否成功。"
+                        ? "请仔细审核每一次打卡内容，你的判断将直接影响这次挑战是否被视为完成。"
                         : "回顾每一步脚印，见证坚持的力量。"}
                     </p>
                   </motion.div>
                 </div>
 
                 <div className="mt-8">
-                  <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm">
+                  <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm space-y-3">
                     <div
-                      className={`text-xs font-black uppercase tracking-wider mb-2 ${
+                      className={`text-xs font-black uppercase tracking-wider ${
                         isWitnessMode ? "text-amber-900/50" : "text-purple-900/50"
                       }`}
                     >
-                      {isWitnessMode ? "当前任务" : "挑战主题"}
+                      {isWitnessMode ? "当前监督任务" : "挑战主题"}
                     </div>
                     <h4
-                      className={`font-bold line-clamp-2 mb-2 ${
+                      className={`font-bold line-clamp-2 ${
                         isWitnessMode ? "text-amber-900" : "text-purple-900"
                       }`}
                     >
                       {flag.title}
                     </h4>
-                    <div
-                      className={`flex items-center gap-2 text-xs font-bold ${
-                        isWitnessMode ? "text-amber-800/60" : "text-purple-800/60"
-                      }`}
-                    >
-                      {flag.verification_type === "witness" && flag.witness_id ? (
-                        <>
-                          <Users className="w-3 h-3" />
+                    {flag.description && (
+                      <p
+                        className={`text-xs leading-relaxed ${
+                          isWitnessMode ? "text-amber-900/80" : "text-purple-900/80"
+                        }`}
+                      >
+                        {flag.description}
+                      </p>
+                    )}
+                    <div className="space-y-1.5 text-[11px] font-bold">
+                      <div
+                        className={`flex items-center gap-2 ${
+                          isWitnessMode ? "text-amber-800/80" : "text-purple-800/80"
+                        }`}
+                      >
+                        <Users className="w-3 h-3" />
+                        <span>发起人: {formatAddress(flag.user_id)}</span>
+                      </div>
+                      {flag.verification_type === "witness" && flag.witness_id && (
+                        <div
+                          className={`flex items-center gap-2 ${
+                            isWitnessMode ? "text-amber-800/80" : "text-purple-800/80"
+                          }`}
+                        >
+                          <ShieldCheck className="w-3 h-3" />
                           <span>
                             {tFlags("history.witnessLabel")}: {formatAddress(flag.witness_id)}
                           </span>
-                        </>
-                      ) : (
-                        <>
-                          <Target className="w-3 h-3" />
-                          <span>{tFlags("header.title")}</span>
-                        </>
+                        </div>
                       )}
+                      {challengeDurationText && (
+                        <div
+                          className={`flex items-center gap-2 ${
+                            isWitnessMode ? "text-amber-800/80" : "text-purple-800/80"
+                          }`}
+                        >
+                          <Clock className="w-3 h-3" />
+                          <span>
+                            挑战周期: {challengeDurationText}
+                            {challengeRangeText ? ` · ${challengeRangeText}` : ""}
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className={`flex items-start gap-2 ${
+                          isWitnessMode ? "text-amber-800/80" : "text-purple-800/80"
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3 h-3 mt-[2px]" />
+                        <span>成功条件: {successConditionText}</span>
+                      </div>
                     </div>
                   </div>
 

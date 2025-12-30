@@ -28,7 +28,6 @@ import {
   Compass,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
 import DatePicker from "@/components/ui/DatePicker";
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
@@ -139,7 +138,6 @@ export default function CreateFlagModal({
   isOfficial = false,
 }: CreateFlagModalProps) {
   const { account, siweLogin, isAuthenticated, checkAuth } = useWallet();
-  const { user } = useAuth();
   const tFlags = useTranslations("flags");
 
   const [loading, setLoading] = useState(false);
@@ -213,8 +211,7 @@ export default function CreateFlagModal({
   }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc, tFlags]);
 
   const handleSubmit = async () => {
-    // 检查是否有钱包连接或 Supabase 用户
-    if (!user && !account) {
+    if (!account) {
       toast.warning(tFlags("toast.walletRequiredTitle"), tFlags("toast.walletRequiredDesc"));
       return;
     }
@@ -239,7 +236,7 @@ export default function CreateFlagModal({
           return;
         }
         // 等待一下让 cookie 生效
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       const payload: any = {

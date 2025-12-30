@@ -10,11 +10,7 @@ type InviteNotice = {
   title: string;
 } | null;
 
-export function useFlagsData(
-  account: string | null | undefined,
-  userId: string | null | undefined,
-  tFlags: (key: string) => string
-) {
+export function useFlagsData(account: string | null | undefined, tFlags: (key: string) => string) {
   const [flags, setFlags] = useState<FlagItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterMine, setFilterMine] = useState(false);
@@ -22,14 +18,12 @@ export function useFlagsData(
   const [dbStickers, setDbStickers] = useState<StickerItem[]>([]);
   const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
 
-  const viewerId = String(account || userId || "").toLowerCase();
+  const viewerId = String(account || "").toLowerCase();
 
   const loadFlags = useCallback(async () => {
     try {
       setLoading(true);
-      const me = account || userId || "";
-
-      if (!me) {
+      if (!account) {
         setFlags([]);
         return;
       }
@@ -56,13 +50,12 @@ export function useFlagsData(
     } finally {
       setLoading(false);
     }
-  }, [account, userId, tFlags]);
+  }, [account, tFlags]);
 
   const loadCollectedStickers = useCallback(async () => {
     try {
-      const me = account || userId || "";
-      if (!me) return;
-      const res = await fetch(`/api/stickers?user_id=${encodeURIComponent(me)}`, {
+      if (!account) return;
+      const res = await fetch(`/api/stickers?user_id=${encodeURIComponent(account)}`, {
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({ stickers: [] }));
@@ -71,7 +64,7 @@ export function useFlagsData(
     } catch (e) {
       console.error(e);
     }
-  }, [account, userId]);
+  }, [account]);
 
   useEffect(() => {
     fetch("/api/emojis")
@@ -85,14 +78,14 @@ export function useFlagsData(
   }, []);
 
   useEffect(() => {
-    if (account || userId) {
+    if (account) {
       loadFlags();
       loadCollectedStickers();
     } else {
       setFlags([]);
       setCollectedStickers([]);
     }
-  }, [account, userId, loadFlags, loadCollectedStickers]);
+  }, [account, loadFlags, loadCollectedStickers]);
 
   const activeFlags = useMemo(() => flags.filter((f) => f.status === "active"), [flags]);
 
@@ -104,11 +97,11 @@ export function useFlagsData(
         .filter((f) => (statusFilter === "all" ? true : f.status === statusFilter))
         .filter((f) => {
           if (!filterMine) return true;
-          const me = account || userId || "";
-          return me && String(f.user_id || "").toLowerCase() === String(me).toLowerCase();
+          if (!account) return false;
+          return String(f.user_id || "").toLowerCase() === String(account).toLowerCase();
         })
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    [flags, statusFilter, filterMine, account, userId]
+    [flags, statusFilter, filterMine, account]
   );
 
   const witnessFlags = useMemo(

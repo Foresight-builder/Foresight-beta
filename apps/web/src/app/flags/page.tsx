@@ -86,7 +86,7 @@ export default function FlagsPage() {
   const [witnessTaskTotal, setWitnessTaskTotal] = useState(0);
   const [witnessTasksQueue, setWitnessTasksQueue] = useState<FlagItem[]>([]);
 
-  const data = useFlagsData(account, user?.id || null, tFlags);
+  const data = useFlagsData(account, tFlags);
   const {
     flags,
     loading,
@@ -108,7 +108,7 @@ export default function FlagsPage() {
   } = data;
 
   const handleCreateClick = () => {
-    if (!account && !user) {
+    if (!account) {
       setWalletModalOpen(true);
       return;
     }
@@ -283,7 +283,7 @@ export default function FlagsPage() {
   };
 
   const openWitnessTasks = () => {
-    const me = (account || user?.id || "").toLowerCase();
+    const me = String(account || "").toLowerCase();
     if (!me) return;
     const tasks = pendingReviewFlagsForViewer;
     if (!tasks || tasks.length === 0) return;
@@ -302,7 +302,6 @@ export default function FlagsPage() {
       officialTemplates={officialTemplates}
       jsonLd={jsonLd}
       account={account}
-      userId={user?.id || null}
       data={data}
       uiState={{
         createOpen,

@@ -104,7 +104,6 @@ export const ChatInputArea = memo(function ChatInputArea({
                 await connectWallet();
                 await requestWalletPermissions();
                 await siweLogin();
-                await multisigSign();
               }}
             >
               {tChat("input.connectAndSign")}

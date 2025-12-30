@@ -234,9 +234,8 @@ export default function Sidebar() {
             </div>
           </div>
 
-          {/* 用户区 */}
           <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
-            {account || user ? (
+            {account ? (
               <div className="relative group cursor-pointer bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
                 {/* Tape */}
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 bg-purple-100/80 rotate-2 z-10" />
@@ -244,13 +243,7 @@ export default function Sidebar() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gray-50 p-0.5 border border-gray-100 overflow-hidden">
                     <Image
-                      src={
-                        account
-                          ? `https://api.dicebear.com/7.x/identicon/svg?seed=${account}`
-                          : `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
-                              user?.email || "guest"
-                            )}&backgroundColor=e9d5ff`
-                      }
+                      src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
                       alt="avatar"
                       width={40}
                       height={40}
@@ -260,7 +253,7 @@ export default function Sidebar() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-black text-gray-800 truncate">
-                      {account ? formatAddress(account) : user?.email?.split("@")[0]}
+                      {formatAddress(account)}
                     </div>
                     <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
                       {tCommon("userLevelDreamer").replace("{level}", "3")}
