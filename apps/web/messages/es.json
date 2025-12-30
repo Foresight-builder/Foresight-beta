@@ -537,7 +537,7 @@
       "cancelOrderFailedTitle": "Error al cancelar la orden",
       "retryLater": "Inténtalo de nuevo más tarde",
       "orderSuccessTitle": "Orden en el libro",
-      "orderSuccessDesc": "Tu punto de vista ya forma parte de la historia de este mercado.",
+      "orderSuccessDesc": "Tu punto de vista ya forma parte de la historia de este mercado. Cuando quieras, puedes pasar por la sala de chat para ver cómo lo están pensando las demás personas.",
       "orderFailedTitle": "Esta operación no se completó",
       "orderFailedDesc": "El saldo o la red pueden estar de mal humor. Ajusta un poco y vuelve a intentarlo."
     },
@@ -610,7 +610,7 @@
       "noDiscussion": "Aún no hay debates. ¡Sé el primero en iniciar un tema en el foro!",
       "forumDescription": "El foro de Foresight es la comunidad central para que los participantes del mercado de predicciones compartan ideas y estrategias. Puedes crear temas para debatir eventos del mundo real o unirte al análisis profundo de predicciones existentes.",
       "gotoChat": "Ir a la sala de chat",
-      "chatHint": "En el foro puedes ver el historial completo de mensajes, las listas de temas y los mercados de predicción relacionados.",
+      "chatHint": "En el foro puedes ver el historial completo de mensajes, las listas de temas y los mercados de predicción relacionados. También es un buen lugar para revisar tus operaciones junto a otros.",
       "discoverEvents": "Ir a",
       "orCreateNew": "para descubrir eventos para debatir, o",
       "createNewProposal": "crear una nueva predicción"

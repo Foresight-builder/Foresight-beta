@@ -538,7 +538,7 @@
       "cancelOrderFailedTitle": "取消订单失败",
       "retryLater": "请稍后重试",
       "orderSuccessTitle": "下单成功",
-      "orderSuccessDesc": "你的观点已经被接住，安静地躺在这个市场里了。",
+      "orderSuccessDesc": "你的观点已经被接住，安静地躺在这个市场里了，有空也可以去聊天室听听别人怎么想。",
       "orderFailedTitle": "这笔交易没有走通",
       "orderFailedDesc": "资金和网络都有点小情绪，稍微调整一下再试试。"
     },
@@ -611,7 +611,7 @@
       "noDiscussion": "还没有任何讨论，快去论坛里发起第一条话题吧。",
       "forumDescription": "Foresight 讨论区是预测市场参与者交流观点、分享策略的核心社区，你可以创建主题讨论现实世界事件，或参与现有预测的深度分析。",
       "gotoChat": "前往对应聊天室",
-      "chatHint": "在讨论区中可以查看完整消息历史、话题列表和相关预测市场。",
+      "chatHint": "在讨论区中可以查看完整消息历史、话题列表和相关预测市场，也可以和大家一起复盘自己的交易想法。",
       "discoverEvents": "前往",
       "orCreateNew": "发现可讨论的事件，或在",
       "createNewProposal": "发起新预测"

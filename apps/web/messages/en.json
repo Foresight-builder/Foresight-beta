@@ -538,7 +538,7 @@
       "cancelOrderFailedTitle": "Failed to cancel order",
       "retryLater": "Please try again later",
       "orderSuccessTitle": "Order in the book",
-      "orderSuccessDesc": "Your view is now part of this market’s story.",
+      "orderSuccessDesc": "Your view is now part of this market’s story. You can always hop into the chat room to see how others are thinking about it.",
       "orderFailedTitle": "This trade didn’t go through",
       "orderFailedDesc": "Balances and networks glitch sometimes. Adjust a bit and try again."
     },
@@ -611,7 +611,7 @@
       "noDiscussion": "No discussions yet. Be the first to start a topic in the forum!",
       "forumDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
       "gotoChat": "Go to chat room",
-      "chatHint": "In the forum you can view full message history, topic lists and related prediction markets.",
+      "chatHint": "In the forum you can view full message history, topic lists and related prediction markets. It’s also a good place to review your trades with others.",
       "discoverEvents": "Go to",
       "orCreateNew": "to discover events to discuss, or",
       "createNewProposal": "create a new prediction"
