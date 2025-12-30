@@ -213,7 +213,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                 ) : (
                   <Link
                     href="/login"
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all font-medium"
                   >
                     <User className="w-5 h-5" />
                     <span>{tMobileNav("wallet.connect")}</span>

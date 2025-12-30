@@ -211,7 +211,7 @@ export function ProfilePageView({
                     className={`w-full py-3.5 rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 mb-2 ${
                       isFollowed
                         ? "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
-                        : "bg-gray-900 text-white hover:bg-purple-600"
+                        : "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
                     }`}
                   >
                     {isFollowLoading ? (

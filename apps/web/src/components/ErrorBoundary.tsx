@@ -178,7 +178,7 @@ export class ErrorBoundary extends Component<Props, State> {
               {/* 重试按钮 */}
               <button
                 onClick={this.handleReset}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 rounded-lg shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 {t("common.retry")}

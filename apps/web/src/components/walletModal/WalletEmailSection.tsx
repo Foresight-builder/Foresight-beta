@@ -68,7 +68,7 @@ export function WalletEmailSection({
             <button
               onClick={handleRequestOtp}
               disabled={!canRequest || emailLoading}
-              className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-4 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
             >
               {emailLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -107,7 +107,7 @@ export function WalletEmailSection({
             <button
               onClick={handleVerifyOtp}
               disabled={otp.length !== 6 || emailLoading}
-              className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-4 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
             >
               {emailLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

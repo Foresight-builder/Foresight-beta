@@ -442,7 +442,7 @@ export default function CreateFlagModal({
                           <div
                             className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
                               verifType === "self"
-                                ? "bg-purple-500 text-white"
+                                ? "bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800"
                                 : "bg-gray-50 text-gray-400"
                             }`}
                           >

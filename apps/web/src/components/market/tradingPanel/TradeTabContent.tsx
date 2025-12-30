@@ -553,7 +553,7 @@ function MintRedeemPanel({
             <button
               onClick={() => mintInput && handleMint(mintInput)}
               disabled={!mintInput}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-sm hover:bg-purple-700 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-sm hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all disabled:opacity-50"
             >
               {tTrading("mintPanel.mint")}
             </button>

@@ -314,7 +314,7 @@ export default function DatePicker({
                       disabled
                         ? "text-gray-300 cursor-not-allowed bg-gray-50/50"
                         : selected
-                          ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+                          ? "bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800 shadow-lg shadow-purple-200 border border-purple-200"
                           : today
                             ? "bg-purple-50 text-purple-600 font-bold"
                             : "text-gray-700 hover:bg-gray-100"

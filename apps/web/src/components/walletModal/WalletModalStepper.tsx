@@ -28,7 +28,7 @@ export function WalletModalStepper({
           <div
             className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
               step1Done
-                ? "border-purple-500 bg-purple-500 text-white"
+                ? "border-purple-300 bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800"
                 : step1Active
                   ? "border-purple-500 text-purple-600"
                   : "border-gray-200 text-gray-400"
@@ -55,7 +55,7 @@ export function WalletModalStepper({
           <div
             className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
               step2Done
-                ? "border-purple-500 bg-purple-500 text-white"
+                ? "border-purple-300 bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800"
                 : step2Active
                   ? "border-purple-500 text-purple-600"
                   : "border-gray-200 text-gray-400"
@@ -82,7 +82,7 @@ export function WalletModalStepper({
           <div
             className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
               step3Done
-                ? "border-purple-500 bg-purple-500 text-white"
+                ? "border-purple-300 bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800"
                 : step3Active
                   ? "border-purple-500 text-purple-600"
                   : "border-gray-200 text-gray-400"

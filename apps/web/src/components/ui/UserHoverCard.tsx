@@ -284,7 +284,7 @@ export function UserHoverCard({
                     className={`mb-1 px-5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-lg active:scale-95 flex items-center gap-2 group ${
                       isFollowed
                         ? "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
-                        : "bg-gray-900 text-white hover:bg-purple-600"
+                        : "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
                     }`}
                   >
                     {isFollowLoading ? (

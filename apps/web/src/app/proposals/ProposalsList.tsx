@@ -51,7 +51,7 @@ export default function ProposalsList({
             if (!account) connectWallet();
             else setCreateModalOpen(true);
           }}
-          className="px-8 py-2.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all"
+          className="px-8 py-2.5 rounded-lg bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 font-bold border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
         >
           Create Proposal
         </button>

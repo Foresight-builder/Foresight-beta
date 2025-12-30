@@ -41,7 +41,7 @@ export function ListError({ error, title, reloadLabel, onReload }: ListErrorProp
       <p className="text-gray-600">{(error as any)?.message || String(error)}</p>
       <button
         onClick={handleReload}
-        className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+        className="mt-4 px-4 py-2 bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 rounded-full border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
       >
         {reloadLabel}
       </button>

@@ -92,7 +92,7 @@ export function TrendingEditModal({
           <button
             onClick={onSubmit}
             disabled={savingEdit}
-            className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all disabled:opacity-50"
           >
             {savingEdit ? tTrendingAdmin("saving") : tTrendingAdmin("save")}
           </button>

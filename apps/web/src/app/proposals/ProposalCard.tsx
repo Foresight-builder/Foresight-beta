@@ -88,7 +88,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
       <div className="relative h-full rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50/80 shadow-[0_8px_24px_rgba(15,23,42,0.03)] hover:shadow-[0_18px_45px_rgba(15,23,42,0.10)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col overflow-hidden">
         <div className="px-5 pt-4 pb-3">
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-600 text-[10px] font-bold text-white tracking-wider">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-[10px] font-bold tracking-wider border border-purple-200">
               <span className="w-1 h-1 rounded-full bg-white/70" />
               {tProposals("card.badge")}
             </span>

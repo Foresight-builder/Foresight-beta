@@ -142,7 +142,7 @@ export function TradingPanel(props: TradingPanelProps) {
           <div className="flex items-center gap-2">
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                isTradeTab ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"
+                isTradeTab ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200" : "bg-slate-200 text-slate-500"
               }`}
             >
               2
@@ -154,7 +154,7 @@ export function TradingPanel(props: TradingPanelProps) {
           <div className="flex items-center gap-2">
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                isManageTab ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-500"
+                isManageTab ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200" : "bg-slate-200 text-slate-500"
               }`}
             >
               3

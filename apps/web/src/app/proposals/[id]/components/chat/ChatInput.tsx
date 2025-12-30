@@ -46,7 +46,7 @@ export function ChatInput({
       <div className="p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-20">
         <button
           onClick={onConnect}
-          className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold shadow-lg shadow-purple-500/30 hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 font-bold border border-purple-200 shadow-lg shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all flex items-center justify-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
           {tChat("input.connectWalletCta")}
@@ -70,7 +70,7 @@ export function ChatInput({
         <button
           onClick={onSubmit}
           disabled={!value.trim() || isLoading}
-          className="p-2 rounded-xl bg-purple-600 text-white disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300 transition-all hover:bg-purple-700 shadow-md shadow-purple-500/20 disabled:shadow-none"
+          className="p-2 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300 transition-all hover:from-purple-400 hover:to-pink-400 hover:text-white shadow-md shadow-purple-200/30 disabled:shadow-none"
         >
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
         </button>

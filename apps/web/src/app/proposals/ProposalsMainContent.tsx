@@ -41,7 +41,7 @@ export default function ProposalsMainContent({
             if (!account) connectWallet();
             else setCreateModalOpen(true);
           }}
-          className="p-3 rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 hover:bg-purple-700 transition-colors"
+          className="p-3 rounded-full bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 shadow-lg shadow-purple-200/50 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -75,13 +75,13 @@ export default function ProposalsMainContent({
                   aria-pressed={category === cat.id}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                     category === cat.id
-                      ? "bg-purple-600 text-white shadow-purple-500/30 scale-105"
-                      : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-slate-200 hover:bg-purple-50/80"
+                      ? "bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800 shadow-md shadow-purple-200/50 border border-purple-200 scale-105"
+                      : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-purple-200 hover:bg-purple-50/80"
                   }`}
                 >
                   <cat.icon
                     className={`w-3.5 h-3.5 ${
-                      category === cat.id ? "text-white" : "text-slate-400"
+                      category === cat.id ? "text-purple-700" : "text-slate-400"
                     }`}
                   />
                   {cat.label}

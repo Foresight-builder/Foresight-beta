@@ -80,7 +80,7 @@ export function WalletProfileForm({
           <button
             onClick={requestRegisterOtp}
             disabled={!/.+@.+\..+/.test(email) || emailLoading}
-            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-3 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
           >
             {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {tWalletModal("profile.sendOtpWithValidity")}
@@ -111,7 +111,7 @@ export function WalletProfileForm({
               <button
                 onClick={verifyRegisterOtp}
                 disabled={otp.length !== 6 || emailLoading}
-                className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-3 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
               >
                 {tWalletModal("profile.verifyEmail")}
               </button>
@@ -135,7 +135,7 @@ export function WalletProfileForm({
           <button
             onClick={submitProfile}
             disabled={!canSubmitProfile || profileLoading}
-            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-4 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
           >
             {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {tWalletModal("profile.submit")}

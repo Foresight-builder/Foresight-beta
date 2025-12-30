@@ -173,7 +173,7 @@ export default function FilterSort({
           onClick={() => setIsFilterOpen(!isFilterOpen)}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             isFilterOpen || activeFiltersCount > 0
-              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+              ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 shadow-lg shadow-purple-200/50 border border-purple-200"
               : "bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:shadow-md"
           }`}
           aria-expanded={isFilterOpen}
@@ -198,7 +198,7 @@ export default function FilterSort({
           onClick={() => setIsSortOpen(!isSortOpen)}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             isSortOpen
-              ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+              ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 shadow-lg shadow-purple-200/50 border border-purple-200"
               : "bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:shadow-md"
           }`}
           aria-expanded={isSortOpen}
@@ -337,7 +337,7 @@ export default function FilterSort({
                   }`}
                 >
                   <div
-                    className={`p-2 rounded-lg ${sortBy === id ? "bg-purple-600" : "bg-gray-100"}`}
+                    className={`p-2 rounded-lg ${sortBy === id ? "bg-gradient-to-r from-purple-200 to-pink-300 border border-purple-200" : "bg-gray-100"}`}
                   >
                     <Icon className={`w-4 h-4 ${sortBy === id ? "text-white" : "text-gray-600"}`} />
                   </div>

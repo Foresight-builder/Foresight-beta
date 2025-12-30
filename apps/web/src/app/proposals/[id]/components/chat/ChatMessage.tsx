@@ -40,7 +40,7 @@ export function ChatMessage({
             isMainProposal
               ? "bg-gradient-to-br from-purple-100 to-blue-100 text-purple-700 border-purple-100"
               : isMe
-                ? "bg-purple-600 text-white border-purple-600"
+                ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border-purple-200"
                 : "bg-white text-slate-600 border-slate-200"
           }`}
         >

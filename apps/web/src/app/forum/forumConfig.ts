@@ -95,7 +95,7 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     softBg: "bg-gradient-to-br from-violet-50/70 to-white/0",
     accentText: "text-violet-500",
     activeCard: "bg-white/85 border-violet-100 shadow-md shadow-violet-100/60 scale-[1.02]",
-    accentBar: "bg-violet-500",
+    accentBar: "bg-gradient-to-r from-purple-300 to-pink-300",
     chatGradient: "from-violet-100/70 via-purple-50/60 to-white/0",
     headerGradient: "from-violet-500/90 to-purple-500/90",
     frameSurfaceGradient: "from-violet-50/70 via-purple-50/60 to-white/0",

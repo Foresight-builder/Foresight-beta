@@ -274,7 +274,7 @@ export const FlagCard = memo(function FlagCard({
                       e.stopPropagation();
                       onCheckin();
                     }}
-                    className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold flex items-center gap-1 shadow-md hover:bg-purple-600"
+                    className="px-3 py-2 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold flex items-center gap-1 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
                   >
                     <ArrowUpRight className="w-4 h-4" />
                     <span>打卡</span>
