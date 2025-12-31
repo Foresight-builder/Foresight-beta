@@ -37,6 +37,19 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
     return base.slice(0, 12);
   }, [account, user, tForum]);
 
+  const createdAtLabel = useMemo(() => {
+    if (!prediction?.created_at) return "";
+    const d = new Date(prediction.created_at);
+    if (Number.isNaN(d.getTime())) return "";
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const hours = String(d.getUTCHours()).padStart(2, "0");
+    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    const seconds = String(d.getUTCSeconds()).padStart(2, "0");
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+  }, [prediction?.created_at]);
+
   return (
     <ProposalChatShell>
       <div className="w-full flex flex-col lg:flex-row gap-4 lg:gap-0 px-4 sm:px-6 lg:px-10 py-4">
@@ -94,9 +107,9 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
                       <h1 className="text-sm sm:text-base font-semibold text-slate-900 leading-snug line-clamp-2">
                         {roomTitle}
                       </h1>
-                      {prediction?.created_at && (
+                      {createdAtLabel && (
                         <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
-                          <span>{new Date(prediction.created_at).toLocaleString()}</span>
+                          <span>{createdAtLabel}</span>
                         </p>
                       )}
                     </div>

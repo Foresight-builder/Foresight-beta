@@ -70,14 +70,14 @@ export default function Sidebar() {
             icon: <MessageSquare className="w-4 h-4" />,
           },
           {
-            label: t("flags"),
-            href: "/flags",
-            icon: <Flag className="w-4 h-4" />,
-          },
-          {
             label: t("proposals"),
             href: "/proposals",
             icon: <Pin className="w-4 h-4" />,
+          },
+          {
+            label: t("flags"),
+            href: "/flags",
+            icon: <Flag className="w-4 h-4" />,
           },
           {
             label: t("profile"),
