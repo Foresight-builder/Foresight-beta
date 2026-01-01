@@ -61,6 +61,12 @@ export default function ForumPage() {
 
     if (viewFilter === "new") {
       items.sort((a, b) => getTime(b.created_at) - getTime(a.created_at));
+    } else if (viewFilter === "hot") {
+      items.sort((a, b) => {
+        const fa = a.followers_count ?? 0;
+        const fb = b.followers_count ?? 0;
+        return fb - fa;
+      });
     } else {
       items.sort((a, b) => {
         const fa = a.followers_count ?? 0;

@@ -114,9 +114,9 @@
       "helperForum": "讨论区",
       "helperSuffix": "先开一个轻松的小主题，听听大家怎么说，再慢慢决定。",
       "views": "视图",
-      "viewHot": "热度优先",
-      "viewNew": "最新发布",
-      "viewTop": "讨论量优先"
+      "viewHot": "按关注数排序",
+      "viewNew": "按创建时间排序",
+      "viewTop": "综合指标排序"
     },
     "form": {
       "subjectPlaceholder": "主体名称",

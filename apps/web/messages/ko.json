@@ -430,6 +430,21 @@
     "releaseToRefresh": "놓아서 새로고침",
     "refreshing": "새로고침 중...",
     "emptyTopics": "주제 없음",
+    "sidebar": {
+      "loadedTopics": "현재 주제",
+      "totalTopics": "전체 주제",
+      "summaryTitle": "포럼은 Foresight의 ‘대화 라운지’입니다",
+      "summaryBody": "여기는 예측 시장과 관련된 아이디어, 가벼운 수다, 진지한 분석까지 천천히 이야기하는 공간입니다. 베팅 전후에 다른 사람들의 다양한 시각을 확인할 수 있습니다.",
+      "helperPrefix": "먼저 거래 중인 시장을 둘러보고 싶다면",
+      "helperTrending": "트렌딩 예측",
+      "helperMiddle": "에서 가격과 거래량을 보고, 아직 베팅이 고민된다면",
+      "helperForum": "토론 구역",
+      "helperSuffix": "에서 가볍게 이야기를 나눈 뒤 천천히 결정하세요.",
+      "views": "보기",
+      "viewHot": "팔로워 수 순",
+      "viewNew": "생성일 순",
+      "viewTop": "종합 지표 순"
+    },
     "form": {
       "subjectPlaceholder": "주제 이름",
       "action": {

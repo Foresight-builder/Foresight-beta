@@ -114,9 +114,9 @@
       "helperForum": "Forum",
       "helperSuffix": "and gather some early feedback.",
       "views": "Views",
-      "viewHot": "Hot & active",
-      "viewNew": "Newest first",
-      "viewTop": "Most followed"
+      "viewHot": "By followers",
+      "viewNew": "By creation time",
+      "viewTop": "By combined metrics"
     },
     "form": {
       "subjectPlaceholder": "Subject name",

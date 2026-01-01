@@ -114,9 +114,9 @@
       "helperForum": "Foro",
       "helperSuffix": "y recoge comentarios tempranos.",
       "views": "Vistas",
-      "viewHot": "Por actividad",
-      "viewNew": "Más recientes",
-      "viewTop": "Más seguidos"
+      "viewHot": "Por número de seguidores",
+      "viewNew": "Por fecha de creación",
+      "viewTop": "Por métricas combinadas"
     },
     "form": {
       "subjectPlaceholder": "Nombre del tema",
