@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 import { MessageCircle, Search, Activity, Users, Plus, Flame, Clock, Trophy } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { useForumList } from "./useForumList";
@@ -25,11 +26,24 @@ export default function ForumPage() {
     setSearchQuery,
     filtered,
     loading,
+    loadingMore,
+    hasNextPage,
+    loadMore,
     total,
     predictions,
   } = useForumList();
 
   const [viewFilter, setViewFilter] = React.useState<"hot" | "new" | "top">("hot");
+
+  const { ref: loadMoreRef, inView } = useInView({
+    rootMargin: "200px",
+  });
+
+  React.useEffect(() => {
+    if (inView && hasNextPage && !loadingMore && loadMore) {
+      loadMore();
+    }
+  }, [inView, hasNextPage, loadingMore, loadMore]);
 
   const displayName = (account || user?.email || tForum("guestFallback")).slice(0, 12);
   const loadedTopicsCount = filtered.length;
@@ -292,6 +306,14 @@ export default function ForumPage() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                  <div ref={loadMoreRef} className="flex items-center justify-center py-4">
+                    {loadingMore && (
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <div className="w-4 h-4 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
+                        <span>{tForum("list.loading")}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -1,6 +1,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, MessageCircle } from "lucide-react";
+import { useInView } from "react-intersection-observer";
+import { useTranslations } from "@/lib/i18n";
 import ProposalCard from "./ProposalCard";
 import type { ProposalItem } from "./proposalsListUtils";
 
@@ -13,6 +15,8 @@ type ProposalsListProps = {
   router: { push: (href: string) => void };
 };
 
+const PAGE_SIZE = 20;
+
 export default function ProposalsList({
   account,
   connectWallet,
@@ -21,12 +25,43 @@ export default function ProposalsList({
   isLoading,
   router,
 }: ProposalsListProps) {
+  const tProposals = useTranslations("proposals");
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+
+  const { ref: loadMoreRef, inView } = useInView({
+    rootMargin: "200px",
+  });
+
+  React.useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+    setIsLoadingMore(false);
+  }, [sortedProposals]);
+
   const handleCardClick = React.useCallback(
     (id: number) => {
       router.push(`/proposals/${id}`);
     },
     [router]
   );
+
+  const hasMore = visibleCount < sortedProposals.length;
+  const visibleProposals = React.useMemo(
+    () => sortedProposals.slice(0, visibleCount),
+    [sortedProposals, visibleCount]
+  );
+
+  React.useEffect(() => {
+    if (inView && hasMore && !isLoadingMore) {
+      setIsLoadingMore(true);
+      const timer = setTimeout(() => {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, sortedProposals.length));
+        setIsLoadingMore(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [inView, hasMore, isLoadingMore, sortedProposals.length]);
+
   if (isLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
@@ -62,7 +97,7 @@ export default function ProposalsList({
   return (
     <div className="flex flex-col gap-4 pb-20">
       <AnimatePresence mode="popLayout">
-        {sortedProposals.map((proposal: any) => (
+        {visibleProposals.map((proposal: any) => (
           <motion.div
             key={proposal.id}
             layout
@@ -75,6 +110,14 @@ export default function ProposalsList({
           </motion.div>
         ))}
       </AnimatePresence>
+      <div ref={loadMoreRef} className="flex items-center justify-center py-4">
+        {hasMore && isLoadingMore && (
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="w-4 h-4 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
+            <span>{tProposals("review.loading")}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
