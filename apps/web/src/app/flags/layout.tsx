@@ -1,30 +1,64 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import zhCN from "../../../messages/zh-CN.json";
+import en from "../../../messages/en.json";
+import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
+import { defaultLocale, locales, type Locale } from "../../i18n-config";
 
-export const metadata: Metadata = {
-  title: "Foresight 成就 Flags - 任务徽章与成长激励",
-  description:
-    "在 Foresight Flags 页面完成任务、解锁成就徽章，记录你的预测成长路径并获得额外激励。",
-  alternates: {
-    canonical: "/flags",
-    languages: {
-      "zh-CN": "/flags",
-      "en-US": "/flags",
-      "es-ES": "/flags",
-    },
-  },
-  openGraph: {
-    title: "Foresight 成就 Flags - 任务徽章与成长激励",
-    description: "通过成就 Flags 为自己的预测与研究设定长期挑战和成长目标，解锁徽章激励。",
-    url: "/flags",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Foresight 成就 Flags - 任务徽章与成长激励",
-    description: "创建和完成挑战任务，用徽章记录你的预测成长路径和实践进展。",
-  },
+type FlagsMessages = (typeof zhCN)["flags"];
+
+const flagsMessages: Record<Locale, FlagsMessages> = {
+  "zh-CN": zhCN.flags,
+  en: en.flags as unknown as FlagsMessages,
+  es: es.flags as unknown as FlagsMessages,
+  ko: ko.flags as unknown as FlagsMessages,
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+
+  const flags = flagsMessages[locale] || flagsMessages[defaultLocale];
+  const meta = (flags as any).meta || {};
+
+  const title =
+    typeof meta.title === "string"
+      ? meta.title
+      : "Foresight Achievement Flags - Challenge badges and growth goals";
+  const description =
+    typeof meta.description === "string"
+      ? meta.description
+      : "On the Foresight Achievement Flags page you can create and complete challenge tasks, unlock badges, and connect your personal goals with prediction markets, proposals, and community discussions.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/flags",
+      languages: {
+        "zh-CN": "/flags",
+        "en-US": "/flags",
+        "es-ES": "/flags",
+        "ko-KR": "/flags",
+      },
+    },
+    openGraph: {
+      title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
+      description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,
+      url: "/flags",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: typeof meta.twitterTitle === "string" ? meta.twitterTitle : title,
+      description:
+        typeof meta.twitterDescription === "string" ? meta.twitterDescription : description,
+    },
+  };
+}
 
 export default function FlagsLayout({ children }: { children: ReactNode }) {
   return children;

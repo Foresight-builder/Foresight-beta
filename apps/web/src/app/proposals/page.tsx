@@ -6,20 +6,21 @@ import ProposalsPageView from "./ProposalsPageView";
 import { useProposalsList } from "./useProposalsList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale, useTranslations } from "@/lib/i18n";
 
 const INSPIRATIONS_COUNT = 5;
 
-function buildProposalsJsonLd() {
+function buildProposalsJsonLd(tProposals: (key: string) => string, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "CollectionPage",
-        name: "Foresight 提案广场",
+        name: tProposals("page.jsonLdName"),
         url: baseUrl + "/proposals",
-        description: "在 Foresight 提案广场发起新的预测市场想法、治理议题并参与社区投票。",
-        inLanguage: "zh-CN",
+        description: tProposals("page.jsonLdDescription"),
+        inLanguage: locale,
       },
       {
         "@type": "BreadcrumbList",
@@ -27,13 +28,13 @@ function buildProposalsJsonLd() {
           {
             "@type": "ListItem",
             position: 1,
-            name: "首页",
+            name: tProposals("page.breadcrumbHome"),
             item: baseUrl + "/",
           },
           {
             "@type": "ListItem",
             position: 2,
-            name: "提案广场",
+            name: tProposals("page.breadcrumbProposals"),
             item: baseUrl + "/proposals",
           },
         ],
@@ -49,6 +50,8 @@ export default function ProposalsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const listState = useProposalsList(account, connectWallet);
+  const tProposals = useTranslations("proposals");
+  const { locale } = useLocale();
 
   const [inspirationIndex, setInspirationIndex] = useState(0);
   const [isRolling, setIsRolling] = useState(false);
@@ -66,7 +69,7 @@ export default function ProposalsPage() {
     }, 100);
   };
 
-  const jsonLd = buildProposalsJsonLd();
+  const jsonLd = buildProposalsJsonLd(tProposals, locale);
 
   return (
     <ProposalsPageView

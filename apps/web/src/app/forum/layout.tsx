@@ -1,31 +1,63 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import zhCN from "../../../messages/zh-CN.json";
+import en from "../../../messages/en.json";
+import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
+import { defaultLocale, locales, type Locale } from "../../i18n-config";
 
-export const metadata: Metadata = {
-  title: "Foresight 预测论坛 - 事件讨论与交易策略研究",
-  description:
-    "在 Foresight 预测论坛参与热门事件与市场走势讨论，分享数据驱动的交易策略与研究笔记，与其他预测者交流观点、寻找新的 alpha 机会。",
-  alternates: {
-    canonical: "/forum",
-    languages: {
-      "zh-CN": "/forum",
-      "en-US": "/forum",
-      "es-ES": "/forum",
-    },
-  },
-  openGraph: {
-    title: "Foresight 预测论坛 - 事件讨论与交易策略研究",
-    description:
-      "围绕链上预测市场事件展开社区讨论，分享数据分析与交易策略复盘，发现新的思路与 alpha。",
-    url: "/forum",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Foresight 预测论坛 - 事件讨论与交易策略研究",
-    description: "加入 Foresight 社区，围绕预测事件和市场走势展开深度讨论与策略分享。",
-  },
+type ForumMessages = (typeof zhCN)["forum"];
+
+const forumMessages: Record<Locale, ForumMessages> = {
+  "zh-CN": zhCN.forum,
+  en: en.forum,
+  es: es.forum,
+  ko: ko.forum as ForumMessages,
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+  const forum = forumMessages[locale] || forumMessages[defaultLocale];
+  const meta = (forum as any).meta || {};
+
+  const title =
+    typeof meta.title === "string"
+      ? meta.title
+      : "Foresight Prediction Forum - Event discussions and strategy research";
+  const description =
+    typeof meta.description === "string"
+      ? meta.description
+      : "Join the Foresight forum to discuss prediction events, share data-driven trading strategies, and learn from other forecasters.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/forum",
+      languages: {
+        "zh-CN": "/forum",
+        "en-US": "/forum",
+        "es-ES": "/forum",
+        "ko-KR": "/forum",
+      },
+    },
+    openGraph: {
+      title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
+      description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,
+      url: "/forum",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: typeof meta.twitterTitle === "string" ? meta.twitterTitle : title,
+      description:
+        typeof meta.twitterDescription === "string" ? meta.twitterDescription : description,
+    },
+  };
+}
 
 export default function ForumLayout({ children }: { children: ReactNode }) {
   return children;

@@ -74,6 +74,14 @@
   },
   "forum": {
     "title": "Debates de la comunidad",
+    "meta": {
+      "title": "Foro de predicciones de Foresight - Debates y estrategias",
+      "description": "Únete al foro de Foresight para debatir eventos de predicción, compartir estrategias de trading basadas en datos y aprender de otros pronosticadores.",
+      "ogTitle": "Foro de predicciones de Foresight - Debates y estrategias",
+      "ogDescription": "Centro comunitario para debatir eventos en mercados de predicción en cadena, análisis de datos y revisión de estrategias.",
+      "twitterTitle": "Foro de predicciones de Foresight - Debates y estrategias",
+      "twitterDescription": "Únete a la comunidad de Foresight para discutir a fondo eventos de predicción y movimientos de mercado."
+    },
     "sidebarTitle": "Foro",
     "sidebarSubtitle": "Comunidad",
     "liveDiscussion": "Debate en vivo",
@@ -81,6 +89,7 @@
     "followersLabelShort": "Seguir",
     "categoryLabel": "Categoría",
     "selectTopicMobile": "Seleccionar tema",
+    "allTopics": "Todos los temas",
     "topicCount": "{count} temas",
     "platformDescription": "El foro de Foresight es el lugar donde los participantes del mercado de predicciones comparten ideas y estrategias. Puedes crear hilos sobre eventos del mundo real o sumarte a análisis profundos de predicciones existentes.",
     "loginRequired": "Conecta tu billetera para iniciar un hilo",
@@ -207,7 +216,16 @@
     "backToForum": "Volver al foro"
   },
   "proposals": {
+    "meta": {
+      "title": "Plaza de propuestas de Foresight - Crea nuevos mercados de predicción y votos de gobernanza",
+      "description": "En la plaza de propuestas de Foresight puedes lanzar nuevas ideas de mercados de predicción y temas de gobernanza sobre cripto, macro, IA y más, y dejar que la comunidad debata y vote antes de que se conviertan en mercados en cadena.",
+      "ogTitle": "Plaza de propuestas de Foresight - Crea nuevos mercados de predicción y votos de gobernanza",
+      "ogDescription": "Inicia y explora propuestas de gobernanza y diseño de mercados que preparan el camino para futuros mercados de predicción populares y actividad de trading en cadena en Foresight.",
+      "twitterTitle": "Plaza de propuestas de Foresight - Crea nuevos mercados de predicción y votos de gobernanza",
+      "twitterDescription": "Lanza o únete a debates de propuestas y ayuda a la comunidad a diseñar nuevos mercados de predicción y procesos de gobernanza."
+    },
     "share": {
+      "buttonLabel": "Compartir",
       "copyLinkSuccessTitle": "Enlace copiado",
       "copyLinkSuccessDesc": "Enlace de la propuesta copiado al portapapeles.",
       "copyLinkUnsupportedTitle": "No se puede copiar automáticamente",
@@ -217,7 +235,11 @@
     "page": {
       "mobileTitle": "Propuestas",
       "searchPlaceholder": "Buscar propuestas...",
-      "searchAria": "Buscar propuestas"
+      "searchAria": "Buscar propuestas",
+      "jsonLdName": "Plaza de propuestas de Foresight",
+      "jsonLdDescription": "En la plaza de propuestas de Foresight puedes iniciar nuevas ideas de mercados de predicción y temas de gobernanza y dejar que la comunidad debata y vote antes de que se conviertan en mercados completos.",
+      "breadcrumbHome": "Inicio",
+      "breadcrumbProposals": "Plaza de propuestas"
     },
     "sidebar": {
       "member": "Miembro",
@@ -301,6 +323,12 @@
     },
     "actions": {
       "newProposal": "Nueva propuesta"
+    },
+    "list": {
+      "loading": "Cargando datos de gobernanza...",
+      "emptyTitle": "Todavía no hay propuestas",
+      "emptyDescription": "Sé la primera persona en compartir tu idea con la comunidad.",
+      "createButton": "Crear propuesta"
     },
     "right": {
       "featuredTitle": "Destacados",
@@ -1087,6 +1115,14 @@
     }
   },
   "flags": {
+    "meta": {
+      "title": "Foresight Logros Flags - Insignias de retos y metas de crecimiento",
+      "description": "En la página de Logros Flags de Foresight puedes crear y completar retos, desbloquear insignias y conectar tus objetivos personales con mercados de predicción, propuestas y discusiones de la comunidad.",
+      "ogTitle": "Foresight Logros Flags - Insignias de retos y metas de crecimiento",
+      "ogDescription": "Define retos a largo plazo, sigue tu progreso y usa Flags como puente entre metas reales y mercados de predicción.",
+      "twitterTitle": "Foresight Logros Flags - Insignias de retos y metas de crecimiento",
+      "twitterDescription": "Crea y completa Flags para transformar tus ideas en compromisos y progreso visible."
+    },
     "header": {
       "title": "Mi tablero de sueños",
       "badge": "Sueña en grande",
@@ -1470,6 +1506,14 @@
     "noDataHint": "Inténtalo de nuevo más tarde o asegúrate de que Web Vitals esté correctamente integrado en el frontend"
   },
   "leaderboard": {
+    "meta": {
+      "title": "Clasificación de ganancias de Foresight - Mejores traders y estrategias",
+      "description": "Consulta en la clasificación de Foresight las ganancias históricas, tasas de acierto y perfil de riesgo de los principales predictores para descubrir monederos con beneficios consistentes y estilos de trading claros.",
+      "ogTitle": "Clasificación de ganancias de Foresight - Mejores traders y estrategias",
+      "ogDescription": "Explora el rendimiento de los mejores traders y encuentra cuentas de estrategia rentables a largo plazo.",
+      "twitterTitle": "Clasificación de ganancias de Foresight - Mejores traders y estrategias",
+      "twitterDescription": "Descubre quiénes son los traders más constantes y precisos en Foresight."
+    },
     "title": "Clasificación de ganancias",
     "subtitle": "Top Earners",
     "week": "Esta semana",

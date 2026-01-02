@@ -13,28 +13,59 @@ interface ProposalCardProps {
 
 function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const tProposals = useTranslations("proposals");
+  const tProfile = useTranslations("profile");
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
   const score = upvotes - downvotes;
 
   const isHot = score > 10 || (proposal.comments?.length || 0) > 5;
 
-  const categoryConfig: Record<string, { color: string; bg: string; border: string }> = {
-    科技: { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-    娱乐: { color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100" },
-    时政: { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
-    天气: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    体育: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    商业: { color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200" },
-    加密货币: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-    更多: { color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
+  type CategoryKey =
+    | "tech"
+    | "entertainment"
+    | "politics"
+    | "weather"
+    | "sports"
+    | "business"
+    | "crypto"
+    | "more";
+
+  const categoryConfig: Record<CategoryKey, { color: string; bg: string; border: string }> = {
+    tech: { color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+    entertainment: { color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100" },
+    politics: { color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
+    weather: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    sports: { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    business: { color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200" },
+    crypto: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
+    more: { color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
   };
 
-  const categoryKey =
-    proposal.category && categoryConfig[proposal.category] ? proposal.category : "科技";
+  const categoryName = String(proposal.category || "").trim();
+
+  const categoryNameToKey: Record<string, CategoryKey> = {
+    科技: "tech",
+    Tech: "tech",
+    娱乐: "entertainment",
+    Entertainment: "entertainment",
+    时政: "politics",
+    Politics: "politics",
+    天气: "weather",
+    Weather: "weather",
+    体育: "sports",
+    Sports: "sports",
+    商业: "business",
+    Business: "business",
+    加密货币: "crypto",
+    Crypto: "crypto",
+    更多: "more",
+    More: "more",
+  };
+
+  const categoryKey: CategoryKey = categoryNameToKey[categoryName] || "tech";
   const cat = categoryConfig[categoryKey];
   const author = String(proposal.user_id || "").trim();
-  const authorLabel = author ? formatAddress(author) : "Anonymous";
+  const authorLabel = author ? formatAddress(author) : tProfile("username.anonymous");
   const createdAt = new Date(proposal.created_at);
   const now = new Date();
   const diffMs = now.getTime() - createdAt.getTime();
@@ -155,7 +186,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
             >
               <Share2 className="w-3.5 h-3.5 group-hover/share:text-purple-500" />
               <span className="group-hover/share:text-purple-500">
-                {tProposals("share.copyLinkSuccessTitle")}
+                {tProposals("share.buttonLabel")}
               </span>
             </button>
 

@@ -168,6 +168,14 @@
     }
   },
   "leaderboard": {
+    "meta": {
+      "title": "Foresight 수익 리더보드 - 상위 예측 트레이더와 전략",
+      "description": "Foresight 수익 리더보드에서 상위 예측가의 누적 수익, 승률, 위험 성향을 확인하고, 꾸준히 수익을 내는 지갑과 거래 스타일을 발견하세요.",
+      "ogTitle": "Foresight 수익 리더보드 - 상위 예측 트레이더와 전략",
+      "ogDescription": "리더보드 성과를 살펴보고 장기적으로 수익을 내는 전략 계정을 찾아보세요.",
+      "twitterTitle": "Foresight 수익 리더보드 - 상위 예측 트레이더와 전략",
+      "twitterDescription": "Foresight에서 가장 꾸준하고 예리한 예측 트레이더가 누구인지 확인하세요."
+    },
     "title": "수익 리더보드",
     "subtitle": "최고 수익자",
     "week": "이번 주",
@@ -239,7 +247,16 @@
     "viewProfile": "전체 프로필 보기"
   },
   "proposals": {
+    "meta": {
+      "title": "Foresight 제안 광장 - 새로운 예측 시장과 거버넌스 투표 만들기",
+      "description": "Foresight 제안 광장에서 크립토, 매크로, AI 등 다양한 주제에 대한 새로운 예측 시장 아이디어와 거버넌스 안건을 올리고, 커뮤니티가 토론과 투표를 통해 온체인 시장으로 발전시킬 수 있습니다.",
+      "ogTitle": "Foresight 제안 광장 - 새로운 예측 시장과 거버넌스 투표 만들기",
+      "ogDescription": "향후 인기 예측 시장과 온체인 트레이딩을 위한 기반이 되는 거버넌스·시장 설계 제안을 둘러보고 시작해 보세요.",
+      "twitterTitle": "Foresight 제안 광장 - 새로운 예측 시장과 거버넌스 투표 만들기",
+      "twitterDescription": "제안 논의에 참여해 새로운 예측 시장과 거버넌스 프로세스를 커뮤니티와 함께 디자인하세요."
+    },
     "share": {
+      "buttonLabel": "공유",
       "copyLinkSuccessTitle": "링크 복사됨",
       "copyLinkSuccessDesc": "제안 링크가 클립보드에 복사되었습니다.",
       "copyLinkUnsupportedTitle": "자동 복사 불가",
@@ -249,7 +266,11 @@
     "page": {
       "mobileTitle": "제안",
       "searchPlaceholder": "제안 검색...",
-      "searchAria": "제안 검색"
+      "searchAria": "제안 검색",
+      "jsonLdName": "Foresight 제안 광장",
+      "jsonLdDescription": "Foresight 제안 광장에서 새로운 예측 시장 아이디어와 거버넌스 주제를 올리고, 커뮤니티 토론과 투표를 거쳐 실제 시장으로 발전시킬 수 있습니다.",
+      "breadcrumbHome": "홈",
+      "breadcrumbProposals": "제안 광장"
     },
     "sidebar": {
       "member": "멤버",
@@ -334,6 +355,12 @@
     "actions": {
       "newProposal": "새 제안"
     },
+    "list": {
+      "loading": "거버넌스 데이터를 불러오는 중...",
+      "emptyTitle": "아직 등록된 제안이 없습니다",
+      "emptyDescription": "커뮤니티와 첫 번째 아이디어를 나눠 보세요.",
+      "createButton": "제안 만들기"
+    },
     "right": {
       "featuredTitle": "추천",
       "featuredViewAll": "모두 보기",
@@ -404,12 +431,21 @@
   },
   "forum": {
     "title": "커뮤니티 토론",
+    "meta": {
+      "title": "Foresight 예측 포럼 - 이벤트 토론과 거래 전략 리서치",
+      "description": "Foresight 포럼에서 예측 시장 이벤트를 함께 토론하고, 데이터 기반 거래 전략과 인사이트를 공유하며 다른 예측가들과 교류하세요.",
+      "ogTitle": "Foresight 예측 포럼 - 이벤트 토론과 거래 전략 리서치",
+      "ogDescription": "온체인 예측 시장 이벤트를 중심으로 데이터 분석과 전략 복기를 나누는 커뮤니티 허브입니다.",
+      "twitterTitle": "Foresight 예측 포럼 - 이벤트 토론과 거래 전략 리서치",
+      "twitterDescription": "예측 이벤트와 시장 흐름에 대해 Foresight 커뮤니티와 함께 깊이 있게 이야기해 보세요."
+    },
     "sidebarTitle": "포럼",
     "sidebarSubtitle": "커뮤니티",
     "liveDiscussion": "실시간 토론",
     "followersLabel": "팔로워",
     "categoryLabel": "카테고리",
     "selectTopicMobile": "주제 선택",
+    "allTopics": "전체 주제",
     "topicCount": "{count}개 주제",
     "platformDescription": "Foresight 포럼은 예측 시장 참가자들이 인사이트와 전략을 공유하는 핵심 커뮤니티입니다. 실제 이벤트를 토론하는 주제를 만들거나 기존 예측에 대한 심층 분석에 참여할 수 있습니다.",
     "loginRequired": "스레드를 시작하려면 지갑을 연결하세요",
@@ -1238,6 +1274,14 @@
     "revokeReviewer": "검토자 취소"
   },
   "flags": {
+    "meta": {
+      "title": "Foresight 성취 플래그 - 도전 배지와 성장 목표",
+      "description": "Foresight 성취 플래그 페이지에서 도전을 만들고 완료하며 배지를 잠금 해제하고, 예측 시장·제안·커뮤니티와 연결된 성장 여정을 기록하세요.",
+      "ogTitle": "Foresight 성취 플래그 - 도전 배지와 성장 목표",
+      "ogDescription": "장기 도전 목표를 설정하고 진행 상황을 추적하며, 플래그를 실제 목표와 예측 시장을 잇는 브리지로 활용하세요.",
+      "twitterTitle": "Foresight 성취 플래그 - 도전 배지와 성장 목표",
+      "twitterDescription": "플래그를 생성·완료하며 아이디어를 약속과 눈에 보이는 성과로 바꿔보세요."
+    },
     "header": {
       "title": "내 비전 보드",
       "badge": "꿈을 크게!",

@@ -11,8 +11,8 @@ type Messages = typeof zhCN;
 
 const messages: Record<Locale, Messages> = {
   "zh-CN": zhCN,
-  en,
-  es,
+  en: en as unknown as Messages,
+  es: es as unknown as Messages,
   ko: ko as unknown as Messages,
 };
 

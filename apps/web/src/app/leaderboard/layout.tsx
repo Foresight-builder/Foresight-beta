@@ -1,30 +1,64 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import zhCN from "../../../messages/zh-CN.json";
+import en from "../../../messages/en.json";
+import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
+import { defaultLocale, locales, type Locale } from "../../i18n-config";
 
-export const metadata: Metadata = {
-  title: "Foresight 预测排行榜 - 收益高手与策略榜单",
-  description:
-    "在 Foresight 预测排行榜中查看顶级预测者的历史收益、胜率和风险偏好，发现稳定盈利的策略账户，为自己的预测交易寻找可参考的实盘样本。",
-  alternates: {
-    canonical: "/leaderboard",
-    languages: {
-      "zh-CN": "/leaderboard",
-      "en-US": "/leaderboard",
-      "es-ES": "/leaderboard",
-    },
-  },
-  openGraph: {
-    title: "Foresight 预测排行榜 - 收益高手与策略榜单",
-    description: "浏览顶级预测者的收益与胜率表现，发现稳定盈利的策略帐号与交易风格。",
-    url: "/leaderboard",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Foresight 预测排行榜 - 收益高手与策略榜单",
-    description: "在排行榜中查看谁是 Foresight 上最稳定、最敏锐的预测者。",
-  },
+type LeaderboardMessages = (typeof zhCN)["leaderboard"];
+
+const leaderboardMessages: Record<Locale, LeaderboardMessages> = {
+  "zh-CN": zhCN.leaderboard,
+  en: en.leaderboard,
+  es: es.leaderboard as unknown as LeaderboardMessages,
+  ko: ko.leaderboard as unknown as LeaderboardMessages,
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+
+  const leaderboard = leaderboardMessages[locale] || leaderboardMessages[defaultLocale];
+  const meta = (leaderboard as any).meta || {};
+
+  const title =
+    typeof meta.title === "string"
+      ? meta.title
+      : "Foresight Earnings Leaderboard - Top prediction traders and strategies";
+  const description =
+    typeof meta.description === "string"
+      ? meta.description
+      : "View top predictors’ historical earnings, win rates, and risk profiles on the Foresight earnings leaderboard to discover wallets with consistent profits and trading styles.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/leaderboard",
+      languages: {
+        "zh-CN": "/leaderboard",
+        "en-US": "/leaderboard",
+        "es-ES": "/leaderboard",
+        "ko-KR": "/leaderboard",
+      },
+    },
+    openGraph: {
+      title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
+      description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,
+      url: "/leaderboard",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: typeof meta.twitterTitle === "string" ? meta.twitterTitle : title,
+      description:
+        typeof meta.twitterDescription === "string" ? meta.twitterDescription : description,
+    },
+  };
+}
 
 export default function LeaderboardLayout({ children }: { children: ReactNode }) {
   return children;

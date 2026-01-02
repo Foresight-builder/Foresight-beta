@@ -74,6 +74,14 @@
   },
   "forum": {
     "title": "Community discussions",
+    "meta": {
+      "title": "Foresight Prediction Forum - Event discussions and strategy research",
+      "description": "Join the Foresight forum to discuss prediction events, share data-driven trading strategies, and learn from other forecasters.",
+      "ogTitle": "Foresight Prediction Forum - Event discussions and strategy research",
+      "ogDescription": "Community hub for on-chain prediction event discussions, data analysis, and strategy reviews.",
+      "twitterTitle": "Foresight Prediction Forum - Event discussions and strategy research",
+      "twitterDescription": "Join the Foresight community to discuss prediction events and market moves in depth."
+    },
     "sidebarTitle": "Forum",
     "sidebarSubtitle": "Community",
     "liveDiscussion": "Live discussion",
@@ -81,6 +89,7 @@
     "followersLabelShort": "Follows",
     "categoryLabel": "Category",
     "selectTopicMobile": "Select Topic",
+    "allTopics": "All topics",
     "topicCount": "{count} topics",
     "platformDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
     "loginRequired": "Connect wallet to start a thread",
@@ -207,7 +216,16 @@
     "backToForum": "Back to forum"
   },
   "proposals": {
+    "meta": {
+      "title": "Foresight Proposals Square - Create new prediction markets and governance votes",
+      "description": "On the Foresight Proposals Square you can submit new prediction market ideas and governance topics for crypto, macro, AI and more, then let the community discuss and vote before they turn into live on-chain markets.",
+      "ogTitle": "Foresight Proposals Square - Create new prediction markets and governance votes",
+      "ogDescription": "Start and browse governance and market design proposals that pave the way for future popular prediction markets and on-chain trading activity on Foresight.",
+      "twitterTitle": "Foresight Proposals Square - Create new prediction markets and governance votes",
+      "twitterDescription": "Launch or join proposal discussions and help the community design new prediction markets and governance processes."
+    },
     "share": {
+      "buttonLabel": "Share",
       "copyLinkSuccessTitle": "Link copied",
       "copyLinkSuccessDesc": "Proposal link copied to clipboard.",
       "copyLinkUnsupportedTitle": "Automatic copy not available",
@@ -217,7 +235,11 @@
     "page": {
       "mobileTitle": "Proposals",
       "searchPlaceholder": "Search proposals...",
-      "searchAria": "Search proposals"
+      "searchAria": "Search proposals",
+      "jsonLdName": "Foresight Proposals Square",
+      "jsonLdDescription": "On the Foresight Proposals Square you can start new prediction market ideas and governance topics, and let the community discuss and vote before they become full markets.",
+      "breadcrumbHome": "Home",
+      "breadcrumbProposals": "Proposals Square"
     },
     "sidebar": {
       "member": "Member",
@@ -301,6 +323,12 @@
     },
     "actions": {
       "newProposal": "New Proposal"
+    },
+    "list": {
+      "loading": "Loading governance data...",
+      "emptyTitle": "No proposals yet",
+      "emptyDescription": "Be the first to share your idea with the community.",
+      "createButton": "Create Proposal"
     },
     "right": {
       "featuredTitle": "Featured",
@@ -1087,6 +1115,14 @@
     }
   },
   "flags": {
+    "meta": {
+      "title": "Foresight Achievement Flags - Challenge badges and growth goals",
+      "description": "On the Foresight Achievement Flags page you can create and complete challenge tasks, unlock badges, and connect your personal goals with prediction markets, proposals, and community discussions.",
+      "ogTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
+      "ogDescription": "Set long-term challenges, track your progress, and use Flags as a bridge between real-world goals and prediction markets.",
+      "twitterTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
+      "twitterDescription": "Create and complete Flags to turn your ideas into commitments and visible progress."
+    },
     "header": {
       "title": "My Vision Board",
       "badge": "Dream Big!",
@@ -1470,6 +1506,14 @@
     "noDataHint": "Please try again later or ensure Web Vitals is properly integrated in the frontend"
   },
   "leaderboard": {
+    "meta": {
+      "title": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+      "description": "View top predictors’ historical earnings, win rates, and risk profiles on the Foresight earnings leaderboard to discover wallets with consistent profits and trading styles.",
+      "ogTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+      "ogDescription": "Browse leaderboard performance to find long-term profitable strategy accounts and how they trade across markets.",
+      "twitterTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+      "twitterDescription": "See which Foresight traders are the most consistent and sharp in their predictions."
+    },
     "title": "Earnings Leaderboard",
     "subtitle": "Top Earners",
     "week": "This Week",

@@ -66,7 +66,7 @@ export default function ProposalsList({
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        <p className="text-sm font-bold text-slate-400">Loading governance data...</p>
+        <p className="text-sm font-bold text-slate-400">{tProposals("list.loading")}</p>
       </div>
     );
   }
@@ -77,10 +77,8 @@ export default function ProposalsList({
         <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 border border-slate-200">
           <MessageCircle className="w-10 h-10 text-slate-300" />
         </div>
-        <h3 className="text-xl font-black text-purple-700 mb-2">No proposals yet</h3>
-        <p className="text-slate-500 font-medium mb-8">
-          Be the first to share your idea with the community.
-        </p>
+        <h3 className="text-xl font-black text-purple-700 mb-2">{tProposals("list.emptyTitle")}</h3>
+        <p className="text-slate-500 font-medium mb-8">{tProposals("list.emptyDescription")}</p>
         <button
           onClick={() => {
             if (!account) connectWallet();
@@ -88,7 +86,7 @@ export default function ProposalsList({
           }}
           className="px-8 py-2.5 rounded-lg bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 font-bold border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
         >
-          Create Proposal
+          {tProposals("list.createButton")}
         </button>
       </div>
     );

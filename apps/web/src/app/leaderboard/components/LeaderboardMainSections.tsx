@@ -135,7 +135,7 @@ export function LeaderboardMainSections({
             {loadingMore ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {t("loading") || "加载中..."}
+                {t("loading")}
               </>
             ) : (
               <>
@@ -151,7 +151,7 @@ export function LeaderboardMainSections({
           <div className="w-full py-4 mt-8 text-center">
             <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/60 backdrop-blur-sm border border-white/80 text-gray-500 text-sm font-medium">
               <Sparkles className="w-4 h-4 text-purple-400" />
-              {t("allLoaded") || `已展示全部 ${totalCount} 位交易者`}
+              {t("allLoaded")}
             </div>
           </div>
         ) : null}
@@ -181,9 +181,9 @@ export function LeaderboardMainSections({
         {isSearching && (
           <div className="px-4 py-2 rounded-xl bg-purple-50 border border-purple-100 text-sm text-purple-600">
             {restRank.length > 0 ? (
-              <span>{t("sidebar.searchResults") || `找到 ${restRank.length} 位匹配的交易者`}</span>
+              <span>{t("sidebar.searchResults")}</span>
             ) : (
-              <span>{t("sidebar.noResults") || "未找到匹配的交易者"}</span>
+              <span>{t("sidebar.noResults")}</span>
             )}
           </div>
         )}
@@ -231,9 +231,7 @@ export function LeaderboardMainSections({
                     <div className="flex justify-between items-center text-sm bg-white/50 p-4 rounded-xl border border-white/60">
                       <span className="text-gray-500 font-medium">{t("sidebar.nextRank")}</span>
                       {myRankData.rank === 1 ? (
-                        <span className="font-bold text-yellow-500">
-                          🏆 {t("sidebar.topRank") || "榜首"}
-                        </span>
+                        <span className="font-bold text-yellow-500">🏆 {t("sidebar.topRank")}</span>
                       ) : (
                         <span className="font-bold text-purple-600">
                           +{formatVolume(myRankData.gapToNext)} USDC
@@ -243,9 +241,7 @@ export function LeaderboardMainSections({
                     <div className="flex justify-between items-center text-sm bg-white/50 p-4 rounded-xl border border-white/60">
                       <span className="text-gray-500 font-medium">{t("sidebar.top100")}</span>
                       {myRankData.isInTop100 ? (
-                        <span className="font-bold text-green-500">
-                          ✓ {t("sidebar.inTop100") || "已进入"}
-                        </span>
+                        <span className="font-bold text-green-500">✓ {t("sidebar.inTop100")}</span>
                       ) : (
                         <span className="font-bold text-orange-500">
                           +{formatVolume(myRankData.gapToTop100)} USDC
@@ -266,15 +262,11 @@ export function LeaderboardMainSections({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                     <TrendingUp className="w-8 h-8 text-gray-400" />
                   </div>
-                  <p className="text-gray-500 text-sm mb-2">
-                    {t("sidebar.notRanked") || "暂未上榜"}
-                  </p>
-                  <p className="text-gray-400 text-xs mb-6">
-                    {t("sidebar.startTrading") || "开始交易以进入排行榜"}
-                  </p>
+                  <p className="text-gray-500 text-sm mb-2">{t("sidebar.notRanked")}</p>
+                  <p className="text-gray-400 text-xs mb-6">{t("sidebar.startTrading")}</p>
                   <Link href="/trending">
                     <button className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/20 active:scale-[0.98] transition-all">
-                      {t("sidebar.explorePredictions") || "探索预测市场"}
+                      {t("sidebar.explorePredictions")}
                     </button>
                   </Link>
                 </div>
@@ -286,7 +278,7 @@ export function LeaderboardMainSections({
                 </div>
                 <p className="text-gray-500 text-sm mb-6">{t("sidebar.connectToView")}</p>
                 <button
-                  onClick={connectWallet}
+                  onClick={() => connectWallet()}
                   className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/20 active:scale-[0.98] transition-all"
                 >
                   {t("sidebar.connectWallet")}
@@ -342,7 +334,7 @@ export function LeaderboardMainSections({
             ) : (
               <div className="text-center py-8">
                 <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">{t("sidebar.noTrending") || "暂无热门预测"}</p>
+                <p className="text-gray-400 text-sm">{t("sidebar.noTrending")}</p>
               </div>
             )}
           </div>

@@ -12,10 +12,10 @@ import {
   Bell,
   ChevronUp,
 } from "lucide-react";
-import { normalizeCategory } from "@/features/trending/trendingModel";
+import { CATEGORY_MAPPING, normalizeCategory } from "@/features/trending/trendingModel";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 import { TopicCardSkeletonList } from "./TopicCardSkeleton";
-import { t } from "@/lib/i18n";
+import { t, useLocale } from "@/lib/i18n";
 
 // 话题卡片预估高度（用于虚拟列表计算）
 const TOPIC_CARD_HEIGHT = 110;
@@ -76,6 +76,8 @@ export const ForumSidebar = memo(function ForumSidebar({
   const [pullDistance, setPullDistance] = useState(0);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
+
+  const { locale } = useLocale();
 
   // 无限滚动检测
   const { ref: loadMoreRef, inView } = useInView({
@@ -195,11 +197,14 @@ export const ForumSidebar = memo(function ForumSidebar({
     const map = new Map<number, string>();
     filtered.forEach((topic) => {
       if (topic.created_at) {
-        map.set(topic.id, new Date(topic.created_at).toLocaleDateString());
+        const date = new Date(topic.created_at);
+        if (Number.isFinite(date.getTime())) {
+          map.set(topic.id, date.toLocaleDateString(locale));
+        }
       }
     });
     return map;
-  }, [filtered]);
+  }, [filtered, locale]);
 
   // 虚拟列表配置 - 增加额外项目用于加载更多指示器
   const virtualItemCount = filtered.length + (hasNextPage ? 1 : 0);
@@ -269,7 +274,7 @@ export const ForumSidebar = memo(function ForumSidebar({
                     : "bg-brand-accent/15 text-brand-accent border-brand-accent/50 hover:bg-brand-accent/25"
                 }`}
               >
-                {allCategory.name}
+                {t("forum.allTopics")}
               </button>
             </div>
           )}
@@ -278,7 +283,8 @@ export const ForumSidebar = memo(function ForumSidebar({
             <div className="grid grid-cols-3 gap-2.5">
               {otherCategories.map((cat) => {
                 const isActive = activeCategory === cat.id;
-                const label = cat.id === "加密货币" ? "加密货币" : cat.name;
+                const mappedId = CATEGORY_MAPPING[cat.id];
+                const label = mappedId ? t(`forum.form.category.${mappedId}`) : cat.name;
                 return (
                   <button
                     key={cat.id}

@@ -74,6 +74,14 @@
   },
   "forum": {
     "title": "社区讨论",
+    "meta": {
+      "title": "Foresight 预测论坛 - 事件讨论与交易策略研究",
+      "description": "在 Foresight 预测论坛参与热门事件与市场走势讨论，分享数据驱动的交易策略与研究笔记，与其他预测者交流观点、寻找新的 alpha 机会。",
+      "ogTitle": "Foresight 预测论坛 - 事件讨论与交易策略研究",
+      "ogDescription": "围绕链上预测市场事件展开社区讨论，分享数据分析与交易策略复盘，发现新的思路与 alpha。",
+      "twitterTitle": "Foresight 预测论坛 - 事件讨论与交易策略研究",
+      "twitterDescription": "加入 Foresight 社区，围绕预测事件和市场走势展开深度讨论与策略分享。"
+    },
     "sidebarTitle": "论坛",
     "sidebarSubtitle": "社区",
     "liveDiscussion": "实时讨论",
@@ -81,6 +89,7 @@
     "followersLabelShort": "关注",
     "categoryLabel": "分类",
     "selectTopicMobile": "选择话题",
+    "allTopics": "全部话题",
     "topicCount": "{count} 个话题",
     "platformDescription": "Foresight 论坛是预测市场参与者分享洞见和策略的核心社区。你可以围绕现实事件创建话题，也可以参与对现有预测的深度分析讨论。",
     "loginRequired": "发帖需连接钱包",
@@ -207,7 +216,16 @@
     "backToForum": "返回讨论区"
   },
   "proposals": {
+    "meta": {
+      "title": "Foresight 提案广场 - 创建新预测市场与治理投票",
+      "description": "在 Foresight 提案广场发起新的预测市场想法，为加密、宏观、AI 等主题设计问题，与社区一起投票决定是否上线市场并参与协议治理。",
+      "ogTitle": "Foresight 提案广场 - 创建新预测市场与治理投票",
+      "ogDescription": "在提案广场发起和浏览治理与市场设计提案，为后续热门预测市场和链上交易铺路。",
+      "twitterTitle": "Foresight 提案广场 - 创建新预测市场与治理投票",
+      "twitterDescription": "发起或参与提案讨论，与社区一起设计新的预测市场与治理流程。"
+    },
     "share": {
+      "buttonLabel": "分享",
       "copyLinkSuccessTitle": "链接已复制",
       "copyLinkSuccessDesc": "已复制提案链接到剪贴板",
       "copyLinkUnsupportedTitle": "无法自动复制",
@@ -217,7 +235,11 @@
     "page": {
       "mobileTitle": "提案广场",
       "searchPlaceholder": "搜索提案...",
-      "searchAria": "搜索提案"
+      "searchAria": "搜索提案",
+      "jsonLdName": "Foresight 提案广场",
+      "jsonLdDescription": "在 Foresight 提案广场发起新的预测市场想法、治理议题并参与社区投票。",
+      "breadcrumbHome": "首页",
+      "breadcrumbProposals": "提案广场"
     },
     "sidebar": {
       "member": "成员",
@@ -301,6 +323,12 @@
     },
     "actions": {
       "newProposal": "新建提案"
+    },
+    "list": {
+      "loading": "正在加载提案数据...",
+      "emptyTitle": "还没有任何提案",
+      "emptyDescription": "成为第一个向社区抛出想法的人吧。",
+      "createButton": "发起提案"
     },
     "right": {
       "featuredTitle": "精选",
@@ -1087,6 +1115,14 @@
     }
   },
   "flags": {
+    "meta": {
+      "title": "Foresight 成就 Flags - 任务徽章与成长激励",
+      "description": "在 Foresight Flags 页面完成任务、解锁成就徽章，记录你的预测成长路径并获得额外激励。",
+      "ogTitle": "Foresight 成就 Flags - 任务徽章与成长激励",
+      "ogDescription": "通过成就 Flags 为自己的预测与研究设定长期挑战和成长目标，解锁徽章激励。",
+      "twitterTitle": "Foresight 成就 Flags - 任务徽章与成长激励",
+      "twitterDescription": "创建和完成挑战任务，用徽章记录你的预测成长路径和实践进展。"
+    },
     "header": {
       "title": "我的愿望看板",
       "badge": "大胆做梦",
@@ -1470,6 +1506,14 @@
     "noDataHint": "请稍后再试或确保前端已正确集成 Web Vitals"
   },
   "leaderboard": {
+    "meta": {
+      "title": "Foresight 预测排行榜 - 收益高手与策略榜单",
+      "description": "在 Foresight 预测排行榜中查看顶级预测者的历史收益、胜率和风险偏好，发现稳定盈利的策略账户，为自己的预测交易寻找可参考的实盘样本。",
+      "ogTitle": "Foresight 预测排行榜 - 收益高手与策略榜单",
+      "ogDescription": "浏览顶级预测者的收益与胜率表现，发现稳定盈利的策略帐号与交易风格。",
+      "twitterTitle": "Foresight 预测排行榜 - 收益高手与策略榜单",
+      "twitterDescription": "在排行榜中查看谁是 Foresight 上最稳定、最敏锐的预测者。"
+    },
     "title": "收益榜",
     "subtitle": "Top Earners",
     "week": "本周",

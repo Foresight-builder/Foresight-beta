@@ -10,13 +10,15 @@ import GradientPage from "@/components/ui/GradientPage";
 import { useForumList } from "./useForumList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
+import { CATEGORY_MAPPING, normalizeCategory } from "@/features/trending/trendingModel";
 
 export default function ForumPage() {
   const router = useRouter();
   const { account } = useWallet();
   const { user } = useAuth();
   const tForum = useTranslations("forum");
+  const { locale } = useLocale();
 
   const {
     categories,
@@ -236,26 +238,37 @@ export default function ForumPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setActiveCategory(cat.id)}
-                      aria-pressed={activeCategory === cat.id}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                        activeCategory === cat.id
-                          ? "bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800 shadow-md shadow-purple-200/50 border border-purple-200 scale-105"
-                          : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-purple-200 hover:bg-purple-50/80"
-                      }`}
-                    >
-                      <cat.icon
-                        className={`w-3.5 h-3.5 ${
-                          activeCategory === cat.id ? "text-purple-700" : "text-slate-400"
+                  {categories.map((cat) => {
+                    const isActive = activeCategory === cat.id;
+                    const normalizedName = normalizeCategory(cat.name);
+                    const mappedId = CATEGORY_MAPPING[cat.id] || CATEGORY_MAPPING[normalizedName];
+                    const label =
+                      cat.id === "all"
+                        ? tForum("allTopics")
+                        : mappedId
+                          ? tForum(`form.category.${mappedId}`)
+                          : cat.name;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveCategory(cat.id)}
+                        aria-pressed={isActive}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                          isActive
+                            ? "bg-gradient-to-r from-purple-300 to-pink-300 text-purple-800 shadow-md shadow-purple-200/50 border border-purple-200 scale-105"
+                            : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-purple-200 hover:bg-purple-50/80"
                         }`}
-                      />
-                      {cat.name}
-                    </button>
-                  ))}
+                      >
+                        <cat.icon
+                          className={`w-3.5 h-3.5 ${
+                            isActive ? "text-purple-700" : "text-slate-400"
+                          }`}
+                        />
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -298,7 +311,7 @@ export default function ForumPage() {
                               </span>
                               <span className="text-[10px] text-slate-400 font-medium">
                                 {topic.created_at
-                                  ? new Date(topic.created_at).toLocaleDateString()
+                                  ? new Date(topic.created_at).toLocaleDateString(locale)
                                   : ""}
                               </span>
                             </div>

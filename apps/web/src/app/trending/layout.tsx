@@ -1,31 +1,64 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import zhCN from "../../../messages/zh-CN.json";
+import en from "../../../messages/en.json";
+import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
+import { defaultLocale, locales, type Locale } from "../../i18n-config";
 
-export const metadata: Metadata = {
-  title: "Foresight 热门预测市场 - 加密事件交易与收益机会",
-  description:
-    "在 Foresight 热门预测市场中参与加密货币、宏观经济、AI 等真实世界事件的预测交易，发现高赔率机会，用 USDC 表达观点并在链上透明结算收益。",
-  alternates: {
-    canonical: "/trending",
-    languages: {
-      "zh-CN": "/trending",
-      "en-US": "/trending",
-      "es-ES": "/trending",
-    },
-  },
-  openGraph: {
-    title: "Foresight 热门预测市场 - 加密事件交易与收益机会",
-    description:
-      "参与链上预测市场交易，发现高赔率机会，并与提案广场、成就 Flags 和预测论坛形成闭环路径。",
-    url: "/trending",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Foresight 热门预测市场 - 加密事件交易与收益机会",
-    description: "浏览热门预测事件，参与链上交易并发现新的收益机会。",
-  },
+type TrendingMessages = (typeof zhCN)["trending"];
+
+const trendingMessages: Record<Locale, TrendingMessages> = {
+  "zh-CN": zhCN.trending,
+  en: en.trending,
+  es: es.trending,
+  ko: ko.trending as TrendingMessages,
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+
+  const trending = trendingMessages[locale] || trendingMessages[defaultLocale];
+  const meta = (trending as any).meta || {};
+
+  const title =
+    typeof meta.title === "string"
+      ? meta.title
+      : "Foresight Trending Markets - On-chain prediction and trading";
+  const description =
+    typeof meta.description === "string"
+      ? meta.description
+      : "Discover trending prediction markets on Foresight and trade on real-world events with transparent on-chain settlement.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/trending",
+      languages: {
+        "zh-CN": "/trending",
+        "en-US": "/trending",
+        "es-ES": "/trending",
+        "ko-KR": "/trending",
+      },
+    },
+    openGraph: {
+      title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
+      description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,
+      url: "/trending",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: typeof meta.twitterTitle === "string" ? meta.twitterTitle : title,
+      description:
+        typeof meta.twitterDescription === "string" ? meta.twitterDescription : description,
+    },
+  };
+}
 
 export default function TrendingLayout({ children }: { children: ReactNode }) {
   return children;
