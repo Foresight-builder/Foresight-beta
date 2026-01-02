@@ -227,15 +227,16 @@ export default function CreateFlagModal({
     try {
       setLoading(true);
 
-      // 如果使用钱包但未通过 SIWE 认证，先进行认证
       if (account && !isAuthenticated) {
         const siweResult = await siweLogin();
         if (!siweResult.success) {
-          toast.error("验证失败", siweResult.error || "请重新签名验证钱包");
+          toast.error(
+            tFlags("toast.siweFailedTitle"),
+            siweResult.error || tFlags("toast.siweFailedDesc")
+          );
           setLoading(false);
           return;
         }
-        // 等待一下让 cookie 生效
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
@@ -322,7 +323,7 @@ export default function CreateFlagModal({
                 </div>
                 <div className="text-4xl mb-4 filter drop-shadow-lg">{theme.emoji}</div>
                 <h3 className="text-white font-black text-xl leading-tight tracking-tight drop-shadow-sm hidden md:block">
-                  {isOfficial ? "同行者" : "梦想家"}
+                  {isOfficial ? tFlags("modal.flow.roleOfficial") : tFlags("modal.flow.roleUser")}
                 </h3>
               </motion.div>
 
@@ -337,7 +338,11 @@ export default function CreateFlagModal({
                   ))}
                 </div>
                 <p className="text-[10px] text-white/80 font-black uppercase tracking-[0.2em]">
-                  {step === 1 ? "第一步：播种" : step === 2 ? "第二步：呵护" : "第三步：启航"}
+                  {step === 1
+                    ? tFlags("modal.flow.stepIndicator.step1")
+                    : step === 2
+                      ? tFlags("modal.flow.stepIndicator.step2")
+                      : tFlags("modal.flow.stepIndicator.step3")}
                 </p>
               </div>
 
@@ -420,10 +425,10 @@ export default function CreateFlagModal({
                     <div className="space-y-8">
                       <div>
                         <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">
-                          我们要如何见证呢？🤝
+                          {tFlags("modal.flow.step2Title")}
                         </h2>
                         <p className="text-gray-400 font-bold text-sm">
-                          选择一种最能给你动力的方式
+                          {tFlags("modal.flow.step2Subtitle")}
                         </p>
                       </div>
 
@@ -450,7 +455,7 @@ export default function CreateFlagModal({
                               {tFlags("modal.form.selfCheck")}
                             </div>
                             <div className="text-xs text-gray-400 font-bold">
-                              对自己诚实，是最酷的事
+                              {tFlags("modal.flow.selfCheckDescription")}
                             </div>
                           </div>
                           {verifType === "self" && (
@@ -480,7 +485,7 @@ export default function CreateFlagModal({
                               {tFlags("modal.form.friendCheck")}
                             </div>
                             <div className="text-xs text-gray-400 font-bold">
-                              找个靠谱的死党，互相监督
+                              {tFlags("modal.flow.friendCheckDescription")}
                             </div>
                           </div>
                           {verifType === "witness" && (
@@ -516,9 +521,11 @@ export default function CreateFlagModal({
                     <div className="space-y-8">
                       <div>
                         <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">
-                          最后，定个期限吧 📅
+                          {tFlags("modal.flow.step3Title")}
                         </h2>
-                        <p className="text-gray-400 font-bold text-sm">给未来一点小小的仪式感</p>
+                        <p className="text-gray-400 font-bold text-sm">
+                          {tFlags("modal.flow.step3Subtitle")}
+                        </p>
                       </div>
 
                       <div className="space-y-6">
@@ -536,9 +543,11 @@ export default function CreateFlagModal({
                             <Compass className="w-6 h-6" />
                           </div>
                           <div className="flex-1">
-                            <div className="text-sm font-black text-purple-900">准备好了吗？</div>
+                            <div className="text-sm font-black text-purple-900">
+                              {tFlags("modal.flow.readyTitle")}
+                            </div>
                             <div className="text-xs text-purple-600 font-bold">
-                              设定目标后，我们将一路陪在你身边
+                              {tFlags("modal.flow.readySubtitle")}
                             </div>
                           </div>
                         </div>
@@ -555,7 +564,7 @@ export default function CreateFlagModal({
                     onClick={() => setStep(step - 1)}
                     className="flex-1 py-4.5 rounded-2xl bg-gray-50 text-gray-400 font-black text-sm hover:bg-gray-100 transition-all active:scale-95"
                   >
-                    返回
+                    {tFlags("modal.flow.backButton")}
                   </button>
                 )}
 
@@ -564,7 +573,7 @@ export default function CreateFlagModal({
                     onClick={() => setStep(step + 1)}
                     className="flex-[2] py-4.5 rounded-2xl bg-gray-900 text-white font-black text-sm hover:bg-purple-600 transition-all shadow-xl shadow-purple-500/10 active:scale-95 flex items-center justify-center gap-2 group"
                   >
-                    下一步
+                    {tFlags("modal.flow.nextButton")}
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                 ) : (

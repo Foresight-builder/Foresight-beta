@@ -53,6 +53,23 @@ export default function StickerGalleryModal({
     }
   };
 
+  const isOfficialSticker = (stickerId: string) =>
+    OFFICIAL_STICKERS.some((s) => s.id === stickerId);
+
+  const getStickerName = (sticker: StickerItem) => {
+    if (isOfficialSticker(sticker.id)) {
+      return tGallery(`stickers.${sticker.id}.name`);
+    }
+    return sticker.name;
+  };
+
+  const getStickerDesc = (sticker: StickerItem) => {
+    if (isOfficialSticker(sticker.id)) {
+      return tGallery(`stickers.${sticker.id}.desc`);
+    }
+    return sticker.desc;
+  };
+
   const total = displayStickers.length;
   const collected = collectedIds.length;
   const progress = total > 0 ? Math.round((collected / total) * 100) : 0;
@@ -123,7 +140,7 @@ export default function StickerGalleryModal({
                           {isImageUrl(sticker.emoji) ? (
                             <img
                               src={sticker.emoji}
-                              alt={sticker.name}
+                              alt={getStickerName(sticker)}
                               className="w-full h-full object-cover rounded-xl"
                             />
                           ) : (
@@ -164,7 +181,7 @@ export default function StickerGalleryModal({
                     {isImageUrl(selectedSticker.emoji) ? (
                       <img
                         src={selectedSticker.emoji}
-                        alt={selectedSticker.name}
+                        alt={getStickerName(selectedSticker)}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -173,7 +190,9 @@ export default function StickerGalleryModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-gray-900 truncate">{selectedSticker.name}</h4>
+                      <h4 className="font-bold text-gray-900 truncate">
+                        {getStickerName(selectedSticker)}
+                      </h4>
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${getRarityColor(
                           selectedSticker.rarity
@@ -182,7 +201,9 @@ export default function StickerGalleryModal({
                         {getRarityLabel(selectedSticker.rarity)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{selectedSticker.desc}</p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {getStickerDesc(selectedSticker)}
+                    </p>
                   </div>
                   <button
                     onClick={() => setSelectedSticker(null)}

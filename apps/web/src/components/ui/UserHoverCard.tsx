@@ -124,7 +124,7 @@ export function UserHoverCard({
     e.stopPropagation();
 
     if (!myAccount) {
-      toast.error(t("pleaseConnectWallet") || "请先连接钱包");
+      toast.error(t("pleaseConnectWallet") || "Please connect your wallet first");
       return;
     }
 
@@ -141,13 +141,15 @@ export function UserHoverCard({
         setIsFollowed(data.followed);
         setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
         toast.success(
-          data.followed ? t("followSuccess") || "关注成功" : t("unfollowSuccess") || "已取消关注"
+          data.followed
+            ? t("followSuccess") || "Followed successfully"
+            : t("unfollowSuccess") || "Unfollowed"
         );
       } else {
-        toast.error(data.message || "操作失败");
+        toast.error(data.message || "Operation failed");
       }
     } catch (error) {
-      toast.error("操作异常");
+      toast.error("Unexpected error");
     } finally {
       setIsFollowLoading(false);
     }

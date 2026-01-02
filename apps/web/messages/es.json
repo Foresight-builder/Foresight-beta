@@ -1173,7 +1173,12 @@
         "self": "Auto verificación",
         "friend": "Verificación de amigo"
       },
-      "proofImageAlt": "Imagen de check-in"
+      "proofImageAlt": "Imagen de check-in",
+      "actions": {
+        "history": "Historial",
+        "checkin": "Hacer check-in",
+        "settle": "Liquidar"
+      }
     },
     "invites": {
       "textPrefix": "Tienes ",
@@ -1287,6 +1292,8 @@
       "titleRequiredDesc": "Añade un título sencillo, por ejemplo «Paseo de tarde».",
       "witnessRequiredTitle": "Falta tu compañero testigo",
       "witnessRequiredDesc": "Escribe su ID o dirección para que alguien te acompañe.",
+      "siweFailedTitle": "Verificación fallida",
+      "siweFailedDesc": "Vuelve a firmar el mensaje para verificar tu billetera.",
       "createSuccessTitle": "Nuevo Flag plantado 🌱",
       "createSuccessDesc": "Ya está en tu tablero, esperando tu primer check-in.",
       "createFailedTitle": "El Flag no se creó todavía",
@@ -1369,6 +1376,25 @@
           "title": "Ordenar la habitación {minutes} minutos",
           "desc": "Objetivo: Ordenar al menos {minutes} minutos\\nPrueba: Fotos de antes y después"
         }
+      },
+      "flow": {
+        "roleOfficial": "Compañero",
+        "roleUser": "Soñador",
+        "stepIndicator": {
+          "step1": "Paso 1: Sembrar",
+          "step2": "Paso 2: Cuidar",
+          "step3": "Paso 3: Despegar"
+        },
+        "step2Title": "¿Cómo vamos a dar fe de este reto? 🤝",
+        "step2Subtitle": "Elige la forma de seguimiento que más te motive",
+        "selfCheckDescription": "Ser honesto contigo mismo es de lo más valiente.",
+        "friendCheckDescription": "Busca un amigo de confianza para acompañarse mutuamente.",
+        "step3Title": "Por último, ponle una fecha límite 📅",
+        "step3Subtitle": "Dale a tu futuro yo un pequeño ritual que esperar",
+        "readyTitle": "¿Listo para empezar?",
+        "readySubtitle": "Una vez fijada la meta, estaremos contigo en todo el camino.",
+        "backButton": "Atrás",
+        "nextButton": "Siguiente"
       }
     }
   },
@@ -1560,7 +1586,14 @@
     "volume": "Volumen",
     "winRate": "Tasa de éxito",
     "trades": "Operaciones",
-    "viewProfile": "Ver perfil completo"
+    "followers": "Seguidores",
+    "viewProfile": "Ver perfil completo",
+    "follow": "Seguir",
+    "unfollow": "Dejar de seguir",
+    "followSuccess": "Seguido correctamente",
+    "unfollowSuccess": "Has dejado de seguir",
+    "pleaseConnectWallet": "Conecta tu billetera primero",
+    "loading": "Procesando..."
   },
   "stickerGallery": {
     "title": "Colección de stickers",
@@ -1569,7 +1602,50 @@
       "epic": "Épico",
       "rare": "Raro",
       "common": "Común"
+    },
+    "reveal": {
+      "openRewardCta": "Toca para abrir tu recompensa",
+      "collectButton": "Añadir a la colección"
+    },
+    "stickers": {
+      "s1": {
+        "name": "Gatito procrastinador",
+        "desc": "Otro día \"trabajando\" mientras procrastinas."
+      },
+      "s2": {
+        "name": "Creciendo fuerte",
+        "desc": "Cada día mejoras un poquito más."
+      },
+      "s3": {
+        "name": "Despegue al cielo",
+        "desc": "¡Wuhu! ¡Despegue!"
+      },
+      "s4": {
+        "name": "Shiba musculoso",
+        "desc": "La constancia es la victoria."
+      },
+      "s5": {
+        "name": "Rey de los retos",
+        "desc": "Así es el mundo de los fuertes."
+      },
+      "s6": {
+        "name": "Halagos arcoíris",
+        "desc": "Eres la mejor persona."
+      },
+      "s7": {
+        "name": "Voluntad de diamante",
+        "desc": "Determinación más dura que el diamante."
+      },
+      "s8": {
+        "name": "Unicornio",
+        "desc": "Tú, único e irrepetible."
+      }
     }
+  },
+  "notifications": {
+    "fallbackWitnessInviteTitle": "Invitación a reto",
+    "fallbackCheckinReviewTitle": "Actualización de revisión de check-in",
+    "fallbackGenericTitle": "Notificaciones"
   },
   "adminRoles": {
     "title": "Gestión de roles",

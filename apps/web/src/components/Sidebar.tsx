@@ -37,6 +37,7 @@ export default function Sidebar() {
   const isAdmin = !!profileCtx?.isAdmin;
   const isReviewer = !!profileCtx?.isReviewer;
   const t = useTranslations("nav");
+  const tProposals = useTranslations("proposals");
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     markets: true,
@@ -94,7 +95,7 @@ export default function Sidebar() {
                   requireWallet: true,
                 },
                 {
-                  label: "审核工作台",
+                  label: tProposals("review.title"),
                   href: "/review",
                   icon: <ShieldCheck className="w-4 h-4" />,
                   requireWallet: true,
@@ -104,7 +105,7 @@ export default function Sidebar() {
         ],
       },
     ],
-    [isAdmin, isReviewer, t, tCommon]
+    [isAdmin, isReviewer, t, tCommon, tProposals]
   );
 
   const isActive = (href?: string) => !!href && pathname === href;

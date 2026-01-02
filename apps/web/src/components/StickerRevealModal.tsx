@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Share2 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useTranslations } from "@/lib/i18n";
 
 export interface StickerItem {
   id: string;
@@ -87,6 +88,8 @@ export const OFFICIAL_STICKERS: StickerItem[] = [
   },
 ];
 
+export const OFFICIAL_STICKER_IDS = new Set(OFFICIAL_STICKERS.map((s) => s.id));
+
 interface StickerRevealModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -100,6 +103,7 @@ export default function StickerRevealModal({
   sticker,
   mode = "interactive",
 }: StickerRevealModalProps) {
+  const tStickerGallery = useTranslations("stickerGallery");
   const [step, setStep] = useState<"box" | "open" | "revealed">("box");
   const [currentSticker, setCurrentSticker] = useState<StickerItem | null>(null);
 
@@ -208,14 +212,28 @@ export default function StickerRevealModal({
   const getRarityLabel = (r: string) => {
     switch (r) {
       case "legendary":
-        return "传说 LEGENDARY";
+        return tStickerGallery("rarity.legendary");
       case "epic":
-        return "史诗 EPIC";
+        return tStickerGallery("rarity.epic");
       case "rare":
-        return "稀有 RARE";
+        return tStickerGallery("rarity.rare");
       default:
-        return "普通 COMMON";
+        return tStickerGallery("rarity.common");
     }
+  };
+
+  const getStickerName = (sticker: StickerItem) => {
+    if (OFFICIAL_STICKER_IDS.has(sticker.id)) {
+      return tStickerGallery(`stickers.${sticker.id}.name`);
+    }
+    return sticker.name;
+  };
+
+  const getStickerDesc = (sticker: StickerItem) => {
+    if (OFFICIAL_STICKER_IDS.has(sticker.id)) {
+      return tStickerGallery(`stickers.${sticker.id}.desc`);
+    }
+    return sticker.desc;
   };
 
   return (
@@ -262,7 +280,7 @@ export default function StickerRevealModal({
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-8 px-6 py-3 bg-white/20 backdrop-blur-md rounded-full text-white font-bold border border-white/40 animate-pulse"
                   >
-                    点击开启奖励
+                    {tStickerGallery("reveal.openRewardCta")}
                   </motion.div>
                 </motion.div>
               )}
@@ -325,7 +343,7 @@ export default function StickerRevealModal({
                       {isImageUrl(currentSticker.emoji) ? (
                         <img
                           src={currentSticker.emoji}
-                          alt={currentSticker.name}
+                          alt={getStickerName(currentSticker)}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -334,16 +352,18 @@ export default function StickerRevealModal({
                     </motion.div>
 
                     <h3 className="text-2xl font-black text-gray-900 mb-2">
-                      {currentSticker.name}
+                      {getStickerName(currentSticker)}
                     </h3>
-                    <p className="text-gray-500 font-medium mb-8">{currentSticker.desc}</p>
+                    <p className="text-gray-500 font-medium mb-8">
+                      {getStickerDesc(currentSticker)}
+                    </p>
 
                     <div className="flex gap-3">
                       <button
                         onClick={onClose}
                         className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors"
                       >
-                        收入囊中
+                        {tStickerGallery("reveal.collectButton")}
                       </button>
                       <button className="p-3 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-colors">
                         <Share2 className="w-5 h-5" />

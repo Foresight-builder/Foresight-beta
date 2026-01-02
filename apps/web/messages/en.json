@@ -1173,7 +1173,12 @@
         "self": "Self check",
         "friend": "Friend check"
       },
-      "proofImageAlt": "Check-in image"
+      "proofImageAlt": "Check-in image",
+      "actions": {
+        "history": "History",
+        "checkin": "Check in",
+        "settle": "Settle"
+      }
     },
     "invites": {
       "textPrefix": "You have ",
@@ -1287,6 +1292,8 @@
       "titleRequiredDesc": "Add a simple title like \"Evening walk\" to get started.",
       "witnessRequiredTitle": "Missing your witness buddy",
       "witnessRequiredDesc": "Add their ID or address so someone can cheer you on.",
+      "siweFailedTitle": "Verification failed",
+      "siweFailedDesc": "Please sign the message again to verify your wallet.",
       "createSuccessTitle": "New Flag planted 🌱",
       "createSuccessDesc": "It's now pinned to your board, waiting for your first check-in.",
       "createFailedTitle": "Flag not created yet",
@@ -1369,6 +1376,25 @@
           "title": "Tidy your room for {minutes} minutes",
           "desc": "Goal: Tidy up for at least {minutes} minutes\\nProof: Before-and-after photos"
         }
+      },
+      "flow": {
+        "roleOfficial": "Companion",
+        "roleUser": "Dreamer",
+        "stepIndicator": {
+          "step1": "Step 1: Seed",
+          "step2": "Step 2: Nurture",
+          "step3": "Step 3: Launch"
+        },
+        "step2Title": "How do we witness this together? 🤝",
+        "step2Subtitle": "Choose the kind of accountability that motivates you most",
+        "selfCheckDescription": "Being honest with yourself is the coolest thing.",
+        "friendCheckDescription": "Find a trusted friend so you can keep each other on track.",
+        "step3Title": "Finally, pick a deadline 📅",
+        "step3Subtitle": "Give your future self a small ritual to look forward to",
+        "readyTitle": "Ready to go?",
+        "readySubtitle": "Once you set this goal, we'll stay with you all the way.",
+        "backButton": "Back",
+        "nextButton": "Next step"
       }
     }
   },
@@ -1582,7 +1608,14 @@
     "volume": "Volume",
     "winRate": "Win Rate",
     "trades": "Trades",
-    "viewProfile": "View Full Profile"
+    "followers": "Followers",
+    "viewProfile": "View Full Profile",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "followSuccess": "Followed successfully",
+    "unfollowSuccess": "Unfollowed",
+    "pleaseConnectWallet": "Please connect your wallet first",
+    "loading": "Processing..."
   },
   "stickerGallery": {
     "title": "Sticker Collection",
@@ -1591,7 +1624,50 @@
       "epic": "Epic",
       "rare": "Rare",
       "common": "Common"
+    },
+    "reveal": {
+      "openRewardCta": "Tap to open your reward",
+      "collectButton": "Add to collection"
+    },
+    "stickers": {
+      "s1": {
+        "name": "Slack-off Kitty",
+        "desc": "Another hardworking day of strategic slacking."
+      },
+      "s2": {
+        "name": "Growing Strong",
+        "desc": "Getting a little better every single day."
+      },
+      "s3": {
+        "name": "Skyrocket",
+        "desc": "Wuhu! Lift off!"
+      },
+      "s4": {
+        "name": "Muscle Shiba",
+        "desc": "Persistence is victory."
+      },
+      "s5": {
+        "name": "King of Flags",
+        "desc": "So this is the world of the strong."
+      },
+      "s6": {
+        "name": "Rainbow Hype",
+        "desc": "You are the best."
+      },
+      "s7": {
+        "name": "Diamond Will",
+        "desc": "Resolve harder than diamond."
+      },
+      "s8": {
+        "name": "Unicorn",
+        "desc": "The one and only you."
+      }
     }
+  },
+  "notifications": {
+    "fallbackWitnessInviteTitle": "Challenge invite",
+    "fallbackCheckinReviewTitle": "Check-in review update",
+    "fallbackGenericTitle": "Notifications"
   },
   "adminRoles": {
     "title": "Role Management",

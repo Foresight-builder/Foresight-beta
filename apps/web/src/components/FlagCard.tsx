@@ -219,7 +219,7 @@ export const FlagCard = memo(function FlagCard({
                   }}
                   className="text-xs font-bold text-gray-500 hover:text-purple-600 underline-offset-2 hover:underline"
                 >
-                  历史
+                  {tFlags("card.actions.history")}
                 </button>
               )}
             </div>
@@ -277,7 +277,7 @@ export const FlagCard = memo(function FlagCard({
                     className="px-3 py-2 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold flex items-center gap-1 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
                   >
                     <ArrowUpRight className="w-4 h-4" />
-                    <span>打卡</span>
+                    <span>{tFlags("card.actions.checkin")}</span>
                   </motion.button>
                 )}
                 {isMine &&
@@ -295,7 +295,7 @@ export const FlagCard = memo(function FlagCard({
                         }}
                         className="px-3 py-2 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 hover:bg-amber-200"
                       >
-                        结算
+                        {tFlags("card.actions.settle")}
                       </button>
                     ) : null;
                   })()}

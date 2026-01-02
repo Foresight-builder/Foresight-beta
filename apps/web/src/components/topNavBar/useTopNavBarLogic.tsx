@@ -29,6 +29,7 @@ export function useTopNavBarLogic() {
   const tWallet = useTranslations("wallet");
   const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
+  const tNotifications = useTranslations("notifications");
 
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -135,10 +136,10 @@ export function useTopNavBarLogic() {
               const type = typeof parsed.type === "string" ? parsed.type : "";
               const titleFallback =
                 type === "witness_invite"
-                  ? "挑战邀请"
+                  ? tNotifications("fallbackWitnessInviteTitle")
                   : type === "checkin_review"
-                    ? "打卡审核更新"
-                    : "通知";
+                    ? tNotifications("fallbackCheckinReviewTitle")
+                    : tNotifications("fallbackGenericTitle");
               const title =
                 typeof parsed.title === "string" && parsed.title.trim()
                   ? parsed.title
@@ -208,10 +209,10 @@ export function useTopNavBarLogic() {
           const type = typeof parsed.type === "string" ? parsed.type : "";
           const titleFallback =
             type === "witness_invite"
-              ? "挑战邀请"
+              ? tNotifications("fallbackWitnessInviteTitle")
               : type === "checkin_review"
-                ? "打卡审核更新"
-                : "通知";
+                ? tNotifications("fallbackCheckinReviewTitle")
+                : tNotifications("fallbackGenericTitle");
           const title =
             typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : titleFallback;
           const message = typeof parsed.message === "string" ? parsed.message : "";
