@@ -4,10 +4,10 @@ import { CardListSkeleton } from "@/components/skeletons";
 import { getPredictionsList } from "../api/predictions/_lib/getPredictionsList";
 import TrendingClient from "./TrendingClient";
 import type { Prediction } from "@/features/trending/trendingModel";
-import zhCN from "../../messages/zh-CN.json";
-import en from "../../messages/en.json";
-import es from "../../messages/es.json";
-import ko from "../../messages/ko.json";
+import zhCN from "../../../messages/zh-CN.json";
+import en from "../../../messages/en.json";
+import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
 import { defaultLocale, locales, type Locale } from "../../i18n-config";
 import { cookies } from "next/headers";
 
