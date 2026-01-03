@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import {
   createComment,
@@ -29,6 +29,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     multisigSign,
   } = useWallet();
   const tForum = useTranslations("forum");
+  const { locale } = useLocale();
 
   const [threads, setThreads] = useState<ThreadView[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     const target = String(targetValue || "").trim();
     const dl = String(deadline || "").trim();
     if (!name || !act || !target || !dl) return "";
-    const prettyDeadline = formatDateTime(dl);
+    const prettyDeadline = formatDateTime(dl, locale);
     if (!prettyDeadline) return "";
     let key = "preview.title.default";
     if (act === "priceReach") key = "preview.title.priceReach";
@@ -60,7 +61,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       .replace("{deadline}", prettyDeadline)
       .replace("{target}", target)
       .replace("{action}", act);
-  }, [subjectName, actionVerb, targetValue, deadline, tForum]);
+  }, [subjectName, actionVerb, targetValue, deadline, tForum, locale]);
 
   const criteriaPreview = useMemo(() => {
     const act = String(actionVerb || "").trim();

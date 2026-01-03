@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import type { CommentView, ThreadView } from "../useProposalDetail";
 import { CommentTree } from "./CommentTree";
@@ -35,6 +35,7 @@ export function ProposalDiscussionSection({
   onSubmitReply,
 }: ProposalDiscussionSectionProps) {
   const tProposals = useTranslations("proposals");
+  const { locale } = useLocale();
 
   return (
     <section className="flex flex-col h-full">
@@ -60,7 +61,7 @@ export function ProposalDiscussionSection({
             <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
               <span>{displayName(thread.user_id)}</span>
               <span>·</span>
-              <span>{formatDateTime(thread.created_at)}</span>
+              <span>{formatDateTime(thread.created_at, locale)}</span>
             </p>
           </div>
         </div>

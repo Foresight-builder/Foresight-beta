@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Users, ShieldCheck, CheckCircle2, Clock, History, Target } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";
 import { formatAddress } from "@/lib/cn";
+import { useLocale } from "@/lib/i18n";
 import { formatDate, formatDateTime } from "@/lib/format";
 
 type HistoryItem = {
@@ -44,6 +45,7 @@ export function FlagsHistoryModal({
   tasksTotal,
 }: FlagsHistoryModalProps) {
   // Determine if there are pending items to review
+  const { locale } = useLocale();
   const pendingItems = items.filter((item) => item.review_status === "pending");
   const isWitnessMode =
     typeof tasksIndex === "number" && typeof tasksTotal === "number" && tasksTotal > 0;
@@ -64,7 +66,7 @@ export function FlagsHistoryModal({
     const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
     const daysLabel = tFlags("card.time.daysLabel");
     challengeDurationText = `${totalDays} ${daysLabel}`;
-    challengeRangeText = `${formatDate(startDay)} - ${formatDate(endDay)}`;
+    challengeRangeText = `${formatDate(startDay, locale)} - ${formatDate(endDay, locale)}`;
   }
 
   const successConditionText = tFlags("history.successCondition.default");
@@ -303,7 +305,7 @@ export function FlagsHistoryModal({
                                 }`}
                               />
                               <div className="text-xs font-bold text-gray-400">
-                                {formatDateTime(item.created_at)}
+                                {formatDateTime(item.created_at, locale)}
                               </div>
                             </div>
                             {item.review_status && item.review_status !== "pending" && (

@@ -94,11 +94,6 @@ export function validateOrderParams(order: EIP712Order): { valid: boolean; error
   if (amount <= BigInt(0)) {
     return { valid: false, error: "Amount must be greater than 0" };
   }
-  // shares are 18 decimals; enforce 6-decimal share steps so on-chain USDC conversions are exact
-  const SHARE_GRANULARITY = 1_000_000_000_000n; // 1e12
-  if (amount % SHARE_GRANULARITY !== 0n) {
-    return { valid: false, error: "Amount precision too fine (max 6 decimals)" };
-  }
 
   // 验证 outcomeIndex
   if (order.outcomeIndex < 0 || order.outcomeIndex > 255) {

@@ -11,7 +11,7 @@ import {
   Scale,
 } from "lucide-react";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 interface MarketInfoProps {
@@ -30,6 +30,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
   const tMarket = useTranslations("market");
   const tCommon = useTranslations("common");
   const tEvents = useTranslations();
+  const { locale } = useLocale();
   const [activeTab, setActiveTab] = useState<"desc" | "rules" | "comments">("desc");
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({
@@ -218,7 +219,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                   <Clock className="w-4 h-4 text-gray-400" />
                   {tMarket("rules.resolutionTimeValue").replace(
                     "{deadline}",
-                    formatDateTime(prediction.deadline)
+                    formatDateTime(prediction.deadline, locale)
                   )}
                 </div>
               </div>

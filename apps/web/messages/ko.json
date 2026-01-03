@@ -23,6 +23,7 @@
     "close": "닫기",
     "retry": "다시 시도",
     "refresh": "새로고침",
+    "loadFailed": "로딩에 실패했습니다",
     "switchLanguage": "언어 변경",
     "openUserMenu": "사용자 메뉴 열기",
     "userMenu": "사용자 메뉴",
@@ -124,6 +125,15 @@
       "disconnect": "연결 해제",
       "connect": "지갑 연결"
     }
+  },
+  "notifications": {
+    "ariaLabel": "알림",
+    "centerTitle": "알림 센터",
+    "empty": "아직 알림이 없습니다",
+    "fallbackCheckinReviewTitle": "체크인 검토 업데이트",
+    "fallbackGenericTitle": "알림",
+    "fallbackWitnessInviteTitle": "도전 초대",
+    "summary": "총 {count}개의 알림"
   },
   "profile": {
     "username": {
@@ -244,7 +254,14 @@
     "volume": "거래량",
     "winRate": "승률",
     "trades": "거래 수",
-    "viewProfile": "전체 프로필 보기"
+    "viewProfile": "전체 프로필 보기",
+    "follow": "팔로우",
+    "followSuccess": "팔로우 완료",
+    "followers": "팔로워",
+    "loading": "처리 중...",
+    "pleaseConnectWallet": "먼저 지갑을 연결해 주세요",
+    "unfollow": "언팔로우",
+    "unfollowSuccess": "언팔로우 완료"
   },
   "proposals": {
     "meta": {
@@ -443,14 +460,17 @@
     "sidebarSubtitle": "커뮤니티",
     "liveDiscussion": "실시간 토론",
     "followersLabel": "팔로워",
+    "followersLabelShort": "팔로우",
     "categoryLabel": "카테고리",
     "selectTopicMobile": "주제 선택",
     "allTopics": "전체 주제",
     "topicCount": "{count}개 주제",
     "platformDescription": "Foresight 포럼은 예측 시장 참가자들이 인사이트와 전략을 공유하는 핵심 커뮤니티입니다. 실제 이벤트를 토론하는 주제를 만들거나 기존 예측에 대한 심층 분석에 참여할 수 있습니다.",
     "loginRequired": "스레드를 시작하려면 지갑을 연결하세요",
+    "guestFallback": "게스트",
     "connectAndSign": "연결 및 서명",
     "chatRoom": "채팅방",
+    "chatSidebarDescription": "이 예측 이벤트를 둘러싼 가벼운 실시간 대화를 나누는 공간입니다.",
     "relatedPrediction": "관련 예측",
     "viewMarket": "시장 보기",
     "loadingTopic": "주제 로딩 중...",
@@ -563,7 +583,11 @@
       "walletRequired": "먼저 지갑을 연결하세요",
       "walletRequiredForVote": "투표 전에 지갑을 연결하세요",
       "alreadyVoted": "이미 투표했습니다"
-    }
+    },
+    "categoryFallback": "주제",
+    "roomIdLabel": "채팅방 ID",
+    "roomIdFooter": "채팅방 번호: #{id}",
+    "backToForum": "토론으로 돌아가기"
   },
   "chat": {
     "quickPrompt": {
@@ -667,6 +691,9 @@
     "filled": "체결됨",
     "open": "미체결",
     "tabTrade": "거래",
+    "tabChart": "차트",
+    "tabOutcomes": "옵션",
+    "tabInfo": "정보",
     "selectOutcome": "결과 선택",
     "orderType": "주문 유형",
     "autoMatchBest": "최적가 자동 체결",
@@ -739,6 +766,24 @@
       "sellMaybeNoMint": "아직 아래에서 토큰을 발행하지 않았다면, 지금은 팔 수 있는 토큰이 없을 수도 있어요. 조금 발행한 뒤 다시 한 번 시도해 주세요.",
       "canceled": "주문이 취소되었습니다.",
       "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요."
+    },
+    "mintFlow": {
+      "approveUsdc": "USDC 사용 권한을 승인해 주세요...",
+      "estimateFailed": "민트 거래 예측에 실패했습니다. 잔액이나 권한을 확인해 주세요: {reason}",
+      "failed": "민트에 실패했습니다: {reason}",
+      "minting": "토큰을 발행하는 중입니다...",
+      "prepare": "민트 준비 중...",
+      "success": "민트가 완료되었습니다! 이제 토큰을 판매할 수 있어요.",
+      "unknownError": "알 수 없는 오류가 발생했습니다"
+    },
+    "redeemFlow": {
+      "approveOutcomeToken": "예측 토큰 사용 권한을 먼저 승인해 주세요...",
+      "failed": "상환에 실패했습니다: {reason}",
+      "marketNotResolved": "시장이 아직 결론 나지 않아 상환할 수 없습니다",
+      "prepare": "상환 준비 중...",
+      "redeeming": "상환 처리 중입니다...",
+      "success": "상환이 완료되었습니다! USDC가 반환되었습니다.",
+      "unknownError": "알 수 없는 오류가 발생했습니다"
     }
   },
   "market": {
@@ -803,6 +848,8 @@
       "stake": "스테이크",
       "pnl": "손익",
       "implied": "내재",
+      "yesLabel": "예",
+      "noLabel": "아니오",
       "proposalOriginHint": "이 예측 시장은 제안 광장의 커뮤니티 토론에서 시작되었습니다. 원래 제안으로 돌아가 아이디어 교환과 반복 제안을 계속할 수 있습니다.",
       "viewProposal": "제안 보기",
       "defaultDescription": "온체인 예측 시장 이벤트. 탈중앙화 블록체인 기반 예측 시장 플랫폼에서 관점을 거래하세요.",
@@ -1120,6 +1167,29 @@
         "title": "시장 마감",
         "description": "이 시장은 마감되어 더 이상 새 주문을 받지 않습니다"
       }
+    },
+    "wallet": {
+      "addNetworkFailed": "네트워크 추가에 실패했습니다. 나중에 다시 시도해 주세요",
+      "connectFailed": "지갑 연결에 실패했습니다",
+      "connectFirst": "먼저 지갑을 연결해 주세요",
+      "installExtension": "지갑 확장 프로그램을 설치해 주세요",
+      "loggingIn": "로그인 중입니다. 잠시만 기다려 주세요",
+      "loginError": "로그인 중 오류가 발생했습니다. 다시 시도해 주세요",
+      "multisigFailed": "멀티시그 서명에 실패했습니다",
+      "networkNotConfigured": "지갑에서 이 네트워크를 먼저 추가해 주세요",
+      "nonceFetchFailed": "nonce를 가져오지 못했습니다 (상태 코드 {status})",
+      "nonceInvalid": "nonce를 가져올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요",
+      "notDetected": "지갑이 감지되지 않았습니다. 지갑 확장 프로그램을 설치해 주세요",
+      "okxNotInitialized": "OKX 지갑이 올바르게 초기화되지 않았습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.",
+      "okxNotInstalled": "OKX 지갑이 설치되지 않았거나 제대로 주입되지 않았습니다. OKX 지갑 확장 프로그램을 설치한 뒤 새로고침해 주세요.",
+      "permissionsFailed": "권한 요청에 실패했습니다",
+      "providerUnavailable": "지갑 provider를 사용할 수 없습니다",
+      "signatureFailed": "서명에 실패했습니다. 다시 시도해 주세요",
+      "signatureRejected": "서명 요청을 취소하셨습니다",
+      "switchRejected": "네트워크 전환을 사용자가 취소했습니다",
+      "useInBrowser": "브라우저에서 지갑을 사용해 주세요",
+      "verifyFailed": "검증에 실패했습니다. 다시 시도해 주세요",
+      "walletNotInitialized": "지갑이 올바르게 초기화되지 않았습니다. 페이지를 새로고침해 주세요."
     }
   },
   "accessibility": {
@@ -1251,6 +1321,44 @@
       "epic": "영웅",
       "rare": "희귀",
       "common": "일반"
+    },
+    "reveal": {
+      "collectButton": "내 컬렉션에 담기",
+      "openRewardCta": "보상 열어보기"
+    },
+    "stickers": {
+      "s1": {
+        "desc": "오늘은 조금 느긋해도 괜찮아요. 쉬어가는 하루도 중요해요.",
+        "name": "쉬는 고양이"
+      },
+      "s2": {
+        "desc": "하루에 아주 조금씩이라도, 그래도 앞으로 나아가는 중이에요.",
+        "name": "한 뼘 성장"
+      },
+      "s3": {
+        "desc": "준비가 되었다면 한 번 크게 도약해 보는 날도 필요해요.",
+        "name": "로켓 스타트"
+      },
+      "s4": {
+        "desc": "꾸준함으로 몸과 마음의 근육을 함께 키워가는 중입니다.",
+        "name": "근육 시바"
+      },
+      "s5": {
+        "desc": "수많은 도전 중에서도 당신의 플래그는 특별해요.",
+        "name": "플래그 제왕"
+      },
+      "s6": {
+        "desc": "지금의 당신 그대로도 이미 충분히 멋집니다.",
+        "name": "무지개 응원"
+      },
+      "s7": {
+        "desc": "쉽게 부서지지 않는 마음, 끝까지 버티는 힘을 담았어요.",
+        "name": "다이아 의지"
+      },
+      "s8": {
+        "desc": "세상에 단 하나뿐인 자신만의 속도와 길을 걸어가요.",
+        "name": "유니콘"
+      }
     }
   },
   "adminRoles": {
@@ -1332,7 +1440,12 @@
         "self": "셀프 체크",
         "friend": "친구 체크"
       },
-      "proofImageAlt": "체크인 이미지"
+      "proofImageAlt": "체크인 이미지",
+      "actions": {
+        "checkin": "체크인",
+        "history": "기록 보기",
+        "settle": "정산"
+      }
     },
     "invites": {
       "textPrefix": "",
@@ -1428,6 +1541,20 @@
       "title": "도전 기록",
       "witnessLabel": "증인",
       "empty": "아직 체크인 없음",
+      "intro": {
+        "default": "발자국 하나하나를 돌아보며 꾸준함의 힘을 확인해 보세요.",
+        "witness": "각 체크인 내용을 신중히 살펴봐 주세요. 당신의 판단이 이번 도전의 성공 여부를 결정합니다."
+      },
+      "labels": {
+        "challengeDuration": "도전 기간",
+        "challengeTopic": "도전 주제",
+        "currentWitnessTask": "현재 증인 역할",
+        "initiator": "도전 발기인",
+        "successCondition": "성공 조건"
+      },
+      "successCondition": {
+        "default": "당신이 승인한 체크인이 10일 이상이고 전체 기간의 80% 이상일 때 이 도전은 성공으로 기록됩니다."
+      },
       "actions": {
         "approve": "승인",
         "reject": "거절"
@@ -1471,7 +1598,9 @@
       "settleFailedTitle": "정산이 아직 끝나지 않았어요",
       "retryLater": "잠시 후에 다시 시도해 주세요.",
       "checkinSuccessNoStickerDesc": "노력은 잘 기록됐어요. 이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요.",
-      "noStickerSuffix": "이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요."
+      "noStickerSuffix": "이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요.",
+      "siweFailedDesc": "지갑 서명을 다시 진행해 주세요.",
+      "siweFailedTitle": "지갑 인증에 실패했어요"
     },
     "modal": {
       "header": {
@@ -1497,6 +1626,25 @@
         "cancel": "취소",
         "joinNow": "지금 참여",
         "createFlag": "플래그 만들기"
+      },
+      "flow": {
+        "backButton": "뒤로",
+        "friendCheckDescription": "믿을 수 있는 친구를 초대해 서로 응원하며 체크해요.",
+        "nextButton": "다음",
+        "readySubtitle": "목표를 정하면 그 여정 내내 우리가 곁에 있을게요.",
+        "readyTitle": "멋진 도전을 시작해 볼까요? ✨",
+        "roleOfficial": "공식 도전",
+        "roleUser": "나만의 도전",
+        "selfCheckDescription": "조용히 스스로 체크하며 나만의 속도로 가고 싶어요.",
+        "step2Subtitle": "셀프 체크와 친구 체크 중에서 방식을 선택해 주세요.",
+        "step2Title": "누가 이 여정을 함께할까요? 🤝",
+        "step3Subtitle": "너무 길지 않으면서도 의미 있는 기간을 정해 보세요.",
+        "step3Title": "마지막으로 기간을 정해 볼까요 📅",
+        "stepIndicator": {
+          "step1": "1단계: 씨앗 심기",
+          "step2": "2단계: 함께 돌보기",
+          "step3": "3단계: 출발!"
+        }
       },
       "templates": {
         "early_morning": {
@@ -1554,6 +1702,19 @@
       },
       "settings": "설정",
       "disconnect": "연결 해제"
+    },
+    "follow": {
+      "failed": "작업에 실패했습니다",
+      "followSuccess": "팔로우했습니다",
+      "followTraderButton": "이 트레이더 팔로우하기",
+      "loading": "처리 중...",
+      "unfollowButton": "언팔로우",
+      "unfollowSuccess": "언팔로우했습니다"
+    },
+    "wallet": {
+      "addressCopied": "주소가 복사되었습니다",
+      "connectFirst": "먼저 지갑을 연결해 주세요",
+      "copyAddress": "주소 복사에 실패했습니다. 잠시 후 다시 시도해 주세요."
     },
     "overview": {
       "cards": {

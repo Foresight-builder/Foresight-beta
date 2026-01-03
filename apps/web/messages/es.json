@@ -23,6 +23,7 @@
     "close": "Cerrar",
     "retry": "Reintentar",
     "refresh": "Actualizar",
+    "loadFailed": "Error al cargar",
     "switchLanguage": "Cambiar idioma",
     "openUserMenu": "Abrir menú de usuario",
     "userMenu": "Menú de usuario",
@@ -553,6 +554,9 @@
     "filled": "Completada",
     "open": "Abierta",
     "tabTrade": "Operar",
+    "tabChart": "Gráfico",
+    "tabOutcomes": "Resultados",
+    "tabInfo": "Información",
     "selectOutcome": "Seleccionar resultado",
     "orderType": "Tipo de orden",
     "autoMatchBest": "Emparejar automáticamente el mejor precio",
@@ -625,6 +629,24 @@
       "sellMaybeNoMint": "Si todavía no has minteado, es posible que no tengas tokens para vender. Mintea un poco abajo e inténtalo de nuevo.",
       "canceled": "Orden cancelada.",
       "cancelFailed": "Esta vez la orden no se canceló. Puedes intentarlo de nuevo dentro de un momento."
+    },
+    "mintFlow": {
+      "prepare": "Preparando minteo…",
+      "approveUsdc": "Por favor, aprueba el uso de USDC…",
+      "minting": "Minteando…",
+      "estimateFailed": "Error al estimar gas para el minteo, revisa saldo o permisos: {reason}",
+      "success": "¡Minteo completado! Ahora puedes vender tus tokens de resultado.",
+      "failed": "El minteo ha fallado: {reason}",
+      "unknownError": "Error desconocido"
+    },
+    "redeemFlow": {
+      "prepare": "Preparando canje…",
+      "approveOutcomeToken": "Por favor, aprueba el uso de los tokens de resultado…",
+      "redeeming": "Canjeando…",
+      "marketNotResolved": "El mercado aún no se ha resuelto, por lo que no se puede canjear.",
+      "success": "¡Canje completado! Se han devuelto tus USDC.",
+      "failed": "El canje ha fallado: {reason}",
+      "unknownError": "Error desconocido"
     }
   },
   "market": {
@@ -823,6 +845,29 @@
         "title": "Mercado cerrado",
         "description": "Este mercado está cerrado y ya no acepta nuevas órdenes"
       }
+    },
+    "wallet": {
+      "notDetected": "No se detectó ninguna billetera, instala una extensión de billetera.",
+      "connectFirst": "Conecta primero tu billetera",
+      "nonceFetchFailed": "Error al obtener el nonce (código de estado {status})",
+      "nonceInvalid": "No se pudo obtener un nonce válido, actualiza la página y vuelve a intentar",
+      "signatureRejected": "Has cancelado la solicitud de firma",
+      "signatureFailed": "La firma ha fallado, vuelve a intentarlo",
+      "verifyFailed": "La verificación ha fallado, vuelve a intentarlo",
+      "loginError": "Se produjo un error durante el inicio de sesión, vuelve a intentarlo",
+      "loggingIn": "Iniciando sesión, espera un momento…",
+      "providerUnavailable": "El proveedor de la billetera no está disponible",
+      "permissionsFailed": "La solicitud de permisos ha fallado",
+      "addNetworkFailed": "No se pudo añadir la red, inténtalo de nuevo más tarde",
+      "networkNotConfigured": "Añade esta red en tu billetera",
+      "switchRejected": "El usuario canceló el cambio de red",
+      "useInBrowser": "Usa la billetera en el navegador",
+      "installExtension": "Instala la extensión de la billetera",
+      "okxNotInstalled": "OKX Wallet no está instalada o no se ha inyectado correctamente. Asegúrate de que la extensión esté instalada y actualiza la página.",
+      "walletNotInitialized": "La billetera no se ha inicializado correctamente, actualiza la página y vuelve a intentarlo.",
+      "okxNotInitialized": "OKX Wallet no se ha inicializado correctamente, actualiza la página y vuelve a intentarlo.",
+      "connectFailed": "Fallo al conectar la billetera",
+      "multisigFailed": "La firma multifirma ha fallado"
     }
   },
   "accessibility": {
@@ -1574,6 +1619,26 @@
     "subtitle": "Top Earners",
     "week": "Esta semana",
     "month": "Este mes",
+    "pageTitle": "Clasificación",
+    "seasonBadge": "Temporada 4 · Semana 12",
+    "heroSubtitle": "¿Quiénes son los predictores más brillantes? 🧠",
+    "heroDescription": "Sigue las mejores estrategias y sube en la clasificación.",
+    "introText": "La clasificación de Foresight ordena a los traders por beneficios y precisión en sus predicciones, ayudándote a descubrir monederos con rendimientos consistentes y estilos de trading claros.",
+    "linkHint": "¿Quieres ver dónde están apostando estos traders top?",
+    "linkTrending": "Predicciones en tendencia",
+    "linkMiddle": " para explorar mercados en vivo, o",
+    "linkForum": "Foro",
+    "linkSuffix": " para seguir sus ideas.",
+    "timeRange": {
+      "weekly": "Semanal",
+      "monthly": "Mensual",
+      "all": "Todo el tiempo"
+    },
+    "category": {
+      "profit": "Ganancias",
+      "winrate": "Precisión",
+      "streak": "Racha"
+    },
     "avatarAlt": "Avatar de {name}",
     "viewAll": "Ver clasificación completa",
     "loadMore": "Cargar más traders",
@@ -1582,6 +1647,9 @@
     "loading": "Cargando...",
     "loadingData": "Cargando clasificación...",
     "card": {
+      "totalProfit": "Volumen total",
+      "winRate": "Tasa de éxito",
+      "tradesCount": "Número de operaciones",
       "rankTrader": "Rango / Trader",
       "performanceTrend": "Rendimiento",
       "winningsStatus": "Ganancias",

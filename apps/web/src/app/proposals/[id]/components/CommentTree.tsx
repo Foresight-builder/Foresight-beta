@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { CommentView } from "../useProposalDetail";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 export function CommentTree({
@@ -27,6 +27,7 @@ export function CommentTree({
   threadAuthorId?: string;
 }) {
   const tProposals = useTranslations("proposals");
+  const { locale } = useLocale();
   const rootComments = comments.filter((c) => !c.parent_id);
   const getReplies = (parentId: number) => comments.filter((c) => c.parent_id === parentId);
 
@@ -47,6 +48,7 @@ export function CommentTree({
           depth={0}
           threadAuthorId={threadAuthorId}
           tProposals={tProposals}
+          locale={locale}
         />
       ))}
     </div>
@@ -65,6 +67,8 @@ function CommentNode({
   floor,
   depth = 0,
   threadAuthorId,
+  tProposals,
+  locale,
 }: {
   comment: CommentView;
   getReplies: (id: number) => CommentView[];
@@ -78,6 +82,7 @@ function CommentNode({
   depth?: number;
   threadAuthorId?: string;
   tProposals: (key: string) => string;
+  locale: string;
 }) {
   const replies = getReplies(comment.id);
   const [isReplying, setIsReplying] = useState(false);
@@ -100,7 +105,7 @@ function CommentNode({
                 {displayName(comment.user_id)}
               </span>
               <span className="text-[10px] text-slate-400 font-medium">
-                {formatDateTime(comment.created_at)}
+                {formatDateTime(comment.created_at, locale)}
               </span>
               {threadAuthorId && threadAuthorId === comment.user_id && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
@@ -215,6 +220,7 @@ function CommentNode({
                 depth={(depth || 0) + 1}
                 threadAuthorId={threadAuthorId}
                 tProposals={tProposals}
+                locale={locale}
               />
             ))}
           </div>

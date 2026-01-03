@@ -28,7 +28,7 @@ import {
   ChevronUp,
   FileText,
 } from "lucide-react";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatTime } from "@/lib/format";
 import { CATEGORY_MAPPING } from "@/features/trending/trendingModel";
 import type { PredictionForm, Outcome } from "../types";
@@ -483,6 +483,7 @@ export default function AdminCreatePredictionPage() {
     submit,
   } = useAdminCreatePredictionPage();
   const tAdminRoles = useTranslations("adminRoles");
+  const { locale } = useLocale();
 
   return (
     <GradientPage className="relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
@@ -507,7 +508,7 @@ export default function AdminCreatePredictionPage() {
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white/50 px-3 py-1.5 rounded-full border border-white shadow-sm animate-in fade-in duration-500">
                   <Save className="w-3.5 h-3.5 text-brand" />
                   <span>
-                    {tTrendingAdmin("draft.autoSavedPrefix")} {formatTime(lastSaved)}
+                    {tTrendingAdmin("draft.autoSavedPrefix")} {formatTime(lastSaved, locale)}
                   </span>
                 </div>
               )}

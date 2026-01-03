@@ -8,7 +8,7 @@ import { ProposalChatShell } from "@/app/proposals/[id]/components/chat/Proposal
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations, formatTranslation, t } from "@/lib/i18n";
+import { useTranslations, formatTranslation, t, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 type ForumChatDetailClientProps = {
@@ -28,6 +28,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
   const { account } = useWallet();
   const { user } = useAuth();
   const tForum = useTranslations("forum");
+  const { locale } = useLocale();
 
   const roomTitle = prediction?.title || tForum("chatRoom");
   const category = prediction?.category || "";
@@ -40,8 +41,8 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
 
   const createdAtLabel = useMemo(() => {
     if (!prediction?.created_at) return "";
-    return formatDateTime(prediction.created_at);
-  }, [prediction?.created_at]);
+    return formatDateTime(prediction.created_at, locale);
+  }, [prediction?.created_at, locale]);
 
   return (
     <ProposalChatShell>

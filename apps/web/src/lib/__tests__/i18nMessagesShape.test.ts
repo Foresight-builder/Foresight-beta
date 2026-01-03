@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
+import ko from "../../../messages/ko.json";
 
 type JsonObject = Record<string, any>;
 
@@ -38,5 +39,9 @@ describe("i18n message files shape", () => {
 
   it("es.json should contain all keys from zh-CN.json", () => {
     expectSupersetKeys(zhCN as JsonObject, es as JsonObject);
+  });
+
+  it("ko.json should contain all keys from zh-CN.json", () => {
+    expectSupersetKeys(zhCN as JsonObject, ko as JsonObject);
   });
 });

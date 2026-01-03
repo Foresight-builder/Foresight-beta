@@ -1,7 +1,7 @@
 import React from "react";
 import { MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatAddress } from "@/lib/cn";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 
@@ -15,6 +15,7 @@ interface ProposalCardProps {
 function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const tProposals = useTranslations("proposals");
   const tProfile = useTranslations("profile");
+  const { locale } = useLocale();
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
   const score = upvotes - downvotes;
@@ -73,8 +74,8 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
   const timeAgo =
     !Number.isFinite(createdAt.getTime()) || diffMs > sevenDaysMs || diffMs < 0
-      ? formatDate(createdAt)
-      : formatRelativeTime(createdAt, now);
+      ? formatDate(createdAt, locale)
+      : formatRelativeTime(createdAt, now, locale);
   const statusRaw = String(proposal.review_status || "").trim();
   let statusLabel = tProposals("card.statusPending");
   let statusClass = "bg-amber-50 text-amber-600 border border-amber-200";

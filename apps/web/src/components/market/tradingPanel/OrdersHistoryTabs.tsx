@@ -1,4 +1,5 @@
 import { ListFilter } from "lucide-react";
+import { useLocale } from "@/lib/i18n";
 import { formatTime } from "@/lib/format";
 
 export type OrdersTabContentProps = {
@@ -87,6 +88,7 @@ export function HistoryTabContent({
   formatPrice,
   formatAmount,
 }: HistoryTabContentProps) {
+  const { locale } = useLocale();
   if (trades.length === 0) {
     return (
       <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-beauty pr-1">
@@ -118,7 +120,7 @@ export function HistoryTabContent({
                 {outcomes[t.outcome_index]?.label ||
                   (t.outcome_index === 0 ? tCommon("yes") : tCommon("no"))}
               </span>
-              <span className="text-xs text-gray-400">{formatTime(t.created_at)}</span>
+              <span className="text-xs text-gray-400">{formatTime(t.created_at, locale)}</span>
             </div>
           </div>
           <div className="text-right">

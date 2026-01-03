@@ -16,7 +16,7 @@ import {
 import { FollowButton } from "@/components/ui/FollowButton";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
 import Link from "next/link";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 interface MarketHeaderProps {
@@ -39,6 +39,7 @@ export function MarketHeader({
   const t = useTranslations();
   const tMarketHeader = useTranslations("market.header");
   const tMarketBreadcrumbs = useTranslations("market.breadcrumbs");
+  const { locale } = useLocale();
   const displayTitle = t(prediction.title);
   const isExpired = prediction.timeInfo?.isExpired;
   const statusColor =
@@ -185,7 +186,7 @@ export function MarketHeader({
                 {tMarketHeader("deadline")}
               </div>
               <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
-                {formatDate(prediction.deadline)}
+                {formatDate(prediction.deadline, locale)}
               </div>
             </div>
           </div>

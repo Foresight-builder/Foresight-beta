@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ExternalLink, Tag, TrendingUp } from "lucide-react";
 import type { ThreadView } from "../../useProposalDetail";
-import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 
 interface ChatSidebarProps {
@@ -14,6 +14,7 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
   const tProposals = useTranslations("proposals");
+  const { locale } = useLocale();
 
   return (
     <div className="w-80 border-l border-slate-200 p-6 overflow-y-auto hidden lg:flex flex-col gap-6 max-h-[520px] self-start">
@@ -62,7 +63,9 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500">{tProposals("detailSidebar.createdLabel")}</span>
-              <span className="text-slate-700 font-medium">{formatDate(thread.created_at)}</span>
+              <span className="text-slate-700 font-medium">
+                {formatDate(thread.created_at, locale)}
+              </span>
             </div>
           </div>
         </div>

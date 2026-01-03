@@ -9,13 +9,14 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import MobileMenu from "./MobileMenu";
 import { useTopNavBarLogic } from "./topNavBar/useTopNavBarLogic";
 import { WalletSection } from "./topNavBar/WalletSection";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 export default function TopNavBar() {
   const nav = useTopNavBarLogic();
   const { mounted, modal, walletModalOpen, setWalletModalOpen } = nav;
   const tNotifications = useTranslations("notifications");
+  const { locale } = useLocale();
 
   const badgeText = useMemo(() => {
     if (!nav.notificationsCount) return "";
@@ -72,7 +73,7 @@ export default function TopNavBar() {
                           </div>
                         )}
                         <div className="mt-0.5 text-[10px] text-gray-400">
-                          {formatDateTime(item.created_at)}
+                          {formatDateTime(item.created_at, locale)}
                         </div>
                       </Link>
                     ))}

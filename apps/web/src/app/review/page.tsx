@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import type { Database } from "@/lib/database.types";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
@@ -24,6 +24,7 @@ export default function ReviewPage() {
   const router = useRouter();
   const tCommon = useTranslations("common");
   const tProposals = useTranslations("proposals");
+  const { locale } = useLocale();
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -152,7 +153,7 @@ export default function ReviewPage() {
                             {item.category || tProposals("review.uncategorized")}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            {formatDateTime(item.created_at)}
+                            {formatDateTime(item.created_at, locale)}
                           </span>
                         </div>
                       </div>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Heart, Users, Target } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useWallet } from "@/contexts/WalletContext";
-import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
@@ -20,6 +20,7 @@ export function FollowingTab() {
   const [loading, setLoading] = useState(true);
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
+  const { locale } = useLocale();
 
   const fetchData = useCallback(async () => {
     if (!account) return;
@@ -129,7 +130,7 @@ export function FollowingTab() {
                   {item.deadline && (
                     <span>
                       {formatTranslation(tProfile("following.labels.deadline"), {
-                        date: formatDate(item.deadline),
+                        date: formatDate(item.deadline, locale),
                       })}
                     </span>
                   )}
