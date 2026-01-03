@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { formatTranslation, t } from "@/lib/i18n";
 import type { MarketInfo } from "../marketTypes";
 import {
   createBrowserProvider,
@@ -30,16 +31,15 @@ export async function redeemAction(args: {
     setOrderMsg,
   } = args;
   try {
-    setOrderMsg("准备赎回...");
+    setOrderMsg(t("trading.redeemFlow.prepare"));
 
     const provider = await createBrowserProvider(walletProvider);
     await ensureNetwork(provider, market.chain_id, switchNetwork);
     const signer = await provider.getSigner();
 
-    // amount is in shares (1e18)
     const amount18 = parseUnitsByDecimals(amountStr, 18);
     if (amount18 % 1_000_000_000_000n !== 0n) {
-      throw new Error("数量精度过高：最多支持 6 位小数");
+      throw new Error(t("trading.orderFlow.invalidAmountPrecision"));
     }
 
     const marketContract = new ethers.Contract(market.market, marketAbi, signer);
@@ -48,26 +48,29 @@ export async function redeemAction(args: {
 
     const isApproved = await outcome1155.isApprovedForAll(account, market.market);
     if (!isApproved) {
-      setOrderMsg("请授权预测代币...");
+      setOrderMsg(t("trading.redeemFlow.approveOutcomeToken"));
       const txApp = await outcome1155.setApprovalForAll(market.market, true);
       await txApp.wait();
     }
 
-    setOrderMsg("正在赎回...");
+    setOrderMsg(t("trading.redeemFlow.redeeming"));
     const state = Number(await marketContract.state());
-    // OffchainMarketBase.State: 0=TRADING, 1=RESOLVED, 2=INVALID
     let tx;
     if (state === 1) {
       tx = await marketContract.redeem(amount18);
     } else if (state === 2) {
       tx = await marketContract.redeemCompleteSetOnInvalid(amount18);
     } else {
-      throw new Error("市场尚未结算，无法赎回");
+      throw new Error(t("trading.redeemFlow.marketNotResolved"));
     }
     await tx.wait();
 
-    setOrderMsg("赎回成功！USDC 已退回。");
+    setOrderMsg(t("trading.redeemFlow.success"));
   } catch (e: any) {
-    setOrderMsg("赎回失败: " + (e.message || "未知错误"));
+    setOrderMsg(
+      formatTranslation(t("trading.redeemFlow.failed"), {
+        reason: String(e?.message || t("trading.redeemFlow.unknownError")),
+      })
+    );
   }
 }

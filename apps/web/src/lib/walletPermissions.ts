@@ -1,11 +1,13 @@
 "use client";
 
+import { t } from "./i18n";
+
 export async function requestWalletPermissions(
   provider: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
     if (!provider || typeof provider.request !== "function") {
-      return { success: false, error: "钱包 provider 不可用" };
+      return { success: false, error: t("errors.wallet.providerUnavailable") };
     }
     try {
       await provider.request({
@@ -19,6 +21,9 @@ export async function requestWalletPermissions(
     }
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err?.message || "权限请求失败" };
+    return {
+      success: false,
+      error: err?.message || t("errors.wallet.permissionsFailed"),
+    };
   }
 }

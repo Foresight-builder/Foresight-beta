@@ -23,6 +23,7 @@
     "close": "关闭",
     "retry": "重试",
     "refresh": "刷新",
+    "loadFailed": "加载失败",
     "switchLanguage": "切换语言",
     "openUserMenu": "打开用户菜单",
     "userMenu": "用户菜单",
@@ -553,6 +554,9 @@
     "filled": "已成交",
     "open": "未成交",
     "tabTrade": "交易",
+    "tabChart": "图表",
+    "tabOutcomes": "选项",
+    "tabInfo": "详情",
     "selectOutcome": "选择结果",
     "orderType": "订单类型",
     "autoMatchBest": "自动匹配最优价",
@@ -625,6 +629,24 @@
       "sellMaybeNoMint": "如果还没有在下方完成铸币，现在可能还没有可卖的预测代币，可以先铸一点再试。",
       "canceled": "订单已取消。",
       "cancelFailed": "订单暂时没有取消成功，可以稍后再试一次。"
+    },
+    "mintFlow": {
+      "prepare": "准备铸币...",
+      "approveUsdc": "请授权 USDC...",
+      "minting": "正在铸币...",
+      "estimateFailed": "铸币交易预估失败，请检查余额或权限: {reason}",
+      "success": "铸币成功！您现在可以出售代币了。",
+      "failed": "铸币失败: {reason}",
+      "unknownError": "未知错误"
+    },
+    "redeemFlow": {
+      "prepare": "准备赎回...",
+      "approveOutcomeToken": "请授权预测代币...",
+      "redeeming": "正在赎回...",
+      "marketNotResolved": "市场尚未结算，无法赎回",
+      "success": "赎回成功！USDC 已退回。",
+      "failed": "赎回失败: {reason}",
+      "unknownError": "未知错误"
     }
   },
   "market": {
@@ -823,6 +845,29 @@
         "title": "市场已关闭",
         "description": "当前市场已停止交易，无法提交新订单"
       }
+    },
+    "wallet": {
+      "notDetected": "未检测到钱包，请安装钱包插件",
+      "connectFirst": "请先连接钱包",
+      "nonceFetchFailed": "获取 nonce 失败（状态码 {status}）",
+      "nonceInvalid": "无法获取 nonce，请刷新页面重试",
+      "signatureRejected": "你取消了签名请求",
+      "signatureFailed": "签名失败，请重试",
+      "verifyFailed": "验证失败，请重试",
+      "loginError": "登录过程出错，请重试",
+      "loggingIn": "正在登录中，请稍候",
+      "providerUnavailable": "钱包 provider 不可用",
+      "permissionsFailed": "权限请求失败",
+      "addNetworkFailed": "添加网络失败，请稍后重试",
+      "networkNotConfigured": "请在钱包中添加该网络",
+      "switchRejected": "用户取消了切换网络",
+      "useInBrowser": "请在浏览器中使用钱包",
+      "installExtension": "请安装钱包扩展",
+      "okxNotInstalled": "OKX钱包未安装或未正确注入。请确保已安装OKX钱包扩展程序并刷新页面。",
+      "walletNotInitialized": "钱包未正确初始化，请刷新页面重试。",
+      "okxNotInitialized": "OKX钱包未正确初始化，请刷新页面重试。",
+      "connectFailed": "连接钱包失败",
+      "multisigFailed": "多签签名失败"
     }
   },
   "accessibility": {

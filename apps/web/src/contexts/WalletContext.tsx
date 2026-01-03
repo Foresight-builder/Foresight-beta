@@ -1,5 +1,12 @@
 "use client";
-import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  ReactNode,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { useWalletConnection, type WalletState, type WalletType } from "../lib/useWalletConnection";
 import {
   detectWallets,
@@ -13,6 +20,7 @@ import { requestWalletPermissions as requestWalletPermissionsImpl } from "../lib
 import { multisigSign as multisigSignImpl } from "../lib/walletMultisig";
 import { switchNetwork as switchNetworkImpl } from "../lib/walletNetwork";
 import { formatAddress } from "../lib/cn";
+import { t } from "../lib/i18n";
 
 declare global {
   interface Window {
@@ -105,15 +113,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 包装 siweLogin，成功后更新状态（带防重复）
   const siweLogin = useCallback(async () => {
-    // 如果已认证，直接返回成功
     if (isAuthenticated && authAddress) {
       return { success: true, address: authAddress };
     }
-    // 防止重复调用
     if (siweLoggingInRef.current) {
-      return { success: false, error: "正在登录中，请稍候" };
+      return { success: false, error: t("errors.wallet.loggingIn") };
     }
     siweLoggingInRef.current = true;
     try {

@@ -23,6 +23,7 @@
     "close": "Close",
     "retry": "Retry",
     "refresh": "Refresh",
+    "loadFailed": "Failed to load",
     "switchLanguage": "Switch language",
     "openUserMenu": "Open user menu",
     "userMenu": "User menu",
@@ -553,6 +554,9 @@
     "filled": "Filled",
     "open": "Open",
     "tabTrade": "Trade",
+    "tabChart": "Chart",
+    "tabOutcomes": "Outcomes",
+    "tabInfo": "Info",
     "selectOutcome": "Select outcome",
     "orderType": "Order type",
     "autoMatchBest": "Auto match best price",
@@ -625,6 +629,24 @@
       "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
       "canceled": "Order canceled.",
       "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit."
+    },
+    "mintFlow": {
+      "prepare": "Preparing to mint…",
+      "approveUsdc": "Please approve USDC…",
+      "minting": "Minting…",
+      "estimateFailed": "Mint gas estimation failed, please check balance or permissions: {reason}",
+      "success": "Mint successful! You can now sell your outcome tokens.",
+      "failed": "Mint failed: {reason}",
+      "unknownError": "Unknown error"
+    },
+    "redeemFlow": {
+      "prepare": "Preparing to redeem…",
+      "approveOutcomeToken": "Please approve the outcome tokens…",
+      "redeeming": "Redeeming…",
+      "marketNotResolved": "The market hasn’t been resolved yet, so it can’t be redeemed.",
+      "success": "Redeem successful! USDC has been returned.",
+      "failed": "Redeem failed: {reason}",
+      "unknownError": "Unknown error"
     }
   },
   "market": {
@@ -823,6 +845,29 @@
         "title": "Market closed",
         "description": "This market is closed and no longer accepts new orders"
       }
+    },
+    "wallet": {
+      "notDetected": "No wallet detected. Please install a wallet extension.",
+      "connectFirst": "Please connect your wallet first",
+      "nonceFetchFailed": "Failed to fetch nonce (status {status})",
+      "nonceInvalid": "Could not get nonce. Please refresh the page and try again.",
+      "signatureRejected": "You cancelled the signature request",
+      "signatureFailed": "Signature failed, please try again",
+      "verifyFailed": "Verification failed, please try again",
+      "loginError": "Login failed, please try again",
+      "loggingIn": "Login in progress, please wait",
+      "providerUnavailable": "Wallet provider is unavailable",
+      "permissionsFailed": "Failed to request wallet permissions",
+      "addNetworkFailed": "Failed to add network, please try again later",
+      "networkNotConfigured": "Please add this network in your wallet",
+      "switchRejected": "You cancelled the network switch",
+      "useInBrowser": "Please use your wallet in a browser environment",
+      "installExtension": "Please install a wallet browser extension",
+      "okxNotInstalled": "OKX Wallet is not installed or not injected correctly. Please install the extension and refresh the page.",
+      "walletNotInitialized": "Wallet is not initialized correctly. Please refresh the page and try again.",
+      "okxNotInitialized": "OKX Wallet is not initialized correctly. Please refresh the page and try again.",
+      "connectFailed": "Failed to connect wallet",
+      "multisigFailed": "Multisig signing failed"
     }
   },
   "accessibility": {

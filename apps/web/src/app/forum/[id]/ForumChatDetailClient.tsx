@@ -9,6 +9,7 @@ import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations, formatTranslation, t } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 
 type ForumChatDetailClientProps = {
   id: number;
@@ -39,15 +40,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
 
   const createdAtLabel = useMemo(() => {
     if (!prediction?.created_at) return "";
-    const d = new Date(prediction.created_at);
-    if (Number.isNaN(d.getTime())) return "";
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    const hours = String(d.getUTCHours()).padStart(2, "0");
-    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-    const seconds = String(d.getUTCSeconds()).padStart(2, "0");
-    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    return formatDateTime(prediction.created_at);
   }, [prediction?.created_at]);
 
   return (

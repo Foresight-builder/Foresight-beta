@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n";
 import type { PredictionDetail } from "../types";
 import { safeJson } from "../http";
 
@@ -24,10 +25,10 @@ export function usePredictionData(predictionIdRaw: string | number | undefined) 
           setPrediction(data.data);
           setError(null);
         } else {
-          setError(data.message || "加载失败");
+          setError(data.message || t("common.loadFailed"));
         }
       } catch (e) {
-        if (!cancelled) setError("加载失败");
+        if (!cancelled) setError(t("common.loadFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }

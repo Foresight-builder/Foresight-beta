@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
   createComment,
   createThread,
@@ -47,8 +48,8 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     const target = String(targetValue || "").trim();
     const dl = String(deadline || "").trim();
     if (!name || !act || !target || !dl) return "";
-    const when = new Date(dl);
-    const iso = when.toISOString().replace(".000Z", "Z");
+    const prettyDeadline = formatDateTime(dl);
+    if (!prettyDeadline) return "";
     let key = "preview.title.default";
     if (act === "priceReach") key = "preview.title.priceReach";
     else if (act === "willWin") key = "preview.title.willWin";
@@ -56,7 +57,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     const template = tForum(key);
     return template
       .replace("{subjectName}", name)
-      .replace("{deadline}", iso)
+      .replace("{deadline}", prettyDeadline)
       .replace("{target}", target)
       .replace("{action}", act);
   }, [subjectName, actionVerb, targetValue, deadline, tForum]);

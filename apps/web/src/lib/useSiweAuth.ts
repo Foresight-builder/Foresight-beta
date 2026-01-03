@@ -1,5 +1,7 @@
 "use client";
+
 import { ethers } from "ethers";
+import { t, formatTranslation } from "./i18n";
 
 type Params = {
   providerRef: React.RefObject<any>;
@@ -16,7 +18,7 @@ export function useSiweAuth(params: Params) {
           ? (window as any).ethereum || (window as any).BinanceChain
           : null);
       if (!rawProvider) {
-        return { success: false, error: "未检测到钱包，请安装钱包插件" };
+        return { success: false, error: t("errors.wallet.notDetected") };
       }
 
       const browserProvider = new ethers.BrowserProvider(rawProvider);
@@ -24,26 +26,30 @@ export function useSiweAuth(params: Params) {
       const signerAddress = await signer.getAddress().catch(() => null);
       const net = await browserProvider.getNetwork();
       const address = signerAddress || params.account;
-      if (!address) return { success: false, error: "请先连接钱包" };
+      if (!address) return { success: false, error: t("errors.wallet.connectFirst") };
 
       const nonceRes = await fetch("/api/siwe/nonce", { method: "GET" });
       if (!nonceRes.ok) {
         console.error("[SIWE] Nonce API failed:", nonceRes.status, nonceRes.statusText);
-        return { success: false, error: `获取 nonce 失败 (${nonceRes.status})` };
+        return {
+          success: false,
+          error: formatTranslation(t("errors.wallet.nonceFetchFailed"), {
+            status: nonceRes.status,
+          }),
+        };
       }
       const nonceJson = await nonceRes.json().catch(() => null);
       const nonce: string = nonceJson?.nonce;
       if (!nonce) {
         console.error("[SIWE] Nonce response invalid:", nonceJson);
-        return { success: false, error: "无法获取 nonce，请刷新页面重试" };
+        return { success: false, error: t("errors.wallet.nonceInvalid") };
       }
 
       const { SiweMessage } = await import("siwe");
       const chainIdNum = Number(net?.chainId?.toString?.() || params.chainIdHex || "1");
-      
-      // 使用简单的 statement，避免翻译函数可能带来的问题
+
       const statement = "Sign in to Foresight";
-      
+
       const message = new SiweMessage({
         domain: typeof window !== "undefined" ? window.location.host : "localhost",
         address,
@@ -59,9 +65,8 @@ export function useSiweAuth(params: Params) {
       try {
         signature = await signer.signMessage(prepared);
       } catch (signErr: any) {
-        // 用户拒绝签名
         if (signErr?.code === 4001 || signErr?.code === "ACTION_REJECTED") {
-          return { success: false, error: "你取消了签名请求" };
+          return { success: false, error: t("errors.wallet.signatureRejected") };
         }
         if (typeof (rawProvider as any)?.request === "function") {
           try {
@@ -71,7 +76,7 @@ export function useSiweAuth(params: Params) {
             });
           } catch (fallbackErr: any) {
             if (fallbackErr?.code === 4001 || fallbackErr?.code === "ACTION_REJECTED") {
-              return { success: false, error: "你取消了签名请求" };
+              return { success: false, error: t("errors.wallet.signatureRejected") };
             }
             try {
               signature = await (rawProvider as any).request({
@@ -79,11 +84,11 @@ export function useSiweAuth(params: Params) {
                 params: [address, prepared],
               });
             } catch {
-              return { success: false, error: "签名失败，请重试" };
+              return { success: false, error: t("errors.wallet.signatureFailed") };
             }
           }
         } else {
-          return { success: false, error: "签名失败，请重试" };
+          return { success: false, error: t("errors.wallet.signatureFailed") };
         }
       }
 
@@ -101,14 +106,14 @@ export function useSiweAuth(params: Params) {
       if (!verifyRes.ok || !verifyJson?.success) {
         return {
           success: false,
-          error: verifyJson?.message || verifyJson?.detail || "验证失败，请重试",
+          error: verifyJson?.message || verifyJson?.detail || t("errors.wallet.verifyFailed"),
         };
       }
 
       return { success: true, address };
     } catch (err: any) {
       console.error("[SIWE] Login error:", err);
-      return { success: false, error: err?.message || "登录过程出错，请重试" };
+      return { success: false, error: err?.message || t("errors.wallet.loginError") };
     }
   };
 

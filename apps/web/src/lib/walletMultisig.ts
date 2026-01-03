@@ -1,5 +1,6 @@
 "use client";
 import { ethers } from "ethers";
+import { t } from "./i18n";
 import type { WalletState } from "./useWalletConnection";
 
 export async function multisigSign(
@@ -12,7 +13,9 @@ export async function multisigSign(
   }
 ): Promise<{ success: boolean; signature?: string; error?: string }> {
   try {
-    if (!rawProvider) return { success: false, error: "钱包 provider 不可用" };
+    if (!rawProvider) {
+      return { success: false, error: t("errors.wallet.providerUnavailable") };
+    }
 
     const browserProvider = new ethers.BrowserProvider(rawProvider);
     const signer = await browserProvider.getSigner();
@@ -56,11 +59,17 @@ export async function multisigSign(
       try {
         signature = await signer.signMessage(JSON.stringify({ type: "Approve", ...message }));
       } catch (e) {
-        return { success: false, error: (e as any)?.message || "签名失败" };
+        return {
+          success: false,
+          error: (e as any)?.message || t("errors.wallet.signatureFailed"),
+        };
       }
     }
     return { success: true, signature };
   } catch (err: any) {
-    return { success: false, error: err?.message || "多签签名失败" };
+    return {
+      success: false,
+      error: err?.message || t("errors.wallet.multisigFailed"),
+    };
   }
 }

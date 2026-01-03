@@ -8,6 +8,7 @@ import {
   getActiveRawProvider,
 } from "./walletDetection";
 import { ethers } from "ethers";
+import { t } from "./i18n";
 
 export type WalletType = "metamask" | "coinbase" | "binance" | "okx";
 
@@ -239,11 +240,11 @@ export function useWalletConnection(params: Params = {}) {
 
     try {
       if (typeof window === "undefined") {
-        throw new Error("请在浏览器中使用钱包");
+        throw new Error(t("errors.wallet.useInBrowser"));
       }
       const ethereum: any = (window as any).ethereum;
       if (!ethereum && !(window as any).BinanceChain) {
-        throw new Error("请安装钱包扩展");
+        throw new Error(t("errors.wallet.installExtension"));
       }
 
       window.dispatchEvent(new Event("eip6963:scan"));
@@ -305,7 +306,7 @@ export function useWalletConnection(params: Params = {}) {
           } else if ((window as any).okxWallet) {
             targetProvider = (window as any).okxWallet;
           } else {
-            throw new Error("OKX钱包未安装或未正确注入。请确保已安装OKX钱包扩展程序并刷新页面。");
+            throw new Error(t("errors.wallet.okxNotInstalled"));
           }
         } else {
           targetProvider = ethereum || (window as any).BinanceChain;
@@ -313,9 +314,10 @@ export function useWalletConnection(params: Params = {}) {
       }
 
       if (!targetProvider || typeof targetProvider.request !== "function") {
-        throw new Error(
-          `${walletType === "okx" ? "OKX钱包" : "钱包"}未正确初始化，请刷新页面重试。`
-        );
+        if (walletType === "okx") {
+          throw new Error(t("errors.wallet.okxNotInitialized"));
+        }
+        throw new Error(t("errors.wallet.walletNotInitialized"));
       }
 
       const accounts = await targetProvider.request({ method: "eth_requestAccounts" });
@@ -359,7 +361,7 @@ export function useWalletConnection(params: Params = {}) {
       setWalletState((prev) => ({
         ...prev,
         isConnecting: false,
-        connectError: error?.message || "连接钱包失败",
+        connectError: error?.message || t("errors.wallet.connectFailed"),
       }));
     }
   };

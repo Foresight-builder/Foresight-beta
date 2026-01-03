@@ -1,4 +1,5 @@
 import { ListFilter } from "lucide-react";
+import { formatTime } from "@/lib/format";
 
 export type OrdersTabContentProps = {
   userOrders: any[];
@@ -117,9 +118,7 @@ export function HistoryTabContent({
                 {outcomes[t.outcome_index]?.label ||
                   (t.outcome_index === 0 ? tCommon("yes") : tCommon("no"))}
               </span>
-              <span className="text-xs text-gray-400">
-                {new Date(t.created_at).toLocaleTimeString()}
-              </span>
+              <span className="text-xs text-gray-400">{formatTime(t.created_at)}</span>
             </div>
           </div>
           <div className="text-right">

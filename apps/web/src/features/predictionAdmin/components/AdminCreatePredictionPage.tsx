@@ -29,6 +29,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import { formatTime } from "@/lib/format";
 import { CATEGORY_MAPPING } from "@/features/trending/trendingModel";
 import type { PredictionForm, Outcome } from "../types";
 import { useAdminCreatePredictionPage } from "../hooks/useAdminCreatePredictionPage";
@@ -506,7 +507,7 @@ export default function AdminCreatePredictionPage() {
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white/50 px-3 py-1.5 rounded-full border border-white shadow-sm animate-in fade-in duration-500">
                   <Save className="w-3.5 h-3.5 text-brand" />
                   <span>
-                    {tTrendingAdmin("draft.autoSavedPrefix")} {lastSaved.toLocaleTimeString()}
+                    {tTrendingAdmin("draft.autoSavedPrefix")} {formatTime(lastSaved)}
                   </span>
                 </div>
               )}

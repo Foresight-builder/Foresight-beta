@@ -4,14 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { useTranslations, getCurrentLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
-import { defaultLocale } from "@/i18n-config";
+import { defaultLocale, languageNames, languageFlags, locales } from "@/i18n-config";
 
-const languages: { code: Locale; name: string; flag: string }[] = [
-  { code: "zh-CN", name: "简体中文", flag: "🇨🇳" },
-  { code: "en", name: "English", flag: "🇺🇸" },
-  { code: "es", name: "Español", flag: "🇪🇸" },
-  { code: "ko", name: "한국어", flag: "🇰🇷" },
-];
+const languages: { code: Locale; name: string; flag: string }[] = locales.map((code) => ({
+  code,
+  name: languageNames[code],
+  flag: languageFlags[code],
+}));
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);

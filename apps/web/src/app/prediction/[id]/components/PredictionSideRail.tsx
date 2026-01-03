@@ -7,6 +7,7 @@ import { MarketChart } from "@/components/market/MarketChart";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
+import { useTranslations } from "@/lib/i18n";
 
 type TabKey = "trade" | "chart" | "info" | "outcomes";
 
@@ -83,12 +84,13 @@ export function PredictionSideRail({
   isMultiOutcome,
 }: PredictionSideRailProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("trade");
+  const tTrading = useTranslations("trading");
 
   const tabs = [
-    { key: "trade", icon: ArrowLeftRight, label: "交易" },
-    { key: "chart", icon: BarChart3, label: "图表" },
-    ...(isMultiOutcome ? [{ key: "outcomes", icon: List, label: "选项" }] : []),
-    { key: "info", icon: Info, label: "详情" },
+    { key: "trade", icon: ArrowLeftRight, label: tTrading("tabTrade") },
+    { key: "chart", icon: BarChart3, label: tTrading("tabChart") },
+    ...(isMultiOutcome ? [{ key: "outcomes", icon: List, label: tTrading("tabOutcomes") }] : []),
+    { key: "info", icon: Info, label: tTrading("tabInfo") },
   ] as const;
 
   return (

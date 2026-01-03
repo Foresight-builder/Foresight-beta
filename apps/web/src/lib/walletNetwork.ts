@@ -1,8 +1,11 @@
 "use client";
 import { ethers } from "ethers";
+import { t } from "./i18n";
 
 export async function switchNetwork(provider: any, chainId: number): Promise<void> {
-  if (!provider) throw new Error("Wallet provider not found");
+  if (!provider) {
+    throw new Error(t("errors.wallet.providerUnavailable"));
+  }
 
   const chainIdHex = "0x" + chainId.toString(16);
 
@@ -53,13 +56,14 @@ export async function switchNetwork(provider: any, chainId: number): Promise<voi
             params: [{ chainId: chainIdHex }],
           });
         } catch (addError: any) {
-          throw new Error("添加网络失败: " + (addError.message || "未知错误"));
+          console.error("[Wallet] Failed to add network:", addError);
+          throw new Error(t("errors.wallet.addNetworkFailed"));
         }
       } else {
-        throw new Error("请在钱包中添加该网络");
+        throw new Error(t("errors.wallet.networkNotConfigured"));
       }
     } else if (switchError.code === 4001) {
-      throw new Error("用户取消了切换网络");
+      throw new Error(t("errors.wallet.switchRejected"));
     } else {
       throw switchError;
     }
