@@ -106,7 +106,7 @@ export default function ForumPage() {
                         user?.email || tForum("guestFallback")
                       )}&backgroundColor=e9d5ff`
                 }
-                alt="Avatar"
+                alt={tForum("sidebarSubtitle")}
                 loading="lazy"
                 className="w-full h-full object-cover rounded-lg"
               />

@@ -1,11 +1,28 @@
 import type { Locale } from "../i18n-config";
-import { defaultLocale } from "../i18n-config";
+import { defaultLocale, locales } from "../i18n-config";
 
 type LocaleInput = Locale | string | null | undefined;
 
 function normalizeLocale(locale: LocaleInput): string {
   if (!locale) return defaultLocale;
-  return String(locale);
+  const raw = String(locale);
+  if ((locales as readonly string[]).includes(raw as Locale)) {
+    return raw;
+  }
+  const lower = raw.toLowerCase();
+  if (lower === "zh" || lower.startsWith("zh-")) {
+    return "zh-CN";
+  }
+  if (lower === "en" || lower.startsWith("en-")) {
+    return "en";
+  }
+  if (lower === "es" || lower.startsWith("es-")) {
+    return "es";
+  }
+  if (lower === "ko" || lower.startsWith("ko-")) {
+    return "ko";
+  }
+  return defaultLocale;
 }
 
 export function formatDate(
