@@ -3,9 +3,10 @@ import type { ThreadView } from "../useProposalDetail";
 export function buildProposalJsonLd(thread: ThreadView) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   const url = `${baseUrl}/proposals/${thread.id}`;
-  const title = thread.title || "Foresight 提案";
+  const title = thread.title || "Foresight Proposal";
   const rawBody =
-    thread.content || "Foresight 提案广场中的治理或预测市场提案讨论，用于协作设计和评估新市场。";
+    thread.content ||
+    "Governance or prediction market proposal discussion in the Foresight Proposals Square, used to collaboratively design and evaluate new markets.";
   const body = rawBody.length > 480 ? rawBody.slice(0, 477) + "..." : rawBody;
   const commentsCount = Array.isArray(thread.comments) ? thread.comments.length : 0;
   const createdAt = thread.created_at;
@@ -19,10 +20,10 @@ export function buildProposalJsonLd(thread: ThreadView) {
     ...(updatedAt ? { dateModified: updatedAt } : {}),
     url,
     mainEntityOfPage: url,
-    inLanguage: "zh-CN",
+    inLanguage: "en",
     author: {
       "@type": "Person",
-      name: thread.user_id ? String(thread.user_id) : "Foresight User",
+      name: thread.user_id ? String(thread.user_id) : "Foresight user",
     },
     interactionStatistic: {
       "@type": "InteractionCounter",
@@ -48,19 +49,19 @@ export function buildProposalBreadcrumbJsonLd(thread: ThreadView) {
       {
         "@type": "ListItem",
         position: 1,
-        name: "首页",
+        name: "Home",
         item: baseUrl + "/",
       },
       {
         "@type": "ListItem",
         position: 2,
-        name: "提案广场",
+        name: "Proposals Square",
         item: baseUrl + "/proposals",
       },
       {
         "@type": "ListItem",
         position: 3,
-        name: thread.title || "提案详情",
+        name: thread.title || "Proposal details",
         item: `${baseUrl}/proposals/${thread.id}`,
       },
     ],

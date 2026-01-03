@@ -179,17 +179,17 @@ export function CheckinModal({
                 </div>
                 <div className="text-4xl mb-4 filter drop-shadow-lg">{theme.emoji}</div>
                 <h3 className="text-white font-black text-xl leading-tight tracking-tight drop-shadow-sm hidden md:block">
-                  打卡时刻
+                  {tFlags("checkin.sideTitle")}
                 </h3>
               </motion.div>
 
               <div className="relative z-10 hidden md:block">
                 <p className="text-[10px] text-white/80 font-black uppercase tracking-[0.2em] leading-relaxed">
-                  你已经在
+                  {tFlags("checkin.sidePrefix")}
                   <br />
                   <span className="text-white text-xs">“{flag.title}”</span>
                   <br />
-                  的路上坚持了很久啦！
+                  {tFlags("checkin.sideSuffix")}
                 </p>
               </div>
 

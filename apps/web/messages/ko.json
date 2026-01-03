@@ -1419,7 +1419,10 @@
       "imagePlaceholder": "이 소중한 순간을 담을 이미지 링크 붙여넣기",
       "cancel": "나중에",
       "submit": "진행 상황 기록 ✨",
-      "submitLoading": "노력을 타임머신에 담는 중..."
+      "submitLoading": "노력을 타임머신에 담는 중...",
+      "sideTitle": "체크인 순간",
+      "sidePrefix": "이미 \"",
+      "sideSuffix": "\" 여정을 꽤 오래 이어오고 있어요!"
     },
     "history": {
       "title": "도전 기록",

@@ -1265,12 +1265,29 @@
       "imagePlaceholder": "Pega el enlace de una foto para congelar este momento",
       "cancel": "En otro momento",
       "submit": "Registrar mi progreso ✨",
-      "submitLoading": "Guardando tu esfuerzo en la máquina del tiempo..."
+      "submitLoading": "Guardando tu esfuerzo en la máquina del tiempo...",
+      "sideTitle": "Momento de check-in",
+      "sidePrefix": "Ya llevas mucho tiempo avanzando en",
+      "sideSuffix": "."
     },
     "history": {
       "title": "Historial del reto",
       "witnessLabel": "Testigo",
       "empty": "Aún no hay registros de check-in",
+      "intro": {
+        "witness": "Revisa con cuidado cada check-in; tu decisión determina si este reto se considera completado.",
+        "default": "Repasa cada paso y observa cómo se acumula tu constancia."
+      },
+      "labels": {
+        "currentWitnessTask": "Tarea de supervisión actual",
+        "challengeTopic": "Tema del reto",
+        "initiator": "Creador",
+        "challengeDuration": "Período del reto",
+        "successCondition": "Condición de éxito"
+      },
+      "successCondition": {
+        "default": "Este reto se considera exitoso cuando al menos 10 días de check-in han sido aprobados y los días aprobados representan al menos el 80% de todo el período del reto."
+      },
       "actions": {
         "approve": "Aprobar",
         "reject": "Rechazar"
@@ -1491,6 +1508,19 @@
         "title": "Aún no tienes seguidores",
         "description": "¡Comparte tus opiniones para atraer seguidores!"
       }
+    },
+    "wallet": {
+      "connectFirst": "Conecta tu billetera primero",
+      "addressCopied": "Dirección copiada",
+      "copyAddress": "No se pudo copiar la dirección, inténtalo de nuevo."
+    },
+    "follow": {
+      "followSuccess": "Seguido correctamente",
+      "unfollowSuccess": "Has dejado de seguir",
+      "failed": "La acción ha fallado",
+      "loading": "Procesando...",
+      "unfollowButton": "Dejar de seguir",
+      "followTraderButton": "Seguir a este trader"
     }
   },
   "onboarding": {
@@ -1645,7 +1675,11 @@
   "notifications": {
     "fallbackWitnessInviteTitle": "Invitación a reto",
     "fallbackCheckinReviewTitle": "Actualización de revisión de check-in",
-    "fallbackGenericTitle": "Notificaciones"
+    "fallbackGenericTitle": "Notificaciones",
+    "centerTitle": "Centro de notificaciones",
+    "ariaLabel": "Notificaciones",
+    "empty": "Sin notificaciones",
+    "summary": "Total de {count} avisos"
   },
   "adminRoles": {
     "title": "Gestión de roles",

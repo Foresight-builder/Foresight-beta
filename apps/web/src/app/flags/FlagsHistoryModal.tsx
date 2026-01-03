@@ -61,14 +61,14 @@ export function FlagsHistoryModal({
     const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
     const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
-    challengeDurationText = `${totalDays} 天`;
+    const daysLabel = tFlags("card.time.daysLabel");
+    challengeDurationText = `${totalDays} ${daysLabel}`;
     const format = (d: Date) =>
       `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
     challengeRangeText = `${format(startDay)} - ${format(endDay)}`;
   }
 
-  const successConditionText =
-    "至少有 10 天打卡记录被你判定为通过，并且通过天数占整个挑战周期的 80% 以上时，本次挑战记为成功。";
+  const successConditionText = tFlags("history.successCondition.default");
 
   return (
     <AnimatePresence>
@@ -145,8 +145,8 @@ export function FlagsHistoryModal({
                       }`}
                     >
                       {isWitnessMode
-                        ? "请仔细审核每一次打卡内容，你的判断将直接影响这次挑战是否被视为完成。"
-                        : "回顾每一步脚印，见证坚持的力量。"}
+                        ? tFlags("history.intro.witness")
+                        : tFlags("history.intro.default")}
                     </p>
                   </motion.div>
                 </div>
@@ -158,7 +158,9 @@ export function FlagsHistoryModal({
                         isWitnessMode ? "text-amber-900/50" : "text-purple-900/50"
                       }`}
                     >
-                      {isWitnessMode ? "当前监督任务" : "挑战主题"}
+                      {isWitnessMode
+                        ? tFlags("history.labels.currentWitnessTask")
+                        : tFlags("history.labels.challengeTopic")}
                     </div>
                     <h4
                       className={`font-bold line-clamp-2 ${
@@ -183,7 +185,9 @@ export function FlagsHistoryModal({
                         }`}
                       >
                         <Users className="w-3 h-3" />
-                        <span>发起人: {formatAddress(flag.user_id)}</span>
+                        <span>
+                          {tFlags("history.labels.initiator")}: {formatAddress(flag.user_id)}
+                        </span>
                       </div>
                       {flag.verification_type === "witness" && flag.witness_id && (
                         <div
@@ -205,7 +209,7 @@ export function FlagsHistoryModal({
                         >
                           <Clock className="w-3 h-3" />
                           <span>
-                            挑战周期: {challengeDurationText}
+                            {tFlags("history.labels.challengeDuration")}: {challengeDurationText}
                             {challengeRangeText ? ` · ${challengeRangeText}` : ""}
                           </span>
                         </div>
@@ -216,7 +220,9 @@ export function FlagsHistoryModal({
                         }`}
                       >
                         <CheckCircle2 className="w-3 h-3 mt-[2px]" />
-                        <span>成功条件: {successConditionText}</span>
+                        <span>
+                          {tFlags("history.labels.successCondition")}: {successConditionText}
+                        </span>
                       </div>
                     </div>
                   </div>

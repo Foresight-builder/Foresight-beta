@@ -26,6 +26,7 @@ export type FlagItem = {
   created_at: string;
   user_id: string;
   witness_id?: string;
+  template_id?: string;
 };
 
 interface FlagCardProps {

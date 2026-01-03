@@ -91,7 +91,7 @@ export function ProfilePageView({
   // 处理关注/取消关注
   const handleFollowToggle = async () => {
     if (!myAccount) {
-      toast.error(tProfile("wallet.connectFirst") || "请先连接钱包");
+      toast.error(tProfile("wallet.connectFirst"));
       return;
     }
 
@@ -107,10 +107,12 @@ export function ProfilePageView({
       if (data.success) {
         setIsFollowed(data.followed);
         setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
-        toast.success(data.followed ? "关注成功" : "已取消关注");
+        toast.success(
+          data.followed ? tProfile("follow.followSuccess") : tProfile("follow.unfollowSuccess")
+        );
       }
     } catch (error) {
-      toast.error("操作失败");
+      toast.error(tProfile("follow.failed"));
     } finally {
       setIsFollowLoading(false);
     }
@@ -189,7 +191,7 @@ export function ProfilePageView({
                   <div className="cursor-pointer" onClick={() => setActiveTab("followers")}>
                     <SidebarStatCard
                       value={followersCount}
-                      label={tProfile("sidebar.stats.followers") || "粉丝"}
+                      label={tProfile("sidebar.stats.followers")}
                       icon={Users}
                       color="emerald"
                     />
@@ -221,7 +223,11 @@ export function ProfilePageView({
                     ) : (
                       <UserPlus className="w-4 h-4" />
                     )}
-                    {isFollowLoading ? "处理中..." : isFollowed ? "取消关注" : "关注该交易员"}
+                    {isFollowLoading
+                      ? tProfile("follow.loading")
+                      : isFollowed
+                        ? tProfile("follow.unfollowButton")
+                        : tProfile("follow.followTraderButton")}
                   </button>
                 )}
               </div>

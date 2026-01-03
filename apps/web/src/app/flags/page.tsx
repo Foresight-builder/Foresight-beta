@@ -6,12 +6,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FlagItem } from "@/components/FlagCard";
 import { OFFICIAL_STICKERS, type StickerItem } from "@/components/StickerRevealModal";
 import { toast } from "@/lib/toast";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { useFlagsData } from "./useFlagsData";
 import { buildOfficialTemplates, defaultConfigFor, OfficialTemplate } from "./flagsConfig";
 import { FlagsPageView } from "./FlagsPageView";
 
-function buildFlagsJsonLd(tFlags: (key: string) => string) {
+function buildFlagsJsonLd(tFlags: (key: string) => string, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   return {
     "@context": "https://schema.org",
@@ -21,7 +21,7 @@ function buildFlagsJsonLd(tFlags: (key: string) => string) {
         name: tFlags("page.jsonLdName"),
         url: baseUrl + "/flags",
         description: tFlags("page.jsonLdDescription"),
-        inLanguage: "zh-CN",
+        inLanguage: locale,
       },
       {
         "@type": "BreadcrumbList",
@@ -48,6 +48,7 @@ export default function FlagsPage() {
   const { account } = useWallet();
   const { user } = useAuth();
   const tFlags = useTranslations("flags");
+  const { locale } = useLocale();
   const officialTemplates = buildOfficialTemplates(tFlags);
   const [createOpen, setCreateOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -294,7 +295,7 @@ export default function FlagsPage() {
     openHistory(tasks[0]);
   };
 
-  const jsonLd = buildFlagsJsonLd(tFlags);
+  const jsonLd = buildFlagsJsonLd(tFlags, locale);
 
   return (
     <FlagsPageView

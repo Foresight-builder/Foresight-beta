@@ -4,19 +4,52 @@ import { CardListSkeleton } from "@/components/skeletons";
 import { getPredictionsList } from "../api/predictions/_lib/getPredictionsList";
 import TrendingClient from "./TrendingClient";
 import type { Prediction } from "@/features/trending/trendingModel";
+import zhCN from "../../messages/zh-CN.json";
+import en from "../../messages/en.json";
+import es from "../../messages/es.json";
+import ko from "../../messages/ko.json";
+import { defaultLocale, locales, type Locale } from "../../i18n-config";
+import { cookies } from "next/headers";
 
 export const revalidate = 60;
 
-function buildTrendingJsonLd(predictions: Prediction[]) {
+type TrendingMessages = (typeof zhCN)["trending"];
+
+const trendingMessages: Record<Locale, TrendingMessages> = {
+  "zh-CN": zhCN.trending,
+  en: en.trending as unknown as TrendingMessages,
+  es: es.trending as unknown as TrendingMessages,
+  ko: ko.trending as unknown as TrendingMessages,
+};
+
+async function getCurrentLocale(): Promise<Locale> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  if (raw && locales.includes(raw as Locale)) {
+    return raw as Locale;
+  }
+  return defaultLocale;
+}
+
+function buildTrendingJsonLd(predictions: Prediction[], locale: Locale) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const messages = trendingMessages[locale] || trendingMessages[defaultLocale];
+  const name =
+    (messages as any).sections?.hotEvents ??
+    (messages as any).sections?.popularCategories ??
+    "Foresight Trending prediction markets";
+  const description =
+    (messages as any).platformDescription ??
+    "Discover and trade trending on-chain prediction markets on Foresight.";
+
   const items = predictions.slice(0, 50).map((p, index) => {
     const id = p.id;
     const url = `${baseUrl}/prediction/${id}`;
     const description =
       (p as any).description ||
       (p as any).criteria ||
-      "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
-    const name = (p as any).title || "Foresight 预测市场事件";
+      "On-chain prediction market event on Foresight.";
+    const name = (p as any).title || "Foresight prediction market event";
     return {
       "@type": "ListItem",
       position: index + 1,
@@ -31,15 +64,14 @@ function buildTrendingJsonLd(predictions: Prediction[]) {
     "@graph": [
       {
         "@type": "CollectionPage",
-        name: "Foresight 热门预测市场",
+        name,
         url: baseUrl + "/trending",
-        description:
-          "在 Foresight 热门预测市场中参与链上预测事件交易，发现高赔率机会，并与提案广场、成就 Flags、预测论坛和排行榜联动。",
-        inLanguage: "zh-CN",
+        description,
+        inLanguage: locale,
       },
       {
         "@type": "ItemList",
-        name: "Foresight 热门预测市场",
+        name,
         itemListOrder: "https://schema.org/ItemListOrderDescending",
         url: baseUrl + "/trending",
         itemListElement: items,
@@ -50,13 +82,13 @@ function buildTrendingJsonLd(predictions: Prediction[]) {
           {
             "@type": "ListItem",
             position: 1,
-            name: "首页",
+            name: "Foresight",
             item: baseUrl + "/",
           },
           {
             "@type": "ListItem",
             position: 2,
-            name: "热门预测",
+            name,
             item: baseUrl + "/trending",
           },
         ],
@@ -84,7 +116,8 @@ async function getPredictions(): Promise<Prediction[]> {
 
 export default async function Page() {
   const predictions = await getPredictions();
-  const jsonLd = buildTrendingJsonLd(predictions);
+  const locale = await getCurrentLocale();
+  const jsonLd = buildTrendingJsonLd(predictions, locale);
 
   return (
     <>

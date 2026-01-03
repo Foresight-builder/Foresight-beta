@@ -34,8 +34,8 @@ export function FollowersTab({ address }: { address: string }) {
     return (
       <EmptyState
         icon={Users}
-        title={tProfile("followers.empty.title") || "暂无粉丝"}
-        description={tProfile("followers.empty.description") || "快去分享你的观点来吸引粉丝吧！"}
+        title={tProfile("followers.empty.title")}
+        description={tProfile("followers.empty.description")}
       />
     );
   }
@@ -44,7 +44,7 @@ export function FollowersTab({ address }: { address: string }) {
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <Users className="w-5 h-5 text-emerald-500" />
-        {tProfile("sidebar.stats.followers") || "粉丝"}
+        {tProfile("sidebar.stats.followers")}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map((user) => (

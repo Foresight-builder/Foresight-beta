@@ -50,15 +50,16 @@ export async function generateMetadata(
 
   if (!thread) {
     return {
-      title: "提案未找到",
-      description: "请求的提案不存在或已被删除。",
+      title: "Proposal not found",
+      description: "The requested proposal does not exist or has been deleted.",
     };
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
-  const title = `${thread.title || "Foresight 提案"} | Foresight 提案广场`;
+  const title = `${thread.title || "Foresight Proposal"} | Foresight Proposals Square`;
   const rawDescription =
-    thread.content || "Foresight 提案广场中的治理或预测市场提案讨论，用于协作设计和评估新市场。";
+    thread.content ||
+    "Governance or prediction market proposal discussion in the Foresight Proposals Square, used to collaboratively design and evaluate new markets.";
   const description =
     rawDescription.length > 160 ? rawDescription.slice(0, 157) + "..." : rawDescription;
 
@@ -66,7 +67,7 @@ export async function generateMetadata(
   if (thread.category) {
     keywords.push(String(thread.category));
   }
-  keywords.push("提案", "治理", "预测市场", "Foresight");
+  keywords.push("proposal", "governance", "prediction market", "Foresight");
 
   const createdTime = thread.created_at || undefined;
   const updatedTime = thread.updated_at || createdTime || undefined;

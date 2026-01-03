@@ -1,19 +1,30 @@
 import { Metadata } from "next";
 import { t } from "@/lib/i18n";
+import { cookies } from "next/headers";
+import { locales, defaultLocale, type Locale } from "../../i18n-config";
 
-export const metadata: Metadata = {
-  title: "Foresight 全站搜索 - 预测市场与提案快速发现",
-  description:
-    "通过 Foresight 全站搜索快速发现热门预测市场、社区提案与讨论内容，用关键词联通事件、治理和策略研究。",
-  alternates: {
-    canonical: "/search",
-    languages: {
-      "zh-CN": "/search",
-      "en-US": "/search",
-      "es-ES": "/search",
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const raw = store.get("preferred-language")?.value;
+  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+
+  const title = t("market.searchPage.metaTitle", locale);
+  const description = t("market.searchPage.metaDescription", locale);
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/search",
+      languages: {
+        "zh-CN": "/search",
+        "en-US": "/search",
+        "es-ES": "/search",
+        "ko-KR": "/search",
+      },
     },
-  },
-};
+  };
+}
 
 type SearchParams = {
   q?: string;
@@ -28,15 +39,16 @@ export default async function SearchPage({
   const query = resolved?.q?.trim() || "";
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
+  const jsonLdLocale: Locale = defaultLocale;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "SearchResultsPage",
-        name: t("market.searchPage.jsonLdName"),
+        name: t("market.searchPage.jsonLdName", jsonLdLocale),
         url: baseUrl + "/search",
-        description: t("market.searchPage.jsonLdDescription"),
-        inLanguage: "zh-CN",
+        description: t("market.searchPage.jsonLdDescription", jsonLdLocale),
+        inLanguage: jsonLdLocale,
       },
     ],
   };

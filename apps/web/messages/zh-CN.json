@@ -1265,12 +1265,29 @@
       "imagePlaceholder": "粘贴图片链接，记录下这个珍贵的瞬间吧",
       "cancel": "下次再说",
       "submit": "记录我的进步 ✨",
-      "submitLoading": "正在把努力存进时光机..."
+      "submitLoading": "正在把努力存进时光机...",
+      "sideTitle": "打卡时刻",
+      "sidePrefix": "你已经在",
+      "sideSuffix": "的路上坚持了很久啦！"
     },
     "history": {
       "title": "挑战记录",
       "witnessLabel": "监督人",
       "empty": "暂无打卡记录",
+      "intro": {
+        "witness": "请仔细审核每一次打卡内容，你的判断将直接影响这次挑战是否被视为完成。",
+        "default": "回顾每一步脚印，见证坚持的力量。"
+      },
+      "labels": {
+        "currentWitnessTask": "当前监督任务",
+        "challengeTopic": "挑战主题",
+        "initiator": "发起人",
+        "challengeDuration": "挑战周期",
+        "successCondition": "成功条件"
+      },
+      "successCondition": {
+        "default": "至少有 10 天打卡记录被你判定为通过，并且通过天数占整个挑战周期的 80% 以上时，本次挑战记为成功。"
+      },
       "actions": {
         "approve": "通过",
         "reject": "拒绝"
@@ -1491,6 +1508,19 @@
         "title": "暂无粉丝",
         "description": "快去分享你的观点来吸引粉丝吧！"
       }
+    },
+    "wallet": {
+      "connectFirst": "请先连接钱包",
+      "addressCopied": "地址已复制",
+      "copyAddress": "复制地址失败，请稍后重试。"
+    },
+    "follow": {
+      "followSuccess": "关注成功",
+      "unfollowSuccess": "已取消关注",
+      "failed": "操作失败",
+      "loading": "处理中...",
+      "unfollowButton": "取消关注",
+      "followTraderButton": "关注该交易员"
     }
   },
   "onboarding": {
@@ -1667,7 +1697,11 @@
   "notifications": {
     "fallbackWitnessInviteTitle": "挑战邀请",
     "fallbackCheckinReviewTitle": "打卡审核更新",
-    "fallbackGenericTitle": "通知"
+    "fallbackGenericTitle": "通知",
+    "centerTitle": "通知中心",
+    "ariaLabel": "通知",
+    "empty": "暂无通知",
+    "summary": "共 {count} 条提醒"
   },
   "adminRoles": {
     "title": "角色管理",

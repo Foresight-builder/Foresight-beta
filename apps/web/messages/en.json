@@ -1265,12 +1265,29 @@
       "imagePlaceholder": "Paste an image link to freeze this precious moment",
       "cancel": "Maybe later",
       "submit": "Log my progress ✨",
-      "submitLoading": "Tucking your effort into the time machine..."
+      "submitLoading": "Tucking your effort into the time machine...",
+      "sideTitle": "Check-in moment",
+      "sidePrefix": "You’ve already stayed on the path of",
+      "sideSuffix": "for quite a while now!"
     },
     "history": {
       "title": "Challenge History",
       "witnessLabel": "Witness",
       "empty": "No check-ins yet",
+      "intro": {
+        "witness": "Carefully review each check-in. Your judgment directly decides whether this challenge is regarded as completed.",
+        "default": "Look back on every step and see how your persistence adds up."
+      },
+      "labels": {
+        "currentWitnessTask": "Current review task",
+        "challengeTopic": "Challenge topic",
+        "initiator": "Creator",
+        "challengeDuration": "Challenge period",
+        "successCondition": "Success condition"
+      },
+      "successCondition": {
+        "default": "This challenge counts as successful when at least 10 check-in days are approved and approved days account for at least 80% of the entire challenge period."
+      },
       "actions": {
         "approve": "Approve",
         "reject": "Reject"
@@ -1491,6 +1508,19 @@
         "title": "No followers yet",
         "description": "Share your insights to attract followers!"
       }
+    },
+    "wallet": {
+      "connectFirst": "Please connect your wallet first",
+      "addressCopied": "Address copied",
+      "copyAddress": "Failed to copy address, please try again."
+    },
+    "follow": {
+      "followSuccess": "Followed successfully",
+      "unfollowSuccess": "Unfollowed",
+      "failed": "Action failed",
+      "loading": "Processing...",
+      "unfollowButton": "Unfollow",
+      "followTraderButton": "Follow this trader"
     }
   },
   "onboarding": {
@@ -1667,7 +1697,11 @@
   "notifications": {
     "fallbackWitnessInviteTitle": "Challenge invite",
     "fallbackCheckinReviewTitle": "Check-in review update",
-    "fallbackGenericTitle": "Notifications"
+    "fallbackGenericTitle": "Notifications",
+    "centerTitle": "Notifications",
+    "ariaLabel": "Notifications",
+    "empty": "No notifications",
+    "summary": "Total {count} alerts"
   },
   "adminRoles": {
     "title": "Role Management",

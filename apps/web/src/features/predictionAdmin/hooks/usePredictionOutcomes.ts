@@ -6,7 +6,7 @@ import type { Outcome } from "../types";
 
 export function usePredictionOutcomes(setOutcomes: Dispatch<SetStateAction<Outcome[]>>) {
   const onAddOutcome = useCallback(() => {
-    setOutcomes((previous) => [...previous, { label: `选项${previous.length}` }]);
+    setOutcomes((previous) => [...previous, { label: "" }]);
   }, [setOutcomes]);
 
   const onDelOutcome = useCallback(
