@@ -85,11 +85,14 @@ export async function fetchUserOpenOrdersApi(
 ) {
   const q = `contract=${contract}&chainId=${chainId}&marketKey=${encodeURIComponent(
     marketKey
-  )}&maker=${maker}&status=open`;
+  )}&maker=${maker}&status=all`;
   const res = await fetch(`${API_BASE}/orderbook/orders?${q}`);
   const json = await safeJson(res);
   if ((json as any).success && (json as any).data) {
-    return (json as any).data;
+    const rows = (json as any).data as any[];
+    return rows.filter(
+      (row) => row && (row.status === "open" || row.status === "partially_filled")
+    );
   }
   return [];
 }

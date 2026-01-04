@@ -108,6 +108,403 @@ describe("MatchingEngine", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("minimum");
     });
+
+    it("should reject order with price not aligned to tick size", async () => {
+      const engineWithTick = new MatchingEngine({
+        makerFeeBps: 0,
+        takerFeeBps: 50,
+        minOrderAmount: 1_000_000_000_000n,
+        maxOrderAmount: 1_000_000_000_000_000_000_000n,
+        minPrice: 0n,
+        maxPrice: 1_000_000n,
+        priceTickSize: 100000n,
+      });
+
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 505000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "67890",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+
+      const result = await engineWithTick.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("tick size");
+
+      await engineWithTick.shutdown();
+    });
+
+    it("should reject order with invalid tif", async () => {
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "99999",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTC" as any,
+      };
+
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("time in force");
+    });
+
+    it("should reject order when post-only combined with IOC/FOK", async () => {
+      const common: Omit<OrderInput, "tif"> = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "88888",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        postOnly: true,
+      };
+
+      const iocResult = await engine.submitOrder({ ...common, tif: "IOC" });
+      expect(iocResult.success).toBe(false);
+      expect(iocResult.error).toContain("Post-only");
+
+      const fokResult = await engine.submitOrder({ ...common, tif: "FOK" });
+      expect(fokResult.success).toBe(false);
+      expect(fokResult.error).toContain("Post-only");
+    });
+  });
+
+  describe("Time in force and post-only behavior", () => {
+    it("should place post-only order when it does not cross", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingAsk: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 600000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingAsk);
+
+      const postOnlyOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "po-1",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        postOnly: true,
+      };
+
+      const result = await engine.submitOrder(postOnlyOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(0);
+      expect(result.remainingOrder).not.toBeNull();
+      expect(book.getOrderCount()).toBe(2);
+    });
+
+    it("should reject post-only order that would execute immediately", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingAsk: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingAsk);
+
+      const postOnlyOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "po-2",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        postOnly: true,
+      };
+
+      const result = await engine.submitOrder(postOnlyOrder);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Post-only");
+      expect(book.getOrderCount()).toBe(1);
+    });
+
+    it("should execute IOC order and not leave resting quantity", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingAsk: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingAsk);
+
+      const iocOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 600000n,
+        amount: 2_000_000_000_000_000_000n,
+        salt: "ioc-1",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "IOC",
+      };
+
+      const result = await engine.submitOrder(iocOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(1);
+      expect(result.matches[0].matchedAmount).toBe(1_000_000_000_000_000_000n);
+      expect(result.remainingOrder).toBeNull();
+      expect(book.getOrderCount()).toBe(0);
+    });
+
+    it("should cancel unfilled IOC order without placing it on book", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const iocOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "ioc-2",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "IOC",
+      };
+
+      const result = await engine.submitOrder(iocOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(0);
+      expect(result.remainingOrder).toBeNull();
+      expect(book.getOrderCount()).toBe(0);
+    });
+
+    it("should fully execute FOK order when liquidity is sufficient", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const ask1: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      const ask2: Order = createTestOrder({
+        id: "ask-2",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(ask1);
+      book.addOrder(ask2);
+
+      const fokOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 600000n,
+        amount: 2_000_000_000_000_000_000n,
+        salt: "fok-1",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "FOK",
+      };
+
+      const result = await engine.submitOrder(fokOrder);
+      expect(result.success).toBe(true);
+      const totalMatched = result.matches.reduce(
+        (acc, m) => acc + m.matchedAmount,
+        0n
+      );
+      expect(totalMatched).toBe(2_000_000_000_000_000_000n);
+      expect(result.remainingOrder).toBeNull();
+      expect(book.getOrderCount()).toBe(0);
+    });
+
+    it("should not execute FOK order when liquidity is insufficient", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const ask1: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(ask1);
+
+      const fokOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 600000n,
+        amount: 2_000_000_000_000_000_000n,
+        salt: "fok-2",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "FOK",
+      };
+
+      const result = await engine.submitOrder(fokOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(0);
+      expect(result.remainingOrder).toBeNull();
+      expect(book.getOrderCount()).toBe(1);
+    });
+  });
+
+  describe("Risk control and exposure limits", () => {
+    it("should reject buy order when market long exposure exceeds limit", async () => {
+      const engineWithLimit = new MatchingEngine({
+        makerFeeBps: 0,
+        takerFeeBps: 50,
+        minOrderAmount: 1_000_000_000_000n,
+        maxOrderAmount: 1_000_000_000_000_000_000_000n,
+        maxMarketLongExposureUsdc: 1,
+      });
+
+      (engineWithLimit as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engineWithLimit as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engineWithLimit as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingBid: Order = createTestOrder({
+        id: "bid-1",
+        maker: "0x1234567890123456789012345678901234567890",
+        isBuy: true,
+        price: 600000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingBid);
+
+      const newBuyOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "risk-long-1",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+
+      const result = await engineWithLimit.submitOrder(newBuyOrder);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Market long exposure limit exceeded");
+
+      await engineWithLimit.shutdown();
+    });
+
+    it("should reject sell order when market short exposure exceeds limit", async () => {
+      const engineWithLimit = new MatchingEngine({
+        makerFeeBps: 0,
+        takerFeeBps: 50,
+        minOrderAmount: 1_000_000_000_000n,
+        maxOrderAmount: 1_000_000_000_000_000_000_000n,
+        maxMarketShortExposureUsdc: 1,
+      });
+
+      (engineWithLimit as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engineWithLimit as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engineWithLimit as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingAsk: Order = createTestOrder({
+        id: "ask-1",
+        maker: "0x1234567890123456789012345678901234567890",
+        isBuy: false,
+        price: 600000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingAsk);
+
+      const newSellOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: false,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "risk-short-1",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+
+      const result = await engineWithLimit.submitOrder(newSellOrder);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Market short exposure limit exceeded");
+
+      await engineWithLimit.shutdown();
+    });
   });
 });
 
@@ -341,4 +738,3 @@ function createTestOrder(overrides: Partial<Order> = {}): Order {
     createdAt: overrides.createdAt ?? Date.now(),
   };
 }
-

@@ -111,6 +111,34 @@ export class MatchingEngine extends EventEmitter {
       // 2. 创建内部订单对象
       const order = this.createOrder(orderInput);
 
+      if (order.postOnly) {
+        const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+        while (true) {
+          const counterOrder = book.getBestCounterOrder(order.isBuy);
+          if (!counterOrder) break;
+          if (this.isExpired(counterOrder)) {
+            book.removeOrder(counterOrder.id);
+            await this.updateOrderStatus(counterOrder.id, "expired");
+            continue;
+          }
+          if (this.pricesMatch(order, counterOrder)) {
+            return {
+              success: false,
+              matches: [],
+              remainingOrder: null,
+              error: "Post-only order would be immediately executed",
+            };
+          }
+          break;
+        }
+        await this.addToOrderBook(order);
+        return {
+          success: true,
+          matches: [],
+          remainingOrder: order,
+        };
+      }
+
       // 3. 尝试撮合
       const matchResult = await this.matchOrder(order);
 
@@ -151,6 +179,32 @@ export class MatchingEngine extends EventEmitter {
     );
 
     let order = { ...incomingOrder };
+
+    if (order.tif === "FOK") {
+      const depth = book.getDepthSnapshot(1000);
+      let required = order.amount;
+      if (order.isBuy) {
+        for (const level of depth.asks) {
+          if (order.price < level.price) break;
+          required -= level.totalQuantity;
+          if (required <= 0n) break;
+        }
+      } else {
+        for (const level of depth.bids) {
+          if (order.price > level.price) break;
+          required -= level.totalQuantity;
+          if (required <= 0n) break;
+        }
+      }
+      if (required > 0n) {
+        order.status = "rejected";
+        return {
+          success: true,
+          matches,
+          remainingOrder: null,
+        };
+      }
+    }
 
     while (order.remainingAmount > 0n) {
       // 获取对手盘最优订单
@@ -247,20 +301,33 @@ export class MatchingEngine extends EventEmitter {
       this.emitDepthUpdate(book);
     }
 
-    // 更新 incoming order 状态
-    if (order.remainingAmount === 0n) {
-      order.status = "filled";
-    } else if (order.remainingAmount < incomingOrder.amount) {
-      order.status = "partially_filled";
+    if (order.tif === "IOC" || order.tif === "FOK") {
+      if (order.remainingAmount === 0n) {
+        order.status = "filled";
+      } else if (matches.length === 0) {
+        order.status = "canceled";
+      } else {
+        order.status = "partially_filled";
+      }
+      return {
+        success: true,
+        matches,
+        remainingOrder: null,
+      };
     } else {
-      order.status = "open";
+      if (order.remainingAmount === 0n) {
+        order.status = "filled";
+      } else if (order.remainingAmount < incomingOrder.amount) {
+        order.status = "partially_filled";
+      } else {
+        order.status = "open";
+      }
+      return {
+        success: true,
+        matches,
+        remainingOrder: order.remainingAmount > 0n ? order : null,
+      };
     }
-
-    return {
-      success: true,
-      matches,
-      remainingOrder: order.remainingAmount > 0n ? order : null,
-    };
   }
 
   /**
@@ -360,8 +427,13 @@ export class MatchingEngine extends EventEmitter {
       return { valid: false, error: "Invalid maker address" };
     }
 
-    if (input.price <= 0n || input.price > 1_000_000n) {
-      return { valid: false, error: "Price must be between 0 and 1 USDC" };
+    if (input.price < this.config.minPrice || input.price > this.config.maxPrice) {
+      return { valid: false, error: "Price out of range" };
+    }
+
+    const tickOffset = input.price - this.config.minPrice;
+    if (tickOffset % this.config.priceTickSize !== 0n) {
+      return { valid: false, error: "Price not aligned to tick size" };
     }
 
     if (input.amount < this.config.minOrderAmount) {
@@ -370,6 +442,18 @@ export class MatchingEngine extends EventEmitter {
 
     if (input.amount > this.config.maxOrderAmount) {
       return { valid: false, error: "Amount exceeds maximum" };
+    }
+
+    if (input.tif && input.tif !== "IOC" && input.tif !== "FOK") {
+      return { valid: false, error: "Invalid time in force" };
+    }
+
+    if (input.postOnly && input.tif && (input.tif === "IOC" || input.tif === "FOK")) {
+      return { valid: false, error: "Post-only cannot be combined with IOC/FOK" };
+    }
+
+    if (input.expiry !== 0 && Math.floor(Date.now() / 1000) >= input.expiry) {
+      return { valid: false, error: "Order expired" };
     }
 
     // 2. 验证签名
@@ -384,7 +468,119 @@ export class MatchingEngine extends EventEmitter {
       return { valid: false, error: "Order with this salt already exists" };
     }
 
+    const riskCheck = await this.checkBalanceAndRisk(input);
+    if (!riskCheck.valid) {
+      return riskCheck;
+    }
+
     return { valid: true };
+  }
+
+  private async checkBalanceAndRisk(
+    input: OrderInput
+  ): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const makerAddress = input.maker.toLowerCase();
+
+      const book = this.bookManager.getBook(input.marketKey, input.outcomeIndex);
+      let marketLongUsdc = 0n;
+      let marketShortUsdc = 0n;
+
+      if (book) {
+        const snapshot = book.getDepthSnapshot(1000);
+        for (const level of snapshot.bids) {
+          for (const order of level.orders) {
+            if (order.maker === makerAddress) {
+              const notional = (order.remainingAmount * order.price) / BigInt(1e18);
+              marketLongUsdc += notional;
+            }
+          }
+        }
+        for (const level of snapshot.asks) {
+          for (const order of level.orders) {
+            if (order.maker === makerAddress) {
+              const notional = (order.remainingAmount * order.price) / BigInt(1e18);
+              marketShortUsdc += notional;
+            }
+          }
+        }
+      }
+
+      const orderCostUsdc = (input.amount * input.price) / BigInt(1e18);
+
+      if (this.config.maxMarketLongExposureUsdc && this.config.maxMarketLongExposureUsdc > 0) {
+        const limitUsdc = BigInt(
+          Math.floor(this.config.maxMarketLongExposureUsdc * 1e6)
+        );
+        const newLongExposure = marketLongUsdc + (input.isBuy ? orderCostUsdc : 0n);
+        if (newLongExposure > limitUsdc) {
+          return { valid: false, error: "Market long exposure limit exceeded" };
+        }
+      }
+
+      if (this.config.maxMarketShortExposureUsdc && this.config.maxMarketShortExposureUsdc > 0) {
+        const limitUsdc = BigInt(
+          Math.floor(this.config.maxMarketShortExposureUsdc * 1e6)
+        );
+        const newShortExposure = marketShortUsdc + (!input.isBuy ? orderCostUsdc : 0n);
+        if (newShortExposure > limitUsdc) {
+          return { valid: false, error: "Market short exposure limit exceeded" };
+        }
+      }
+
+      if (!supabaseAdmin) {
+        return { valid: true };
+      }
+
+      if (!input.isBuy) {
+        return { valid: true };
+      }
+
+      const { data: balanceRow } = await supabaseAdmin
+        .from("user_balances")
+        .select("balance")
+        .eq("user_address", makerAddress)
+        .maybeSingle();
+
+      let offchainBalanceUsdc = 0n;
+      if (balanceRow) {
+        const raw = (balanceRow as any).balance;
+        let numeric = 0;
+        if (typeof raw === "number") {
+          numeric = raw;
+        } else if (typeof raw === "string") {
+          const parsed = parseFloat(raw);
+          if (Number.isFinite(parsed)) {
+            numeric = parsed;
+          }
+        }
+        offchainBalanceUsdc = BigInt(Math.floor(numeric * 1e6));
+      }
+
+      const { data: openOrders } = await supabaseAdmin
+        .from("orders")
+        .select("price, remaining")
+        .eq("maker_address", makerAddress)
+        .in("status", ["open", "partially_filled"]);
+
+      let reservedUsdc = 0n;
+      for (const row of openOrders || []) {
+        const price = BigInt((row as any).price);
+        const remaining = BigInt((row as any).remaining);
+        reservedUsdc += (remaining * price) / BigInt(1e18);
+      }
+
+      const totalRequiredUsdc = reservedUsdc + orderCostUsdc;
+
+      if (totalRequiredUsdc > offchainBalanceUsdc) {
+        return { valid: false, error: "Insufficient balance" };
+      }
+
+      return { valid: true };
+    } catch (error: any) {
+      console.error("[MatchingEngine] Balance check failed", error);
+      return { valid: false, error: "Balance check failed" };
+    }
   }
 
   /**
@@ -455,6 +651,8 @@ export class MatchingEngine extends EventEmitter {
       sequence,
       status: "pending",
       createdAt: Date.now(),
+      tif: input.tif,
+      postOnly: input.postOnly,
     };
   }
 
@@ -735,6 +933,6 @@ export interface OrderInput {
   signature: string;
   chainId: number;
   verifyingContract: string;
+  tif?: "IOC" | "FOK";
+  postOnly?: boolean;
 }
-
-

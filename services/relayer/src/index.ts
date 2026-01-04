@@ -123,6 +123,8 @@ export const app = express();
 const matchingEngine = new MatchingEngine({
   makerFeeBps: Number(process.env.MAKER_FEE_BPS || "0"),
   takerFeeBps: Number(process.env.TAKER_FEE_BPS || "50"),
+  maxMarketLongExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_LONG_EXPOSURE_USDC || "0"),
+  maxMarketShortExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC || "0"),
 });
 
 const wsServer = new MarketWebSocketServer(
@@ -304,6 +306,8 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
       signature: String(body.signature || ""),
       chainId: Number(body.chainId || 0),
       verifyingContract: String(body.verifyingContract || body.contract || ""),
+      tif: body.order?.tif as "IOC" | "FOK" | undefined,
+      postOnly: Boolean(body.order?.postOnly),
     };
 
     // 提交到撮合引擎
@@ -314,6 +318,32 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
         success: false,
         message: result.error || "Order submission failed",
       });
+    }
+
+    const filledAmount = result.matches.reduce<bigint>(
+      (acc, m) => acc + m.matchedAmount,
+      0n
+    );
+
+    let status: string;
+    if (orderInput.tif === "FOK") {
+      status = filledAmount === orderInput.amount ? "filled" : "canceled";
+    } else if (orderInput.tif === "IOC") {
+      if (filledAmount === 0n) {
+        status = "canceled";
+      } else if (filledAmount < orderInput.amount) {
+        status = "partially_filled";
+      } else {
+        status = "filled";
+      }
+    } else {
+      if (!result.remainingOrder) {
+        status = "filled";
+      } else if (filledAmount === 0n) {
+        status = "open";
+      } else {
+        status = "partially_filled";
+      }
     }
 
     res.json({
@@ -329,7 +359,11 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
           takerFee: m.takerFee.toString(),
         })),
         remainingAmount: result.remainingOrder?.remainingAmount.toString() || "0",
-        status: result.remainingOrder ? "partially_filled" : "filled",
+        status,
+        tif: orderInput.tif || null,
+        postOnly: !!orderInput.postOnly,
+        requestedAmount: orderInput.amount.toString(),
+        filledAmount: filledAmount.toString(),
       },
     });
   } catch (e: any) {

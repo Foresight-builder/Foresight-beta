@@ -22,6 +22,8 @@ export interface Order {
   sequence: bigint;            // 排序序号 (时间优先)
   status: OrderStatus;         // 订单状态
   createdAt: number;           // 创建时间戳
+  tif?: "IOC" | "FOK";
+  postOnly?: boolean;
 }
 
 export type OrderStatus = 
@@ -114,35 +116,37 @@ export type MarketEvent =
 // ============ 配置类型 ============
 
 export interface MatchingEngineConfig {
-  // 手续费配置 (基点, 1 bp = 0.01%)
-  makerFeeBps: number;         // Maker 手续费率
-  takerFeeBps: number;         // Taker 手续费率
-  
-  // 限制配置
-  maxOrdersPerMarket: number;  // 每个市场最大订单数
-  maxOrdersPerUser: number;    // 每个用户最大活跃订单数
-  minOrderAmount: bigint;      // 最小订单金额
-  maxOrderAmount: bigint;      // 最大订单金额
-  
-  // 价格精度
-  priceDecimals: number;       // 价格小数位 (6 for USDC)
-  amountDecimals: number;      // 数量小数位 (18 for shares)
-  
-  // 批量结算配置
-  batchSettlementInterval: number;  // 批量结算间隔 (ms)
-  batchSettlementThreshold: number; // 触发结算的最小撮合数
+  makerFeeBps: number;
+  takerFeeBps: number;
+  maxOrdersPerMarket: number;
+  maxOrdersPerUser: number;
+  minOrderAmount: bigint;
+  maxOrderAmount: bigint;
+  priceDecimals: number;
+  amountDecimals: number;
+  minPrice: bigint;
+  maxPrice: bigint;
+  priceTickSize: bigint;
+  batchSettlementInterval: number;
+  batchSettlementThreshold: number;
+  maxMarketLongExposureUsdc?: number;
+  maxMarketShortExposureUsdc?: number;
 }
 
 export const DEFAULT_CONFIG: MatchingEngineConfig = {
-  makerFeeBps: 0,              // Maker 免手续费
-  takerFeeBps: 50,             // Taker 0.5% 手续费
+  makerFeeBps: 0,
+  takerFeeBps: 50,
   maxOrdersPerMarket: 10000,
   maxOrdersPerUser: 100,
-  minOrderAmount: 1_000_000_000_000n,     // 0.000001 shares (1e12)
-  maxOrderAmount: 1_000_000_000_000_000_000_000n, // 1000 shares (1e21)
+  minOrderAmount: 1_000_000_000_000n,
+  maxOrderAmount: 1_000_000_000_000_000_000_000n,
   priceDecimals: 6,
   amountDecimals: 18,
+  minPrice: 1n,
+  maxPrice: 1_000_000n,
+  priceTickSize: 1n,
   batchSettlementInterval: 5000,
   batchSettlementThreshold: 10,
+  maxMarketLongExposureUsdc: 0,
+  maxMarketShortExposureUsdc: 0,
 };
-

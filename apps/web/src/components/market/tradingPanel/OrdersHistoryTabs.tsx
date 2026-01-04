@@ -1,6 +1,6 @@
 import { ListFilter } from "lucide-react";
 import { useLocale } from "@/lib/i18n";
-import { formatTime } from "@/lib/format";
+import { formatPercent, formatTime } from "@/lib/format";
 
 export type OrdersTabContentProps = {
   userOrders: any[];
@@ -58,6 +58,24 @@ export function OrdersTabContent({
             <div className="text-xs font-medium text-gray-500 mt-1.5 ml-1">
               {formatPrice(o.price)} x {formatAmount(o.remaining)}
             </div>
+            {o.amount && o.remaining && (
+              <div className="text-[11px] text-gray-400 mt-1.5 ml-1">
+                {(() => {
+                  try {
+                    const total = BigInt(o.amount);
+                    const remaining = BigInt(o.remaining);
+                    if (total <= 0n || remaining < 0n || remaining > total) {
+                      return null;
+                    }
+                    const filled = Number(total - remaining);
+                    const pct = total > 0n ? (filled / Number(total)) * 100 : 0;
+                    return `${tTrading("filled")}: ${formatPercent(pct)}`;
+                  } catch {
+                    return null;
+                  }
+                })()}
+              </div>
+            )}
           </div>
           <button
             onClick={() => cancelOrder(o.maker_salt)}

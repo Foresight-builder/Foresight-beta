@@ -5,21 +5,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock ethers
-vi.mock("ethers", () => ({
-  JsonRpcProvider: vi.fn(() => ({
+vi.mock("ethers", () => {
+  const mockProvider = {
     getBlockNumber: vi.fn(async () => 1000000),
     getTransactionReceipt: vi.fn(async () => null),
-  })),
-  Contract: vi.fn(() => ({
-    filters: {
-      OrderFilledSigned: vi.fn(() => ({})),
-    },
-    queryFilter: vi.fn(async () => []),
-    interface: {
-      parseLog: vi.fn(() => null),
-    },
-  })),
-}));
+  };
+
+  const JsonRpcProvider = vi.fn(function () {
+    return mockProvider;
+  });
+
+  const Contract = vi.fn(function () {
+    return {
+      filters: {
+        OrderFilledSigned: vi.fn(() => ({})),
+      },
+      queryFilter: vi.fn(async () => []),
+      interface: {
+        parseLog: vi.fn(() => null),
+      },
+    };
+  });
+
+  return {
+    JsonRpcProvider,
+    Contract,
+    ethers: {},
+  };
+});
 
 // Mock database pool
 vi.mock("../database/connectionPool.js", () => ({
@@ -121,4 +134,3 @@ describe("ChainReconciler", () => {
     });
   });
 });
-
