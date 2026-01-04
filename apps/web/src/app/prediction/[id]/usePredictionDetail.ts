@@ -51,6 +51,8 @@ export function usePredictionDetail() {
   const [priceInput, setPriceInput] = useState<string>("");
   const [amountInput, setAmountInput] = useState<string>("");
   const [orderMode, setOrderMode] = useState<"limit" | "best">("best");
+  const [tif, setTif] = useState<"GTC" | "IOC" | "FOK">("GTC");
+  const [postOnly, setPostOnly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderMsg, setOrderMsg] = useState<string | null>(null);
 
@@ -436,6 +438,7 @@ export function usePredictionDetail() {
       const signature = await signer.signTypedData(domain as any, ORDER_TYPES as any, value as any);
 
       const mk = `${market.chain_id}:${predictionIdRaw}`;
+      const tifForOrder = tif === "GTC" ? undefined : tif;
       const payload = {
         order: {
           maker: account,
@@ -445,6 +448,8 @@ export function usePredictionDetail() {
           amount: amountBN.toString(),
           salt,
           expiry,
+          ...(tifForOrder ? { tif: tifForOrder } : {}),
+          ...(postOnly ? { postOnly: true } : {}),
         },
         signature,
         chainId: market.chain_id,
@@ -453,6 +458,53 @@ export function usePredictionDetail() {
         marketKey: mk,
         eventId: Number(predictionIdRaw),
       };
+
+      if (RELAYER_BASE) {
+        try {
+          const resV2 = await fetch(`${RELAYER_BASE}/v2/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              marketKey: mk,
+              chainId: market.chain_id,
+              verifyingContract: market.market,
+              signature,
+              order: payload.order,
+            }),
+            signal: AbortSignal.timeout(5000),
+          });
+
+          const jsonV2 = await safeJson(resV2 as any);
+          if ((jsonV2 as any).success) {
+            const data = (jsonV2 as any).data || {};
+            const filledStr = String(data.filledAmount ?? "0");
+            let filled = 0n;
+            try {
+              filled = BigInt(filledStr);
+            } catch {
+              filled = 0n;
+            }
+            const status = String((data as any).status || "");
+
+            if (status === "canceled" && filled === 0n) {
+              setOrderMsg(tTrading("orderFlow.canceled"));
+            } else if (filled === 0n) {
+              setOrderMsg(tTrading("orderFlow.orderSuccess"));
+            } else if (filled < amountBN) {
+              setOrderMsg(tTrading("orderFlow.partialFilled"));
+            } else {
+              setOrderMsg(tTrading("orderFlow.filled"));
+            }
+
+            setAmountInput("");
+            await refreshUserOrders();
+            toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
+            return;
+          }
+        } catch (err) {
+          console.error("[orderFlow] v2 order submit failed, falling back to v1:", err);
+        }
+      }
 
       const res = await fetch(`${API_BASE}/orderbook/orders`, {
         method: "POST",
@@ -512,6 +564,10 @@ export function usePredictionDetail() {
     setAmountInput,
     orderMode,
     setOrderMode,
+    tif,
+    setTif,
+    postOnly,
+    setPostOnly,
     isSubmitting,
     orderMsg,
     depthBuy,

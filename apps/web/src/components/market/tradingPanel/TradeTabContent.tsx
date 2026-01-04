@@ -11,6 +11,10 @@ export type TradeTabContentProps = {
   tCommon: (key: string) => string;
   orderMode: "limit" | "best";
   setOrderMode: (m: "limit" | "best") => void;
+  tif: "GTC" | "IOC" | "FOK";
+  setTif: (t: "GTC" | "IOC" | "FOK") => void;
+  postOnly: boolean;
+  setPostOnly: (v: boolean) => void;
   bestBid: string;
   bestAsk: string;
   priceInput: string;
@@ -41,6 +45,10 @@ export function TradeTabContent({
   tCommon,
   orderMode,
   setOrderMode,
+  tif,
+  setTif,
+  postOnly,
+  setPostOnly,
   bestBid,
   bestAsk,
   priceInput,
@@ -59,7 +67,9 @@ export function TradeTabContent({
   formatPrice,
   fillPrice,
 }: TradeTabContentProps) {
-  const priceNum = Number(priceInput) || 0;
+  const marketPriceSource = orderMode === "best" ? (tradeSide === "buy" ? bestAsk : bestBid) : "";
+  const priceNum =
+    orderMode === "best" ? Number(formatPrice(marketPriceSource)) || 0 : Number(priceInput) || 0;
   const amountNum = Number(amountInput) || 0;
   const total = priceNum * amountNum;
   const potentialReturn = tradeSide === "buy" ? amountNum * 1 : 0;
@@ -85,6 +95,10 @@ export function TradeTabContent({
           tradeSide={tradeSide}
           orderMode={orderMode}
           setOrderMode={setOrderMode}
+          tif={tif}
+          setTif={setTif}
+          postOnly={postOnly}
+          setPostOnly={setPostOnly}
           bestBid={bestBid}
           bestAsk={bestAsk}
           priceInput={priceInput}
@@ -236,6 +250,10 @@ type PriceInputSectionProps = {
   tradeSide: "buy" | "sell";
   orderMode: "limit" | "best";
   setOrderMode: (m: "limit" | "best") => void;
+  tif: "GTC" | "IOC" | "FOK";
+  setTif: (t: "GTC" | "IOC" | "FOK") => void;
+  postOnly: boolean;
+  setPostOnly: (v: boolean) => void;
   bestBid: string;
   bestAsk: string;
   priceInput: string;
@@ -249,6 +267,10 @@ function PriceInputSection({
   tradeSide,
   orderMode,
   setOrderMode,
+  tif,
+  setTif,
+  postOnly,
+  setPostOnly,
   bestBid,
   bestAsk,
   priceInput,
@@ -306,19 +328,63 @@ function PriceInputSection({
       )}
 
       {orderMode === "limit" && (
-        <div className="flex gap-3 text-xs font-medium pt-1 justify-end">
-          <button
-            onClick={() => fillPrice(formatPrice(bestBid))}
-            className="text-emerald-600 hover:text-emerald-700 hover:underline decoration-emerald-600/30"
-          >
-            Bid: {formatPrice(bestBid, true)}
-          </button>
-          <button
-            onClick={() => fillPrice(formatPrice(bestAsk))}
-            className="text-rose-600 hover:text-rose-700 hover:underline decoration-rose-600/30"
-          >
-            Ask: {formatPrice(bestAsk, true)}
-          </button>
+        <div className="space-y-1 pt-1">
+          <div className="flex gap-2 text-[10px] font-semibold text-gray-500">
+            <button
+              onClick={() => setTif("GTC")}
+              className={`px-2 py-0.5 rounded-full border ${
+                tif === "GTC"
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              GTC
+            </button>
+            <button
+              onClick={() => setTif("IOC")}
+              className={`px-2 py-0.5 rounded-full border ${
+                tif === "IOC"
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              IOC
+            </button>
+            <button
+              onClick={() => setTif("FOK")}
+              className={`px-2 py-0.5 rounded-full border ${
+                tif === "FOK"
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              FOK
+            </button>
+            <button
+              onClick={() => setPostOnly(!postOnly)}
+              className={`ml-auto px-2 py-0.5 rounded-full border ${
+                postOnly
+                  ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              Post only
+            </button>
+          </div>
+          <div className="flex gap-3 text-xs font-medium justify-end">
+            <button
+              onClick={() => fillPrice(formatPrice(bestBid))}
+              className="text-emerald-600 hover:text-emerald-700 hover:underline decoration-emerald-600/30"
+            >
+              Bid: {formatPrice(bestBid, true)}
+            </button>
+            <button
+              onClick={() => fillPrice(formatPrice(bestAsk))}
+              className="text-rose-600 hover:text-rose-700 hover:underline decoration-rose-600/30"
+            >
+              Ask: {formatPrice(bestAsk, true)}
+            </button>
+          </div>
         </div>
       )}
     </div>

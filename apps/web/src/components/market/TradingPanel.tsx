@@ -28,6 +28,8 @@ interface TradingPanelState {
   priceInput: string;
   amountInput: string;
   orderMode: "limit" | "best";
+  tif: "GTC" | "IOC" | "FOK";
+  postOnly: boolean;
   isSubmitting: boolean;
   orderMsg: string | null;
 }
@@ -38,6 +40,8 @@ interface TradingPanelHandlers {
   setPriceInput: (v: string) => void;
   setAmountInput: (v: string) => void;
   setOrderMode: (m: "limit" | "best") => void;
+  setTif: (t: "GTC" | "IOC" | "FOK") => void;
+  setPostOnly: (v: boolean) => void;
   submitOrder: () => void;
   cancelOrder: (salt: string) => void;
   handleMint: (amount: string) => void;
@@ -67,14 +71,25 @@ export function TradingPanel(props: TradingPanelProps) {
     outcomes,
     mintInput = "",
   } = data;
-  const { tradeSide, tradeOutcome, priceInput, amountInput, orderMode, isSubmitting, orderMsg } =
-    state;
+  const {
+    tradeSide,
+    tradeOutcome,
+    priceInput,
+    amountInput,
+    orderMode,
+    tif,
+    postOnly,
+    isSubmitting,
+    orderMsg,
+  } = state;
   const {
     setTradeSide,
     setTradeOutcome,
     setPriceInput,
     setAmountInput,
     setOrderMode,
+    setTif,
+    setPostOnly,
     submitOrder,
     cancelOrder,
     handleMint,
@@ -142,7 +157,9 @@ export function TradingPanel(props: TradingPanelProps) {
           <div className="flex items-center gap-2">
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                isTradeTab ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200" : "bg-slate-200 text-slate-500"
+                isTradeTab
+                  ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200"
+                  : "bg-slate-200 text-slate-500"
               }`}
             >
               2
@@ -154,7 +171,9 @@ export function TradingPanel(props: TradingPanelProps) {
           <div className="flex items-center gap-2">
             <div
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                isManageTab ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200" : "bg-slate-200 text-slate-500"
+                isManageTab
+                  ? "bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200"
+                  : "bg-slate-200 text-slate-500"
               }`}
             >
               3
@@ -222,6 +241,10 @@ export function TradingPanel(props: TradingPanelProps) {
             tCommon={tCommon}
             orderMode={orderMode}
             setOrderMode={setOrderMode}
+            tif={tif}
+            setTif={setTif}
+            postOnly={postOnly}
+            setPostOnly={setPostOnly}
             bestBid={bestBid}
             bestAsk={bestAsk}
             priceInput={priceInput}
