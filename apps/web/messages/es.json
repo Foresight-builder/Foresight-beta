@@ -1301,6 +1301,22 @@
         }
       }
     },
+    "rules": {
+      "title": "Reglas y recompensas",
+      "tiers": "Niveles de dificultad",
+      "dropRates": "Probabilidades de obtención",
+      "light": "Ligero (1-7 días): 40% de obtención",
+      "standard": "Estándar (8-14 días): 70% de obtención",
+      "intense": "Intenso (15-30 días): 100% de obtención",
+      "hardcore": "Extremo (>30 días): 100% de obtención (mayor rareza)"
+    },
+    "settleModal": {
+      "title": "Liquidar reto",
+      "subtitle": "Repasa este viaje y mira todo lo que conseguiste",
+      "confirm": "Confirmar liquidación",
+      "cancel": "Esperar un poco más",
+      "warning": "Después de liquidar no podrás seguir haciendo check-in; el sistema calculará tus recompensas según tu historial."
+    },
     "checkin": {
       "title": "Capturando tu Esfuerzo 📝",
       "subtitle": "¡Cada pequeño paso merece un gran aplauso!",
