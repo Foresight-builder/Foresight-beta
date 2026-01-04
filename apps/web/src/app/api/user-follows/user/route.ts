@@ -43,8 +43,7 @@ export async function POST(req: NextRequest) {
       if (delError) return ApiResponses.databaseError("Failed to unfollow", delError.message);
       return NextResponse.json({ success: true, followed: false });
     } else {
-      // 关注
-      const { error: insError } = await client.from("user_follows").insert({
+      const { error: insError } = await (client as any).from("user_follows").insert({
         follower_address: follower,
         following_address: target,
       });

@@ -82,8 +82,13 @@ export async function GET(req: NextRequest) {
         .select("wallet_address, username")
         .in("wallet_address", addresses);
 
+      const profileRows = (profiles ?? []) as {
+        wallet_address: string | null;
+        username: string | null;
+      }[];
+
       const profileMap: Record<string, string> = {};
-      for (const p of profiles || []) {
+      for (const p of profileRows) {
         if (p.wallet_address) {
           profileMap[p.wallet_address.toLowerCase()] = p.username || "";
         }

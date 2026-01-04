@@ -10,7 +10,7 @@ export const CATEGORIES = [
   { id: "business", name: "商业", icon: Activity },
   { id: "crypto", name: "加密货币", icon: Activity },
   { id: "more", name: "更多", icon: Activity },
-] as const;
+];
 
 export const ALLOWED_CATEGORIES = CATEGORIES.filter((c) => c.id !== "all").map((c) => c.id);
 

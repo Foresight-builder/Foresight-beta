@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const trimmed = query.trim();
     const searchTerm = `%${trimmed}%`;
 
-    const [predictionsRes, proposalsRes] = await Promise.all([
+    const [predictionsRes, proposalsRes, usersRes] = await Promise.all([
       supabase
         .from("predictions")
         .select("id, title, description, category, status")
@@ -75,6 +75,11 @@ export async function GET(request: NextRequest) {
         .or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`)
         .limit(20)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("user_profiles")
+        .select("wallet_address, username, email")
+        .or(`username.ilike.${searchTerm},wallet_address.ilike.${searchTerm}`)
+        .limit(10),
     ]);
 
     type PredictionRow = Pick<
@@ -87,6 +92,10 @@ export async function GET(request: NextRequest) {
     > & {
       category?: string | null;
     };
+    type UserRow = Pick<
+      Database["public"]["Tables"]["user_profiles"]["Row"],
+      "wallet_address" | "username" | "email"
+    >;
 
     const { data: predictions, error: predictionsError } = predictionsRes as {
       data: PredictionRow[] | null;
@@ -96,6 +105,10 @@ export async function GET(request: NextRequest) {
       data: ProposalRow[] | null;
       error: PostgrestError | null;
     };
+    const { data: users, error: usersError } = usersRes as {
+      data: UserRow[] | null;
+      error: PostgrestError | null;
+    };
 
     if (predictionsError) {
       console.error("Search predictions error:", predictionsError);
@@ -103,6 +116,10 @@ export async function GET(request: NextRequest) {
 
     if (proposalsError) {
       console.error("Search proposals error:", proposalsError);
+    }
+
+    if (usersError) {
+      console.error("Search users error:", usersError);
     }
 
     const predictionResults = (predictions || []).map((p) => ({
@@ -121,14 +138,15 @@ export async function GET(request: NextRequest) {
       type: "proposal" as const,
     }));
 
-    // TODO: 搜索用户（需要 user_profiles 表）
-    // const { data: users } = await supabase
-    //   .from("user_profiles")
-    //   .select("id, username, avatar")
-    //   .ilike("username", searchTerm)
-    //   .limit(10);
+    const userResults = (users || []).map((u) => ({
+      id: u.wallet_address,
+      title: u.username || u.wallet_address,
+      description: u.email || u.wallet_address,
+      category: "User",
+      type: "user" as const,
+    }));
 
-    const allResults = [...predictionResults, ...proposalResults];
+    const allResults = [...predictionResults, ...proposalResults, ...userResults];
 
     allResults.sort((a, b) => {
       const q = trimmed.toLowerCase();

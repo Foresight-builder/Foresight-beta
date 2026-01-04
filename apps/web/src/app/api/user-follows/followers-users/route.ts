@@ -23,10 +23,12 @@ export async function GET(req: NextRequest) {
       .select("follower_address")
       .eq("following_address", address);
 
-    if (followError)
+    if (followError) {
       return ApiResponses.databaseError("Failed to fetch followers", followError.message);
+    }
 
-    const followerAddresses = followData.map((f) => f.follower_address);
+    const followRows = (followData ?? []) as { follower_address: string }[];
+    const followerAddresses = followRows.map((f) => f.follower_address);
 
     if (followerAddresses.length === 0) {
       return NextResponse.json({ users: [] });
@@ -38,10 +40,13 @@ export async function GET(req: NextRequest) {
       .select("wallet_address, username, created_at")
       .in("wallet_address", followerAddresses);
 
-    if (profileError)
+    if (profileError) {
       return ApiResponses.databaseError("Failed to fetch profiles", profileError.message);
+    }
 
-    const users = profiles.map((p) => ({
+    const profileRows = (profiles ?? []) as { wallet_address: string; username: string | null }[];
+
+    const users = profileRows.map((p) => ({
       wallet_address: p.wallet_address,
       username: p.username || `User_${p.wallet_address.slice(2, 8)}`,
       avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${p.wallet_address}`,

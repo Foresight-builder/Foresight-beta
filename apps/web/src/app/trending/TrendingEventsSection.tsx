@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { TrendingUp, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
@@ -12,7 +12,7 @@ import { normalizeEventId, isValidEventId } from "@/features/trending/trendingMo
 import { TrendingEventCard } from "./TrendingEventCard";
 
 // 卡片入场动画 variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -23,7 +23,7 @@ const containerVariants = {
   },
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: {
     opacity: 0,
     y: 24,

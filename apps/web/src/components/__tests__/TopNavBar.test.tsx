@@ -42,6 +42,9 @@ describe("TopNavBar Component", () => {
     requestWalletPermissions: vi.fn(async () => ({ success: true })),
     multisigSign: vi.fn(async () => ({ success: true, signature: "0x" })),
     provider: null,
+    isAuthenticated: false,
+    authAddress: null,
+    checkAuth: vi.fn(async () => {}),
   };
 
   // Mock Auth Context
