@@ -544,6 +544,8 @@
     "total": "总计",
     "limitOrder": "限价单",
     "marketOrder": "市价单",
+    "maxSlippage": "最大滑点",
+    "worstExecutionPrice": "最差成交价",
     "placeOrder": "下单",
     "cancelOrder": "撤单",
     "myOrders": "我的订单",
@@ -628,7 +630,8 @@
       "sellNoBalance": "卖单失败：当前可卖的预测代币数量不足，可以先在下方完成铸币，再来挂卖单。",
       "sellMaybeNoMint": "如果还没有在下方完成铸币，现在可能还没有可卖的预测代币，可以先铸一点再试。",
       "canceled": "订单已取消。",
-      "cancelFailed": "订单暂时没有取消成功，可以稍后再试一次。"
+      "cancelFailed": "订单暂时没有取消成功，可以稍后再试一次。",
+      "slippageTooHigh": "这笔市价单的预估滑点超过了你设置的上限，可以下调数量或放宽滑点后再试。"
     },
     "mintFlow": {
       "prepare": "准备铸币...",

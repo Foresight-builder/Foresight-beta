@@ -53,6 +53,8 @@ export function usePredictionDetail() {
   const [orderMode, setOrderMode] = useState<"limit" | "best">("best");
   const [tif, setTif] = useState<"GTC" | "IOC" | "FOK">("GTC");
   const [postOnly, setPostOnly] = useState(false);
+  const [maxSlippage, setMaxSlippage] = useState<number>(1);
+  const [editingOrderSalt, setEditingOrderSalt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderMsg, setOrderMsg] = useState<string | null>(null);
 
@@ -305,8 +307,12 @@ export function usePredictionDetail() {
         const worstPriceHuman = formatPriceNumber(worstPriceBN);
         const totalHuman = formatPriceNumber(totalCostBN);
 
-        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
         const slippagePercent = (slippageBpsNum || 0) / 100;
+        if (slippagePercent > maxSlippage) {
+          throw new Error(tTrading("orderFlow.slippageTooHigh"));
+        }
+
+        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
         const partialNote =
           filledBN < amountBN
             ? formatTranslation(tTrading("orderFlow.partialFilled"), {
@@ -392,6 +398,11 @@ export function usePredictionDetail() {
         await refreshUserOrders();
         toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
         return;
+      }
+
+      if (orderMode === "limit" && editingOrderSalt) {
+        await cancelOrder(editingOrderSalt);
+        setEditingOrderSalt(null);
       }
 
       priceBN = parseUnitsByDecimals(priceFloat.toString(), decimals);
@@ -568,6 +579,10 @@ export function usePredictionDetail() {
     setTif,
     postOnly,
     setPostOnly,
+    maxSlippage,
+    setMaxSlippage,
+    editingOrderSalt,
+    setEditingOrderSalt,
     isSubmitting,
     orderMsg,
     depthBuy,

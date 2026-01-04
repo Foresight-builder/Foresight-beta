@@ -544,6 +544,8 @@
     "total": "Total",
     "limitOrder": "Limit Order",
     "marketOrder": "Market Order",
+    "maxSlippage": "Max slippage",
+    "worstExecutionPrice": "Worst execution price",
     "placeOrder": "Place Order",
     "cancelOrder": "Cancel Order",
     "myOrders": "My Orders",
@@ -628,7 +630,8 @@
       "sellNoBalance": "Sell failed: not enough outcome tokens right now. You can mint some below first, then try again.",
       "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
       "canceled": "Order canceled.",
-      "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit."
+      "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit.",
+      "slippageTooHigh": "The estimated slippage for this market order is above your limit. Try reducing the size or allowing a higher slippage threshold and place it again."
     },
     "mintFlow": {
       "prepare": "Preparing to mint…",

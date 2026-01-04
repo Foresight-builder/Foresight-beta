@@ -32,6 +32,9 @@ interface PredictionSideRailProps {
   priceInput: string;
   amountInput: string;
   orderMode: "limit" | "best";
+  tif: "GTC" | "IOC" | "FOK";
+  postOnly: boolean;
+  maxSlippage: number;
   isSubmitting: boolean;
   orderMsg: string | null;
   mintInput: string;
@@ -41,6 +44,10 @@ interface PredictionSideRailProps {
   setPriceInput: (val: string) => void;
   setAmountInput: (val: string) => void;
   setOrderMode: (mode: "limit" | "best") => void;
+  setTif: (t: "GTC" | "FOK" | "IOC") => void;
+  setPostOnly: (v: boolean) => void;
+  setEditingOrderSalt: (salt: string | null) => void;
+  setMaxSlippage: (v: number) => void;
   submitOrder: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   handleMint: (amount: string) => Promise<void>;
@@ -68,6 +75,9 @@ export function PredictionSideRail({
   priceInput,
   amountInput,
   orderMode,
+  tif,
+  postOnly,
+  maxSlippage,
   isSubmitting,
   orderMsg,
   mintInput,
@@ -76,6 +86,10 @@ export function PredictionSideRail({
   setPriceInput,
   setAmountInput,
   setOrderMode,
+  setTif,
+  setPostOnly,
+  setEditingOrderSalt,
+  setMaxSlippage,
   submitOrder,
   cancelOrder,
   handleMint,
@@ -137,6 +151,9 @@ export function PredictionSideRail({
                 priceInput,
                 amountInput,
                 orderMode,
+                tif,
+                postOnly,
+                maxSlippage,
                 isSubmitting,
                 orderMsg,
               }}
@@ -146,6 +163,10 @@ export function PredictionSideRail({
                 setPriceInput,
                 setAmountInput,
                 setOrderMode,
+                setTif,
+                setPostOnly,
+                setEditingOrderSalt,
+                setMaxSlippage,
                 submitOrder: () => {
                   void submitOrder();
                 },

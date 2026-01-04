@@ -681,6 +681,8 @@
     "total": "합계",
     "limitOrder": "지정가 주문",
     "marketOrder": "시장가 주문",
+    "maxSlippage": "최대 슬리피지",
+    "worstExecutionPrice": "최악 체결가",
     "placeOrder": "주문하기",
     "cancelOrder": "주문 취소",
     "myOrders": "내 주문",
@@ -765,7 +767,8 @@
       "sellNoBalance": "매도 주문 실패: 지금은 매도할 결과 토큰이 충분하지 않아요. 아래에서 토큰을 조금 발행한 뒤 다시 시도해 주세요.",
       "sellMaybeNoMint": "아직 아래에서 토큰을 발행하지 않았다면, 지금은 팔 수 있는 토큰이 없을 수도 있어요. 조금 발행한 뒤 다시 한 번 시도해 주세요.",
       "canceled": "주문이 취소되었습니다.",
-      "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요."
+      "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요.",
+      "slippageTooHigh": "이번 시장가 주문의 예상 슬리피지가 설정한 한도를 넘어섰어요. 주문 수량을 줄이거나 허용 슬리피지 한도를 조금 넓힌 뒤 다시 시도해 주세요."
     },
     "mintFlow": {
       "approveUsdc": "USDC 사용 권한을 승인해 주세요...",

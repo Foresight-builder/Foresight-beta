@@ -544,6 +544,8 @@
     "total": "Total",
     "limitOrder": "Orden limitada",
     "marketOrder": "Orden de mercado",
+    "maxSlippage": "Deslizamiento máximo",
+    "worstExecutionPrice": "Peor precio de ejecución",
     "placeOrder": "Realizar orden",
     "cancelOrder": "Cancelar orden",
     "myOrders": "Mis órdenes",
@@ -628,7 +630,8 @@
       "sellNoBalance": "Error en la venta: ahora mismo no tienes suficientes tokens de resultado. Puedes mintear algunos abajo y volver a intentarlo.",
       "sellMaybeNoMint": "Si todavía no has minteado, es posible que no tengas tokens para vender. Mintea un poco abajo e inténtalo de nuevo.",
       "canceled": "Orden cancelada.",
-      "cancelFailed": "Esta vez la orden no se canceló. Puedes intentarlo de nuevo dentro de un momento."
+      "cancelFailed": "Esta vez la orden no se canceló. Puedes intentarlo de nuevo dentro de un momento.",
+      "slippageTooHigh": "El deslizamiento estimado para esta orden de mercado supera tu límite. Prueba reduciendo el tamaño o permitiendo un deslizamiento un poco mayor y vuelve a enviarla."
     },
     "mintFlow": {
       "prepare": "Preparando minteo…",

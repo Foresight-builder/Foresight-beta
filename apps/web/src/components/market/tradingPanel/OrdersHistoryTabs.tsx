@@ -10,6 +10,7 @@ export type OrdersTabContentProps = {
   cancelOrder: (salt: string) => void;
   formatPrice: (p: string, showCents?: boolean) => string;
   formatAmount: (raw: string) => string;
+  onEditOrder: (order: any) => void;
 };
 
 export function OrdersTabContent({
@@ -20,6 +21,7 @@ export function OrdersTabContent({
   cancelOrder,
   formatPrice,
   formatAmount,
+  onEditOrder,
 }: OrdersTabContentProps) {
   if (userOrders.length === 0) {
     return (
@@ -77,12 +79,20 @@ export function OrdersTabContent({
               </div>
             )}
           </div>
-          <button
-            onClick={() => cancelOrder(o.maker_salt)}
-            className="text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors border border-rose-100"
-          >
-            {tTrading("cancelOrder")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onEditOrder(o)}
+              className="text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors border border-purple-100"
+            >
+              {tCommon("edit")}
+            </button>
+            <button
+              onClick={() => cancelOrder(o.maker_salt)}
+              className="text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors border border-rose-100"
+            >
+              {tTrading("cancelOrder")}
+            </button>
+          </div>
         </div>
       ))}
     </div>

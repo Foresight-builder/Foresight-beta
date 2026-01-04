@@ -30,6 +30,7 @@ interface TradingPanelState {
   orderMode: "limit" | "best";
   tif: "GTC" | "IOC" | "FOK";
   postOnly: boolean;
+  maxSlippage: number;
   isSubmitting: boolean;
   orderMsg: string | null;
 }
@@ -42,6 +43,8 @@ interface TradingPanelHandlers {
   setOrderMode: (m: "limit" | "best") => void;
   setTif: (t: "GTC" | "IOC" | "FOK") => void;
   setPostOnly: (v: boolean) => void;
+  setEditingOrderSalt: (salt: string | null) => void;
+  setMaxSlippage: (v: number) => void;
   submitOrder: () => void;
   cancelOrder: (salt: string) => void;
   handleMint: (amount: string) => void;
@@ -79,6 +82,7 @@ export function TradingPanel(props: TradingPanelProps) {
     orderMode,
     tif,
     postOnly,
+    maxSlippage,
     isSubmitting,
     orderMsg,
   } = state;
@@ -90,6 +94,8 @@ export function TradingPanel(props: TradingPanelProps) {
     setOrderMode,
     setTif,
     setPostOnly,
+    setEditingOrderSalt,
+    setMaxSlippage,
     submitOrder,
     cancelOrder,
     handleMint,
@@ -101,12 +107,22 @@ export function TradingPanel(props: TradingPanelProps) {
   const tTrading = useTranslations("trading");
   const tCommon = useTranslations("common");
 
-  const formatPrice = (p: string, showCents = false) => {
+  const decodePrice = (p: string) => {
     try {
       const v = BigInt(p);
-      if (v === BIGINT_ZERO) return "-";
+      if (v === BIGINT_ZERO) return 0;
       const decimals = v > BIGINT_THRESHOLD ? 18 : 6;
       const val = Number(formatUnits(v, decimals));
+      return Number.isFinite(val) ? val : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const formatPrice = (p: string, showCents = false) => {
+    try {
+      const val = decodePrice(p);
+      if (val === 0) return "-";
       if (showCents) {
         if (val < 1) return (val * 100).toFixed(1) + "¢";
       }
@@ -137,6 +153,26 @@ export function TradingPanel(props: TradingPanelProps) {
   const isWalletConnected = !!account;
   const isTradeTab = activeTab === "trade";
   const isManageTab = activeTab === "orders" || activeTab === "history";
+
+  const handleEditOrder = (o: any) => {
+    try {
+      const side: "buy" | "sell" = o.is_buy ? "buy" : "sell";
+      const outcomeIndex = Number(o.outcome_index ?? 0);
+      const priceStr = typeof o.price === "string" ? o.price : String(o.price ?? "0");
+      const remainingStr =
+        typeof o.remaining === "string" ? o.remaining : String(o.remaining ?? "0");
+      setTradeSide(side);
+      setTradeOutcome(Number.isFinite(outcomeIndex) ? outcomeIndex : 0);
+      setOrderMode("limit");
+      setPriceInput(formatPrice(priceStr));
+      setAmountInput(formatAmount(remainingStr));
+      setEditingOrderSalt(String(o.maker_salt));
+      setActiveTab("trade");
+    } catch {
+      setEditingOrderSalt(null);
+      setActiveTab("trade");
+    }
+  };
 
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden flex flex-col h-full min-h-[600px] shadow-xl shadow-purple-500/5 relative">
@@ -245,6 +281,8 @@ export function TradingPanel(props: TradingPanelProps) {
             setTif={setTif}
             postOnly={postOnly}
             setPostOnly={setPostOnly}
+            maxSlippage={maxSlippage}
+            setMaxSlippage={setMaxSlippage}
             bestBid={bestBid}
             bestAsk={bestAsk}
             priceInput={priceInput}
@@ -261,6 +299,7 @@ export function TradingPanel(props: TradingPanelProps) {
             handleMint={handleMint}
             handleRedeem={handleRedeem}
             formatPrice={formatPrice}
+            decodePrice={decodePrice}
             fillPrice={fillPrice}
           />
         )}
@@ -286,6 +325,7 @@ export function TradingPanel(props: TradingPanelProps) {
             cancelOrder={cancelOrder}
             formatPrice={formatPrice}
             formatAmount={formatAmount}
+            onEditOrder={handleEditOrder}
           />
         )}
 

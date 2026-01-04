@@ -15,6 +15,8 @@ export type TradeTabContentProps = {
   setTif: (t: "GTC" | "IOC" | "FOK") => void;
   postOnly: boolean;
   setPostOnly: (v: boolean) => void;
+  maxSlippage: number;
+  setMaxSlippage: (v: number) => void;
   bestBid: string;
   bestAsk: string;
   priceInput: string;
@@ -31,6 +33,7 @@ export type TradeTabContentProps = {
   handleMint: (amount: string) => void;
   handleRedeem: (amount: string) => void;
   formatPrice: (p: string, showCents?: boolean) => string;
+  decodePrice: (p: string) => number;
   fillPrice: (p: string) => void;
 };
 
@@ -49,6 +52,8 @@ export function TradeTabContent({
   setTif,
   postOnly,
   setPostOnly,
+  maxSlippage,
+  setMaxSlippage,
   bestBid,
   bestAsk,
   priceInput,
@@ -65,6 +70,7 @@ export function TradeTabContent({
   handleMint,
   handleRedeem,
   formatPrice,
+  decodePrice,
   fillPrice,
 }: TradeTabContentProps) {
   const marketPriceSource = orderMode === "best" ? (tradeSide === "buy" ? bestAsk : bestBid) : "";
@@ -99,11 +105,14 @@ export function TradeTabContent({
           setTif={setTif}
           postOnly={postOnly}
           setPostOnly={setPostOnly}
+          maxSlippage={maxSlippage}
+          setMaxSlippage={setMaxSlippage}
           bestBid={bestBid}
           bestAsk={bestAsk}
           priceInput={priceInput}
           setPriceInput={setPriceInput}
           formatPrice={formatPrice}
+          decodePrice={decodePrice}
           fillPrice={fillPrice}
           tTrading={tTrading}
         />
@@ -254,11 +263,14 @@ type PriceInputSectionProps = {
   setTif: (t: "GTC" | "IOC" | "FOK") => void;
   postOnly: boolean;
   setPostOnly: (v: boolean) => void;
+  maxSlippage: number;
+  setMaxSlippage: (v: number) => void;
   bestBid: string;
   bestAsk: string;
   priceInput: string;
   setPriceInput: (v: string) => void;
   formatPrice: (p: string, showCents?: boolean) => string;
+  decodePrice: (p: string) => number;
   fillPrice: (p: string) => void;
   tTrading: (key: string) => string;
 };
@@ -271,14 +283,36 @@ function PriceInputSection({
   setTif,
   postOnly,
   setPostOnly,
+  maxSlippage,
+  setMaxSlippage,
   bestBid,
   bestAsk,
   priceInput,
   setPriceInput,
   formatPrice,
+  decodePrice,
   fillPrice,
   tTrading,
 }: PriceInputSectionProps) {
+  let worstPriceLabel = "";
+  if (orderMode === "best" && maxSlippage > 0) {
+    const raw = tradeSide === "buy" ? bestAsk : bestBid;
+    const best = decodePrice(raw);
+    if (best > 0) {
+      const limit =
+        tradeSide === "buy"
+          ? Math.min(1, best * (1 + maxSlippage / 100))
+          : Math.max(0, best * (1 - maxSlippage / 100));
+      if (limit > 0) {
+        if (limit < 1) {
+          worstPriceLabel = (limit * 100).toFixed(1) + "¢";
+        } else {
+          worstPriceLabel = "$" + limit.toFixed(2);
+        }
+      }
+    }
+  }
+
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-medium text-gray-500">
@@ -324,6 +358,50 @@ function PriceInputSection({
             className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
           />
           <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
+        </div>
+      )}
+
+      {orderMode === "best" && (
+        <div className="space-y-1 pt-1">
+          <div className="flex gap-2 text-[10px] font-semibold text-gray-500">
+            <span>{tTrading("maxSlippage")}</span>
+            <button
+              onClick={() => setMaxSlippage(1)}
+              className={`px-2 py-0.5 rounded-full border ${
+                maxSlippage === 1
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              1%
+            </button>
+            <button
+              onClick={() => setMaxSlippage(3)}
+              className={`px-2 py-0.5 rounded-full border ${
+                maxSlippage === 3
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              3%
+            </button>
+            <button
+              onClick={() => setMaxSlippage(5)}
+              className={`px-2 py-0.5 rounded-full border ${
+                maxSlippage === 5
+                  ? "border-purple-400 bg-purple-50 text-purple-700"
+                  : "border-gray-200 bg-white text-gray-500"
+              }`}
+            >
+              5%
+            </button>
+          </div>
+          {worstPriceLabel && (
+            <div className="flex items-center justify-between text-[11px] font-medium text-gray-500 pt-1">
+              <span>{tTrading("worstExecutionPrice")}</span>
+              <span className="text-gray-900">{worstPriceLabel}</span>
+            </div>
+          )}
         </div>
       )}
 
