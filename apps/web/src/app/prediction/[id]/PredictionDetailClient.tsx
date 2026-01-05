@@ -132,12 +132,15 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     openOrders,
     trades,
     balance,
+    shareBalance,
     mintInput,
     setMintInput,
     handleMint,
     handleRedeem,
     submitOrder,
     cancelOrder,
+    marketPlanPreview,
+    marketPlanLoading,
   } = usePredictionDetail();
 
   const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(account || undefined);
@@ -173,6 +176,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     account && portfolio?.positions
       ? (portfolio.positions as any[]).find((p: any) => Number(p.id) === predictionIdNum)
       : null;
+  const positionStake = currentPosition ? Number((currentPosition as any).stake || 0) : 0;
 
   let positionSideProbPercent: number | null = null;
   if (currentPosition && (currentPosition as any).stats) {
@@ -388,6 +392,8 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   bestBid,
                   bestAsk,
                   balance,
+                  shareBalance,
+                  positionStake,
                   depthBuy,
                   depthSell,
                   userOrders: openOrders,
@@ -405,6 +411,8 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   maxSlippage,
                   isSubmitting,
                   orderMsg,
+                  marketPlanPreview,
+                  marketPlanLoading,
                 }}
                 handlers={{
                   setTradeSide,

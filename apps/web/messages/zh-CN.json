@@ -586,7 +586,21 @@
       "ifOutcomeHappens": "若该结局发生",
       "positionValuePrefix": "头寸价值约 ",
       "positionValueMiddle": "，收益率 ",
-      "empty": "输入价格和数量后，将在这里看到本次下单的模拟预览。"
+      "empty": "输入价格和数量后，将在这里看到本次下单的模拟预览。",
+      "avgExecutionPrice": "预估平均成交价",
+      "worstExecutionPriceShort": "预估最差成交价",
+      "slippage": "预估滑点",
+      "estimatedFilledAmount": "预计可成交数量",
+      "partialFillHint": "当前流动性有限，订单可能只会部分成交。",
+      "loadingSlippage": "正在根据订单簿预估滑点与成交价格…",
+      "positionImpactTitle": "成交后持仓视角",
+      "currentPositionShares": "当前持仓数量",
+      "thisTradeDeltaShares": "本次成交变动",
+      "afterTradeShares": "成交后预计持仓",
+      "currentStake": "当前累计投入",
+      "afterTradeStake": "成交后累计投入",
+      "currentAvgPrice": "当前持仓均价",
+      "afterTradeAvgPrice": "成交后持仓均价"
     },
     "mintPanel": {
       "title": "卖出准备",
@@ -631,7 +645,8 @@
       "sellMaybeNoMint": "如果还没有在下方完成铸币，现在可能还没有可卖的预测代币，可以先铸一点再试。",
       "canceled": "订单已取消。",
       "cancelFailed": "订单暂时没有取消成功，可以稍后再试一次。",
-      "slippageTooHigh": "这笔市价单的预估滑点超过了你设置的上限，可以下调数量或放宽滑点后再试。"
+      "slippageTooHigh": "这笔市价单的预估滑点超过了你设置的上限，可以下调数量或放宽滑点后再试。",
+      "marketConfirm": "你即将提交一笔「{side}」市价单。\n\n本次预计：\n- 预计成交数量：{filled} / {total} 份\n- 预估平均成交价：{avgPrice} USDC\n- 预估最差成交价：{worstPrice} USDC\n- 预估总花费：{totalCost} USDC\n- 预估滑点：{slippage}%\n\n确认继续吗？"
     },
     "mintFlow": {
       "prepare": "准备铸币...",

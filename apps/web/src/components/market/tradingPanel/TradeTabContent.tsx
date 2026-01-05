@@ -1,5 +1,15 @@
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+
+type MarketPlanPreview = {
+  slippagePercent: number;
+  avgPrice: number;
+  worstPrice: number;
+  totalCost: number;
+  filledAmount: number;
+  partialFill: boolean;
+};
+
 export type TradeTabContentProps = {
   tradeSide: "buy" | "sell";
   setTradeSide: (s: "buy" | "sell") => void;
@@ -24,6 +34,8 @@ export type TradeTabContentProps = {
   amountInput: string;
   setAmountInput: (v: string) => void;
   balance: string;
+  currentShares: number;
+  positionStake?: number;
   submitOrder: () => void;
   isSubmitting: boolean;
   market: any;
@@ -35,6 +47,8 @@ export type TradeTabContentProps = {
   formatPrice: (p: string, showCents?: boolean) => string;
   decodePrice: (p: string) => number;
   fillPrice: (p: string) => void;
+  marketPlanPreview: MarketPlanPreview | null;
+  marketPlanLoading: boolean;
 };
 
 export function TradeTabContent({
@@ -61,6 +75,8 @@ export function TradeTabContent({
   amountInput,
   setAmountInput,
   balance,
+  currentShares,
+  positionStake,
   submitOrder,
   isSubmitting,
   market,
@@ -72,12 +88,27 @@ export function TradeTabContent({
   formatPrice,
   decodePrice,
   fillPrice,
+  marketPlanPreview,
+  marketPlanLoading,
 }: TradeTabContentProps) {
-  const marketPriceSource = orderMode === "best" ? (tradeSide === "buy" ? bestAsk : bestBid) : "";
-  const priceNum =
-    orderMode === "best" ? Number(formatPrice(marketPriceSource)) || 0 : Number(priceInput) || 0;
-  const amountNum = Number(amountInput) || 0;
-  const total = priceNum * amountNum;
+  const isMarketOrder = orderMode === "best";
+  let priceNum = 0;
+  let amountNum = 0;
+  if (isMarketOrder) {
+    if (marketPlanPreview) {
+      priceNum = marketPlanPreview.avgPrice || 0;
+      amountNum = marketPlanPreview.filledAmount || 0;
+    } else {
+      const marketPriceSource = tradeSide === "buy" ? bestAsk : bestBid;
+      priceNum = Number(formatPrice(marketPriceSource)) || 0;
+      amountNum = Number(amountInput) || 0;
+    }
+  } else {
+    priceNum = Number(priceInput) || 0;
+    amountNum = Number(amountInput) || 0;
+  }
+  const total =
+    isMarketOrder && marketPlanPreview ? marketPlanPreview.totalCost || 0 : priceNum * amountNum;
   const potentialReturn = tradeSide === "buy" ? amountNum * 1 : 0;
   const potentialProfit = tradeSide === "buy" ? amountNum - total : 0;
   const profitPercent = total > 0 ? (potentialProfit / total) * 100 : 0;
@@ -115,6 +146,8 @@ export function TradeTabContent({
           decodePrice={decodePrice}
           fillPrice={fillPrice}
           tTrading={tTrading}
+          marketPlanPreview={marketPlanPreview}
+          marketPlanLoading={marketPlanLoading}
         />
         <AmountInputSection
           amountInput={amountInput}
@@ -132,6 +165,10 @@ export function TradeTabContent({
         amount={amountNum}
         outcomeLabel={currentOutcomeLabel}
         tTrading={tTrading}
+        orderMode={orderMode}
+        marketPlanPreview={marketPlanPreview}
+        marketPlanLoading={marketPlanLoading}
+        currentShares={currentShares}
       />
       <TradeSubmitSection
         tradeSide={tradeSide}
@@ -273,6 +310,8 @@ type PriceInputSectionProps = {
   decodePrice: (p: string) => number;
   fillPrice: (p: string) => void;
   tTrading: (key: string) => string;
+  marketPlanPreview: MarketPlanPreview | null;
+  marketPlanLoading: boolean;
 };
 
 function PriceInputSection({
@@ -293,22 +332,28 @@ function PriceInputSection({
   decodePrice,
   fillPrice,
   tTrading,
+  marketPlanPreview,
+  marketPlanLoading,
 }: PriceInputSectionProps) {
   let worstPriceLabel = "";
-  if (orderMode === "best" && maxSlippage > 0) {
-    const raw = tradeSide === "buy" ? bestAsk : bestBid;
-    const best = decodePrice(raw);
-    if (best > 0) {
-      const limit =
-        tradeSide === "buy"
-          ? Math.min(1, best * (1 + maxSlippage / 100))
-          : Math.max(0, best * (1 - maxSlippage / 100));
-      if (limit > 0) {
-        if (limit < 1) {
-          worstPriceLabel = (limit * 100).toFixed(1) + "¢";
-        } else {
-          worstPriceLabel = "$" + limit.toFixed(2);
-        }
+  if (orderMode === "best") {
+    const limit =
+      marketPlanPreview && marketPlanPreview.worstPrice > 0
+        ? marketPlanPreview.worstPrice
+        : (() => {
+            if (maxSlippage <= 0) return 0;
+            const raw = tradeSide === "buy" ? bestAsk : bestBid;
+            const best = decodePrice(raw);
+            if (best <= 0) return 0;
+            return tradeSide === "buy"
+              ? Math.min(1, best * (1 + maxSlippage / 100))
+              : Math.max(0, best * (1 - maxSlippage / 100));
+          })();
+    if (limit > 0) {
+      if (limit < 1) {
+        worstPriceLabel = (limit * 100).toFixed(1) + "¢";
+      } else {
+        worstPriceLabel = "$" + limit.toFixed(2);
       }
     }
   }
@@ -513,6 +558,11 @@ type TradeSummaryProps = {
   amount: number;
   outcomeLabel: string;
   tTrading: (key: string) => string;
+  orderMode: "limit" | "best";
+  marketPlanPreview: MarketPlanPreview | null;
+  marketPlanLoading: boolean;
+  currentShares: number;
+  positionStake?: number;
 };
 
 function TradeSummary({
@@ -524,6 +574,11 @@ function TradeSummary({
   amount,
   outcomeLabel,
   tTrading,
+  orderMode,
+  marketPlanPreview,
+  marketPlanLoading,
+  currentShares,
+  positionStake,
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
   const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
@@ -531,6 +586,32 @@ function TradeSummary({
     tradeSide === "buy"
       ? "text-emerald-600 bg-emerald-50 border-emerald-100"
       : "text-rose-600 bg-rose-50 border-rose-100";
+
+  const stakeBefore = positionStake && positionStake > 0 ? positionStake : 0;
+  const avgBefore = stakeBefore > 0 && currentShares > 0 ? stakeBefore / currentShares : 0;
+
+  let filledForPosition = amount;
+  if (orderMode === "best" && marketPlanPreview && marketPlanPreview.filledAmount > 0) {
+    filledForPosition = marketPlanPreview.filledAmount;
+  }
+  let deltaShares = 0;
+  if (filledForPosition > 0) {
+    deltaShares = tradeSide === "buy" ? filledForPosition : -filledForPosition;
+  }
+  const afterSharesRaw = currentShares + deltaShares;
+  const afterShares = afterSharesRaw > 0 ? afterSharesRaw : 0;
+  const hasPositionView = currentShares > 0 || deltaShares !== 0;
+  const deltaPrefix = deltaShares > 0 ? "+" : deltaShares < 0 ? "−" : "";
+
+  let stakeAfter = stakeBefore;
+  if (deltaShares !== 0 && total > 0) {
+    if (tradeSide === "buy") {
+      stakeAfter = stakeBefore + total;
+    } else {
+      stakeAfter = Math.max(0, stakeBefore - total);
+    }
+  }
+  const avgAfter = stakeAfter > 0 && afterShares > 0 ? stakeAfter / afterShares : 0;
 
   return (
     <div className="bg-gray-50 rounded-xl p-4 space-y-4 text-sm border border-gray-100">
@@ -588,6 +669,121 @@ function TradeSummary({
                 {formatPercent(profitPercent)}
               </span>
             </div>
+            {orderMode === "best" && (
+              <div className="pt-2 space-y-1.5 border-t border-dashed border-gray-200">
+                {marketPlanLoading && (
+                  <div className="flex items-center justify-between text-[11px] text-gray-400">
+                    <span>{tTrading("preview.loadingSlippage")}</span>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  </div>
+                )}
+                {marketPlanPreview && (
+                  <>
+                    <div className="flex justify-between">
+                      <span>{tTrading("preview.avgExecutionPrice")}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatCurrency(marketPlanPreview.avgPrice)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{tTrading("preview.worstExecutionPriceShort")}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatCurrency(marketPlanPreview.worstPrice)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{tTrading("preview.slippage")}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatPercent(marketPlanPreview.slippagePercent)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{tTrading("preview.estimatedFilledAmount")}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatNumber(marketPlanPreview.filledAmount, undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        {tTrading("sharesUnit")}
+                      </span>
+                    </div>
+                    {marketPlanPreview.partialFill && (
+                      <div className="text-[11px] text-amber-600">
+                        {tTrading("preview.partialFillHint")}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {hasPositionView && (
+              <div className="pt-2 mt-2 border-t border-dashed border-gray-200 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-gray-500">
+                    {tTrading("preview.positionImpactTitle")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.currentPositionShares")}</span>
+                  <span className="font-medium text-gray-900">
+                    {formatNumber(currentShares, undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    {tTrading("sharesUnit")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.thisTradeDeltaShares")}</span>
+                  <span
+                    className={`font-medium ${
+                      deltaShares === 0
+                        ? "text-gray-900"
+                        : tradeSide === "buy"
+                          ? "text-emerald-600"
+                          : "text-rose-600"
+                    }`}
+                  >
+                    {deltaPrefix}
+                    {formatNumber(Math.abs(deltaShares), undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    {tTrading("sharesUnit")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.afterTradeShares")}</span>
+                  <span className="font-bold text-gray-900">
+                    {formatNumber(afterShares, undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    {tTrading("sharesUnit")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.currentStake")}</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(stakeBefore)}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.afterTradeStake")}</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(stakeAfter)}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.currentAvgPrice")}</span>
+                  <span className="font-medium text-gray-900">
+                    {avgBefore > 0 ? formatCurrency(avgBefore) : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>{tTrading("preview.afterTradeAvgPrice")}</span>
+                  <span className="font-bold text-gray-900">
+                    {avgAfter > 0 ? formatCurrency(avgAfter) : "-"}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-xs text-gray-400">{tTrading("preview.empty")}</div>

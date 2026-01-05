@@ -156,6 +156,8 @@ export function PredictionSideRail({
                 maxSlippage,
                 isSubmitting,
                 orderMsg,
+                marketPlanPreview: null,
+                marketPlanLoading: false,
               }}
               handlers={{
                 setTradeSide,

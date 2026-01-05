@@ -32,6 +32,15 @@ import { cancelOrderAction } from "./_lib/actions/cancelOrder";
 import { mintAction } from "./_lib/actions/mint";
 import { redeemAction } from "./_lib/actions/redeem";
 
+type MarketPlanPreview = {
+  slippagePercent: number;
+  avgPrice: number;
+  worstPrice: number;
+  totalCost: number;
+  filledAmount: number;
+  partialFill: boolean;
+};
+
 export function usePredictionDetail() {
   const params = useParams();
   const { account, provider: walletProvider, switchNetwork } = useWallet();
@@ -63,6 +72,8 @@ export function usePredictionDetail() {
   const [shareBalance, setShareBalance] = useState<string>("0");
   const [mintInput, setMintInput] = useState<string>("");
   const { trades } = useTradesPolling(market);
+  const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
+  const [marketPlanLoading, setMarketPlanLoading] = useState(false);
 
   const { depthBuy, depthSell, bestBid, bestAsk } = useOrderbookDepthPolling({
     market,
@@ -169,6 +180,89 @@ export function usePredictionDetail() {
     if (tradeSide === "sell") setBalance(shareBalance);
     else setBalance(`USDC ${usdcBalance}`);
   }, [tradeSide, usdcBalance, shareBalance]);
+
+  useEffect(() => {
+    if (!market || !predictionIdRaw) {
+      setMarketPlanPreview(null);
+      return;
+    }
+    if (orderMode !== "best") {
+      setMarketPlanPreview(null);
+      return;
+    }
+    const amountVal = parseFloat(amountInput);
+    if (!amountInput || isNaN(amountVal) || amountVal <= 0) {
+      setMarketPlanPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      const run = async () => {
+        try {
+          setMarketPlanLoading(true);
+          const amountBN = parseUnitsByDecimals(amountInput, 18);
+          if (amountBN <= 0n) {
+            if (!cancelled) setMarketPlanPreview(null);
+            return;
+          }
+          const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
+          const qs = new URLSearchParams({
+            contract: market.market,
+            chainId: String(market.chain_id),
+            marketKey,
+            outcome: String(tradeOutcome),
+            side: tradeSide,
+            amount: amountBN.toString(),
+          });
+          const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
+          const planJson = await safeJson(planRes);
+          if (!planJson.success || !planJson.data) {
+            if (!cancelled) setMarketPlanPreview(null);
+            return;
+          }
+          const plan = planJson.data as any;
+          const filledRaw = BigInt(String(plan.filledAmount || "0"));
+          if (filledRaw === 0n) {
+            if (!cancelled) setMarketPlanPreview(null);
+            return;
+          }
+          const totalRaw = BigInt(String(plan.total || "0"));
+          const avgPriceRaw = BigInt(String(plan.avgPrice || "0"));
+          const worstPriceRaw = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
+          const slippageBpsNum = Number(String(plan.slippageBps || "0"));
+          const filledAmount = Number(filledRaw) / 1e18;
+          const totalCost = Number(totalRaw) / 1e6;
+          const avgPriceFromTotal =
+            filledAmount > 0 && totalCost > 0 ? totalCost / filledAmount : 0;
+          const avgPrice = avgPriceFromTotal > 0 ? avgPriceFromTotal : Number(avgPriceRaw) / 1e6;
+          const worstPrice = Number(worstPriceRaw) / 1e6;
+          const slippagePercent = (slippageBpsNum || 0) / 100;
+          const partialFill = filledRaw < amountBN;
+          if (!cancelled) {
+            setMarketPlanPreview({
+              slippagePercent,
+              avgPrice,
+              worstPrice,
+              totalCost,
+              filledAmount,
+              partialFill,
+            });
+          }
+        } catch {
+          if (!cancelled) setMarketPlanPreview(null);
+        } finally {
+          if (!cancelled) setMarketPlanLoading(false);
+        }
+      };
+      void run();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [market, predictionIdRaw, tradeOutcome, tradeSide, amountInput, orderMode]);
 
   const cancelOrder = async (salt: string) => {
     if (!account || !market || !walletProvider || !predictionIdRaw) return;
@@ -313,14 +407,21 @@ export function usePredictionDetail() {
         }
 
         const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
-        const partialNote =
-          filledBN < amountBN
-            ? formatTranslation(tTrading("orderFlow.partialFilled"), {
-                filled: filledHuman,
-                total: formatAmountNumber(amountBN),
-              })
-            : "";
-        const confirmMsg = `${avgPriceHuman.toFixed(4)} USDC, ${filledHuman}, ${worstPriceHuman.toFixed(4)} USDC, ${totalHuman.toFixed(2)} USDC, ${slippagePercent.toFixed(2)}%, ${sideLabel}${partialNote}`;
+        const avgPriceStr = avgPriceHuman.toFixed(4);
+        const worstPriceStr = worstPriceHuman.toFixed(4);
+        const totalStr = totalHuman.toFixed(2);
+        const filledStr = String(filledHuman);
+        const totalAmountStr = String(formatAmountNumber(amountBN));
+        const slippageStr = slippagePercent.toFixed(2);
+        const confirmMsg = formatTranslation(tTrading("orderFlow.marketConfirm"), {
+          side: sideLabel,
+          filled: filledStr,
+          total: totalAmountStr,
+          avgPrice: avgPriceStr,
+          worstPrice: worstPriceStr,
+          totalCost: totalStr,
+          slippage: slippageStr,
+        });
         const ok = typeof window !== "undefined" ? window.confirm(confirmMsg) : true;
         if (!ok) {
           setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
@@ -592,11 +693,14 @@ export function usePredictionDetail() {
     openOrders,
     trades,
     balance,
+    shareBalance,
     mintInput,
     setMintInput,
     handleMint,
     handleRedeem,
     submitOrder,
     cancelOrder,
+    marketPlanPreview,
+    marketPlanLoading,
   };
 }

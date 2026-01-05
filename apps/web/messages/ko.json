@@ -723,7 +723,21 @@
       "ifOutcomeHappens": "이 결과가 발생하면",
       "positionValuePrefix": "포지션 가치 약 ",
       "positionValueMiddle": ", 수익 ",
-      "empty": "가격과 수량을 입력하면 주문 미리보기가 표시됩니다."
+      "empty": "가격과 수량을 입력하면 주문 미리보기가 표시됩니다.",
+      "avgExecutionPrice": "예상 평균 체결가",
+      "worstExecutionPriceShort": "예상 최악 체결가",
+      "slippage": "예상 슬리피지",
+      "estimatedFilledAmount": "예상 체결 수량",
+      "partialFillHint": "현재 유동성 기준으로 주문이 부분 체결에 그칠 수 있습니다.",
+      "loadingSlippage": "주문북을 기반으로 슬리피지와 체결 가격을 계산하는 중…",
+      "positionImpactTitle": "이번 거래 후 나의 포지션",
+      "currentPositionShares": "현재 보유 수량",
+      "thisTradeDeltaShares": "이번 거래로 변동되는 수량",
+      "afterTradeShares": "거래 후 예상 보유 수량",
+      "currentStake": "현재 누적 투자금",
+      "afterTradeStake": "거래 후 누적 투자금",
+      "currentAvgPrice": "현재 보유 평균 단가",
+      "afterTradeAvgPrice": "거래 후 예상 평균 단가"
     },
     "mintPanel": {
       "title": "매도 준비",
@@ -768,7 +782,8 @@
       "sellMaybeNoMint": "아직 아래에서 토큰을 발행하지 않았다면, 지금은 팔 수 있는 토큰이 없을 수도 있어요. 조금 발행한 뒤 다시 한 번 시도해 주세요.",
       "canceled": "주문이 취소되었습니다.",
       "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요.",
-      "slippageTooHigh": "이번 시장가 주문의 예상 슬리피지가 설정한 한도를 넘어섰어요. 주문 수량을 줄이거나 허용 슬리피지 한도를 조금 넓힌 뒤 다시 시도해 주세요."
+      "slippageTooHigh": "이번 시장가 주문의 예상 슬리피지가 설정한 한도를 넘어섰어요. 주문 수량을 줄이거나 허용 슬리피지 한도를 조금 넓힌 뒤 다시 시도해 주세요.",
+      "marketConfirm": "지금 {side} 방향의 시장가 주문을 제출하려고 합니다.\n\n이번 주문은 대략 다음과 같이 체결될 수 있어요:\n- 예상 체결 수량: {filled} / {total} 주\n- 예상 평균 체결가: {avgPrice} USDC\n- 예상 최악 체결가: {worstPrice} USDC\n- 예상 총 비용: {totalCost} USDC\n- 예상 슬리피지: {slippage}%\n\n이대로 진행할까요?"
     },
     "mintFlow": {
       "approveUsdc": "USDC 사용 권한을 승인해 주세요...",

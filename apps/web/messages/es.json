@@ -586,7 +586,21 @@
       "ifOutcomeHappens": "Si se cumple este resultado",
       "positionValuePrefix": "Valor de la posición aprox. ",
       "positionValueMiddle": ", rentabilidad ",
-      "empty": "Introduce precio y cantidad para ver aquí la vista previa de la orden."
+      "empty": "Introduce precio y cantidad para ver aquí la vista previa de la orden.",
+      "avgExecutionPrice": "Precio medio estimado de ejecución",
+      "worstExecutionPriceShort": "Peor precio estimado de ejecución",
+      "slippage": "Deslizamiento estimado",
+      "estimatedFilledAmount": "Cantidad estimada a ejecutar",
+      "partialFillHint": "La orden puede ejecutarse solo parcialmente con la liquidez actual.",
+      "loadingSlippage": "Calculando vista previa de deslizamiento y ejecución de mercado…",
+      "positionImpactTitle": "Posición después de esta operación",
+      "currentPositionShares": "Tamaño actual de la posición",
+      "thisTradeDeltaShares": "Cambio de esta operación",
+      "afterTradeShares": "Posición estimada tras la operación",
+      "currentStake": "Inversión acumulada actual",
+      "afterTradeStake": "Inversión acumulada tras la operación",
+      "currentAvgPrice": "Precio medio de entrada actual",
+      "afterTradeAvgPrice": "Precio medio tras la operación"
     },
     "mintPanel": {
       "title": "Preparar venta",
@@ -631,7 +645,8 @@
       "sellMaybeNoMint": "Si todavía no has minteado, es posible que no tengas tokens para vender. Mintea un poco abajo e inténtalo de nuevo.",
       "canceled": "Orden cancelada.",
       "cancelFailed": "Esta vez la orden no se canceló. Puedes intentarlo de nuevo dentro de un momento.",
-      "slippageTooHigh": "El deslizamiento estimado para esta orden de mercado supera tu límite. Prueba reduciendo el tamaño o permitiendo un deslizamiento un poco mayor y vuelve a enviarla."
+      "slippageTooHigh": "El deslizamiento estimado para esta orden de mercado supera tu límite. Prueba reduciendo el tamaño o permitiendo un deslizamiento un poco mayor y vuelve a enviarla.",
+      "marketConfirm": "Vas a enviar una orden de mercado de {side}.\n\nResumen:\n- Cantidad estimada a ejecutar: {filled} / {total} participaciones\n- Precio medio estimado de ejecución: {avgPrice} USDC\n- Peor precio estimado de ejecución: {worstPrice} USDC\n- Coste total estimado: {totalCost} USDC\n- Deslizamiento estimado: {slippage}%\n\n¿Quieres continuar?"
     },
     "mintFlow": {
       "prepare": "Preparando minteo…",

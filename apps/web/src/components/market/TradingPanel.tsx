@@ -8,6 +8,15 @@ import { HistoryTabContent, OrdersTabContent } from "./tradingPanel/OrdersHistor
 const BIGINT_ZERO = BigInt(0);
 const BIGINT_THRESHOLD = BigInt("1000000000000");
 
+type MarketPlanPreview = {
+  slippagePercent: number;
+  avgPrice: number;
+  worstPrice: number;
+  totalCost: number;
+  filledAmount: number;
+  partialFill: boolean;
+};
+
 interface TradingPanelData {
   market: any;
   prediction: any;
@@ -15,6 +24,8 @@ interface TradingPanelData {
   bestBid: string;
   bestAsk: string;
   balance: string;
+  shareBalance?: string;
+  positionStake?: number;
   depthBuy: Array<{ price: string; qty: string }>;
   depthSell: Array<{ price: string; qty: string }>;
   userOrders: any[];
@@ -33,6 +44,8 @@ interface TradingPanelState {
   maxSlippage: number;
   isSubmitting: boolean;
   orderMsg: string | null;
+  marketPlanPreview?: MarketPlanPreview | null;
+  marketPlanLoading?: boolean;
 }
 
 interface TradingPanelHandlers {
@@ -67,6 +80,8 @@ export function TradingPanel(props: TradingPanelProps) {
     bestBid,
     bestAsk,
     balance,
+    shareBalance,
+    positionStake,
     depthBuy,
     depthSell,
     userOrders,
@@ -85,6 +100,8 @@ export function TradingPanel(props: TradingPanelProps) {
     maxSlippage,
     isSubmitting,
     orderMsg,
+    marketPlanPreview,
+    marketPlanLoading,
   } = state;
   const {
     setTradeSide,
@@ -153,6 +170,18 @@ export function TradingPanel(props: TradingPanelProps) {
   const isWalletConnected = !!account;
   const isTradeTab = activeTab === "trade";
   const isManageTab = activeTab === "orders" || activeTab === "history";
+
+  let currentShares = 0;
+  if (shareBalance) {
+    try {
+      const raw = BigInt(shareBalance);
+      if (raw > 0n) {
+        currentShares = Number(raw) / 1e18;
+      }
+    } catch {
+      currentShares = 0;
+    }
+  }
 
   const handleEditOrder = (o: any) => {
     try {
@@ -290,6 +319,8 @@ export function TradingPanel(props: TradingPanelProps) {
             amountInput={amountInput}
             setAmountInput={setAmountInput}
             balance={balance}
+            currentShares={currentShares}
+            positionStake={positionStake}
             submitOrder={submitOrder}
             isSubmitting={isSubmitting}
             market={market}
@@ -301,6 +332,8 @@ export function TradingPanel(props: TradingPanelProps) {
             formatPrice={formatPrice}
             decodePrice={decodePrice}
             fillPrice={fillPrice}
+            marketPlanPreview={marketPlanPreview ?? null}
+            marketPlanLoading={!!marketPlanLoading}
           />
         )}
 

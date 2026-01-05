@@ -586,7 +586,21 @@
       "ifOutcomeHappens": "If this outcome happens",
       "positionValuePrefix": "Position value about ",
       "positionValueMiddle": ", return ",
-      "empty": "Enter price and quantity to see a live preview of this order."
+      "empty": "Enter price and quantity to see a live preview of this order.",
+      "avgExecutionPrice": "Est. avg execution price",
+      "worstExecutionPriceShort": "Est. worst execution price",
+      "slippage": "Est. slippage",
+      "estimatedFilledAmount": "Est. filled amount",
+      "partialFillHint": "Order may only partially fill at current liquidity.",
+      "loadingSlippage": "Calculating market slippage preview…",
+      "positionImpactTitle": "Position after this trade",
+      "currentPositionShares": "Current position size",
+      "thisTradeDeltaShares": "Change from this trade",
+      "afterTradeShares": "Estimated position after trade",
+      "currentStake": "Current cumulative investment",
+      "afterTradeStake": "Cumulative investment after trade",
+      "currentAvgPrice": "Current average entry price",
+      "afterTradeAvgPrice": "Average price after trade"
     },
     "mintPanel": {
       "title": "Sell prep",
@@ -631,7 +645,8 @@
       "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
       "canceled": "Order canceled.",
       "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit.",
-      "slippageTooHigh": "The estimated slippage for this market order is above your limit. Try reducing the size or allowing a higher slippage threshold and place it again."
+      "slippageTooHigh": "The estimated slippage for this market order is above your limit. Try reducing the size or allowing a higher slippage threshold and place it again.",
+      "marketConfirm": "You’re about to place a market {side} order.\n\nSummary:\n- Est. filled amount: {filled} / {total} shares\n- Est. avg execution price: {avgPrice} USDC\n- Est. worst execution price: {worstPrice} USDC\n- Est. total cost: {totalCost} USDC\n- Est. slippage: {slippage}%\n\nContinue?"
     },
     "mintFlow": {
       "prepare": "Preparing to mint…",
