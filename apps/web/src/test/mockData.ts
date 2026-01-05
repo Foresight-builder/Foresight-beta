@@ -53,7 +53,7 @@ export const mockMarket = {
   verifying_contract: "0x1234567890123456789012345678901234567890",
   collateral_token: "0x2222222222222222222222222222222222222222",
   oracle_address: "0x3333333333333333333333333333333333333333",
-  fee_bps: 30,
+  fee_bps: 40,
   resolution_time: Math.floor(Date.now() / 1000) + 86400,
   created_at: "2024-01-01T00:00:00.000Z",
   updated_at: "2024-01-01T00:00:00.000Z",

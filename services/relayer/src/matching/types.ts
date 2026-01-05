@@ -134,8 +134,8 @@ export interface MatchingEngineConfig {
 }
 
 export const DEFAULT_CONFIG: MatchingEngineConfig = {
-  makerFeeBps: 0,
-  takerFeeBps: 40,
+  makerFeeBps: 100,
+  takerFeeBps: 20,
   maxOrdersPerMarket: 10000,
   maxOrdersPerUser: 100,
   minOrderAmount: 1_000_000_000_000n,

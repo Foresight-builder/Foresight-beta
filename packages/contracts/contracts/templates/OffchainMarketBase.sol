@@ -498,7 +498,20 @@ abstract contract OffchainMarketBase is
         unchecked {
             payout6 = (amount18 * USDC_SCALE) / SHARE_SCALE;
         }
-        collateral.safeTransfer(msg.sender, payout6);
+        uint256 fee;
+        address recipient = feeRecipient;
+        uint256 bps = feeBps;
+        if (recipient != address(0) && bps != 0) {
+            unchecked {
+                fee = (payout6 * bps) / 10000;
+            }
+        }
+        if (fee > 0 && recipient != address(0)) {
+            collateral.safeTransfer(recipient, fee);
+            collateral.safeTransfer(msg.sender, payout6 - fee);
+        } else {
+            collateral.safeTransfer(msg.sender, payout6);
+        }
         
         emit Redeemed(msg.sender, amount18, resolvedOutcome);
     }

@@ -5,6 +5,7 @@ create table if not exists public.markets_map (
   market text not null,
   collateral_token text,
   tick_size numeric(78,0),
+  fee_bps int2 not null default 40,
   resolution_time timestamptz,
   status text not null default 'open',
   created_at timestamptz not null default now(),
@@ -13,6 +14,9 @@ create table if not exists public.markets_map (
 
 alter table if exists public.markets_map
   add column if not exists outcomes_count int2 not null default 2;
+
+alter table if exists public.markets_map
+  add column if not exists fee_bps int2 not null default 40;
 
 create index if not exists markets_map_event_idx on public.markets_map (event_id);
 create index if not exists markets_map_market_idx on public.markets_map (market, chain_id);

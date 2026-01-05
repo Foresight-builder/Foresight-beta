@@ -228,8 +228,8 @@ data:
   relayer.json: |
     {
       "matching": {
-        "makerFeeBps": 0,
-        "takerFeeBps": 40
+        "makerFeeBps": 100,
+        "takerFeeBps": 20
       },
       "settlement": {
         "batchSize": 50,

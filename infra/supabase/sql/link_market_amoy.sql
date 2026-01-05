@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.markets_map (
   market TEXT NOT NULL,
   collateral_token TEXT,
   tick_size NUMERIC,
+  fee_bps SMALLINT NOT NULL DEFAULT 40,
   resolution_time TIMESTAMPTZ,
   status TEXT DEFAULT 'open',
   created_at TIMESTAMPTZ DEFAULT NOW(),

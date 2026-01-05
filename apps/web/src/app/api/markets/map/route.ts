@@ -35,7 +35,10 @@ export async function POST(req: NextRequest) {
     const client = getClient();
     if (!client) return ApiResponses.internalError("Supabase not configured");
     const body = (await req.json().catch(() => ({}))) as any;
-    const payload = {
+    const feeBps =
+      body.fee_bps === undefined || body.fee_bps === null ? undefined : Number(body.fee_bps);
+
+    const payload: any = {
       event_id: Number(body.event_id),
       chain_id: Number(body.chain_id),
       market: String(body.market || ""),
@@ -44,6 +47,9 @@ export async function POST(req: NextRequest) {
       resolution_time: body.resolution_time || null,
       status: String(body.status || "open"),
     };
+    if (typeof feeBps === "number" && Number.isFinite(feeBps) && feeBps >= 0) {
+      payload.fee_bps = feeBps;
+    }
     if (
       !Number.isFinite(payload.event_id) ||
       !Number.isFinite(payload.chain_id) ||
