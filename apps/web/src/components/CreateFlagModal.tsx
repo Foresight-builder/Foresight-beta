@@ -536,6 +536,7 @@ export default function CreateFlagModal({
                             onChange={setDeadline}
                             placeholder={tFlags("modal.form.targetDatePlaceholder")}
                             className="w-full"
+                            includeTime
                           />
                         </div>
 

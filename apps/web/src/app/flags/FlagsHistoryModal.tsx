@@ -66,7 +66,7 @@ export function FlagsHistoryModal({
     const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
     const daysLabel = tFlags("card.time.daysLabel");
     challengeDurationText = `${totalDays} ${daysLabel}`;
-    challengeRangeText = `${formatDate(startDay, locale)} - ${formatDate(endDay, locale)}`;
+    challengeRangeText = `${formatDateTime(startDate, locale)} - ${formatDateTime(endDate, locale)}`;
   }
 
   const successConditionText = tFlags("history.successCondition.default");
