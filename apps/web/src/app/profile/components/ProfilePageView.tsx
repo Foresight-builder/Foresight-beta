@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
   LogOut,
-  Settings,
   Wallet,
   UserPlus,
   UserMinus,
@@ -119,20 +118,20 @@ export function ProfilePageView({
     }
   };
   return (
-    <GradientPage className="pb-24 pt-24">
+    <GradientPage className="lg:h-screen lg:overflow-hidden pt-20 pb-4 lg:pt-0 lg:pb-0">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
         <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
       </div>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6 sticky top-24 overflow-hidden group">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 lg:h-full lg:pt-20">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:h-[calc(100vh-5rem)] lg:overflow-hidden">
+          <div className="lg:col-span-1 lg:h-full">
+            <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6 lg:h-full lg:flex lg:flex-col lg:sticky lg:top-24 overflow-hidden group">
               <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-300/20 rounded-full blur-3xl group-hover:bg-purple-300/30 transition-colors duration-700" />
               <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-pink-300/20 rounded-full blur-3xl group-hover:bg-pink-300/30 transition-colors duration-700" />
 
-              <div className="flex flex-col items-center text-center mb-8 relative z-10">
+              <div className="flex flex-col items-center text-center mb-8 relative z-10 lg:shrink-0">
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 p-[3px] mb-4 shadow-lg shadow-fuchsia-500/30 hover:scale-105 transition-transform duration-300">
                   <div className="w-full h-full rounded-full bg-white p-1 flex items-center justify-center overflow-hidden">
                     <img
@@ -233,7 +232,7 @@ export function ProfilePageView({
                 )}
               </div>
 
-              <nav className="space-y-2 relative z-10">
+              <nav className="space-y-2 relative z-10 lg:flex-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -257,32 +256,28 @@ export function ProfilePageView({
                     )}
                   </button>
                 ))}
+                {isOwnProfile && (
+                  <>
+                    {account && (
+                      <button
+                        onClick={disconnect}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        {tProfile("sidebar.disconnect")}
+                      </button>
+                    )}
+                  </>
+                )}
               </nav>
-
-              {isOwnProfile && (
-                <div className="mt-8 pt-8 border-t border-gray-100">
-                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm">
-                    <Settings className="w-5 h-5" />
-                    {tProfile("sidebar.settings")}
-                  </button>
-                  {account && (
-                    <button
-                      onClick={disconnect}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      {tProfile("sidebar.disconnect")}
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 lg:h-full lg:overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
+                className="lg:h-full"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}

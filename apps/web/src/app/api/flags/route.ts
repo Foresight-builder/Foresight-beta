@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
+import {
+  parseRequestBody,
+  logApiError,
+  getSessionAddress,
+  normalizeAddress,
+} from "@/lib/serverUtils";
+
+function isEvmAddress(value: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(value);
+}
 
 export async function GET(req: NextRequest) {
   try {
     const client = supabase || getClient();
     if (!client) return NextResponse.json({ flags: [] }, { status: 200 });
 
-    const viewer = await getSessionAddress(req);
+    const sessionViewer = await getSessionAddress(req);
+    const { searchParams } = new URL(req.url);
+    const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
+    const viewer =
+      sessionViewer || (isEvmAddress(viewerParam) ? normalizeAddress(viewerParam) : "");
     if (!viewer) return NextResponse.json({ flags: [] }, { status: 200 });
 
     const { data, error } = await client

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { logApiError, getSessionAddress } from "@/lib/serverUtils";
+import { logApiError, getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+
+function isEvmAddress(value: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(value);
+}
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -10,10 +14,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const { searchParams } = new URL(req.url);
-    const viewer = await getSessionAddress(req);
+    const sessionViewer = await getSessionAddress(req);
+    const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
+    const viewer =
+      sessionViewer || (isEvmAddress(viewerParam) ? normalizeAddress(viewerParam) : "");
     if (!viewer)
       return NextResponse.json(
-        { message: "Unauthorized", detail: "Missing session address" },
+        { message: "Unauthorized", detail: "Missing viewer" },
         { status: 401 }
       );
 

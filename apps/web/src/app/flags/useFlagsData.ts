@@ -28,7 +28,9 @@ export function useFlagsData(account: string | null | undefined, tFlags: (key: s
         return;
       }
 
-      const res = await fetch("/api/flags", { cache: "no-store" });
+      const res = await fetch(`/api/flags?viewer=${encodeURIComponent(account)}`, {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         toast.error(tFlags("toast.loadFailedTitle"), `HTTP ${res.status}: ${res.statusText}`);

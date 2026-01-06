@@ -43,14 +43,36 @@ export function MakerEarningsTab({ address, isOwnProfile = false }: MakerEarning
   const tProfile = useTranslations("profile");
   const { provider: rawProvider, chainId: chainIdHex, account: connectedAccount } = useWallet();
 
+  const [fallbackChainIdHex, setFallbackChainIdHex] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (chainIdHex) {
+        if (!cancelled) setFallbackChainIdHex(null);
+        return;
+      }
+      if (!rawProvider?.request) return;
+      try {
+        const hex = await rawProvider.request({ method: "eth_chainId" });
+        if (!cancelled && typeof hex === "string") setFallbackChainIdHex(hex);
+      } catch {}
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [chainIdHex, rawProvider]);
+
   const chainIdNum = useMemo(() => {
-    if (!chainIdHex) return null;
+    const hex = chainIdHex ?? fallbackChainIdHex;
+    if (!hex) return null;
     try {
-      return parseInt(chainIdHex, 16);
+      return parseInt(hex, 16);
     } catch {
       return null;
     }
-  }, [chainIdHex]);
+  }, [chainIdHex, fallbackChainIdHex]);
 
   const [loading, setLoading] = useState(false);
   const [state, setState] = useState<ViewState>({

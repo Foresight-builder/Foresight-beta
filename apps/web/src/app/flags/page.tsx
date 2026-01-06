@@ -183,7 +183,8 @@ export default function FlagsPage() {
     setHistoryLoading(true);
     setHistoryOpen(true);
     try {
-      const res = await fetch(`/api/flags/${flag.id}/checkins?limit=50`, {
+      const viewerParam = account ? `&viewer=${encodeURIComponent(account)}` : "";
+      const res = await fetch(`/api/flags/${flag.id}/checkins?limit=50${viewerParam}`, {
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({}) as any);

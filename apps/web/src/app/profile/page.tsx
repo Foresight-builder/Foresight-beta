@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Heart, History, TrendingUp, Users } from "lucide-react";
+import { Coins, Heart, History, TrendingUp, Users } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
@@ -28,6 +28,7 @@ export default function ProfilePage() {
 
   const tabs: TabConfig[] = [
     { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
+    { id: "makerEarnings", label: tProfile("sidebar.tabs.makerEarnings"), icon: Coins },
     { id: "history", label: tProfile("sidebar.tabs.history"), icon: History },
     { id: "following", label: tProfile("sidebar.tabs.following"), icon: Heart },
     { id: "followers", label: tProfile("sidebar.stats.followers"), icon: Users },
