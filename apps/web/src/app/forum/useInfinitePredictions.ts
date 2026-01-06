@@ -1,5 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 export type PredictionItem = {
   id: number;
@@ -70,8 +69,6 @@ async function fetchPredictionsPage(
  */
 export function useInfinitePredictions(params: UseInfinitePredictionsParams = {}) {
   const { category, search, pageSize = DEFAULT_PAGE_SIZE } = params;
-  const queryClient = useQueryClient();
-  const prefetchedRef = useRef<Set<string>>(new Set());
 
   const queryResult = useInfiniteQuery({
     queryKey: ["predictions", "infinite", { category, search, pageSize }],
@@ -85,48 +82,6 @@ export function useInfinitePredictions(params: UseInfinitePredictionsParams = {}
     staleTime: 30 * 1000, // 30秒内不重新请求
     gcTime: 5 * 60 * 1000, // 5分钟缓存
   });
-
-  // 预取下一页
-  const prefetchNextPage = useCallback(async () => {
-    const lastPage = queryResult.data?.pages[queryResult.data.pages.length - 1];
-    const nextCursor = lastPage?.cursor?.nextCursor;
-    
-    if (!nextCursor || prefetchedRef.current.has(nextCursor)) {
-      return;
-    }
-
-    prefetchedRef.current.add(nextCursor);
-
-    try {
-      // 预取数据并添加到缓存
-      await queryClient.prefetchInfiniteQuery({
-        queryKey: ["predictions", "infinite", { category, search, pageSize }],
-        queryFn: async ({ pageParam }) => fetchPredictionsPage(params, pageParam),
-        initialPageParam: undefined as string | undefined,
-        getNextPageParam: (lastPage: PredictionsResponse) => {
-          return lastPage.cursor?.hasMore ? lastPage.cursor.nextCursor : undefined;
-        },
-        pages: 1,
-      });
-    } catch {
-      // 预取失败静默处理
-      prefetchedRef.current.delete(nextCursor);
-    }
-  }, [queryClient, queryResult.data, category, search, pageSize, params]);
-
-  // 当滚动接近底部时自动预取
-  useEffect(() => {
-    if (queryResult.hasNextPage && !queryResult.isFetchingNextPage) {
-      // 延迟 100ms 预取，避免阻塞当前渲染
-      const timer = setTimeout(prefetchNextPage, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [queryResult.hasNextPage, queryResult.isFetchingNextPage, prefetchNextPage]);
-
-  // 重置预取缓存当查询参数变化时
-  useEffect(() => {
-    prefetchedRef.current.clear();
-  }, [category, search]);
 
   return queryResult;
 }
@@ -150,4 +105,3 @@ export function getTotalFromInfiniteData(
   if (!data?.pages?.[0]) return 0;
   return data.pages[0].total;
 }
-

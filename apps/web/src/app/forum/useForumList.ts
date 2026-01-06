@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useCategories } from "@/hooks/useQueries";
 import { Activity, Globe } from "lucide-react";
 import {
@@ -30,6 +30,7 @@ export function useForumList() {
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const { data: categoriesData } = useCategories();
 
   // 滚动位置保持
@@ -38,11 +39,18 @@ export function useForumList() {
   const categoryFilter =
     activeCategory === "all" ? undefined : ID_TO_CATEGORY_NAME[activeCategory] || activeCategory;
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // 使用无限滚动查询
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error, refetch } =
     useInfinitePredictions({
       category: categoryFilter,
-      search: searchQuery.trim() || undefined,
+      search: debouncedSearchQuery || undefined,
       pageSize: PAGE_SIZE,
     });
 
@@ -114,17 +122,15 @@ export function useForumList() {
 
   // 当前选中的话题
   const currentTopic = useMemo(() => {
-    const id = selectedTopicId;
-    if (!id && filtered.length) {
-      // 首次加载时自动选中第一个
-      return filtered[0];
+    if (selectedTopicId == null) {
+      return filtered[0] ?? null;
     }
-    return predictionsMap.get(id!) || filtered[0] || null;
+    return predictionsMap.get(selectedTopicId) ?? filtered[0] ?? null;
   }, [predictionsMap, filtered, selectedTopicId]);
 
   // 自动选中第一个话题
-  useMemo(() => {
-    if (!selectedTopicId && filtered.length > 0) {
+  useEffect(() => {
+    if (selectedTopicId == null && filtered.length > 0) {
       setSelectedTopicId(filtered[0].id);
     }
   }, [filtered, selectedTopicId]);

@@ -97,6 +97,19 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
+vi.mock("next/link", () => ({
+  __esModule: true,
+  default: ({ href, children, ...rest }: any) =>
+    React.createElement(
+      "a",
+      {
+        href: typeof href === "string" ? href : "",
+        ...rest,
+      },
+      children
+    ),
+}));
+
 vi.mock("next/image", () => ({
   __esModule: true,
   default: ({ src, alt, ...rest }: any) =>

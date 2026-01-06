@@ -32,12 +32,12 @@ export async function getPredictionsList(
   if (args.category) query = query.eq("category", args.category);
   if (args.status) query = query.eq("status", args.status);
   if (args.search) query = query.ilike("title", `%${args.search}%`);
-  
+
   // 游标分页：获取 created_at 小于游标的记录
   if (args.cursor) {
     query = query.lt("created_at", args.cursor);
   }
-  
+
   if (args.range) query = query.range(args.range.from, args.range.to);
   else if (args.limit) query = query.limit(args.limit);
 
@@ -46,7 +46,7 @@ export async function getPredictionsList(
 
   const predictionRows = (predictions || []) as PredictionRow[];
   if (predictionRows.length === 0) {
-    return { items: [], total: 0 };
+    return { items: [], total: count || 0 };
   }
 
   const ids = predictionRows.map((p) => Number(p.id)).filter((n) => Number.isFinite(n));
@@ -150,7 +150,7 @@ async function fetchPredictionStats(
   for (const row of statsRows) {
     const pid = Number(row.prediction_id);
     if (!Number.isFinite(pid)) continue;
-    
+
     statsMap.set(pid, {
       yesAmount: Number(row.yes_amount) || 0,
       noAmount: Number(row.no_amount) || 0,

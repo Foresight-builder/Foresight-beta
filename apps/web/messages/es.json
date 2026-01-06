@@ -256,7 +256,8 @@
       "views": "Vistas",
       "viewHot": "Por popularidad",
       "viewNew": "Más recientes",
-      "viewTop": "Más votadas"
+      "viewTop": "Más votadas",
+      "reviewWorkbench": "Abrir banco de revisión"
     },
     "card": {
       "badge": "Propuesta",

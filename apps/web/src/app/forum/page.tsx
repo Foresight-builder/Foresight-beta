@@ -5,12 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { MessageCircle, Search, Activity, Users, Plus, Flame, Clock, Trophy } from "lucide-react";
+import {
+  MessageCircle,
+  Search,
+  Activity,
+  Users,
+  Plus,
+  Flame,
+  Clock,
+  Trophy,
+  Bell,
+  RefreshCw,
+} from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { useForumList } from "./useForumList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations, useLocale } from "@/lib/i18n";
+import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 
 export default function ForumPage() {
@@ -32,10 +43,13 @@ export default function ForumPage() {
     hasNextPage,
     loadMore,
     total,
-    predictions,
+    newCount,
+    refreshAndReset,
+    isConnected,
   } = useForumList();
 
   const [viewFilter, setViewFilter] = React.useState<"hot" | "new" | "top">("hot");
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const { ref: loadMoreRef, inView } = useInView({
     rootMargin: "200px",
@@ -50,7 +64,7 @@ export default function ForumPage() {
   const displayName = (account || user?.email || tForum("guestFallback")).slice(0, 12);
   const loadedTopicsCount = filtered.length;
   const totalTopicsCount =
-    typeof total === "number" && total > 0 ? total : loadedTopicsCount || predictions.length;
+    typeof total === "number" ? Math.max(total, loadedTopicsCount) : loadedTopicsCount;
 
   const sortedTopics = React.useMemo(() => {
     const items = [...filtered];
@@ -235,8 +249,36 @@ export default function ForumPage() {
                   <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-slate-400">
                     <Activity className="w-3 h-3" />
                     <span>{filtered.length}</span>
+                    <span
+                      className={`ml-2 w-1.5 h-1.5 rounded-full ${
+                        isConnected ? "bg-emerald-400" : "bg-slate-300"
+                      }`}
+                    />
                   </div>
                 </div>
+                {newCount > 0 && (
+                  <button
+                    type="button"
+                    disabled={isRefreshing}
+                    onClick={async () => {
+                      if (!refreshAndReset) return;
+                      setIsRefreshing(true);
+                      try {
+                        await refreshAndReset();
+                      } finally {
+                        setIsRefreshing(false);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold bg-gradient-to-r from-purple-200/80 to-pink-200/80 text-purple-800 border border-purple-200 shadow-sm shadow-purple-200/60 hover:from-purple-300 hover:to-pink-300 hover:shadow-md hover:shadow-purple-200/70 disabled:opacity-70 transition-all"
+                  >
+                    {isRefreshing ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Bell className="w-3.5 h-3.5" />
+                    )}
+                    {formatTranslation(tForum("newTopics"), { count: newCount })}
+                  </button>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   {categories.map((cat) => {
                     const isActive = activeCategory === cat.id;

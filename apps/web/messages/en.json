@@ -256,7 +256,8 @@
       "views": "Views",
       "viewHot": "Hot & Trending",
       "viewNew": "Newest First",
-      "viewTop": "Top Voted"
+      "viewTop": "Top Voted",
+      "reviewWorkbench": "Open review workbench"
     },
     "card": {
       "badge": "Proposal",
