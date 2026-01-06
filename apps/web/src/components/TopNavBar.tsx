@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Bell } from "lucide-react";
 import Link from "next/link";
@@ -17,12 +17,38 @@ export default function TopNavBar() {
   const { mounted, modal, walletModalOpen, setWalletModalOpen } = nav;
   const tNotifications = useTranslations("notifications");
   const { locale } = useLocale();
+  const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const notificationsPanelRef = useRef<HTMLDivElement | null>(null);
 
   const badgeText = useMemo(() => {
     if (!nav.notificationsCount) return "";
     if (nav.notificationsCount > 99) return "99+";
     return String(nav.notificationsCount);
   }, [nav.notificationsCount]);
+
+  useEffect(() => {
+    if (!nav.notificationsOpen) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (notificationsButtonRef.current?.contains(target)) return;
+      if (notificationsPanelRef.current?.contains(target)) return;
+      nav.setNotificationsOpen(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      nav.setNotificationsOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [nav.notificationsOpen, nav.setNotificationsOpen]);
 
   return (
     <header role="banner" className="fixed top-0 left-0 right-0 w-full z-50 pointer-events-none">
@@ -36,9 +62,10 @@ export default function TopNavBar() {
           <div className="relative">
             <button
               type="button"
+              ref={notificationsButtonRef}
               aria-label={tNotifications("ariaLabel")}
               className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-gray-50"
-              onClick={() => nav.setNotificationsOpen((v) => !v)}
+              onClick={nav.handleNotificationsToggle}
             >
               <Bell className="w-4 h-4 text-gray-700" />
               {nav.notificationsCount > 0 && (
@@ -48,7 +75,10 @@ export default function TopNavBar() {
               )}
             </button>
             {nav.notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+              <div
+                ref={notificationsPanelRef}
+                className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg"
+              >
                 <div className="px-3 py-2 border-b border-gray-100 text-xs font-semibold text-gray-500">
                   {tNotifications("centerTitle")}
                 </div>
@@ -64,8 +94,17 @@ export default function TopNavBar() {
                         className="block px-3 py-2 hover:bg-gray-50"
                         onClick={() => nav.setNotificationsOpen(false)}
                       >
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          {item.title}
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`text-xs truncate ${
+                              item.unread
+                                ? "font-bold text-gray-900"
+                                : "font-semibold text-gray-900"
+                            }`}
+                          >
+                            {item.title}
+                          </div>
+                          {item.unread && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                         </div>
                         {item.message && (
                           <div className="mt-0.5 text-[11px] text-gray-600 line-clamp-2">

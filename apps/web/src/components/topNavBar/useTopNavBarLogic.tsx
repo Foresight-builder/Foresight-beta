@@ -47,7 +47,8 @@ export function useTopNavBarLogic() {
     top: 0,
     left: 0,
   });
-  const [notificationsCount, setNotificationsCount] = useState(0);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const [inviteUnreadCount, setInviteUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
@@ -56,12 +57,32 @@ export function useTopNavBarLogic() {
       message: string;
       created_at: string;
       url?: string;
+      unread?: boolean;
     }>
   >([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsIdSetRef = useRef<Set<string>>(new Set());
+  const seenDiscussionIdsRef = useRef<Set<string>>(new Set());
+  const pollingInFlightRef = useRef(false);
+  const [pageVisible, setPageVisible] = useState(true);
+
+  useEffect(() => {
+    notificationsIdSetRef.current = new Set(notifications.map((n) => n.id));
+  }, [notifications]);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      setPageVisible(!document.hidden);
+    };
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      document.removeEventListener("visibilitychange", update);
+    };
   }, []);
 
   useEffect(() => {
@@ -75,14 +96,83 @@ export function useTopNavBarLogic() {
   }, [connectError, mounted]);
 
   const viewerId = useMemo(() => String(account || "").toLowerCase(), [account]);
+  const notificationsSeenStorageKey = useMemo(() => {
+    if (!viewerId) return "";
+    return `foresight:notifications:seen:${viewerId}`;
+  }, [viewerId]);
+
+  const safeUrl = useCallback((candidate: unknown) => {
+    if (typeof candidate !== "string") return "/flags";
+    const trimmed = candidate.trim();
+    if (!trimmed.startsWith("/")) return "/flags";
+    return trimmed;
+  }, []);
+
+  const persistSeenDiscussionIds = useCallback(() => {
+    if (!notificationsSeenStorageKey) return;
+    try {
+      const ids = Array.from(seenDiscussionIdsRef.current).slice(-500);
+      localStorage.setItem(notificationsSeenStorageKey, JSON.stringify(ids));
+    } catch {}
+  }, [notificationsSeenStorageKey]);
+
+  const markDiscussionIdsSeen = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+      let changed = false;
+      const set = seenDiscussionIdsRef.current;
+      for (const id of ids) {
+        if (!set.has(id)) {
+          set.add(id);
+          changed = true;
+        }
+      }
+      if (changed) persistSeenDiscussionIds();
+    },
+    [persistSeenDiscussionIds]
+  );
 
   useEffect(() => {
+    if (!viewerId) {
+      seenDiscussionIdsRef.current = new Set();
+      setInviteUnreadCount(0);
+      setPendingReviewCount(0);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(notificationsSeenStorageKey);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      const ids = Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+      seenDiscussionIdsRef.current = new Set(ids);
+    } catch {
+      seenDiscussionIdsRef.current = new Set();
+    }
+  }, [viewerId, notificationsSeenStorageKey]);
+
+  const notificationsCount = useMemo(
+    () => pendingReviewCount + inviteUnreadCount,
+    [pendingReviewCount, inviteUnreadCount]
+  );
+
+  useEffect(() => {
+    if (!pageVisible) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = (delayMs: number) => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void tick();
+      }, delayMs);
+    };
+
     const load = async () => {
       if (!viewerId) {
         if (!cancelled) {
           setNotifications([]);
-          setNotificationsCount(0);
+          setPendingReviewCount(0);
+          setInviteUnreadCount(0);
         }
         return;
       }
@@ -111,6 +201,7 @@ export function useTopNavBarLogic() {
           message: string;
           created_at: string;
           url?: string;
+          unread?: boolean;
         }> | null = null;
         if (supabase) {
           try {
@@ -121,6 +212,7 @@ export function useTopNavBarLogic() {
               .order("created_at", { ascending: false })
               .limit(20);
             const rows = Array.isArray(res.data) ? res.data : [];
+            const seen = seenDiscussionIdsRef.current;
             notificationItems = rows.map((row: any) => {
               let raw = row.content as any;
               let parsed: any = {};
@@ -145,39 +237,89 @@ export function useTopNavBarLogic() {
                   ? parsed.title
                   : titleFallback;
               const message = typeof parsed.message === "string" ? parsed.message : "";
-              const url = typeof parsed.url === "string" && parsed.url ? parsed.url : "/flags";
+              const url = safeUrl(parsed.url);
+              const id = String(row.id);
               return {
-                id: String(row.id),
+                id,
                 type,
                 title,
                 message,
                 created_at: String(row.created_at),
                 url,
+                unread: !seen.has(id),
               };
             });
             inviteCount = notificationItems.length;
           } catch {}
         }
         if (!cancelled) {
-          if (notificationItems) {
-            setNotifications(notificationItems);
+          setPendingReviewCount(pendingCount);
+
+          const pendingItems =
+            pendingCount > 0
+              ? [
+                  {
+                    id: `pending_review:${viewerId}`,
+                    type: "pending_review",
+                    title: tNotifications("pendingReviewTitle"),
+                    message: tNotifications("pendingReviewMessage").replace(
+                      "{count}",
+                      String(pendingCount)
+                    ),
+                    created_at: new Date().toISOString(),
+                    url: "/flags",
+                    unread: true,
+                  },
+                ]
+              : [];
+
+          const list = notificationItems ?? [];
+          if (notificationsOpen && list.length) {
+            markDiscussionIdsSeen(list.map((x) => x.id));
+            for (const item of list) item.unread = false;
           }
-          setNotificationsCount(pendingCount + inviteCount);
+          const combined = [...pendingItems, ...list];
+          setNotifications(combined);
+          const unreadInvites = notificationsOpen
+            ? 0
+            : (notificationItems ?? []).reduce((acc, x) => acc + (x.unread ? 1 : 0), 0);
+          setInviteUnreadCount(unreadInvites);
         }
       } catch {
         if (!cancelled) {
           setNotifications([]);
-          setNotificationsCount(0);
+          setPendingReviewCount(0);
+          setInviteUnreadCount(0);
         }
       }
     };
-    load();
-    const id = setInterval(load, 60000);
+
+    const tick = async () => {
+      if (cancelled) return;
+      if (!pageVisible) return;
+      if (!viewerId) {
+        await load();
+        return;
+      }
+      if (pollingInFlightRef.current) {
+        schedule(2500);
+        return;
+      }
+      pollingInFlightRef.current = true;
+      try {
+        await load();
+      } finally {
+        pollingInFlightRef.current = false;
+        schedule(60000);
+      }
+    };
+
+    schedule(0);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timer) clearTimeout(timer);
     };
-  }, [viewerId, tNotifications]);
+  }, [viewerId, tNotifications, safeUrl, notificationsOpen, markDiscussionIdsSeen, pageVisible]);
 
   useEffect(() => {
     if (!viewerId || !supabase) return;
@@ -216,28 +358,52 @@ export function useTopNavBarLogic() {
           const title =
             typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : titleFallback;
           const message = typeof parsed.message === "string" ? parsed.message : "";
-          const url = typeof parsed.url === "string" && parsed.url ? parsed.url : "/flags";
+          const url = safeUrl(parsed.url);
+          const id = String(row.id);
+          const unread = !notificationsOpen && !seenDiscussionIdsRef.current.has(id);
           const item = {
-            id: String(row.id),
+            id,
             type,
             title,
             message,
             created_at: String(row.created_at),
             url,
+            unread,
           };
+          if (notificationsIdSetRef.current.has(item.id)) return;
+          notificationsIdSetRef.current.add(item.id);
+          if (notificationsOpen) {
+            markDiscussionIdsSeen([item.id]);
+          } else if (unread) {
+            setInviteUnreadCount((prev) => prev + 1);
+          }
           setNotifications((prev) => {
             const exists = prev.some((x) => x.id === item.id);
             if (exists) return prev;
             return [item, ...prev].slice(0, 50);
           });
-          setNotificationsCount((prev) => prev + 1);
         }
       )
       .subscribe();
     return () => {
       client.removeChannel(channel);
     };
-  }, [viewerId, tNotifications]);
+  }, [viewerId, tNotifications, safeUrl, notificationsOpen, markDiscussionIdsSeen]);
+
+  const handleNotificationsToggle = useCallback(() => {
+    if (!viewerId) return;
+    if (notificationsOpen) {
+      setNotificationsOpen(false);
+      return;
+    }
+    const ids = notifications.filter((n) => n.type !== "pending_review").map((n) => n.id);
+    markDiscussionIdsSeen(ids);
+    setInviteUnreadCount(0);
+    setNotifications((prev) =>
+      prev.map((n) => (n.type === "pending_review" ? n : { ...n, unread: false }))
+    );
+    setNotificationsOpen(true);
+  }, [viewerId, notificationsOpen, notifications, markDiscussionIdsSeen]);
 
   const handleConnectWallet = useCallback(
     async (walletType?: "metamask" | "coinbase" | "binance") => {
@@ -520,6 +686,7 @@ export function useTopNavBarLogic() {
     notificationsCount,
     notificationsOpen,
     setNotificationsOpen,
+    handleNotificationsToggle,
   };
 }
 

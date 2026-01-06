@@ -54,7 +54,15 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-key
 # 区块链
 RPC_URL=https://rpc-amoy.polygon.technology
 CHAIN_ID=80002
-MARKET_ADDRESS=0x...
+
+# WebSocket
+WS_PORT=3006
+
+# CORS（可选，逗号分隔；为空表示放开）
+RELAYER_CORS_ORIGINS=http://localhost:3000
+
+# 链上结算 Operator（可选：启用批量结算时需要）
+OPERATOR_PRIVATE_KEY=0x...
 
 # Redis (可选)
 REDIS_ENABLED=false
@@ -110,21 +118,27 @@ npm run start:prod
 
 ## 📡 API 端点
 
-### 订单 API
+### v2 撮合引擎 API（推荐）
 
-| 方法   | 端点               | 描述         |
-| ------ | ------------------ | ------------ |
-| POST   | `/v2/orders`       | 提交新订单   |
-| DELETE | `/v2/orders/:salt` | 取消订单     |
-| GET    | `/v2/orders`       | 获取订单列表 |
-| GET    | `/v2/orders/:salt` | 获取订单详情 |
+| 方法 | 端点                   | 描述                                   |
+| ---- | ---------------------- | -------------------------------------- |
+| POST | `/v2/orders`           | 提交订单并撮合（返回撮合结果与剩余量） |
+| GET  | `/v2/depth`            | 获取订单簿深度（内存快照）             |
+| GET  | `/v2/stats`            | 获取盘口统计（bestBid/bestAsk 等）     |
+| GET  | `/v2/ws-info`          | 获取 WS 连接信息与可订阅频道           |
+| POST | `/v2/register-settler` | 为 marketKey 注册结算器/Operator       |
+| GET  | `/v2/settlement-stats` | 获取结算统计（聚合）                   |
+| GET  | `/v2/operator-status`  | 获取某 marketKey 的 Operator 状态      |
 
-### 订单簿 API
+### 兼容 API（DB 驱动订单簿）
 
-| 方法 | 端点              | 描述               |
-| ---- | ----------------- | ------------------ |
-| GET  | `/v2/depth`       | 获取订单簿深度     |
-| POST | `/v2/market-plan` | 获取市价单执行计划 |
+| 方法 | 端点                      | 描述                                                |
+| ---- | ------------------------- | --------------------------------------------------- |
+| POST | `/orderbook/orders`       | 提交签名订单（写入 orders 表）                      |
+| POST | `/orderbook/cancel-salt`  | 签名取消单个 salt（写入 orders 状态）               |
+| GET  | `/orderbook/depth`        | 获取深度（优先读取 depth_levels / 回退聚合 orders） |
+| GET  | `/orderbook/queue`        | 获取某价格档位的订单队列                            |
+| POST | `/orderbook/report-trade` | 通过 txHash 回灌成交（链上事件入库）                |
 
 ### 系统 API
 

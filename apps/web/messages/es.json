@@ -1811,6 +1811,8 @@
     "fallbackWitnessInviteTitle": "Invitación a reto",
     "fallbackCheckinReviewTitle": "Actualización de revisión de check-in",
     "fallbackGenericTitle": "Notificaciones",
+    "pendingReviewTitle": "Revisiones de check-in pendientes",
+    "pendingReviewMessage": "Tienes {count} check-ins por revisar",
     "centerTitle": "Centro de notificaciones",
     "ariaLabel": "Notificaciones",
     "empty": "Sin notificaciones",

@@ -200,8 +200,12 @@ uint256 public constant MIN_ORDER_LIFETIME = 5;               // 最小订单生
 // 铸造完整份额集（需先 approve USDC）
 function mintCompleteSet(uint256 amount18) external;
 
-// 批量成交（由 Relayer 调用）
-function batchFill(FillRequest[] calldata fills) external;
+// 批量成交（由 Relayer / Operator 调用）
+function batchFill(
+    Order[] calldata orders,
+    bytes[] calldata signatures,
+    uint256[] calldata fillAmounts
+) external;
 
 // 单笔签名订单成交
 function fillOrderSigned(
@@ -210,8 +214,15 @@ function fillOrderSigned(
     uint256 fillAmount
 ) external;
 
-// 取消订单
-function cancelSaltsBatch(bytes32[] calldata salts) external;
+// 取消单个 salt（签名校验）
+function cancelSaltSigned(address maker, uint256 salt, bytes calldata signature) external;
+
+// 批量取消（签名校验；无效签名会被跳过）
+function cancelSaltsBatch(
+    address[] calldata makers,
+    uint256[] calldata salts,
+    bytes[] calldata signatures
+) external;
 
 // 赎回已结算份额
 function redeem(uint8 outcomeIndex, uint256 amount18) external;
@@ -225,12 +236,12 @@ function redeemCompleteSetOnInvalid(uint256 amount18) external;
 ```solidity
 struct Order {
     address maker;           // 挂单者
-    uint8 outcomeIndex;      // 结果索引
+    uint256 outcomeIndex;    // 结果索引
     bool isBuy;              // true=买入，false=卖出
-    uint256 amount18;        // 份额数量（1e18 精度）
-    uint256 price6Per1e18;   // 价格（USDC/1e18份额）
+    uint256 price;           // 价格（USDC 6 decimals / 1e18 份额）
+    uint256 amount;          // 份额数量（1e18 精度）
     uint256 expiry;          // 过期时间戳
-    bytes32 salt;            // 唯一标识符
+    uint256 salt;            // 唯一标识符
 }
 ```
 
@@ -280,10 +291,12 @@ ERC-1155 多代币标准，每个市场的每个结果对应一个 tokenId。
 // tokenId 计算方式
 function computeTokenId(
     address market,
-    uint8 outcomeIndex
-) public pure returns (uint256) {
-    return uint256(keccak256(abi.encodePacked(market, outcomeIndex)));
-}
+    uint256 outcomeIndex
+) external pure returns (uint256 tokenId);
+
+// 规则：tokenId = (uint256(uint160(market)) << 32) | outcomeIndex
+// - 高 160 bits：market 地址
+// - 低  32 bits：outcomeIndex（0..outcomeCount-1）
 
 // 角色
 bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -410,7 +423,7 @@ constructor(
 
 ```typescript
 const domain = {
-  name: "Foresight",
+  name: "Foresight Market",
   version: "1",
   chainId: 80002,
   verifyingContract: marketAddress,
@@ -423,12 +436,12 @@ const domain = {
 const types = {
   Order: [
     { name: "maker", type: "address" },
-    { name: "outcomeIndex", type: "uint8" },
+    { name: "outcomeIndex", type: "uint256" },
     { name: "isBuy", type: "bool" },
-    { name: "amount18", type: "uint256" },
-    { name: "price6Per1e18", type: "uint256" },
+    { name: "price", type: "uint256" },
+    { name: "amount", type: "uint256" },
+    { name: "salt", type: "uint256" },
     { name: "expiry", type: "uint256" },
-    { name: "salt", type: "bytes32" },
   ],
 };
 ```
@@ -440,7 +453,7 @@ import { ethers } from "ethers";
 
 async function signOrder(signer, order, marketAddress) {
   const domain = {
-    name: "Foresight",
+    name: "Foresight Market",
     version: "1",
     chainId: await signer.provider.getNetwork().then((n) => n.chainId),
     verifyingContract: marketAddress,
@@ -449,12 +462,12 @@ async function signOrder(signer, order, marketAddress) {
   const types = {
     Order: [
       { name: "maker", type: "address" },
-      { name: "outcomeIndex", type: "uint8" },
+      { name: "outcomeIndex", type: "uint256" },
       { name: "isBuy", type: "bool" },
-      { name: "amount18", type: "uint256" },
-      { name: "price6Per1e18", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "amount", type: "uint256" },
+      { name: "salt", type: "uint256" },
       { name: "expiry", type: "uint256" },
-      { name: "salt", type: "bytes32" },
     ],
   };
 
@@ -474,28 +487,40 @@ Relayer 是链下订单簿的核心服务，负责：
 
 **API 端点**:
 
-| 方法   | 路径                | 描述             |
-| ------ | ------------------- | ---------------- |
-| POST   | `/order`            | 提交新订单       |
-| DELETE | `/order/:salt`      | 取消订单         |
-| GET    | `/depth/:marketId`  | 获取订单簿深度   |
-| GET    | `/orders/:marketId` | 获取市场订单列表 |
-| POST   | `/cancel-salt`      | 签名取消订单     |
+**v2 撮合引擎 API（推荐）**:
+
+| 方法 | 路径                   | 描述                                   |
+| ---- | ---------------------- | -------------------------------------- |
+| POST | `/v2/orders`           | 提交订单并撮合（返回撮合结果与剩余量） |
+| GET  | `/v2/depth`            | 获取订单簿深度（内存快照）             |
+| GET  | `/v2/stats`            | 获取盘口统计                           |
+| GET  | `/v2/ws-info`          | 获取 WS 订阅信息                       |
+| POST | `/v2/register-settler` | 注册市场结算器/Operator                |
+
+**兼容 API（DB 驱动订单簿）**:
+
+| 方法 | 路径                     | 描述                           |
+| ---- | ------------------------ | ------------------------------ |
+| POST | `/orderbook/orders`      | 提交签名订单（写入 orders 表） |
+| POST | `/orderbook/cancel-salt` | 签名取消订单（salt 级别）      |
+| GET  | `/orderbook/depth`       | 获取订单簿深度（DB / 视图）    |
 
 **订单提交**:
 
 ```typescript
-// POST /order
+// POST /v2/orders
 {
-  "market": "0x...",
+  "chainId": 80002,
+  "verifyingContract": "0x...", // market 合约地址
+  "marketKey": "80002:1",       // 可选：用于多事件/聚合
   "order": {
     "maker": "0x...",
     "outcomeIndex": 0,
     "isBuy": true,
-    "amount18": "1000000000000000000",  // 1 share
-    "price6Per1e18": "500000",          // 0.5 USDC
+    "price": "500000",                  // USDC 6 decimals / 1e18 份额
+    "amount": "1000000000000000000",    // 1 share（1e18）
+    "salt": "12345",
     "expiry": 1735689600,
-    "salt": "0x..."
   },
   "signature": "0x..."
 }
@@ -504,16 +529,22 @@ Relayer 是链下订单簿的核心服务，负责：
 **深度查询**:
 
 ```typescript
-// GET /depth/:marketId
+// GET /v2/depth?marketKey=80002:1&outcome=0&levels=20
 {
-  "bids": [
-    { "price": 500000, "amount": "10000000000000000000" },
-    { "price": 490000, "amount": "5000000000000000000" }
-  ],
-  "asks": [
-    { "price": 510000, "amount": "8000000000000000000" },
-    { "price": 520000, "amount": "12000000000000000000" }
-  ]
+  "success": true,
+  "data": {
+    "marketKey": "80002:1",
+    "outcomeIndex": 0,
+    "bids": [
+      { "price": "500000", "qty": "10000000000000000000", "count": 5 },
+      { "price": "490000", "qty": "5000000000000000000", "count": 3 }
+    ],
+    "asks": [
+      { "price": "510000", "qty": "8000000000000000000", "count": 4 },
+      { "price": "520000", "qty": "12000000000000000000", "count": 6 }
+    ],
+    "timestamp": 1735689600000
+  }
 }
 ```
 
@@ -921,119 +952,112 @@ POST /api/flags
 ### 核心表
 
 ```sql
--- 预测市场
-CREATE TABLE predictions (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  category TEXT,
-  status TEXT DEFAULT 'active',
-  market_address TEXT,
-  resolution_time TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- 数据库脚本集中在 infra/supabase/sql：
+-- - supabase-init.sql（orders 等基础表）
+-- - add_trades_and_candles.sql（trades/candles）
+-- - add_settlement_tables.sql（批量结算）
 
--- 市场结果选项
-CREATE TABLE prediction_outcomes (
-  id SERIAL PRIMARY KEY,
-  prediction_id INTEGER REFERENCES predictions(id),
-  outcome_index SMALLINT NOT NULL,
-  name TEXT NOT NULL,
-  token_id TEXT
-);
-
--- 订单
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  market_id TEXT NOT NULL,
-  maker TEXT NOT NULL,
-  outcome_index SMALLINT NOT NULL,
+-- 订单簿订单（Relayer 写入）
+CREATE TABLE IF NOT EXISTS public.orders (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  verifying_contract TEXT NOT NULL,
+  chain_id INTEGER NOT NULL,
+  market_key TEXT,
+  maker_address TEXT NOT NULL,
+  maker_salt TEXT NOT NULL,
+  outcome_index INTEGER NOT NULL,
   is_buy BOOLEAN NOT NULL,
-  amount NUMERIC NOT NULL,
-  price NUMERIC NOT NULL,
-  salt TEXT UNIQUE NOT NULL,
+  price TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  remaining TEXT NOT NULL,
+  expiry TIMESTAMPTZ NULL,
   signature TEXT NOT NULL,
-  expiry TIMESTAMPTZ NOT NULL,
-  filled_amount NUMERIC DEFAULT 0,
-  status TEXT DEFAULT 'open',
+  status TEXT NOT NULL DEFAULT 'open',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS orders_maker_salt_unique
+  ON public.orders (verifying_contract, chain_id, maker_address, maker_salt);
 
--- 成交记录
-CREATE TABLE trades (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  market_id TEXT NOT NULL,
-  order_id UUID REFERENCES orders(id),
-  maker TEXT NOT NULL,
-  taker TEXT NOT NULL,
-  outcome_index SMALLINT NOT NULL,
-  is_buy BOOLEAN NOT NULL,
-  amount NUMERIC NOT NULL,
+-- 成交（链上事件入库）
+CREATE TABLE IF NOT EXISTS public.trades (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  network_id INTEGER NOT NULL,
+  market_address TEXT NOT NULL,
+  outcome_index INTEGER NOT NULL,
   price NUMERIC NOT NULL,
-  tx_hash TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  amount NUMERIC NOT NULL,
+  taker_address TEXT NOT NULL,
+  maker_address TEXT NOT NULL,
+  is_buy BOOLEAN NOT NULL,
+  tx_hash TEXT NOT NULL,
+  log_index INTEGER NOT NULL DEFAULT 0,
+  block_number BIGINT NOT NULL,
+  block_timestamp TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (tx_hash, log_index)
 );
 
--- K线数据
-CREATE TABLE candles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  market_id TEXT NOT NULL,
-  outcome_index SMALLINT NOT NULL,
-  interval TEXT NOT NULL,  -- '1m', '5m', '1h', '1d'
-  open_time TIMESTAMPTZ NOT NULL,
+-- K 线（OHLCV）
+CREATE TABLE IF NOT EXISTS public.candles (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  network_id INTEGER NOT NULL,
+  market_address TEXT NOT NULL,
+  outcome_index INTEGER NOT NULL,
+  resolution TEXT NOT NULL,
   open NUMERIC NOT NULL,
   high NUMERIC NOT NULL,
   low NUMERIC NOT NULL,
   close NUMERIC NOT NULL,
   volume NUMERIC NOT NULL,
-  UNIQUE(market_id, outcome_index, interval, open_time)
+  time TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (network_id, market_address, outcome_index, resolution, time)
 );
 
--- 用户资料
-CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY,
-  wallet_address TEXT UNIQUE NOT NULL,
-  username TEXT,
-  avatar_url TEXT,
-  bio TEXT,
+-- 批量结算（Operator 写入）
+CREATE TABLE IF NOT EXISTS public.settlement_batches (
+  id TEXT PRIMARY KEY,
+  chain_id INTEGER NOT NULL,
+  market_address TEXT NOT NULL,
+  fill_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  tx_hash TEXT,
+  block_number BIGINT,
+  gas_used NUMERIC,
+  error TEXT,
+  retry_count INTEGER DEFAULT 0,
+  submitted_at TIMESTAMPTZ,
+  confirmed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 用户关注 (Social)
-CREATE TABLE user_follows (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  follower_address TEXT NOT NULL,      -- 关注者
-  following_address TEXT NOT NULL,     -- 被关注者
+-- 每市场 Operator 配置
+CREATE TABLE IF NOT EXISTS public.operators (
+  id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  chain_id INTEGER NOT NULL,
+  market_address TEXT NOT NULL,
+  operator_address TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(follower_address, following_address)
-);
-
--- 事件关注
-CREATE TABLE event_follows (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL,
-  event_id INTEGER REFERENCES predictions(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, event_id)
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (chain_id, market_address)
 );
 ```
 
 ### 索引
 
 ```sql
--- 订单查询优化
-CREATE INDEX idx_orders_market_status ON orders(market_id, status);
-CREATE INDEX idx_orders_maker ON orders(maker);
-CREATE INDEX idx_orders_expiry ON orders(expiry) WHERE status = 'open';
+CREATE INDEX IF NOT EXISTS orders_book_idx
+  ON public.orders (verifying_contract, chain_id, outcome_index, is_buy, price);
 
--- 成交查询优化
-CREATE INDEX idx_trades_market ON trades(market_id, created_at DESC);
-CREATE INDEX idx_trades_maker ON trades(maker);
-CREATE INDEX idx_trades_taker ON trades(taker);
+CREATE INDEX IF NOT EXISTS trades_market_outcome_idx
+  ON public.trades (market_address, outcome_index, block_timestamp);
 
--- K线查询优化
-CREATE INDEX idx_candles_lookup ON candles(market_id, outcome_index, interval, open_time DESC);
+CREATE INDEX IF NOT EXISTS candles_query_idx
+  ON public.candles (market_address, outcome_index, resolution, time DESC);
+
+CREATE INDEX IF NOT EXISTS settlement_batches_status_idx
+  ON public.settlement_batches (status);
 ```
 
 ---

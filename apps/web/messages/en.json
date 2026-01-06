@@ -1810,6 +1810,8 @@
     "fallbackWitnessInviteTitle": "Challenge invite",
     "fallbackCheckinReviewTitle": "Check-in review update",
     "fallbackGenericTitle": "Notifications",
+    "pendingReviewTitle": "Pending check-in reviews",
+    "pendingReviewMessage": "{count} check-ins need your review",
     "centerTitle": "Notifications",
     "ariaLabel": "Notifications",
     "empty": "No notifications",

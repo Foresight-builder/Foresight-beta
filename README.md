@@ -146,8 +146,14 @@ npm install
 cp .env.example .env.local
 # 编辑 .env.local 填入必要配置
 
-# 启动开发服务器
-npm run ws:dev
+# 启动 Web + Relayer（推荐）
+npm run dev
+
+# 仅启动 Web（可选）
+# npm run dev:web
+
+# 仅启动 Relayer（可选）
+# npm run dev:relayer
 
 # 访问 http://localhost:3000
 ```
@@ -155,10 +161,13 @@ npm run ws:dev
 ### 环境变量配置
 
 ```env
-# Supabase
+# Supabase（Web）
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_key
+
+# Supabase（Relayer / 后端脚本）
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # 区块链
 NEXT_PUBLIC_CHAIN_ID=80002
@@ -172,6 +181,9 @@ NEXT_PUBLIC_UMA_ADAPTER_ADDRESS=0x...
 
 # Relayer
 NEXT_PUBLIC_RELAYER_URL=http://localhost:3001
+
+# Relayer（链上结算 Operator，可选：需要启用结算/AA 相关能力时配置）
+OPERATOR_PRIVATE_KEY=your_operator_private_key
 ```
 
 ---
@@ -243,7 +255,7 @@ Foresight-beta/
 - ✅ 批量操作大小限制（防 DoS）
 - ✅ 订单最小生命周期（防三明治攻击）
 - ✅ ECDSA 签名可延展性保护
-- ✅ ERC-1271 智能合约钱包支持
+- ✅ ERC-1271 智能合约钱包支持（链上验证支持；链下校验以 EOA 为主）
 - ✅ 熔断机制（紧急暂停）
 
 ### 性能指标

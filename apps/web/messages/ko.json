@@ -133,6 +133,8 @@
     "fallbackCheckinReviewTitle": "체크인 검토 업데이트",
     "fallbackGenericTitle": "알림",
     "fallbackWitnessInviteTitle": "도전 초대",
+    "pendingReviewTitle": "대기 중인 체크인 검토",
+    "pendingReviewMessage": "{count}개의 체크인을 검토해야 합니다",
     "summary": "총 {count}개의 알림"
   },
   "profile": {
