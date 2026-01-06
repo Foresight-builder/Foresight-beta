@@ -56,6 +56,8 @@ export default function ProposalDetailClient({ id }: { id: string }) {
       onCopyLink={handleCopyLink}
       vote={detail.vote}
       postComment={detail.postComment}
+      canResubmit={detail.canResubmit}
+      onResubmit={detail.resubmit}
       jsonLdMain={jsonLdMain}
       jsonLdBreadcrumb={jsonLdBreadcrumb}
     />

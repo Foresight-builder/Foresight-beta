@@ -48,10 +48,31 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
           <div className="bg-white rounded-xl border border-slate-100 p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500">{tProposals("detailSidebar.statusLabel")}</span>
-              <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                {tProposals("detailSidebar.statusActive")}
-              </span>
+              {(() => {
+                const raw = String(thread.review_status || "").trim();
+                let label = tProposals("card.statusPending");
+                let cls =
+                  "px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-bold flex items-center gap-1 border border-amber-200";
+                if (raw === "approved") {
+                  label = tProposals("card.statusApproved");
+                  cls =
+                    "px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold flex items-center gap-1 border border-emerald-200";
+                } else if (raw === "rejected") {
+                  label = tProposals("card.statusRejected");
+                  cls =
+                    "px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 text-xs font-bold flex items-center gap-1 border border-rose-200";
+                } else if (raw === "needs_changes") {
+                  label = tProposals("review.actionNeedsChanges");
+                  cls =
+                    "px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-bold flex items-center gap-1 border border-amber-200";
+                }
+                return (
+                  <span className={cls}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                    {label}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="flex items-center justify-between text-sm">

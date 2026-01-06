@@ -278,7 +278,11 @@
       "marketHint": "Esta propuesta ya tiene un mercado de predicción asociado en la cadena. Puedes ir a la página del mercado para observar las señales de precios o participar directamente.",
       "marketButton": "Ir al mercado",
       "comments": "comentarios",
-      "discussionCount": "{count} discusiones"
+      "discussionCount": "{count} discusiones",
+      "resubmitButton": "Volver a enviar a revisión",
+      "resubmitHint": "Después de aplicar los comentarios de revisión, puedes volver a enviar esta propuesta.",
+      "resubmitSuccess": "Propuesta reenviada para revisión.",
+      "resubmitFailed": "Error al reenviar la propuesta. Inténtalo de nuevo más tarde."
     },
     "comment": {
       "authorBadge": "Autor",

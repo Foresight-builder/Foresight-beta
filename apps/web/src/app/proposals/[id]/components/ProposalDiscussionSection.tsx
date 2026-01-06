@@ -20,6 +20,8 @@ export type ProposalDiscussionSectionProps = {
   replyText: string;
   onReplyTextChange: (value: string) => void;
   onSubmitReply: () => void;
+  canResubmit: boolean;
+  onResubmit: () => void;
 };
 
 export function ProposalDiscussionSection({
@@ -34,6 +36,8 @@ export function ProposalDiscussionSection({
   replyText,
   onReplyTextChange,
   onSubmitReply,
+  canResubmit,
+  onResubmit,
 }: ProposalDiscussionSectionProps) {
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
@@ -85,6 +89,43 @@ export function ProposalDiscussionSection({
               <span>·</span>
               <span>{formatDateTime(thread.created_at, locale)}</span>
             </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {(() => {
+                const raw = String(thread.review_status || "").trim();
+                if (!raw) return null;
+                let label = tProposals("card.statusPending");
+                let cls =
+                  "text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200";
+                if (raw === "approved") {
+                  label = tProposals("card.statusApproved");
+                  cls =
+                    "text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200";
+                } else if (raw === "rejected") {
+                  label = tProposals("card.statusRejected");
+                  cls =
+                    "text-[11px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200";
+                } else if (raw === "needs_changes") {
+                  label = tProposals("review.actionNeedsChanges");
+                  cls =
+                    "text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200";
+                }
+                return <span className={cls}>{label}</span>;
+              })()}
+              {thread.review_reason && String(thread.review_status || "") !== "pending_review" && (
+                <span className="text-[11px] text-slate-500 line-clamp-2">
+                  {thread.review_reason}
+                </span>
+              )}
+              {canResubmit && (
+                <button
+                  type="button"
+                  onClick={onResubmit}
+                  className="ml-auto text-[11px] px-2.5 py-1 rounded-full bg-purple-600 text-white font-semibold hover:bg-purple-700"
+                >
+                  {tProposals("detail.resubmitButton")}
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="hidden sm:flex items-center gap-3">

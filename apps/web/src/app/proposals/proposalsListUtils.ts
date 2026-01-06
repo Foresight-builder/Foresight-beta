@@ -40,6 +40,7 @@ export type ProposalItem = {
   comments?: ProposalComment[] | null;
   category?: string | null;
   review_status?: string | null;
+  review_reason?: string | null;
   userVote?: "up" | "down";
 };
 

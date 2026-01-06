@@ -8,6 +8,35 @@ import { normalizeCategory } from "@/features/trending/trendingModel";
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
 
+function isAutoMarketEnabled(): boolean {
+  const raw = process.env.FORUM_AUTO_MARKET_ENABLED;
+  if (raw == null) return true;
+  const s = String(raw).toLowerCase();
+  if (s === "0" || s === "false" || s === "off" || s === "no") return false;
+  return true;
+}
+
+async function isUnderDailyAutoMarketLimit(client: any): Promise<boolean> {
+  const rawLimit = process.env.FORUM_AUTO_MARKET_DAILY_LIMIT;
+  const n = rawLimit ? Number(rawLimit) : NaN;
+  const limit = Number.isFinite(n) && n > 0 ? n : 3;
+  if (!limit) return false;
+  const now = new Date();
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0)
+  );
+  const { count, error } = await client
+    .from("predictions")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", start.toISOString());
+  if (error) {
+    logApiError("maybeAutoCreatePrediction count predictions failed", error);
+    return false;
+  }
+  const used = typeof count === "number" ? count : 0;
+  return used < limit;
+}
+
 function actionLabel(v: string): string {
   const s = String(v || "");
   if (s === "价格达到") return "价格是否会达到";
@@ -22,6 +51,7 @@ async function maybeAutoCreatePrediction(
   threads: any[],
   comments: any[]
 ) {
+  if (!isAutoMarketEnabled()) return;
   const byThread: Record<string, { comments: number; participants: Set<string> }> = {};
   threads.forEach((t) => {
     byThread[String(t.id)] = { comments: 0, participants: new Set([String(t.user_id || "")]) };
@@ -69,21 +99,27 @@ async function maybeAutoCreatePrediction(
         "id",
         (others as any[]).map((x) => x.id)
       );
-  const thresholdMs = 60 * 1000;
+  const rawThreshold = process.env.FORUM_AUTO_MARKET_MIN_HOT_MS;
+  const nThreshold = rawThreshold ? Number(rawThreshold) : NaN;
+  const thresholdMs = Number.isFinite(nThreshold) && nThreshold > 0 ? nThreshold : 30 * 60 * 1000;
   const ok = topSince && now - topSince >= thresholdMs;
   if (!ok) return;
   const reviewStatus = String(topRow?.review_status || "");
-  if (reviewStatus && reviewStatus !== "approved") return;
+  if (reviewStatus !== "approved") return;
   if (Number(topRow?.created_prediction_id || 0) > 0) return;
   const subj = String(topRow?.subject_name || "");
   const verb = String(topRow?.action_verb || "");
   const target = String(topRow?.target_value || "");
+  if (!subj || !verb || !target) return;
   const cat = String(topRow?.category || "科技");
   const deadline = topRow?.deadline
     ? new Date(topRow.deadline).toISOString()
     : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const titlePreview = String(topRow?.title_preview || "");
   const criteriaPreview = String(topRow?.criteria_preview || "");
+  if (!criteriaPreview) return;
+  const canCreateToday = await isUnderDailyAutoMarketLimit(client);
+  if (!canCreateToday) return;
   const eventTitle = `${subj}${actionLabel(verb)}${target}`;
   const seed = (eventTitle || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
@@ -164,6 +200,7 @@ export async function GET(req: Request) {
       created_prediction_id:
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       review_status: String(t.review_status || "pending_review"),
+      review_reason: t.review_reason == null ? null : String(t.review_reason || ""),
       comments: (commentsByThread[String(t.id)] || []).map((c: any) => ({
         id: Number(c.id),
         thread_id: Number(c.thread_id),
@@ -185,6 +222,42 @@ export async function GET(req: Request) {
 }
 
 // POST /api/forum  body: { eventId, title, content, walletAddress }
+function textLengthWithoutSpaces(value: string): number {
+  return value.replace(/\s+/g, "").length;
+}
+
+async function isUnderThreadRateLimit(client: any, walletAddress: string): Promise<boolean> {
+  const userId = walletAddress || "guest";
+  const now = new Date();
+  const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: count10m, error: err10m } = await client
+    .from("forum_threads")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", tenMinutesAgo);
+  if (err10m) {
+    logApiError("POST /api/forum rate limit 10m query failed", err10m);
+    return false;
+  }
+  if (typeof count10m === "number" && count10m > 0) {
+    return false;
+  }
+  const { count: count24h, error: err24h } = await client
+    .from("forum_threads")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", dayAgo);
+  if (err24h) {
+    logApiError("POST /api/forum rate limit 24h query failed", err24h);
+    return false;
+  }
+  if (typeof count24h === "number" && count24h >= 3) {
+    return false;
+  }
+  return true;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await parseRequestBody(req);
@@ -192,12 +265,25 @@ export async function POST(req: Request) {
     const title = String(body?.title || "");
     const content = String(body?.content || "");
     const walletAddress = String(body?.walletAddress || "");
-    if (eventId === null || !title.trim()) {
-      return ApiResponses.invalidParameters("eventId、title 必填");
+    if (eventId === null) {
+      return ApiResponses.invalidParameters("eventId 必填");
+    }
+    if (!title.trim()) {
+      return ApiResponses.invalidParameters("标题必填");
+    }
+    if (textLengthWithoutSpaces(title) < 5) {
+      return ApiResponses.invalidParameters("标题过短，请补充关键信息");
+    }
+    if (textLengthWithoutSpaces(content) < 40) {
+      return ApiResponses.invalidParameters("内容信息量不足，请至少补充 40 个字符");
     }
     const client = (supabaseAdmin || getClient()) as any;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
+    }
+    const ok = await isUnderThreadRateLimit(client, walletAddress);
+    if (!ok) {
+      return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
     }
     const subject_name = String(body?.subjectName || "");
     const action_verb = String(body?.actionVerb || "");

@@ -47,6 +47,42 @@ async function parseBody(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
+function textLengthWithoutSpaces(value: string): number {
+  return value.replace(/\s+/g, "").length;
+}
+
+async function isUnderCommentRateLimit(client: any, walletAddress: string): Promise<boolean> {
+  const userId = walletAddress || "guest";
+  const now = new Date();
+  const fifteenSecondsAgo = new Date(now.getTime() - 15 * 1000).toISOString();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: count15s, error: err15s } = await client
+    .from("forum_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", fifteenSecondsAgo);
+  if (err15s) {
+    logApiError("POST /api/forum/comments rate limit 15s query failed", err15s);
+    return false;
+  }
+  if (typeof count15s === "number" && count15s > 0) {
+    return false;
+  }
+  const { count: count24h, error: err24h } = await client
+    .from("forum_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", dayAgo);
+  if (err24h) {
+    logApiError("POST /api/forum/comments rate limit 24h query failed", err24h);
+    return false;
+  }
+  if (typeof count24h === "number" && count24h >= 30) {
+    return false;
+  }
+  return true;
+}
+
 // POST /api/forum/comments  body: { eventId, threadId, content, walletAddress, parentId? }
 export async function POST(req: Request) {
   try {
@@ -57,12 +93,22 @@ export async function POST(req: Request) {
     const parentId = parentIdRaw == null ? null : toNum(parentIdRaw);
     const content = String((body as { content?: unknown }).content || "");
     const walletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
-    if (!eventId || !threadId || !content.trim()) {
-      return ApiResponses.invalidParameters("eventId、threadId、content 必填");
+    if (!eventId || !threadId) {
+      return ApiResponses.invalidParameters("eventId、threadId 必填");
+    }
+    if (!content.trim()) {
+      return ApiResponses.invalidParameters("content 必填");
+    }
+    if (textLengthWithoutSpaces(content) < 2) {
+      return ApiResponses.invalidParameters("评论内容过短");
     }
     const client = supabaseAdmin || getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
+    }
+    const ok = await isUnderCommentRateLimit(client, walletAddress);
+    if (!ok) {
+      return ApiResponses.rateLimit("评论过于频繁，请稍后再试");
     }
     const { data, error } = await (client as any)
       .from("forum_comments")

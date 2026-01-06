@@ -256,7 +256,8 @@
       "views": "视图",
       "viewHot": "热度优先",
       "viewNew": "最新优先",
-      "viewTop": "最高投票"
+      "viewTop": "最高投票",
+      "reviewWorkbench": "进入审核工作台"
     },
     "card": {
       "badge": "提案",
@@ -278,7 +279,11 @@
       "marketHint": "该提案已生成对应的链上预测市场，你可以前往市场页面观察价格信号或直接参与交易。",
       "marketButton": "前往预测市场",
       "comments": "条评论",
-      "discussionCount": "{count} 条讨论"
+      "discussionCount": "{count} 条讨论",
+      "resubmitButton": "重新提交审核",
+      "resubmitHint": "根据审核意见修改后，可重新提交给审核员。",
+      "resubmitSuccess": "已重新提交审核。",
+      "resubmitFailed": "重新提交失败，请稍后重试。"
     },
     "comment": {
       "authorBadge": "楼主",

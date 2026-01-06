@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Clock, Edit2, Save, X } from "lucide-react";
 import type { Database } from "@/lib/database.types";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
@@ -12,6 +12,12 @@ type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 type ReviewItem = Thread & {
   proposalLink?: string;
   category?: string | null;
+  deadline?: string | null;
+  title_preview?: string | null;
+  criteria_preview?: string | null;
+  subject_name?: string | null;
+  action_verb?: string | null;
+  target_value?: string | null;
 };
 
 export default function ReviewPage() {
@@ -59,6 +65,64 @@ export default function ReviewPage() {
   }, [loadItems]);
 
   const selected = items.find((x) => x.id === selectedId) || null;
+
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    category: "",
+    deadline: "",
+    title_preview: "",
+    criteria_preview: "",
+    subject_name: "",
+    action_verb: "",
+    target_value: "",
+  });
+
+  useEffect(() => {
+    setEditing(false);
+    setReason("");
+  }, [selectedId]);
+
+  const startEdit = () => {
+    if (!selected) return;
+    setEditForm({
+      category: String(selected.category || ""),
+      deadline: selected.deadline ? new Date(selected.deadline).toISOString().split("T")[0] : "",
+      title_preview: String(selected.title_preview || ""),
+      criteria_preview: String(selected.criteria_preview || ""),
+      subject_name: String(selected.subject_name || ""),
+      action_verb: String(selected.action_verb || ""),
+      target_value: String(selected.target_value || ""),
+    });
+    setEditing(true);
+  };
+
+  const saveMetadata = async () => {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/review/proposals/${selected.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "edit_metadata",
+          patch: {
+            ...editForm,
+            deadline: editForm.deadline ? new Date(editForm.deadline).toISOString() : null,
+          },
+        }),
+      });
+      if (!res.ok) {
+        alert("Failed to update metadata");
+        return;
+      }
+      setEditing(false);
+      await loadItems();
+    } catch {
+      alert("Failed to update metadata");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const submitAction = async (action: "approve" | "reject" | "needs_changes") => {
     if (!selected) return;
@@ -212,6 +276,166 @@ export default function ReviewPage() {
                       </div>
                       <div>{selected.review_status || "pending_review"}</div>
                     </div>
+                  </div>
+                  <div className="py-2">
+                    {editing ? (
+                      <div className="border rounded-xl p-4 bg-slate-50 space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-slate-700">Metadata Editor</span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditing(false)}
+                              className="p-1 hover:bg-slate-200 rounded"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={saveMetadata}
+                              disabled={submitting}
+                              className="p-1 bg-purple-600 text-white hover:bg-purple-700 rounded"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Category
+                            </label>
+                            <input
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.category}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, category: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Deadline
+                            </label>
+                            <input
+                              type="date"
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.deadline}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, deadline: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Subject Name
+                            </label>
+                            <input
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.subject_name}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, subject_name: e.target.value })
+                              }
+                              placeholder="e.g. Bitcoin"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Action Verb
+                            </label>
+                            <input
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.action_verb}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, action_verb: e.target.value })
+                              }
+                              placeholder="e.g. price reaches"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Target Value
+                            </label>
+                            <input
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.target_value}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, target_value: e.target.value })
+                              }
+                              placeholder="e.g. $100k"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Title Preview (Auto-Market)
+                            </label>
+                            <input
+                              className="w-full text-xs p-2 border rounded"
+                              value={editForm.title_preview}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, title_preview: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-[10px] text-slate-500 font-semibold uppercase">
+                              Criteria Preview
+                            </label>
+                            <textarea
+                              className="w-full text-xs p-2 border rounded"
+                              rows={2}
+                              value={editForm.criteria_preview}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, criteria_preview: e.target.value })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border rounded-xl p-4 bg-slate-50/50 space-y-2 relative group">
+                        <button
+                          onClick={startEdit}
+                          className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-purple-600 bg-white border border-slate-200 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                          <div>
+                            <span className="text-slate-400">Category:</span>{" "}
+                            <span className="font-medium ml-1">{selected.category || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Deadline:</span>{" "}
+                            <span className="font-medium ml-1">
+                              {selected.deadline ? formatDateTime(selected.deadline, locale) : "-"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Subject:</span>{" "}
+                            <span className="font-medium ml-1">{selected.subject_name || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Verb:</span>{" "}
+                            <span className="font-medium ml-1">{selected.action_verb || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Target:</span>{" "}
+                            <span className="font-medium ml-1">{selected.target_value || "-"}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-slate-400">Title Preview:</span>{" "}
+                            <span className="font-medium ml-1 block truncate">
+                              {selected.title_preview || "-"}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-slate-400">Criteria:</span>{" "}
+                            <span className="font-medium ml-1 block truncate">
+                              {selected.criteria_preview || "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-slate-400 mb-1">

@@ -278,7 +278,11 @@
       "marketHint": "This proposal already has a linked on-chain prediction market. You can go to the market page to observe price signals or trade directly.",
       "marketButton": "Go to market",
       "comments": "comments",
-      "discussionCount": "{count} discussions"
+      "discussionCount": "{count} discussions",
+      "resubmitButton": "Resubmit for review",
+      "resubmitHint": "After applying the review feedback, you can resubmit this proposal.",
+      "resubmitSuccess": "Proposal resubmitted for review.",
+      "resubmitFailed": "Resubmission failed. Please try again later."
     },
     "comment": {
       "authorBadge": "OP",

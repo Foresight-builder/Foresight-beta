@@ -168,6 +168,29 @@ export default function CreateProposalModal({
               </div>
 
               <div className="space-y-2">
+                {activeTab === "post" && (
+                  <div className="flex justify-end mb-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const template = `Subject Name: 
+Action Verb: 
+Target Value: 
+Expected Deadline: 
+Criteria / Rules: 
+`;
+                        setForm((prev) => ({
+                          ...prev,
+                          content: prev.content ? prev.content + "\n\n" + template : template,
+                        }));
+                      }}
+                      className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Use Market Template
+                    </button>
+                  </div>
+                )}
                 <textarea
                   value={form.content}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}

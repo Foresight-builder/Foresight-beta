@@ -32,6 +32,8 @@ export type ProposalDetailClientViewProps = {
   onCopyLink: () => void;
   vote: any;
   postComment: any;
+  canResubmit: boolean;
+  onResubmit: () => void;
   jsonLdMain: any | null;
   jsonLdBreadcrumb: any | null;
 };
@@ -53,6 +55,8 @@ export function ProposalDetailClientView({
   onCopyLink,
   vote,
   postComment,
+  canResubmit,
+  onResubmit,
   jsonLdMain,
   jsonLdBreadcrumb,
 }: ProposalDetailClientViewProps) {
@@ -121,6 +125,8 @@ export function ProposalDetailClientView({
                     replyText={replyText}
                     onReplyTextChange={onReplyTextChange}
                     onSubmitReply={onSubmitReply}
+                    canResubmit={canResubmit}
+                    onResubmit={onResubmit}
                   />
                 </div>
                 <ChatSidebar thread={thread} displayName={displayName} stats={stats} />

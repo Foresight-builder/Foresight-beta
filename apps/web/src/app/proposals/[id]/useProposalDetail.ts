@@ -189,6 +189,30 @@ export function useProposalDetail(id: string) {
     }
   };
 
+  const isAuthor = !!account && !!thread && String(thread.user_id || "") === String(account || "");
+
+  const canResubmit =
+    !!thread && isAuthor && String(thread.review_status || "") === "needs_changes";
+
+  const resubmit = async () => {
+    if (!thread || !canResubmit) return;
+    try {
+      const res = await fetch(`/api/review/proposals/${thread.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resubmit" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Resubmit failed");
+      }
+      toast.success(t("proposals.detail.resubmitSuccess"));
+      fetchThread();
+    } catch (e: any) {
+      toast.error(t("proposals.detail.resubmitFailed"), e?.message);
+    }
+  };
+
   const stats = useMemo(() => {
     if (!thread) {
       return { commentsCount: 0, upvotes: 0, downvotes: 0, totalVotes: 0 };
@@ -222,5 +246,7 @@ export function useProposalDetail(id: string) {
     stats,
     refresh: fetchThread,
     displayName,
+    canResubmit,
+    resubmit,
   };
 }

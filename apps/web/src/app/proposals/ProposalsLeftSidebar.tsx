@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Plus, Flame, Clock, Trophy } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "@/lib/i18n";
 import type { ProposalFilter, ProposalItem } from "./proposalsListUtils";
 
@@ -24,6 +25,26 @@ export default function ProposalsLeftSidebar({
   setFilter,
 }: ProposalsLeftSidebarProps) {
   const tProposals = useTranslations("proposals");
+  const { data: reviewAccess } = useQuery({
+    queryKey: ["reviewerAccess"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/review/proposals?status=pending_review&limit=1", {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          return { ok: false, count: 0 };
+        }
+        const data = await res.json().catch(() => ({}));
+        const items = Array.isArray((data as any).items) ? (data as any).items : [];
+        return { ok: true, count: items.length };
+      } catch {
+        return { ok: false, count: 0 };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 0,
+  });
   const myPostsCount = React.useMemo(() => {
     const me = account || "";
     if (!me) return 0;
@@ -146,6 +167,21 @@ export default function ProposalsLeftSidebar({
           </button>
         ))}
       </div>
+      {reviewAccess?.ok && (
+        <div className="mt-2 px-2">
+          <Link
+            href="/review"
+            className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors"
+          >
+            <span>{tProposals("sidebar.reviewWorkbench")}</span>
+            {reviewAccess.count > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full bg-white text-slate-900 text-[10px] font-black">
+                {reviewAccess.count > 200 ? "200+" : reviewAccess.count}
+              </span>
+            )}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
