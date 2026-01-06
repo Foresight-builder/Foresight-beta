@@ -5,7 +5,6 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
-import { supabase } from "@/lib/supabase";
 
 export function useTopNavBarLogic() {
   const {
@@ -47,8 +46,7 @@ export function useTopNavBarLogic() {
     top: 0,
     left: 0,
   });
-  const [pendingReviewCount, setPendingReviewCount] = useState(0);
-  const [inviteUnreadCount, setInviteUnreadCount] = useState(0);
+  const [notificationsCount, setNotificationsCount] = useState(0);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
@@ -58,17 +56,12 @@ export function useTopNavBarLogic() {
       created_at: string;
       url?: string;
       unread?: boolean;
+      read_at?: string | null;
     }>
   >([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const notificationsIdSetRef = useRef<Set<string>>(new Set());
-  const seenDiscussionIdsRef = useRef<Set<string>>(new Set());
   const pollingInFlightRef = useRef(false);
   const [pageVisible, setPageVisible] = useState(true);
-
-  useEffect(() => {
-    notificationsIdSetRef.current = new Set(notifications.map((n) => n.id));
-  }, [notifications]);
 
   useEffect(() => {
     setMounted(true);
@@ -96,10 +89,6 @@ export function useTopNavBarLogic() {
   }, [connectError, mounted]);
 
   const viewerId = useMemo(() => String(account || "").toLowerCase(), [account]);
-  const notificationsSeenStorageKey = useMemo(() => {
-    if (!viewerId) return "";
-    return `foresight:notifications:seen:${viewerId}`;
-  }, [viewerId]);
 
   const safeUrl = useCallback((candidate: unknown) => {
     if (typeof candidate !== "string") return "/flags";
@@ -108,51 +97,28 @@ export function useTopNavBarLogic() {
     return trimmed;
   }, []);
 
-  const persistSeenDiscussionIds = useCallback(() => {
-    if (!notificationsSeenStorageKey) return;
-    try {
-      const ids = Array.from(seenDiscussionIdsRef.current).slice(-500);
-      localStorage.setItem(notificationsSeenStorageKey, JSON.stringify(ids));
-    } catch {}
-  }, [notificationsSeenStorageKey]);
-
-  const markDiscussionIdsSeen = useCallback(
-    (ids: string[]) => {
-      if (!ids.length) return;
-      let changed = false;
-      const set = seenDiscussionIdsRef.current;
-      for (const id of ids) {
-        if (!set.has(id)) {
-          set.add(id);
-          changed = true;
-        }
-      }
-      if (changed) persistSeenDiscussionIds();
+  const titleFallbackForType = useCallback(
+    (type: string) => {
+      return type === "witness_invite"
+        ? tNotifications("fallbackWitnessInviteTitle")
+        : type === "checkin_review"
+          ? tNotifications("fallbackCheckinReviewTitle")
+          : tNotifications("fallbackGenericTitle");
     },
-    [persistSeenDiscussionIds]
+    [tNotifications]
   );
 
-  useEffect(() => {
-    if (!viewerId) {
-      seenDiscussionIdsRef.current = new Set();
-      setInviteUnreadCount(0);
-      setPendingReviewCount(0);
-      return;
-    }
+  const markNotificationsRead = useCallback(async (ids: string[]) => {
+    const numericIds = ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0);
+    if (!numericIds.length) return;
     try {
-      const raw = localStorage.getItem(notificationsSeenStorageKey);
-      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
-      const ids = Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-      seenDiscussionIdsRef.current = new Set(ids);
-    } catch {
-      seenDiscussionIdsRef.current = new Set();
-    }
-  }, [viewerId, notificationsSeenStorageKey]);
-
-  const notificationsCount = useMemo(
-    () => pendingReviewCount + inviteUnreadCount,
-    [pendingReviewCount, inviteUnreadCount]
-  );
+      await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: numericIds }),
+      });
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (!pageVisible) return;
@@ -171,125 +137,81 @@ export function useTopNavBarLogic() {
       if (!viewerId) {
         if (!cancelled) {
           setNotifications([]);
-          setPendingReviewCount(0);
-          setInviteUnreadCount(0);
+          setNotificationsCount(0);
         }
         return;
       }
       try {
-        let pendingCount = 0;
-        try {
-          const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(viewerId)}`, {
-            cache: "no-store",
-          });
-          if (res.ok) {
-            const data = await res.json().catch(() => ({}) as any);
-            const list = Array.isArray(data?.flags) ? data.flags : [];
-            pendingCount = list.filter(
-              (f: any) =>
-                String(f.status || "") === "pending_review" &&
-                String(f.verification_type || "") === "witness" &&
-                String(f.witness_id || "").toLowerCase() === viewerId
-            ).length;
-          }
-        } catch {}
-        let inviteCount = 0;
-        let notificationItems: Array<{
-          id: string;
-          type: string;
-          title: string;
-          message: string;
-          created_at: string;
-          url?: string;
-          unread?: boolean;
-        }> | null = null;
-        if (supabase) {
-          try {
-            const res = await supabase
-              .from("discussions")
-              .select("id, content, created_at")
-              .eq("user_id", viewerId)
-              .order("created_at", { ascending: false })
-              .limit(20);
-            const rows = Array.isArray(res.data) ? res.data : [];
-            const seen = seenDiscussionIdsRef.current;
-            notificationItems = rows.map((row: any) => {
-              let raw = row.content as any;
-              let parsed: any = {};
-              if (typeof raw === "string") {
-                try {
-                  parsed = JSON.parse(raw);
-                } catch {
-                  parsed = {};
-                }
-              } else if (raw && typeof raw === "object") {
-                parsed = raw;
-              }
-              const type = typeof parsed.type === "string" ? parsed.type : "";
-              const titleFallback =
-                type === "witness_invite"
-                  ? tNotifications("fallbackWitnessInviteTitle")
-                  : type === "checkin_review"
-                    ? tNotifications("fallbackCheckinReviewTitle")
-                    : tNotifications("fallbackGenericTitle");
-              const title =
-                typeof parsed.title === "string" && parsed.title.trim()
-                  ? parsed.title
-                  : titleFallback;
-              const message = typeof parsed.message === "string" ? parsed.message : "";
-              const url = safeUrl(parsed.url);
-              const id = String(row.id);
+        const listRes = await fetch("/api/notifications?limit=20", { cache: "no-store" });
+        const listJson = listRes.ok ? await listRes.json().catch(() => ({})) : {};
+        const rawItems = Array.isArray(listJson?.notifications) ? listJson.notifications : [];
+
+        const mapped = rawItems
+          .map((n: any) => {
+            const type = String(n?.type || "");
+            const id = String(n?.id || "");
+            const created_at = String(n?.created_at || "");
+            const read_at = n?.read_at ? String(n.read_at) : null;
+            const base = {
+              id,
+              type,
+              created_at,
+              url: safeUrl(n?.url),
+              read_at,
+              unread: !read_at,
+              title: String(n?.title || ""),
+              message: String(n?.message || ""),
+            };
+
+            if (type === "pending_review") {
+              const count = Number(base.message || 0);
               return {
-                id,
-                type,
-                title,
-                message,
-                created_at: String(row.created_at),
-                url,
-                unread: !seen.has(id),
+                ...base,
+                title: tNotifications("pendingReviewTitle"),
+                message: tNotifications("pendingReviewMessage").replace("{count}", String(count)),
+                url: "/flags",
+                read_at: null,
+                unread: true,
               };
-            });
-            inviteCount = notificationItems.length;
-          } catch {}
-        }
-        if (!cancelled) {
-          setPendingReviewCount(pendingCount);
+            }
 
-          const pendingItems =
-            pendingCount > 0
-              ? [
-                  {
-                    id: `pending_review:${viewerId}`,
-                    type: "pending_review",
-                    title: tNotifications("pendingReviewTitle"),
-                    message: tNotifications("pendingReviewMessage").replace(
-                      "{count}",
-                      String(pendingCount)
-                    ),
-                    created_at: new Date().toISOString(),
-                    url: "/flags",
-                    unread: true,
-                  },
-                ]
-              : [];
+            const title = base.title.trim() ? base.title : titleFallbackForType(type);
+            return { ...base, title };
+          })
+          .filter((x: any) => x.id && x.type);
 
-          const list = notificationItems ?? [];
-          if (notificationsOpen && list.length) {
-            markDiscussionIdsSeen(list.map((x) => x.id));
-            for (const item of list) item.unread = false;
+        if (!cancelled) setNotifications(mapped);
+
+        const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
+        const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
+        const count = Number(countJson?.count || 0);
+        if (!cancelled) setNotificationsCount(Number.isFinite(count) ? count : 0);
+
+        if (notificationsOpen) {
+          const unreadIds = mapped
+            .filter((x: any) => x.type !== "pending_review" && x.unread)
+            .map((x: any) => String(x.id));
+          if (unreadIds.length) {
+            await markNotificationsRead(unreadIds);
+            if (!cancelled) {
+              setNotifications((prev) =>
+                prev.map((x) =>
+                  x.type === "pending_review" ? x : x.unread ? { ...x, unread: false } : x
+                )
+              );
+              const countRes2 = await fetch("/api/notifications/unread-count", {
+                cache: "no-store",
+              });
+              const countJson2 = countRes2.ok ? await countRes2.json().catch(() => ({})) : {};
+              const c2 = Number(countJson2?.count || 0);
+              setNotificationsCount(Number.isFinite(c2) ? c2 : 0);
+            }
           }
-          const combined = [...pendingItems, ...list];
-          setNotifications(combined);
-          const unreadInvites = notificationsOpen
-            ? 0
-            : (notificationItems ?? []).reduce((acc, x) => acc + (x.unread ? 1 : 0), 0);
-          setInviteUnreadCount(unreadInvites);
         }
       } catch {
         if (!cancelled) {
           setNotifications([]);
-          setPendingReviewCount(0);
-          setInviteUnreadCount(0);
+          setNotificationsCount(0);
         }
       }
     };
@@ -319,76 +241,15 @@ export function useTopNavBarLogic() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [viewerId, tNotifications, safeUrl, notificationsOpen, markDiscussionIdsSeen, pageVisible]);
-
-  useEffect(() => {
-    if (!viewerId || !supabase) return;
-    const client = supabase;
-    const channel = client
-      .channel(`discussions:nav:${viewerId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "discussions",
-          filter: `user_id=eq.${viewerId}`,
-        },
-        (payload) => {
-          const row: any = payload.new;
-          if (!row) return;
-          let raw = row.content as any;
-          let parsed: any = {};
-          if (typeof raw === "string") {
-            try {
-              parsed = JSON.parse(raw);
-            } catch {
-              parsed = {};
-            }
-          } else if (raw && typeof raw === "object") {
-            parsed = raw;
-          }
-          const type = typeof parsed.type === "string" ? parsed.type : "";
-          const titleFallback =
-            type === "witness_invite"
-              ? tNotifications("fallbackWitnessInviteTitle")
-              : type === "checkin_review"
-                ? tNotifications("fallbackCheckinReviewTitle")
-                : tNotifications("fallbackGenericTitle");
-          const title =
-            typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : titleFallback;
-          const message = typeof parsed.message === "string" ? parsed.message : "";
-          const url = safeUrl(parsed.url);
-          const id = String(row.id);
-          const unread = !notificationsOpen && !seenDiscussionIdsRef.current.has(id);
-          const item = {
-            id,
-            type,
-            title,
-            message,
-            created_at: String(row.created_at),
-            url,
-            unread,
-          };
-          if (notificationsIdSetRef.current.has(item.id)) return;
-          notificationsIdSetRef.current.add(item.id);
-          if (notificationsOpen) {
-            markDiscussionIdsSeen([item.id]);
-          } else if (unread) {
-            setInviteUnreadCount((prev) => prev + 1);
-          }
-          setNotifications((prev) => {
-            const exists = prev.some((x) => x.id === item.id);
-            if (exists) return prev;
-            return [item, ...prev].slice(0, 50);
-          });
-        }
-      )
-      .subscribe();
-    return () => {
-      client.removeChannel(channel);
-    };
-  }, [viewerId, tNotifications, safeUrl, notificationsOpen, markDiscussionIdsSeen]);
+  }, [
+    viewerId,
+    notificationsOpen,
+    pageVisible,
+    safeUrl,
+    tNotifications,
+    titleFallbackForType,
+    markNotificationsRead,
+  ]);
 
   const handleNotificationsToggle = useCallback(() => {
     if (!viewerId) return;
@@ -396,14 +257,16 @@ export function useTopNavBarLogic() {
       setNotificationsOpen(false);
       return;
     }
-    const ids = notifications.filter((n) => n.type !== "pending_review").map((n) => n.id);
-    markDiscussionIdsSeen(ids);
-    setInviteUnreadCount(0);
+    const unreadIds = notifications
+      .filter((n) => n.type !== "pending_review" && n.unread)
+      .map((n) => n.id);
+    void markNotificationsRead(unreadIds);
     setNotifications((prev) =>
-      prev.map((n) => (n.type === "pending_review" ? n : { ...n, unread: false }))
+      prev.map((n) => (n.type === "pending_review" ? n : n.unread ? { ...n, unread: false } : n))
     );
+    setNotificationsCount((prev) => Math.max(0, prev - unreadIds.length));
     setNotificationsOpen(true);
-  }, [viewerId, notificationsOpen, notifications, markDiscussionIdsSeen]);
+  }, [viewerId, notificationsOpen, notifications, markNotificationsRead]);
 
   const handleConnectWallet = useCallback(
     async (walletType?: "metamask" | "coinbase" | "binance") => {

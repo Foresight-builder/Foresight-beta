@@ -113,6 +113,28 @@ export async function POST(req: NextRequest) {
     try {
       if (witness_id && data && data.id) {
         const flagIdNum = data.id;
+        const recipient = normalizeAddress(witness_id);
+        try {
+          await (client as any).from("notifications").insert({
+            recipient_id: recipient,
+            type: "witness_invite",
+            title: "",
+            message: "",
+            url: "/flags",
+            dedupe_key: `witness_invite:${flagIdNum}`,
+            actor_id: ownerId,
+            payload: {
+              flag_id: flagIdNum,
+              owner_id: ownerId,
+              title,
+              description,
+              deadline: String(data.deadline || ""),
+              ts: new Date().toISOString(),
+            },
+          });
+        } catch (e) {
+          logApiError("POST /api/flags witness invite notification insert failed", e);
+        }
         const invitePayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
           proposal_id: flagIdNum,
           user_id: witness_id,

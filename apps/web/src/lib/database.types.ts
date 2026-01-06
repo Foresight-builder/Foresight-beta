@@ -376,6 +376,50 @@ export interface Database {
           created_at?: string;
         };
       };
+      notifications: {
+        Row: {
+          id: number;
+          recipient_id: string;
+          type: string;
+          title: string;
+          message: string;
+          url: string | null;
+          payload: Json;
+          actor_id: string | null;
+          dedupe_key: string | null;
+          read_at: string | null;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          recipient_id: string;
+          type: string;
+          title?: string;
+          message?: string;
+          url?: string | null;
+          payload?: Json;
+          actor_id?: string | null;
+          dedupe_key?: string | null;
+          read_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          recipient_id?: string;
+          type?: string;
+          title?: string;
+          message?: string;
+          url?: string | null;
+          payload?: Json;
+          actor_id?: string | null;
+          dedupe_key?: string | null;
+          read_at?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+      };
       flags: {
         Row: {
           id: number;

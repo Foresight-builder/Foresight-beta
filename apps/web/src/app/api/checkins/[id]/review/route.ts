@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
+import {
+  parseRequestBody,
+  logApiError,
+  getSessionAddress,
+  normalizeAddress,
+} from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -129,6 +134,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       if (!pending.error && Number(pending.count || 0) === 0) {
         await client.from("flags").update({ status: "active" }).eq("id", chk.flag_id);
       }
+    }
+
+    try {
+      const recipient = normalizeAddress(String(flag.user_id || ""));
+      if (recipient) {
+        await (client as any).from("notifications").insert({
+          recipient_id: recipient,
+          type: "checkin_review",
+          title: "",
+          message: "",
+          url: "/flags",
+          dedupe_key: `checkin_review:${checkinId}:${action}`,
+          actor_id: reviewer_id,
+          payload: {
+            flag_id: chk.flag_id,
+            checkin_id: checkinId,
+            action,
+            reason,
+            ts: new Date().toISOString(),
+          },
+        });
+      }
+    } catch (e) {
+      logApiError("POST /api/checkins/[id]/review notification insert failed", e);
     }
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });
