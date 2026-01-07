@@ -135,7 +135,23 @@
     "fallbackWitnessInviteTitle": "도전 초대",
     "pendingReviewTitle": "대기 중인 체크인 검토",
     "pendingReviewMessage": "{count}개의 체크인을 검토해야 합니다",
-    "summary": "총 {count}개의 알림"
+    "summary": "총 {count}개의 미처리 알림",
+    "markAllRead": "모두 읽음으로 표시",
+    "markAllReadLoading": "표시 중...",
+    "loading": "알림 로딩 중...",
+    "loadFailed": "알림을 불러오지 못했습니다",
+    "retry": "다시 시도",
+    "loadMore": "더 보기",
+    "archive": "지우기",
+    "archiveAll": "알림 비우기",
+    "archiveAllLoading": "비우는 중...",
+    "filterAll": "전체",
+    "filterSystem": "시스템",
+    "filterReview": "검토",
+    "filterChallenge": "도전",
+    "emptyFiltered": "현재 필터에 해당하는 알림이 없습니다",
+    "confirmArchiveOne": "이 알림을 지울까요? 목록에서 더 이상 보이지 않습니다.",
+    "confirmArchiveAll": "현재 모든 알림을 비울까요? 목록에서 더 이상 보이지 않습니다."
   },
   "profile": {
     "username": {

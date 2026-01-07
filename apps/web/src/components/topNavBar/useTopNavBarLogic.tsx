@@ -60,12 +60,40 @@ export function useTopNavBarLogic() {
     }>
   >([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState(false);
+  const [notificationsCursor, setNotificationsCursor] = useState<string | null>(null);
+  const [notificationsHasMore, setNotificationsHasMore] = useState(false);
+  const [markAllNotificationsLoading, setMarkAllNotificationsLoading] = useState(false);
+  const [archiveNotificationIdLoading, setArchiveNotificationIdLoading] = useState<string | null>(
+    null
+  );
+  const [archiveAllNotificationsLoading, setArchiveAllNotificationsLoading] = useState(false);
+  const [notificationsFilter, setNotificationsFilter] = useState<
+    "all" | "system" | "review" | "challenge"
+  >("all");
   const pollingInFlightRef = useRef(false);
   const [pageVisible, setPageVisible] = useState(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("fs_notifications_filter");
+      if (saved === "all" || saved === "system" || saved === "review" || saved === "challenge") {
+        setNotificationsFilter(saved);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      window.localStorage.setItem("fs_notifications_filter", notificationsFilter);
+    } catch {}
+  }, [mounted, notificationsFilter]);
 
   useEffect(() => {
     const update = () => {
@@ -120,32 +148,27 @@ export function useTopNavBarLogic() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    if (!pageVisible) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const schedule = (delayMs: number) => {
-      if (cancelled) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        void tick();
-      }, delayMs);
-    };
-
-    const load = async () => {
+  const fetchNotifications = useCallback(
+    async (options?: { append?: boolean; resetCursor?: boolean }) => {
       if (!viewerId) {
-        if (!cancelled) {
-          setNotifications([]);
-          setNotificationsCount(0);
-        }
+        setNotifications([]);
+        setNotificationsCursor(null);
+        setNotificationsHasMore(false);
+        setNotificationsError(false);
         return;
       }
+      const append = options?.append === true;
+      const resetCursor = options?.resetCursor === true;
+      const cursor = append && !resetCursor && notificationsCursor ? notificationsCursor : null;
+      setNotificationsLoading(true);
+      if (!append) setNotificationsError(false);
       try {
-        const listRes = await fetch("/api/notifications?limit=20", { cache: "no-store" });
+        const url = cursor
+          ? `/api/notifications?limit=20&cursor=${cursor}`
+          : "/api/notifications?limit=20";
+        const listRes = await fetch(url, { cache: "no-store" });
         const listJson = listRes.ok ? await listRes.json().catch(() => ({})) : {};
         const rawItems = Array.isArray(listJson?.notifications) ? listJson.notifications : [];
-
         const mapped = rawItems
           .map((n: any) => {
             const type = String(n?.type || "");
@@ -162,7 +185,6 @@ export function useTopNavBarLogic() {
               title: String(n?.title || ""),
               message: String(n?.message || ""),
             };
-
             if (type === "pending_review") {
               const count = Number(base.message || 0);
               return {
@@ -174,48 +196,59 @@ export function useTopNavBarLogic() {
                 unread: true,
               };
             }
-
             const title = base.title.trim() ? base.title : titleFallbackForType(type);
             return { ...base, title };
           })
           .filter((x: any) => x.id && x.type);
+        if (append) {
+          setNotifications((prev) => [...prev, ...mapped]);
+        } else {
+          setNotifications(mapped);
+        }
+        const nextCursor =
+          typeof listJson?.nextCursor === "string" && listJson.nextCursor
+            ? String(listJson.nextCursor)
+            : null;
+        setNotificationsCursor(nextCursor);
+        setNotificationsHasMore(Boolean(nextCursor));
+      } catch {
+        setNotificationsError(true);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    },
+    [viewerId, notificationsCursor, safeUrl, tNotifications, titleFallbackForType]
+  );
 
-        if (!cancelled) setNotifications(mapped);
-
+  useEffect(() => {
+    if (!pageVisible) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = (delayMs: number) => {
+      if (cancelled) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void tick();
+      }, delayMs);
+    };
+    const load = async () => {
+      if (!viewerId) {
+        if (!cancelled) {
+          setNotificationsCount(0);
+        }
+        return;
+      }
+      try {
         const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
         const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
         const count = Number(countJson?.count || 0);
         if (!cancelled) setNotificationsCount(Number.isFinite(count) ? count : 0);
-
-        if (notificationsOpen) {
-          const unreadIds = mapped
-            .filter((x: any) => x.type !== "pending_review" && x.unread)
-            .map((x: any) => String(x.id));
-          if (unreadIds.length) {
-            await markNotificationsRead(unreadIds);
-            if (!cancelled) {
-              setNotifications((prev) =>
-                prev.map((x) =>
-                  x.type === "pending_review" ? x : x.unread ? { ...x, unread: false } : x
-                )
-              );
-              const countRes2 = await fetch("/api/notifications/unread-count", {
-                cache: "no-store",
-              });
-              const countJson2 = countRes2.ok ? await countRes2.json().catch(() => ({})) : {};
-              const c2 = Number(countJson2?.count || 0);
-              setNotificationsCount(Number.isFinite(c2) ? c2 : 0);
-            }
-          }
-        }
       } catch {
         if (!cancelled) {
-          setNotifications([]);
           setNotificationsCount(0);
         }
       }
     };
-
     const tick = async () => {
       if (cancelled) return;
       if (!pageVisible) return;
@@ -235,21 +268,21 @@ export function useTopNavBarLogic() {
         schedule(60000);
       }
     };
-
     schedule(0);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [
-    viewerId,
-    notificationsOpen,
-    pageVisible,
-    safeUrl,
-    tNotifications,
-    titleFallbackForType,
-    markNotificationsRead,
-  ]);
+  }, [viewerId, pageVisible]);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    if (!viewerId) return;
+    if (!pageVisible) return;
+    setNotificationsCursor(null);
+    setNotificationsHasMore(false);
+    void fetchNotifications({ append: false, resetCursor: true });
+  }, [notificationsOpen, viewerId, pageVisible, fetchNotifications]);
 
   const handleNotificationsToggle = useCallback(() => {
     if (!viewerId) return;
@@ -264,9 +297,106 @@ export function useTopNavBarLogic() {
     setNotifications((prev) =>
       prev.map((n) => (n.type === "pending_review" ? n : n.unread ? { ...n, unread: false } : n))
     );
-    setNotificationsCount((prev) => Math.max(0, prev - unreadIds.length));
     setNotificationsOpen(true);
   }, [viewerId, notificationsOpen, notifications, markNotificationsRead]);
+
+  const handleLoadMoreNotifications = useCallback(() => {
+    if (!notificationsHasMore) return;
+    if (notificationsLoading) return;
+    void fetchNotifications({ append: true });
+  }, [notificationsHasMore, notificationsLoading, fetchNotifications]);
+
+  const handleReloadNotifications = useCallback(() => {
+    if (!viewerId) return;
+    void fetchNotifications({ append: false, resetCursor: true });
+  }, [viewerId, fetchNotifications]);
+
+  const handleMarkAllNotificationsRead = useCallback(async () => {
+    if (!viewerId) return;
+    if (markAllNotificationsLoading) return;
+    setMarkAllNotificationsLoading(true);
+    try {
+      await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.type === "pending_review"
+            ? n
+            : { ...n, unread: false, read_at: n.read_at || new Date().toISOString() }
+        )
+      );
+      try {
+        const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
+        const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
+        const count = Number(countJson?.count || 0);
+        setNotificationsCount(Number.isFinite(count) ? count : 0);
+      } catch {}
+    } finally {
+      setMarkAllNotificationsLoading(false);
+    }
+  }, [viewerId, markAllNotificationsLoading]);
+
+  const archiveIds = useCallback((ids: string[]) => {
+    const numericIds = ids.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0);
+    if (!numericIds.length) return null;
+    return numericIds;
+  }, []);
+
+  const handleArchiveNotification = useCallback(
+    async (id: string, unread: boolean | undefined) => {
+      if (!viewerId) return;
+      if (archiveNotificationIdLoading) return;
+      const numericIds = archiveIds([id]);
+      if (!numericIds || !numericIds.length) return;
+      setArchiveNotificationIdLoading(id);
+      try {
+        await fetch("/api/notifications/archive", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ids: numericIds }),
+        });
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+        if (unread) {
+          try {
+            const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
+            const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
+            const count = Number(countJson?.count || 0);
+            setNotificationsCount(Number.isFinite(count) ? count : 0);
+          } catch {}
+        }
+      } finally {
+        setArchiveNotificationIdLoading(null);
+      }
+    },
+    [viewerId, archiveNotificationIdLoading, archiveIds]
+  );
+
+  const handleArchiveAllNotifications = useCallback(async () => {
+    if (!viewerId) return;
+    if (archiveAllNotificationsLoading) return;
+    setArchiveAllNotificationsLoading(true);
+    try {
+      await fetch("/api/notifications/archive", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      setNotifications([]);
+      setNotificationsCursor(null);
+      setNotificationsHasMore(false);
+      try {
+        const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
+        const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
+        const count = Number(countJson?.count || 0);
+        setNotificationsCount(Number.isFinite(count) ? count : 0);
+      } catch {}
+    } finally {
+      setArchiveAllNotificationsLoading(false);
+    }
+  }, [viewerId, archiveAllNotificationsLoading]);
 
   const handleConnectWallet = useCallback(
     async (walletType?: "metamask" | "coinbase" | "binance") => {
@@ -550,6 +680,19 @@ export function useTopNavBarLogic() {
     notificationsOpen,
     setNotificationsOpen,
     handleNotificationsToggle,
+    notificationsLoading,
+    notificationsError,
+    notificationsHasMore,
+    handleLoadMoreNotifications,
+    handleReloadNotifications,
+    handleMarkAllNotificationsRead,
+    markAllNotificationsLoading,
+    handleArchiveNotification,
+    archiveNotificationIdLoading,
+    handleArchiveAllNotifications,
+    archiveAllNotificationsLoading,
+    notificationsFilter,
+    setNotificationsFilter,
   };
 }
 
