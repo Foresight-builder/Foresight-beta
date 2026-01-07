@@ -265,7 +265,6 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     setEmailLoading(true);
     try {
       await auth.sendMagicLink(email);
-      setOtpRequested(true);
     } catch {}
     setEmailLoading(false);
   };

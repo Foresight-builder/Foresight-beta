@@ -23,7 +23,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthContextValue["user"]>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [emailPending, setEmailPending] = useState<string | null>(null);
 
   const refreshSession = async () => {
     if (!supabase) return;
@@ -97,21 +96,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Polymarket 风格：默认发送 OTP，同时也支持魔法链接
+  const signInWithEmailOtp = async (email: string) => {
+    const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+    if (!supabase) throw new Error("Supabase 未配置");
+    const { error } = await (supabase as any).auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: redirectTo,
+      },
+    });
+    if (error) throw error;
+  };
+
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
-      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-      if (!supabase) throw new Error("Supabase 未配置");
-      const { error } = await (supabase as any).auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: redirectTo,
-        },
-      });
-      if (error) throw error;
-      setEmailPending(email);
+      await signInWithEmailOtp(email);
     } catch (e: any) {
       setError(e?.message || String(e));
       throw e;
@@ -138,7 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           : null
       );
-      setEmailPending(null);
     } catch (e: any) {
       setError(e?.message || String(e));
       throw e;
@@ -148,17 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendMagicLink = async (email: string) => {
     setError(null);
     try {
-      const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-      if (!supabase) throw new Error("Supabase 未配置");
-      const { error } = await (supabase as any).auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: redirectTo,
-        },
-      });
-      if (error) throw error;
-      setEmailPending(email);
+      await signInWithEmailOtp(email);
     } catch (e: any) {
       setError(e?.message || String(e));
       throw e;
