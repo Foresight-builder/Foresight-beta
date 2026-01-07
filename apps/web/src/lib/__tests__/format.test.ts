@@ -78,6 +78,12 @@ describe("format helpers", () => {
     expect(result).not.toBe("0");
   });
 
+  it("formatCompactNumber handles negative values", () => {
+    const result = formatCompactNumber(-1234, "en");
+    expect(result).toBeTypeOf("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+
   it("formatCurrency handles null and invalid values", () => {
     expect(formatCurrency(null, "en", "USD")).toBe("");
     expect(formatCurrency("not-a-number", "en", "USD")).toBe("");
@@ -85,6 +91,12 @@ describe("format helpers", () => {
 
   it("formatCurrency formats numeric values with currency", () => {
     const result = formatCurrency(12.34, "en", "USD");
+    expect(result).toBeTypeOf("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("formatCurrency formats numeric values with different currency", () => {
+    const result = formatCurrency(12.34, "en", "EUR");
     expect(result).toBeTypeOf("string");
     expect(result.length).toBeGreaterThan(0);
   });

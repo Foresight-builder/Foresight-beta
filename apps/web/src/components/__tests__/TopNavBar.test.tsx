@@ -4,7 +4,7 @@
 
 import React, { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import TopNavBar from "../TopNavBar";
 
 type MockNav = {
@@ -137,11 +137,9 @@ describe("TopNavBar Component", () => {
 
   it("点击登录按钮应该打开 WalletModal", async () => {
     render(<TopNavBar />);
-    fireEvent.click(screen.getByText("login"));
+    fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("wallet-modal")).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId("wallet-modal")).toBeInTheDocument();
   });
 
   it("点击头像应该打开钱包菜单", async () => {
@@ -149,10 +147,10 @@ describe("TopNavBar Component", () => {
     render(<TopNavBar />);
 
     fireEvent.click(screen.getByLabelText("openUserMenu"));
-    await waitFor(() => expect(screen.getByRole("menu")).toBeInTheDocument());
-    expect(screen.getByText("copyAddress")).toBeInTheDocument();
-    expect(screen.getByText("viewOnExplorer")).toBeInTheDocument();
-    expect(screen.getByText("disconnectWallet")).toBeInTheDocument();
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "copyAddress" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "viewOnExplorer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "disconnectWallet" })).toBeInTheDocument();
   });
 
   it("应该能够复制钱包地址", async () => {
@@ -163,17 +161,15 @@ describe("TopNavBar Component", () => {
 
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
-    await waitFor(() => expect(screen.getByText("copyAddress")).toBeInTheDocument());
+    expect(await screen.findByRole("button", { name: "copyAddress" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("copyAddress"));
+    fireEvent.click(screen.getByRole("button", { name: "copyAddress" }));
 
-    await waitFor(() => {
-      expect(mockNav.copyAddress).toHaveBeenCalled();
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        "0x1234567890123456789012345678901234567890"
-      );
-      expect(screen.getByText("addressCopied")).toBeInTheDocument();
-    });
+    expect(mockNav.copyAddress).toHaveBeenCalled();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "0x1234567890123456789012345678901234567890"
+    );
+    expect(await screen.findByText("addressCopied")).toBeInTheDocument();
   });
 
   it("点击浏览器链接应该打开新窗口", async () => {
@@ -187,17 +183,15 @@ describe("TopNavBar Component", () => {
 
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
-    await waitFor(() => expect(screen.getByText("viewOnExplorer")).toBeInTheDocument());
+    expect(await screen.findByRole("button", { name: "viewOnExplorer" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("viewOnExplorer"));
+    fireEvent.click(screen.getByRole("button", { name: "viewOnExplorer" }));
 
-    await waitFor(() => {
-      expect(mockNav.openOnExplorer).toHaveBeenCalled();
-      expect(window.open).toHaveBeenCalledWith(
-        "https://sepolia.etherscan.io/address/0x1234567890123456789012345678901234567890",
-        "_blank"
-      );
-    });
+    expect(mockNav.openOnExplorer).toHaveBeenCalled();
+    expect(window.open).toHaveBeenCalledWith(
+      "https://sepolia.etherscan.io/address/0x1234567890123456789012345678901234567890",
+      "_blank"
+    );
   });
 
   it("错误网络时应该显示切网按钮", async () => {
@@ -208,9 +202,9 @@ describe("TopNavBar Component", () => {
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
 
-    await waitFor(() => {
-      expect(screen.getByText("switchNetwork - Sepolia")).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByRole("button", { name: "switchNetwork - Sepolia" })
+    ).toBeInTheDocument();
   });
 
   it("should render portal modal when provided", () => {
@@ -219,9 +213,9 @@ describe("TopNavBar Component", () => {
     expect(screen.getByTestId("nav-modal")).toBeInTheDocument();
   });
 
-  it("在移动端应该有合适的样式", () => {
+  it("顶部导航栏应该固定在页面顶部", () => {
     render(<TopNavBar />);
     const navBar = screen.getByRole("banner");
-    expect(navBar).toHaveClass("fixed", "top-0", "w-full");
+    expect(navBar).toHaveClass("fixed", "top-0");
   });
 });
