@@ -3,6 +3,11 @@ CREATE TABLE IF NOT EXISTS public.discussions (
   proposal_id BIGINT NOT NULL,
   user_id TEXT NOT NULL,
   content TEXT NOT NULL,
+  image_url TEXT,
+  topic TEXT,
+  reply_to_id BIGINT,
+  reply_to_user TEXT,
+  reply_to_content TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS discussions_proposal_idx ON public.discussions (proposal_id);
