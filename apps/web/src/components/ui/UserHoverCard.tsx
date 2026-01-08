@@ -27,7 +27,7 @@ import {
   useUserFollowCounts,
   useUserFollowStatus,
 } from "@/hooks/useQueries";
-import { normalizeAddress } from "@/lib/cn";
+import { formatAddress, normalizeAddress } from "@/lib/cn";
 
 // 用户预览数据类型
 export type UserPreviewData = {
@@ -304,7 +304,7 @@ export function UserHoverCard({
                   )}
                 </div>
                 <p className="text-sm text-gray-400 font-bold tracking-tight">
-                  {user.wallet_address?.slice(0, 8)}...{user.wallet_address?.slice(-6)}
+                  {formatAddress(user.wallet_address, 8, 6)}
                 </p>
               </div>
 

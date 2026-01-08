@@ -8,6 +8,7 @@ import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import type { ProfileUserSummary } from "../types";
 import { useFollowersUsers } from "@/hooks/useQueries";
+import { formatAddress } from "@/lib/cn";
 
 export function FollowersTab({ address }: { address: string }) {
   const tProfile = useTranslations("profile");
@@ -68,7 +69,7 @@ export function FollowersTab({ address }: { address: string }) {
                   {user.username}
                 </h4>
                 <p className="text-xs text-gray-400 font-bold">
-                  {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                  {formatAddress(user.wallet_address)}
                 </p>
               </div>
             </div>

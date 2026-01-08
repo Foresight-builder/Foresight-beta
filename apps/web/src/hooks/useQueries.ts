@@ -29,6 +29,7 @@ export const QueryKeys = {
     ["profile", "follows", "status", target, follower] as const,
   profileFollowersUsers: (address: string) => ["profile", "followers", address] as const,
   profileFollowingUsers: (address: string) => ["profile", "following", "users", address] as const,
+  profileFollowingEvents: (address: string) => ["profile", "following", "events", address] as const,
 
   orders: (params: {
     chainId?: number;
@@ -266,6 +267,28 @@ export function useFollowingUsers(address?: string | null) {
             `/api/user-follows/following-users?address=${encodeURIComponent(norm)}`
           ).then((res) => (Array.isArray(res.users) ? res.users : []))
         : Promise.resolve([]),
+    enabled: !!norm,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useFollowingEvents(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery({
+    queryKey: QueryKeys.profileFollowingEvents(norm || ""),
+    queryFn: async () => {
+      if (!norm) return [];
+      const res = await fetch(`/api/following?address=${encodeURIComponent(norm)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const payload =
+          data && typeof data === "object"
+            ? { status: res.status, ...data }
+            : { status: res.status };
+        throw payload;
+      }
+      return Array.isArray((data as any).following) ? (data as any).following : [];
+    },
     enabled: !!norm,
     staleTime: 2 * 60 * 1000,
   });

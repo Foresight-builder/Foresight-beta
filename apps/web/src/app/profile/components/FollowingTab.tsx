@@ -9,8 +9,8 @@ import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
-import { useFollowingUsers } from "@/hooks/useQueries";
-import { normalizeAddress } from "@/lib/cn";
+import { useFollowingUsers, useFollowingEvents } from "@/hooks/useQueries";
+import { formatAddress, normalizeAddress } from "@/lib/cn";
 
 type TabType = "events" | "users";
 
@@ -27,23 +27,7 @@ export function FollowingTab({ address }: { address: string | null }) {
     [normalizedAddress]
   );
 
-  const eventsQuery = useQuery({
-    queryKey: ["profile", "following", "events", normalizedAddress],
-    queryFn: async () => {
-      const res = await fetch(`/api/following?address=${safeAddress}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const payload =
-          data && typeof data === "object"
-            ? { status: res.status, ...data }
-            : { status: res.status };
-        throw payload;
-      }
-      return Array.isArray(data.following) ? data.following : [];
-    },
-    enabled: !!normalizedAddress,
-    staleTime: 2 * 60 * 1000,
-  });
+  const eventsQuery = useFollowingEvents(normalizedAddress);
 
   const usersQuery = useFollowingUsers(normalizedAddress);
 
@@ -193,7 +177,7 @@ export function FollowingTab({ address }: { address: string | null }) {
                     {user.username}
                   </h4>
                   <p className="text-xs text-gray-400 font-bold">
-                    {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                    {formatAddress(user.wallet_address)}
                   </p>
                 </div>
               </div>
