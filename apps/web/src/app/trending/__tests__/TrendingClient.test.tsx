@@ -1,7 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
-import TrendingClient from "../TrendingClient";
 import type { Prediction } from "@/features/trending/trendingModel";
+
+let TrendingClient: typeof import("../TrendingClient").default;
+
+vi.mock("../TrendingHero", () => ({
+  TrendingHero: ({ activeTitle }: { activeTitle: string }) => <div>{activeTitle}</div>,
+}));
+
+vi.mock("../TrendingEventsSection", () => ({
+  TrendingEventsSection: () => <div />,
+}));
 
 vi.mock("../hooks/useTrendingPage", () => {
   return {
@@ -9,7 +18,7 @@ vi.mock("../hooks/useTrendingPage", () => {
       canvas: {
         canvasRef: { current: null },
         canvasReady: false,
-        showBackToTop: false,
+        showBackToTop: true,
         handleBackToTopClick: vi.fn(),
       },
       i18n: {
@@ -31,7 +40,7 @@ vi.mock("../hooks/useTrendingPage", () => {
         visibleEvents: [],
         hasMore: false,
         loadingMore: false,
-        observerTargetRef: { current: null } as React.Ref<HTMLDivElement>,
+        observerTargetRef: { current: null } as any,
       },
       follow: {
         categoryCounts: {},
@@ -80,6 +89,11 @@ vi.mock("../hooks/useTrendingPage", () => {
 });
 
 describe("TrendingClient", () => {
+  beforeAll(async () => {
+    vi.resetModules();
+    TrendingClient = (await import("../TrendingClient")).default;
+  });
+
   it("renders hero, events section, footer and back-to-top button", () => {
     const predictions: Prediction[] = [];
 

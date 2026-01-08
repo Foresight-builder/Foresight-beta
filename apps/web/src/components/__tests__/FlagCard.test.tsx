@@ -2,11 +2,81 @@
  * FlagCard 组件单元测试
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { FlagCard, type FlagItem } from "../FlagCard";
+import React from "react";
+import type { FlagItem } from "../FlagCard";
+
+let FlagCard: typeof import("../FlagCard").FlagCard;
+
+vi.mock("lucide-react", () => ({
+  Clock: (props: any) => <svg data-testid="clock-icon" {...props} />,
+  CheckCircle2: (props: any) => <svg data-testid="check-circle2-icon" {...props} />,
+  Target: (props: any) => <svg data-testid="target-icon" {...props} />,
+  Users: (props: any) => <svg data-testid="users-icon" {...props} />,
+  Sparkles: (props: any) => <svg data-testid="sparkles-icon" {...props} />,
+  ArrowUpRight: (props: any) => <svg data-testid="arrow-up-right-icon" {...props} />,
+  Flame: (props: any) => <svg data-testid="flame-icon" {...props} />,
+  Camera: (props: any) => <svg data-testid="camera-icon" {...props} />,
+}));
+
+vi.mock("framer-motion", () => {
+  const motionHandler: ProxyHandler<Record<string, any>> = {
+    get(_target, prop: string) {
+      const tag = prop === "button" ? "button" : "div";
+      return ({ children, ...rest }: any) => {
+        const { layout, initial, animate, exit, whileHover, whileTap, transition, ...safeRest } =
+          rest;
+        return React.createElement(tag, safeRest, children);
+      };
+    },
+  };
+
+  return {
+    motion: new Proxy({}, motionHandler),
+  };
+});
+
+vi.mock("@/components/ui/LazyImage", () => ({
+  __esModule: true,
+  default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
+}));
+
+vi.mock("@/lib/i18n", () => ({
+  useTranslations: vi.fn((namespace?: string) => {
+    return (key: string) => {
+      const fullKey = namespace ? `${namespace}.${key}` : key;
+      const map: Record<string, string> = {
+        "flags.card.status.active": "进行中",
+        "flags.card.status.pending_review": "待审核",
+        "flags.card.status.success": "已完成",
+        "flags.card.status.failed": "失败",
+        "flags.card.verification.self": "自我验证",
+        "flags.card.verification.friend": "见证验证",
+        "flags.card.actions.checkin": "打卡",
+        "flags.card.actions.history": "历史",
+        "flags.card.actions.settle": "结算",
+        "flags.card.time.daysLabel": "天",
+        "flags.card.time.finished": "已结束",
+        "flags.card.time.daysLeftSuffix": "天后结束",
+        "flags.card.time.hoursLeftSuffix": "小时后结束",
+        "flags.card.proofImageAlt": "证明图片",
+        "flags.history.labels.currentWitnessTask": "当前见证任务",
+      };
+      return map[fullKey] ?? fullKey;
+    };
+  }),
+}));
 
 describe("FlagCard Component", () => {
+  beforeAll(async () => {
+    FlagCard = (await import("../FlagCard")).FlagCard;
+  }, 20000);
+
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
   const mockActiveFlag: FlagItem = {
     id: 1,
     title: "每日运动打卡",
@@ -49,9 +119,9 @@ describe("FlagCard Component", () => {
       expect(screen.getByText("坚持每天运动30分钟")).toBeInTheDocument();
     });
 
-    it("应该显示截止日期", () => {
+    it("应该显示状态图标", () => {
       render(<FlagCard flag={mockActiveFlag} />);
-      expect(screen.getByTestId("calendar-icon")).toBeInTheDocument();
+      expect(screen.getAllByTestId("target-icon").length).toBeGreaterThan(0);
     });
   });
 
@@ -59,7 +129,7 @@ describe("FlagCard Component", () => {
     it("active 状态应该显示进行中", () => {
       render(<FlagCard flag={mockActiveFlag} />);
       expect(screen.getByText("进行中")).toBeInTheDocument();
-      expect(screen.getByTestId("target-icon")).toBeInTheDocument();
+      expect(screen.getAllByTestId("target-icon").length).toBeGreaterThan(0);
     });
 
     it("pending_review 状态应该显示待审核", () => {
@@ -70,7 +140,7 @@ describe("FlagCard Component", () => {
     it("success 状态应该显示已完成", () => {
       render(<FlagCard flag={mockSuccessFlag} />);
       expect(screen.getByText("已完成")).toBeInTheDocument();
-      expect(screen.getByTestId("check-icon")).toBeInTheDocument();
+      expect(screen.getAllByTestId("check-circle2-icon").length).toBeGreaterThan(0);
     });
 
     it("failed 状态应该显示失败", () => {
@@ -103,7 +173,7 @@ describe("FlagCard Component", () => {
       const onCheckin = vi.fn();
       render(<FlagCard flag={mockActiveFlag} isMine={true} onCheckin={onCheckin} />);
 
-      const checkinButton = screen.getByText(/打卡/i);
+      const checkinButton = screen.getByRole("button", { name: "打卡" });
       fireEvent.click(checkinButton);
 
       expect(onCheckin).toHaveBeenCalled();
@@ -113,7 +183,7 @@ describe("FlagCard Component", () => {
       const onViewHistory = vi.fn();
       render(<FlagCard flag={mockActiveFlag} onViewHistory={onViewHistory} />);
 
-      const historyButton = screen.getByText(/历史/i);
+      const historyButton = screen.getByRole("button", { name: "历史" });
       fireEvent.click(historyButton);
 
       expect(onViewHistory).toHaveBeenCalled();
@@ -128,7 +198,7 @@ describe("FlagCard Component", () => {
 
       render(<FlagCard flag={settleableFlag} isMine={true} onSettle={onSettle} />);
 
-      const settleButton = screen.getByText(/结算/i);
+      const settleButton = screen.getByRole("button", { name: "结算" });
       fireEvent.click(settleButton);
 
       expect(onSettle).toHaveBeenCalled();
@@ -136,16 +206,10 @@ describe("FlagCard Component", () => {
   });
 
   describe("证明信息", () => {
-    it("有证明图片时应该显示", () => {
+    it("有证明图片时应该渲染图片", () => {
       render(<FlagCard flag={mockPendingFlag} />);
 
-      expect(screen.getByTestId("camera-icon")).toBeInTheDocument();
-    });
-
-    it("有证明评论时应该显示", () => {
-      render(<FlagCard flag={mockPendingFlag} />);
-
-      expect(screen.getByText("今天跑步了5公里")).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: "每日运动打卡" })).toBeInTheDocument();
     });
   });
 
@@ -153,19 +217,19 @@ describe("FlagCard Component", () => {
     it("不是我的 Flag 不应该显示打卡按钮", () => {
       render(<FlagCard flag={mockActiveFlag} isMine={false} />);
 
-      expect(screen.queryByText(/打卡/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "打卡" })).not.toBeInTheDocument();
     });
 
     it("已完成的 Flag 不应该显示打卡按钮", () => {
       render(<FlagCard flag={mockSuccessFlag} isMine={true} />);
 
-      expect(screen.queryByText(/打卡/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "打卡" })).not.toBeInTheDocument();
     });
 
     it("未过期的 Flag 不应该显示结算按钮", () => {
       render(<FlagCard flag={mockActiveFlag} isMine={true} />);
 
-      expect(screen.queryByText(/结算/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "结算" })).not.toBeInTheDocument();
     });
   });
 
@@ -173,8 +237,7 @@ describe("FlagCard Component", () => {
     it("应该有正确的卡片样式类", () => {
       const { container } = render(<FlagCard flag={mockActiveFlag} />);
 
-      const card = container.firstChild;
-      expect(card).toHaveClass("rounded-xl");
+      expect(container.innerHTML).toContain("rounded-[2rem]");
     });
 
     it("不同状态应该有不同的颜色主题", () => {

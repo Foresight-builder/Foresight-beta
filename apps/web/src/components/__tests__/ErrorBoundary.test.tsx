@@ -4,12 +4,27 @@
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ErrorBoundary } from "../ErrorBoundary";
 
-// Mock Sentry
-vi.mock("@sentry/nextjs", () => ({
-  captureException: vi.fn(),
+vi.mock("lucide-react", () => ({
+  AlertTriangle: () => <svg data-testid="alert-triangle-icon" />,
+  RefreshCw: () => <svg data-testid="refresh-cw-icon" />,
+  Home: () => <svg data-testid="home-icon" />,
 }));
+
+vi.mock("@/lib/i18n", () => ({
+  t: (key: string) => {
+    const map: Record<string, string> = {
+      "errors.somethingWrong": "出错了",
+      "common.retry": "重试",
+      "errors.refreshPage": "刷新页面",
+      "errors.goHome": "返回首页",
+      "errors.componentLoadFailed": "组件加载失败",
+    };
+    return map[key] ?? key;
+  },
+}));
+
+let ErrorBoundary: typeof import("../ErrorBoundary").ErrorBoundary;
 
 // 会抛出错误的组件
 function ThrowError({ shouldThrow }: { shouldThrow?: boolean }) {
@@ -28,6 +43,10 @@ describe("ErrorBoundary", () => {
   afterAll(() => {
     console.error = originalError;
   });
+
+  beforeAll(async () => {
+    ErrorBoundary = (await import("../ErrorBoundary")).ErrorBoundary;
+  }, 20000);
 
   describe("正常渲染", () => {
     it("子组件正常时应该渲染子组件", () => {

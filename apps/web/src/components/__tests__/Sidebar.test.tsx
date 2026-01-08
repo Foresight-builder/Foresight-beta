@@ -2,9 +2,43 @@
  * Sidebar 组件单元测试
  */
 
-import { describe, it, expect, vi } from "vitest";
+import React from "react";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import Sidebar from "../Sidebar";
+import type { ComponentType } from "react";
+
+vi.mock("lucide-react", () => ({
+  ChevronDown: (props: any) => <svg data-testid="chevron-down-icon" {...props} />,
+  Users: (props: any) => <svg data-testid="users-icon" {...props} />,
+  BarChart3: (props: any) => <svg data-testid="bar-chart3-icon" {...props} />,
+  MessageSquare: (props: any) => <svg data-testid="message-square-icon" {...props} />,
+  Pin: (props: any) => <svg data-testid="pin-icon" {...props} />,
+  Flag: (props: any) => <svg data-testid="flag-icon" {...props} />,
+  Trophy: (props: any) => <svg data-testid="trophy-icon" {...props} />,
+  ShieldCheck: (props: any) => <svg data-testid="shield-check-icon" {...props} />,
+}));
+
+vi.mock("framer-motion", () => {
+  const motionHandler: ProxyHandler<Record<string, any>> = {
+    get(_target, prop: string) {
+      const tag = prop === "aside" ? "aside" : prop === "button" ? "button" : "div";
+      return ({ children, ...rest }: any) => React.createElement(tag, rest, children);
+    },
+  };
+  return {
+    motion: new Proxy({}, motionHandler),
+    AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children),
+  };
+});
+
+vi.mock("@/lib/i18n", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+vi.mock("../WalletModal", () => ({
+  __esModule: true,
+  default: () => null,
+}));
 
 // Router mocks（使用 vi.hoisted 保证可在工厂外复用）
 const routerPushMock = vi.hoisted(() => vi.fn());
@@ -20,6 +54,7 @@ vi.mock("next/navigation", () => ({
 const useWalletMock = vi.hoisted(() =>
   vi.fn(() => ({
     account: null,
+    formatAddress: (addr: string) => addr,
   }))
 );
 
@@ -50,6 +85,12 @@ vi.mock("@/contexts/UserProfileContext", () => ({
 }));
 
 describe("Sidebar Component", () => {
+  let Sidebar: ComponentType;
+
+  beforeAll(async () => {
+    Sidebar = (await import("../Sidebar")).default;
+  });
+
   describe("导航菜单渲染", () => {
     it("应该渲染所有导航项", () => {
       render(<Sidebar />);
@@ -64,9 +105,9 @@ describe("Sidebar Component", () => {
     it("应该显示导航图标", () => {
       render(<Sidebar />);
 
-      expect(screen.getByTestId("trending-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("bar-chart3-icon")).toBeInTheDocument();
       expect(screen.getByTestId("trophy-icon")).toBeInTheDocument();
-      expect(screen.getByTestId("message-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("message-square-icon")).toBeInTheDocument();
       expect(screen.getByTestId("flag-icon")).toBeInTheDocument();
     });
   });

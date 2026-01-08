@@ -24,27 +24,6 @@ vi.mock("@sentry/nextjs", () => ({
   browserTracingIntegration: vi.fn(),
 }));
 
-vi.mock("@/lib/i18n", () => ({
-  useTranslations: vi.fn(() => (key: string) => key),
-  useLocale: () => ({ locale: "en", setLocale: vi.fn() }),
-  getCurrentLocale: () => "en",
-  getSupportedLocales: () => ["zh-CN", "en", "es", "ko"],
-  isSupportedLocale: () => true,
-  t: (key: string) => key,
-  formatTranslation: (
-    template: string,
-    params?: Record<string, string | number | undefined>
-  ): string => {
-    if (!params) return template;
-    return template.replace(/\{(\w+)\}/g, (_, rawKey: string) => {
-      const v = params[rawKey];
-      return v === undefined ? `{${rawKey}}` : String(v);
-    });
-  },
-  setLocale: vi.fn(),
-  getTranslation: () => ({}),
-}));
-
 vi.mock("lucide-react", () => {
   const overrideTestIds: Record<string, string> = {
     TrendingUp: "trending-icon",
@@ -70,7 +49,20 @@ vi.mock("framer-motion", () => {
   const motionHandler: ProxyHandler<Record<string, React.ComponentType<any>>> = {
     get(_target, prop: string) {
       const tag = prop === "tr" ? "tr" : prop === "button" ? "button" : "div";
-      return ({ children, ...rest }: any) => React.createElement(tag, rest, children);
+      return ({ children, ...rest }: any) => {
+        const {
+          layout,
+          initial,
+          animate,
+          exit,
+          whileHover,
+          whileTap,
+          transition,
+          variants,
+          ...safeRest
+        } = rest;
+        return React.createElement(tag, safeRest, children);
+      };
     },
   };
 
@@ -170,6 +162,22 @@ vi.mock("next/image.js", () => ({
       alt,
       ...rest,
     }),
+}));
+
+vi.mock("next/dynamic", () => ({
+  __esModule: true,
+  default: () => {
+    const DynamicComponent = () => null;
+    return DynamicComponent;
+  },
+}));
+
+vi.mock("next/dynamic.js", () => ({
+  __esModule: true,
+  default: () => {
+    const DynamicComponent = () => null;
+    return DynamicComponent;
+  },
 }));
 
 if (typeof window !== "undefined") {

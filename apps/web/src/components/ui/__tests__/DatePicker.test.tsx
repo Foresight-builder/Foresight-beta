@@ -2,17 +2,95 @@
  * DatePicker 组件单元测试
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import DatePicker from "../DatePicker";
 
 const fixedNow = new Date("2025-01-15T10:30:00");
-
-vi.useFakeTimers();
-vi.setSystemTime(fixedNow);
+let DatePicker: typeof import("../DatePicker").default;
 
 describe("DatePicker Component", () => {
+  beforeAll(async () => {
+    vi.doMock("lucide-react", () => ({
+      Calendar: (props: any) => <svg data-testid="calendar-icon" {...props} />,
+      ChevronLeft: (props: any) => <svg data-testid="chevron-left-icon" {...props} />,
+      ChevronRight: (props: any) => <svg data-testid="chevron-right-icon" {...props} />,
+      Clock: (props: any) => <svg data-testid="clock-icon" {...props} />,
+      X: (props: any) => <svg data-testid="x-icon" {...props} />,
+    }));
+
+    vi.doMock("framer-motion", () => {
+      const motionHandler: ProxyHandler<Record<string, any>> = {
+        get() {
+          return ({ children, ...rest }: any) => <div {...rest}>{children}</div>;
+        },
+      };
+
+      return {
+        motion: new Proxy({}, motionHandler),
+        AnimatePresence: ({ children }: any) => <>{children}</>,
+      };
+    });
+
+    vi.doMock("@/lib/i18n", () => ({
+      useTranslations: vi.fn((namespace?: string) => {
+        return (key: string) => {
+          const fullKey = namespace ? `${namespace}.${key}` : key;
+          if (fullKey === "common.datePicker.placeholder") return "选择日期";
+          if (fullKey === "common.datePicker.confirm") return "确定";
+          if (fullKey === "common.datePicker.timeLabel") return "时间";
+          if (fullKey === "common.datePicker.header") return "{year}年 {month}";
+          if (fullKey === "common.datePicker.displayDate") return "{year}年{month}月{day}日";
+          if (fullKey === "common.datePicker.displayWithTime")
+            return "{year}年{month}月{day}日 {hour}:{minute}";
+          if (fullKey.startsWith("common.datePicker.monthNames.")) {
+            const idx = Number(fullKey.split(".").at(-1));
+            const monthNames = [
+              "一月",
+              "二月",
+              "三月",
+              "四月",
+              "五月",
+              "六月",
+              "七月",
+              "八月",
+              "九月",
+              "十月",
+              "十一月",
+              "十二月",
+            ];
+            return monthNames[idx] ?? "";
+          }
+          if (fullKey.startsWith("common.datePicker.weekdayNames.")) {
+            const idx = Number(fullKey.split(".").at(-1));
+            const weekdayNames = ["日", "一", "二", "三", "四", "五", "六"];
+            return weekdayNames[idx] ?? "";
+          }
+          return fullKey;
+        };
+      }),
+      formatTranslation: (
+        template: string,
+        params?: Record<string, string | number | undefined>
+      ) => {
+        if (!params) return template;
+        return template.replace(/\{(\w+)\}/g, (_, rawKey: string) => {
+          const v = params[rawKey];
+          return v === undefined ? `{${rawKey}}` : String(v);
+        });
+      },
+    }));
+
+    vi.resetModules();
+    DatePicker = (await import("../DatePicker")).default;
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedNow);
     document.body.innerHTML = "";
   });
 
