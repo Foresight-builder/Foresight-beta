@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 import { groupBets, buildPortfolioResponse } from "./compute";
 import { fetchPredictionsMeta, fetchPredictionsStats, fetchUserBets } from "./queries";
 
@@ -9,7 +10,7 @@ export async function handleUserPortfolioGet(req: Request) {
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json({ message: "Wallet address is required" }, { status: 400 });
+      return ApiResponses.badRequest("Wallet address is required");
     }
 
     const client = getClient();
@@ -22,7 +23,7 @@ export async function handleUserPortfolioGet(req: Request) {
         });
         return NextResponse.json(empty);
       }
-      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
+      return ApiResponses.internalError("Supabase client not initialized");
     }
 
     const { bets, betsError } = await fetchUserBets(client, address);
@@ -36,7 +37,7 @@ export async function handleUserPortfolioGet(req: Request) {
         });
         return NextResponse.json(empty);
       }
-      return NextResponse.json({ message: "Failed to fetch bets" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch bets", betsError.message);
     }
 
     const { grouped, predictionIds } = groupBets(bets);
@@ -61,6 +62,6 @@ export async function handleUserPortfolioGet(req: Request) {
       return NextResponse.json(empty);
     }
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ message }, { status: 500 });
+    return ApiResponses.internalError(message);
   }
 }

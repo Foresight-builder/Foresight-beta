@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export type LeaderboardEntry = {
   rank: number;
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
 
     const client = getClient("leaderboard-api");
     if (!client) {
-      return NextResponse.json({ leaderboard: [], message: "Database not configured" });
+      return ApiResponses.internalError("Database not configured");
     }
 
     // 首先尝试从 user_trading_stats 表获取数据（已预计算）
@@ -129,7 +130,10 @@ export async function GET(req: NextRequest) {
   } catch (error: unknown) {
     console.error("Leaderboard API Error:", error);
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ leaderboard: [], error: message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to fetch leaderboard",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }
 
@@ -369,10 +373,7 @@ export async function POST(req: NextRequest) {
   try {
     const client = getClient("leaderboard-refresh");
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Database not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Database not configured");
     }
 
     // 调用刷新函数
@@ -380,7 +381,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Failed to refresh stats:", error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return ApiResponses.databaseError("Failed to refresh stats", error.message);
     }
 
     // 清除缓存
@@ -394,6 +395,9 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     console.error("Refresh API Error:", error);
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to refresh stats",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }

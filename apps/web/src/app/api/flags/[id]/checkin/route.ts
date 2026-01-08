@@ -9,23 +9,20 @@ import {
   isLuckyAddress,
   issueRandomSticker,
 } from "@/lib/flagRewards";
-
-function jsonError(message: string, status: number, detail?: string) {
-  return NextResponse.json(detail ? { message, detail } : { message }, { status });
-}
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return jsonError("flagId is required", 400);
+    if (!flagId) return ApiResponses.invalidParameters("flagId is required");
 
     const body = await parseRequestBody(req as any);
     const client = getClient() as any;
-    if (!client) return jsonError("Service not configured", 500);
+    if (!client) return ApiResponses.internalError("Service not configured");
 
     const userId = await getSessionAddress(req);
-    if (!userId) return jsonError("Unauthorized", 401, "Missing session address");
+    if (!userId) return ApiResponses.unauthorized("Unauthorized");
 
     const isLuckyUser = isLuckyAddress(userId);
 
@@ -40,15 +37,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
-    if (findErr) return jsonError("Failed to query flag", 500, findErr.message);
-    if (!flag) return jsonError("Flag not found", 404);
+    if (findErr) return ApiResponses.databaseError("Failed to query flag", findErr.message);
+    if (!flag) return ApiResponses.notFound("Flag not found");
     if (String(flag.user_id || "").toLowerCase() !== userId.toLowerCase())
-      return jsonError("Only the owner can check in", 403);
+      return ApiResponses.forbidden("Only the owner can check in");
 
     const now = new Date();
     const deadline = new Date(String(flag.deadline));
-    if (Number.isNaN(deadline.getTime())) return jsonError("Invalid flag deadline", 500);
-    if (now > deadline) return jsonError("Flag deadline has passed, cannot check in", 400);
+    if (Number.isNaN(deadline.getTime()))
+      return ApiResponses.internalError("Invalid flag deadline");
+    if (now > deadline) return ApiResponses.badRequest("Flag deadline has passed, cannot check in");
 
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const next = new Date(start.getTime() + 86400000);
@@ -61,9 +59,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("user_id", userId)
       .gte("created_at", startIso)
       .lt("created_at", nextIso);
-    if (cnt.error) return jsonError("Failed to query daily check-ins", 500, cnt.error.message);
+    if (cnt.error)
+      return ApiResponses.databaseError("Failed to query daily check-ins", cnt.error.message);
     todayCount = Number(cnt.count || 0);
-    if (todayCount >= 100) return jsonError("Daily check-in limit reached (100)", 429);
+    if (todayCount >= 100) return ApiResponses.rateLimit("Daily check-in limit reached (100)");
 
     const existingForFlag = await client
       .from("flag_checkins")
@@ -73,7 +72,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .gte("created_at", startIso)
       .lt("created_at", nextIso);
     if (existingForFlag.error)
-      return jsonError("Failed to query flag daily check-ins", 500, existingForFlag.error.message);
+      return ApiResponses.databaseError(
+        "Failed to query flag daily check-ins",
+        existingForFlag.error.message
+      );
     const alreadyCheckedInFlagToday = Number(existingForFlag.count || 0) > 0;
 
     const historyPayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
@@ -185,7 +187,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         .eq("id", flagId)
         .select("*")
         .maybeSingle();
-      if (fallback.error) return jsonError("Check-in failed", 500, fallback.error.message);
+      if (fallback.error)
+        return ApiResponses.databaseError("Check-in failed", fallback.error.message);
       data = fallback.data;
     }
     return NextResponse.json(
@@ -199,6 +202,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 200 }
     );
   } catch (e: any) {
-    return jsonError("Check-in failed", 500, String(e?.message || e));
+    return ApiResponses.internalError(
+      "Check-in failed",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }

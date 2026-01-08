@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { getClient } from "@/lib/supabase";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -31,14 +32,14 @@ async function ensureAdmin(req: NextRequest, client: DbClient): Promise<EnsureAd
 export async function GET(req: NextRequest) {
   const client = getClient() as DbClient | null;
   if (!client) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return ApiResponses.internalError("Supabase not configured");
   }
   const auth = await ensureAdmin(req, client);
   if (!auth.ok) {
-    return NextResponse.json(
-      { message: auth.reason === "unauthorized" ? "未登录" : "无权限" },
-      { status: auth.reason === "unauthorized" ? 401 : 403 }
-    );
+    if (auth.reason === "unauthorized") {
+      return ApiResponses.unauthorized("未登录");
+    }
+    return ApiResponses.forbidden("无权限");
   }
   const { data, error } = await client
     .from("user_profiles")
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) {
-    return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
+    return ApiResponses.databaseError("查询失败", error.message);
   }
   return NextResponse.json({ users: data || [] }, { status: 200 });
 }
@@ -54,14 +55,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const client = getClient() as DbClient | null;
   if (!client) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return ApiResponses.internalError("Supabase not configured");
   }
   const auth = await ensureAdmin(req, client);
   if (!auth.ok) {
-    return NextResponse.json(
-      { message: auth.reason === "unauthorized" ? "未登录" : "无权限" },
-      { status: auth.reason === "unauthorized" ? 401 : 403 }
-    );
+    if (auth.reason === "unauthorized") {
+      return ApiResponses.unauthorized("未登录");
+    }
+    return ApiResponses.forbidden("无权限");
   }
   const rawBody = await req.json().catch(() => null);
   const body =
@@ -71,14 +72,14 @@ export async function POST(req: NextRequest) {
   const walletAddress = typeof body.walletAddress === "string" ? body.walletAddress.trim() : "";
   const isReviewer = body.isReviewer === true;
   if (!walletAddress) {
-    return NextResponse.json({ message: "walletAddress 必填" }, { status: 400 });
+    return ApiResponses.badRequest("walletAddress 必填");
   }
   const { error } = await client
     .from("user_profiles")
     .update({ is_reviewer: isReviewer } as never)
     .eq("wallet_address", walletAddress);
   if (error) {
-    return NextResponse.json({ message: "更新失败", detail: error.message }, { status: 500 });
+    return ApiResponses.databaseError("更新失败", error.message);
   }
   return NextResponse.json({ message: "ok" }, { status: 200 });
 }

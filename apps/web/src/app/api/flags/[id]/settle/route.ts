@@ -10,15 +10,12 @@ import {
   isLuckyAddress,
   issueRandomSticker,
 } from "@/lib/flagRewards";
+import { ApiResponses } from "@/lib/apiResponse";
 
 type SettleRequestBody = {
   min_days?: number | string;
   threshold?: number | string;
 };
-
-function jsonError(message: string, status: number, detail?: string) {
-  return NextResponse.json(detail ? { message, detail } : { message }, { status });
-}
 
 function parseNumberWithBounds(value: unknown, fallback: number, min?: number, max?: number) {
   const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -32,16 +29,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return jsonError("flagId is required", 400);
+    if (!flagId) return ApiResponses.invalidParameters("flagId is required");
     const body = (await parseRequestBody(req as any)) as SettleRequestBody;
     const minDays = parseNumberWithBounds(body.min_days, 10, 1);
     const threshold = parseNumberWithBounds(body.threshold, 0.8, 0, 1);
 
     const client = getClient() as any;
-    if (!client) return jsonError("Service not configured", 500);
+    if (!client) return ApiResponses.internalError("Service not configured");
 
     const settler_id = await getSessionAddress(req);
-    if (!settler_id) return jsonError("Unauthorized", 401, "Missing session address");
+    if (!settler_id) return ApiResponses.unauthorized("Unauthorized");
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -49,17 +46,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("id", flagId)
       .maybeSingle();
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
-    if (fErr) return jsonError("Failed to query flag", 500, fErr.message);
-    if (!flag) return jsonError("Flag not found", 404);
+    if (fErr) return ApiResponses.databaseError("Failed to query flag", fErr.message);
+    if (!flag) return ApiResponses.notFound("Flag not found");
     const owner = String(flag.user_id || "");
     if (settler_id.toLowerCase() !== owner.toLowerCase())
-      return jsonError("Only the owner can settle this flag", 403);
+      return ApiResponses.forbidden("Only the owner can settle this flag");
 
     const end = new Date(String(flag.deadline));
-    if (Number.isNaN(end.getTime())) return jsonError("Invalid flag deadline", 500);
+    if (Number.isNaN(end.getTime())) return ApiResponses.internalError("Invalid flag deadline");
 
     const now = new Date();
-    if (now < end) return jsonError("Flag deadline has not passed, cannot settle", 400);
+    if (now < end) return ApiResponses.badRequest("Flag deadline has not passed, cannot settle");
 
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
 
@@ -125,7 +122,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("review_status", "approved")
       .gte("created_at", startDay.toISOString())
       .lte("created_at", new Date(endDay.getTime() + 86400000 - 1).toISOString());
-    if (aErr) return jsonError("Failed to query approved check-ins", 500, aErr.message);
+    if (aErr) return ApiResponses.databaseError("Failed to query approved check-ins", aErr.message);
     if (approvals) {
       const set = new Set<string>();
       for (const r of approvals) {
@@ -203,6 +200,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 200 }
     );
   } catch (e: any) {
-    return jsonError("Failed to settle flag", 500, String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to settle flag",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }

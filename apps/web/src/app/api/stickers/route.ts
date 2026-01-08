@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { getSessionAddress } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,20 +41,20 @@ export async function POST(req: NextRequest) {
     const { user_id, sticker_id } = body;
 
     if (!user_id || !sticker_id) {
-      return NextResponse.json({ error: "Missing params" }, { status: 400 });
+      return ApiResponses.badRequest("Missing params");
     }
 
     const sessionUser = await getSessionAddress(req as any);
     if (!sessionUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return ApiResponses.unauthorized("Unauthorized");
     }
 
     if (sessionUser.toLowerCase() !== String(user_id).toLowerCase()) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return ApiResponses.forbidden("Forbidden");
     }
 
     const client = supabaseAdmin || getClient();
-    if (!client) return NextResponse.json({ error: "No DB" }, { status: 500 });
+    if (!client) return ApiResponses.internalError("No DB");
 
     const { error } = await (client.from("user_emojis") as any).insert({
       user_id,
@@ -63,11 +64,11 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Save sticker error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return ApiResponses.databaseError("Failed to save sticker", error.message);
     }
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return ApiResponses.internalError("Failed to save sticker", String(e));
   }
 }

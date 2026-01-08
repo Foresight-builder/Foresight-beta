@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 // POST /api/history  body: { eventId: number, walletAddress: string }
 // GET /api/history?address=0x...
@@ -7,14 +8,14 @@ import { supabaseAdmin } from "@/lib/supabase";
 export async function POST(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
+      return ApiResponses.internalError("Supabase client not initialized");
     }
 
     const body = await req.json();
     const { eventId, walletAddress } = body;
 
     if (!eventId || !walletAddress) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+      return ApiResponses.badRequest("Missing required fields");
     }
 
     // 使用 upsert 确保每个用户对每个事件只记录一次，并更新时间
@@ -29,26 +30,26 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("Failed to record view history:", error);
-      return NextResponse.json({ message: "Failed to record history" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to record history", error.message);
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return ApiResponses.internalError("Failed to record history", error.message);
   }
 }
 
 export async function GET(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
+      return ApiResponses.internalError("Supabase client not initialized");
     }
 
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json({ message: "Address is required" }, { status: 400 });
+      return ApiResponses.badRequest("Address is required");
     }
 
     const { data, error } = await supabaseAdmin
@@ -70,7 +71,7 @@ export async function GET(req: Request) {
 
     if (error) {
       console.error("Failed to fetch history:", error);
-      return NextResponse.json({ message: "Failed to fetch history" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch history", error.message);
     }
 
     // 格式化数据
@@ -86,6 +87,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ history });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return ApiResponses.internalError("Failed to fetch history", error.message);
   }
 }

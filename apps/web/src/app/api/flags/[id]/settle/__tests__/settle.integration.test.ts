@@ -130,7 +130,8 @@ describe("POST /api/flags/[id]/settle", () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.message).toBe("flagId is required");
+    expect(data.success).toBe(false);
+    expect(data.error.message).toBe("flagId is required");
   });
 
   it("应该在未登录时返回 401", async () => {
@@ -148,7 +149,8 @@ describe("POST /api/flags/[id]/settle", () => {
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.message).toBe("Unauthorized");
+    expect(data.success).toBe(false);
+    expect(data.error.message).toBe("Unauthorized");
   });
 
   it("应该在非 owner 调用时返回 403", async () => {
@@ -169,7 +171,8 @@ describe("POST /api/flags/[id]/settle", () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.message).toBe("Only the owner can settle this flag");
+    expect(data.success).toBe(false);
+    expect(data.error.message).toBe("Only the owner can settle this flag");
   });
 
   it("应该在参数正确且有权限时成功结算 flag", async () => {

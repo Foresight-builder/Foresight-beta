@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function toNum(v: any): number | null {
   const n = Number(v);
@@ -25,9 +26,9 @@ export async function POST(req: NextRequest) {
     const type = body?.type === "comment" ? "comment" : "thread";
     const dir = body?.dir === "down" ? "down" : "up";
     const id = toNum(body?.id);
-    if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
+    if (!id) return ApiResponses.badRequest("id 必填");
     const userAddr = getSessionAddressFromCookie(req);
-    if (!userAddr) return NextResponse.json({ message: "未登录或会话失效" }, { status: 401 });
+    if (!userAddr) return ApiResponses.unauthorized("未登录或会话失效");
 
     // 内容存在性与事件ID解析
     let eventId: number | null = null;
@@ -38,9 +39,8 @@ export async function POST(req: NextRequest) {
         .select("event_id, upvotes, downvotes")
         .eq("id", id)
         .maybeSingle();
-      if (error)
-        return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
-      if (!t) return NextResponse.json({ message: "未找到对象" }, { status: 404 });
+      if (error) return ApiResponses.databaseError("查询失败", error.message);
+      if (!t) return ApiResponses.notFound("未找到对象");
       eventId = Number((t as any).event_id);
     } else {
       const { data: c, error } = await client
@@ -48,16 +48,14 @@ export async function POST(req: NextRequest) {
         .select("event_id, upvotes, downvotes")
         .eq("id", id)
         .maybeSingle();
-      if (error)
-        return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
-      if (!c) return NextResponse.json({ message: "未找到对象" }, { status: 404 });
+      if (error) return ApiResponses.databaseError("查询失败", error.message);
+      if (!c) return ApiResponses.notFound("未找到对象");
       eventId = Number((c as any).event_id);
     }
-    if (!Number.isFinite(eventId))
-      return NextResponse.json({ message: "事件不存在或无效" }, { status: 400 });
+    if (!Number.isFinite(eventId)) return ApiResponses.badRequest("事件不存在或无效");
 
     if (!supabaseAdmin) {
-      return NextResponse.json({ message: "服务端未配置 SUPABASE_SERVICE_KEY" }, { status: 500 });
+      return ApiResponses.internalError("服务端未配置 SUPABASE_SERVICE_KEY");
     }
 
     const admin = (supabaseAdmin || client) as any;
@@ -71,34 +69,26 @@ export async function POST(req: NextRequest) {
       .eq("content_id", id)
       .maybeSingle();
     if (existErr) {
-      return NextResponse.json(
-        { message: "检查投票状态失败", detail: existErr.message },
-        { status: 500 }
-      );
+      return ApiResponses.databaseError("检查投票状态失败", existErr.message);
     }
     if (existing) {
-      return NextResponse.json({ message: "您已经投过票了" }, { status: 409 });
+      return ApiResponses.conflict("您已经投过票了");
     }
 
     // 写入投票记录（唯一约束防止并发重复）
-    const { error: insErr } = await admin
-      .from("forum_votes")
-      .insert({
-        user_id: userAddr,
-        event_id: eventId,
-        content_id: id,
-        content_type: type,
-        vote_type: dir,
-      });
+    const { error: insErr } = await admin.from("forum_votes").insert({
+      user_id: userAddr,
+      event_id: eventId,
+      content_id: id,
+      content_type: type,
+      vote_type: dir,
+    });
     if (insErr) {
       const msg = (insErr.message || "").toLowerCase();
       if (msg.includes("unique") || msg.includes("duplicate")) {
-        return NextResponse.json({ message: "您已经投过票了" }, { status: 409 });
+        return ApiResponses.conflict("您已经投过票了");
       }
-      return NextResponse.json(
-        { message: "投票记录写入失败", detail: insErr.message },
-        { status: 500 }
-      );
+      return ApiResponses.databaseError("投票记录写入失败", insErr.message);
     }
 
     // 更新本地计数用于 UI
@@ -117,8 +107,7 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .select()
         .maybeSingle();
-      if (uerr)
-        return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
+      if (uerr) return ApiResponses.databaseError("更新失败", uerr.message);
       return NextResponse.json({ message: "ok", data: updated, voted: { type, id, dir } });
     } else {
       const { data: cur } = await admin
@@ -134,14 +123,10 @@ export async function POST(req: NextRequest) {
         .eq("id", id)
         .select()
         .maybeSingle();
-      if (uerr)
-        return NextResponse.json({ message: "更新失败", detail: uerr.message }, { status: 500 });
+      if (uerr) return ApiResponses.databaseError("更新失败", uerr.message);
       return NextResponse.json({ message: "ok", data: updated, voted: { type, id, dir } });
     }
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "投票失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    return ApiResponses.internalError("投票失败", String(e?.message || e));
   }
 }

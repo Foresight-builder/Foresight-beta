@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession(req);
-    
+
     if (!session) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+      return ApiResponses.unauthorized("Not authenticated");
     }
 
     return NextResponse.json({
@@ -14,9 +15,8 @@ export async function GET(req: NextRequest) {
       address: session.address,
       chainId: session.chainId,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Auth check error:", error);
-    return NextResponse.json({ authenticated: false }, { status: 500 });
+    return ApiResponses.internalError("Auth check error", error?.message || "Unknown error");
   }
 }
-

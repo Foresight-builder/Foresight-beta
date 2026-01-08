@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false;
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json({ error: "缺少用户地址参数" }, { status: 400 });
+      return ApiResponses.badRequest("缺少用户地址参数");
     }
 
     // 获取用户关注的事件ID列表（仅 Supabase）
@@ -104,8 +105,8 @@ export async function GET(request: NextRequest) {
       follows: eventsWithFollowersCount,
       total: eventsWithFollowersCount.length,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("获取用户关注数据失败:", error);
-    return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
+    return ApiResponses.internalError("服务器内部错误", error?.message || "unknown error");
   }
 }

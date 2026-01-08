@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ApiResponses } from "@/lib/apiResponse";
 import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
 
     const client = (supabase || getClient()) as any;
-    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
+    if (!client) return ApiResponses.internalError("Service not configured");
 
     const { data: rawChk, error: chkErr } = await client
       .from("flag_checkins")
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       await client.from("discussions").insert(payload);
       return NextResponse.json({ message: "ok" }, { status: 200 });
     }
-    if (!chk) return NextResponse.json({ message: "Check-in record not found" }, { status: 404 });
+    if (!chk) return ApiResponses.notFound("Check-in record not found");
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -77,24 +78,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
-    if (fErr)
-      return NextResponse.json(
-        { message: "Failed to query flag", detail: fErr.message },
-        { status: 500 }
-      );
-    if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
+    if (fErr) return ApiResponses.databaseError("Failed to query flag", fErr.message);
+    if (!flag) return ApiResponses.notFound("Flag not found");
     if (String(flag?.verification_type || "") !== "witness")
-      return NextResponse.json(
-        { message: "Flag is not in witness mode, review not required" },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Flag is not in witness mode, review not required");
 
     const allowedReviewer = String(flag?.witness_id || flag?.user_id || "");
     if (!allowedReviewer || allowedReviewer.toLowerCase() !== reviewer_id.toLowerCase())
-      return NextResponse.json(
-        { message: "Only the witness can review this check-in" },
-        { status: 403 }
-      );
+      return ApiResponses.forbidden("Only the witness can review this check-in");
 
     const { data: upd, error: uErr } = await client
       .from("flag_checkins")
@@ -166,9 +157,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "Failed to review check-in", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    return ApiResponses.internalError("Failed to review check-in", String(e?.message || e));
   }
 }

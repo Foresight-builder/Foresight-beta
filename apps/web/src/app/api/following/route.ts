@@ -2,19 +2,20 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { logApiError } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 // GET /api/following?address=0x...
 export async function GET(req: Request) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json({ message: "Supabase client not initialized" }, { status: 500 });
+      return ApiResponses.internalError("Supabase client not initialized");
     }
 
     const { searchParams } = new URL(req.url);
     const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json({ message: "Address is required" }, { status: 400 });
+      return ApiResponses.badRequest("Address is required");
     }
 
     // 1. 获取关注的事件 ID 列表
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
 
     if (followError) {
       logApiError("GET /api/following fetch ids failed", followError);
-      return NextResponse.json({ message: "Failed to fetch following" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch following", followError.message);
     }
 
     if (!followData || followData.length === 0) {
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
 
     if (predictionsError) {
       logApiError("GET /api/following fetch predictions failed", predictionsError);
-      return NextResponse.json({ message: "Failed to fetch predictions" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch predictions", predictionsError.message);
     }
 
     // 3. 获取这些事件的总关注数
@@ -101,6 +102,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ following });
   } catch (error: any) {
     logApiError("GET /api/following unhandled error", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return ApiResponses.internalError("Failed to fetch following", error.message);
   }
 }

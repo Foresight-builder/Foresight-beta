@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     const client = getClient();
     if (!client) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+      return ApiResponses.internalError("Database not configured");
     }
 
     // 存储到性能监控表
@@ -33,13 +34,13 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Failed to store performance metric:", error);
-      return NextResponse.json({ error: "Failed to store metric" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to store metric", error.message);
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Analytics vitals error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return ApiResponses.internalError("Internal server error");
   }
 }
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     const client = getClient();
     if (!client) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+      return ApiResponses.internalError("Database not configured");
     }
 
     // 计算时间范围
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Failed to fetch performance metrics:", error);
-      return NextResponse.json({ error: "Failed to fetch metrics" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch metrics", error.message);
     }
 
     // 计算统计数据
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("Analytics vitals GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return ApiResponses.internalError("Internal server error");
   }
 }
 
