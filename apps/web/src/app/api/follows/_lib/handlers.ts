@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { logApiError, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
@@ -29,8 +28,8 @@ export async function handleFollowsPost(req: Request) {
     if (!supabaseAdmin) return supabaseNotConfigured();
 
     const body = await parseRequestBody(req);
-    const rawPredictionId = body?.predictionId;
-    const rawWallet = body?.walletAddress;
+    const rawPredictionId = body?.predictionId ?? body?.eventId ?? body?.event_id;
+    const rawWallet = body?.walletAddress ?? body?.userId ?? body?.user_id;
     const predictionId = parsePredictionId(rawPredictionId);
     const { walletAddress } = parseWalletAddressStrict(rawWallet);
 
@@ -153,12 +152,9 @@ export async function handleFollowsPost(req: Request) {
         }
 
         if (existCount && existCount > 0) {
-          return NextResponse.json(
-            {
-              message: "Already followed",
-              follow: { user_id: walletAddress, event_id: predictionId },
-            },
-            { status: 200 }
+          return successResponse(
+            { follow: { user_id: walletAddress, event_id: predictionId } },
+            "Already followed"
           );
         }
 
@@ -195,7 +191,7 @@ export async function handleFollowsPost(req: Request) {
           return ApiResponses.databaseError("Failed to follow prediction", insError.message);
         }
 
-        return NextResponse.json({ message: "Already followed", follow: insData }, { status: 200 });
+        return successResponse({ follow: insData }, "Already followed");
       }
 
       if (isEventIdForeignKeyViolation(error)) {
@@ -211,7 +207,7 @@ export async function handleFollowsPost(req: Request) {
       return ApiResponses.databaseError("Failed to follow prediction", error.message);
     }
 
-    return NextResponse.json({ message: "Already followed", follow: data }, { status: 200 });
+    return successResponse({ follow: data }, "Already followed");
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
     return ApiResponses.internalError("Failed to process request", detail);
@@ -223,8 +219,10 @@ export async function handleFollowsDelete(req: Request) {
     if (!supabaseAdmin) return supabaseNotConfigured();
 
     const body = await parseRequestBody(req);
-    const predictionId = Number(body?.predictionId);
-    const walletAddress = normalizeAddress(String(body?.walletAddress || ""));
+    const predictionId = Number(body?.predictionId ?? body?.eventId ?? body?.event_id);
+    const walletAddress = normalizeAddress(
+      String(body?.walletAddress ?? body?.userId ?? body?.user_id ?? "")
+    );
 
     if (!predictionId || !walletAddress) {
       return ApiResponses.badRequest("predictionId and walletAddress are required");
@@ -282,7 +280,7 @@ CREATE TABLE IF NOT EXISTS public.event_follows (
       return ApiResponses.databaseError("Failed to unfollow prediction", error.message);
     }
 
-    return NextResponse.json({ message: "Unfollowed successfully" }, { status: 200 });
+    return successResponse({ ok: true }, "Unfollowed successfully");
   } catch (e: any) {
     return ApiResponses.internalError("Failed to process request", String(e?.message || e));
   }
@@ -347,7 +345,7 @@ export async function handleFollowsGet(req: Request) {
       following = !!followData;
     }
 
-    return NextResponse.json({ following, followersCount: count || 0 }, { status: 200 });
+    return successResponse({ following, followersCount: count || 0 });
   } catch (e: any) {
     return ApiResponses.internalError("Failed to process request", String(e?.message || e));
   }

@@ -24,13 +24,26 @@ vi.mock("@sentry/nextjs", () => ({
   browserTracingIntegration: vi.fn(),
 }));
 
-vi.mock("@/lib/i18n", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/i18n")>("@/lib/i18n");
-  return {
-    ...actual,
-    useTranslations: vi.fn(() => (key: string) => key),
-  };
-});
+vi.mock("@/lib/i18n", () => ({
+  useTranslations: vi.fn(() => (key: string) => key),
+  useLocale: () => ({ locale: "en", setLocale: vi.fn() }),
+  getCurrentLocale: () => "en",
+  getSupportedLocales: () => ["zh-CN", "en", "es", "ko"],
+  isSupportedLocale: () => true,
+  t: (key: string) => key,
+  formatTranslation: (
+    template: string,
+    params?: Record<string, string | number | undefined>
+  ): string => {
+    if (!params) return template;
+    return template.replace(/\{(\w+)\}/g, (_, rawKey: string) => {
+      const v = params[rawKey];
+      return v === undefined ? `{${rawKey}}` : String(v);
+    });
+  },
+  setLocale: vi.fn(),
+  getTranslation: () => ({}),
+}));
 
 vi.mock("lucide-react", () => {
   const overrideTestIds: Record<string, string> = {
@@ -97,6 +110,22 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
+vi.mock("next/navigation.js", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    pathname: "/",
+    query: {},
+  }),
+  usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+}));
+
 vi.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children, ...rest }: any) =>
@@ -110,7 +139,30 @@ vi.mock("next/link", () => ({
     ),
 }));
 
+vi.mock("next/link.js", () => ({
+  __esModule: true,
+  default: ({ href, children, ...rest }: any) =>
+    React.createElement(
+      "a",
+      {
+        href: typeof href === "string" ? href : "",
+        ...rest,
+      },
+      children
+    ),
+}));
+
 vi.mock("next/image", () => ({
+  __esModule: true,
+  default: ({ src, alt, ...rest }: any) =>
+    React.createElement("img", {
+      src: typeof src === "string" ? src : "",
+      alt,
+      ...rest,
+    }),
+}));
+
+vi.mock("next/image.js", () => ({
   __esModule: true,
   default: ({ src, alt, ...rest }: any) =>
     React.createElement("img", {

@@ -276,19 +276,10 @@ export function useFollowingEvents(address?: string | null) {
   const norm = address ? normalizeAddress(address) : null;
   return useQuery({
     queryKey: QueryKeys.profileFollowingEvents(norm || ""),
-    queryFn: async () => {
-      if (!norm) return [];
-      const res = await fetch(`/api/following?address=${encodeURIComponent(norm)}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const payload =
-          data && typeof data === "object"
-            ? { status: res.status, ...data }
-            : { status: res.status };
-        throw payload;
-      }
-      return Array.isArray((data as any).following) ? (data as any).following : [];
-    },
+    queryFn: () =>
+      norm
+        ? fetcher<any[]>(`/api/following?address=${encodeURIComponent(norm)}`)
+        : Promise.resolve([]),
     enabled: !!norm,
     staleTime: 2 * 60 * 1000,
   });
@@ -398,7 +389,7 @@ export function useFollowEvent() {
     mutationFn: async ({ eventId, userId }: { eventId: number; userId: string }) => {
       return fetcher<any>("/api/follows", {
         method: "POST",
-        body: JSON.stringify({ event_id: eventId, user_id: userId }),
+        body: JSON.stringify({ predictionId: eventId, walletAddress: userId }),
       });
     },
     onSuccess: (data, variables) => {
@@ -430,7 +421,7 @@ export function useUnfollowEvent() {
     mutationFn: async ({ eventId, userId }: { eventId: number; userId: string }) => {
       return fetcher<any>("/api/follows", {
         method: "DELETE",
-        body: JSON.stringify({ event_id: eventId, user_id: userId }),
+        body: JSON.stringify({ predictionId: eventId, walletAddress: userId }),
       });
     },
     onSuccess: (data, variables) => {

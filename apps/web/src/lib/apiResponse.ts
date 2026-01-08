@@ -124,3 +124,31 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
     }
   };
 }
+
+export async function proxyJsonResponse(
+  res: Response,
+  options?: { successMessage?: string; errorMessage?: string }
+) {
+  const contentType = res.headers.get("content-type") || "";
+  const json = contentType.includes("application/json") ? await res.json().catch(() => null) : null;
+
+  if (res.ok) {
+    return successResponse(json, options?.successMessage);
+  }
+
+  const raw = (json && typeof json === "object" ? json : {}) as any;
+  const message =
+    raw?.error?.message || raw?.message || options?.errorMessage || "Upstream request failed";
+  const rawCode = raw?.error?.code || raw?.code;
+  const code =
+    typeof rawCode === "string" && Object.values(ApiErrorCode).includes(rawCode as ApiErrorCode)
+      ? (rawCode as ApiErrorCode)
+      : ApiErrorCode.INTERNAL_ERROR;
+
+  return errorResponse(
+    message,
+    code,
+    res.status || 500,
+    process.env.NODE_ENV === "development" ? raw : undefined
+  );
+}

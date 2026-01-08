@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { logApiError, normalizeAddress } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 // GET /api/following?address=0x...
 export async function GET(req: Request) {
@@ -36,7 +35,7 @@ export async function GET(req: Request) {
     }
 
     if (!followData || followData.length === 0) {
-      return NextResponse.json({ following: [] });
+      return successResponse([]);
     }
 
     const eventIds = followData.map((item) => item.event_id);
@@ -100,7 +99,7 @@ export async function GET(req: Request) {
       return timeB - timeA;
     });
 
-    return NextResponse.json({ following });
+    return successResponse(following);
   } catch (error: any) {
     logApiError("GET /api/following unhandled error", error);
     return ApiResponses.internalError("Failed to fetch following", error.message);

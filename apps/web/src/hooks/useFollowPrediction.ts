@@ -43,7 +43,7 @@ export function useFollowPrediction(
     return () => {
       cancelled = true;
     };
-  }, [predictionId, walletAddress]);
+  }, [predictionId, walletAddress, tErrors]);
 
   const toggleFollow = useCallback(async () => {
     if (!predictionId || !walletAddress) return;
@@ -63,7 +63,7 @@ export function useFollowPrediction(
     } finally {
       setFollowLoading(false);
     }
-  }, [predictionId, walletAddress, following]);
+  }, [predictionId, walletAddress, following, tErrors]);
 
   return { following, followersCount, followLoading, followError, toggleFollow };
 }

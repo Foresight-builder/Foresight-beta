@@ -1,14 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { logApiError } from "@/lib/serverUtils";
-
-function getRelayerBaseUrl(): string | undefined {
-  const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
-  if (!raw) return undefined;
-  if (!/^https?:\/\//i.test(raw)) return undefined;
-  return raw;
-}
+import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
+import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
 
 function isMissingMarketKeyColumn(
   error: { code?: string; message?: string | null } | null
@@ -59,14 +52,10 @@ export async function GET(req: NextRequest) {
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        const relayerJson = await relayerRes.json().catch(() => null);
-
-        return NextResponse.json(
-          relayerJson ?? { success: false, message: "invalid relayer response" },
-          {
-            status: relayerRes.status,
-          }
-        );
+        return proxyJsonResponse(relayerRes, {
+          successMessage: "ok",
+          errorMessage: "Relayer request failed",
+        });
       } catch {}
     }
 

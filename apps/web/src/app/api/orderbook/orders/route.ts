@@ -3,20 +3,13 @@ import { ethers } from "ethers";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import { successResponse, ApiResponses } from "@/lib/apiResponse";
+import { successResponse, ApiResponses, proxyJsonResponse } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
-import { logApiError } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
 
 type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
 type DbClient = SupabaseClient<Database>;
-
-function getRelayerBaseUrl(): string | undefined {
-  const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
-  if (!raw) return undefined;
-  if (!/^https?:\/\//i.test(raw)) return undefined;
-  return raw;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -90,9 +83,9 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: rawBody || "{}",
       });
-      const relayerJson = await relayerRes.json().catch(() => null);
-      return NextResponse.json(relayerJson ?? { message: "invalid relayer response" }, {
-        status: relayerRes.status,
+      return proxyJsonResponse(relayerRes, {
+        successMessage: "ok",
+        errorMessage: "Relayer request failed",
       });
     }
 

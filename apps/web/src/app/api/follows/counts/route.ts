@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false;
@@ -66,7 +65,7 @@ export async function POST(req: Request) {
       const eid = Number(r.event_id);
       if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1;
     }
-    return NextResponse.json({ counts }, { status: 200 });
+    return successResponse({ counts });
   } catch (e: unknown) {
     logApiError("POST /api/follows/counts", e);
     const wrapped = e as { type?: string; error?: { message?: string } };

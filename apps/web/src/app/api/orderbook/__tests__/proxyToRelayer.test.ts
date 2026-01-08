@@ -60,7 +60,9 @@ describe("orderbook api relayer proxy", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String(fetchMock.mock.calls[0][0])).toBe("https://relayer.example/orderbook/orders");
+    expect(json.success).toBe(true);
     expect(json.message).toBe("ok");
+    expect(json.data?.data?.forwarded).toBe(true);
   });
 
   it("forwards POST /orderbook/cancel-salt to relayer", async () => {
@@ -82,7 +84,9 @@ describe("orderbook api relayer proxy", () => {
     expect(String(fetchMock.mock.calls[0][0])).toBe(
       "https://relayer.example/orderbook/cancel-salt"
     );
+    expect(json.success).toBe(true);
     expect(json.message).toBe("ok");
+    expect(json.data?.data?.forwarded).toBe(true);
   });
 
   it("returns internal error if supabase is not configured and relayer is absent", async () => {

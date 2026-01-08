@@ -131,3 +131,10 @@ export function logApiError(scope: string, error: unknown) {
     console.error(scope, error);
   } catch {}
 }
+
+export function getRelayerBaseUrl(): string | undefined {
+  const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
+  if (!raw) return undefined;
+  if (!/^https?:\/\//i.test(raw)) return undefined;
+  return raw;
+}

@@ -3,9 +3,8 @@
  */
 
 import React, { useState } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import TopNavBar from "../TopNavBar";
 
 type MockNav = {
   mounted: boolean;
@@ -25,10 +24,33 @@ type MockNav = {
   setNotificationsOpen: (next: boolean) => void;
 };
 
-let mockNav: MockNav;
+const mockNavRef = vi.hoisted(() => ({ current: null as MockNav | null }));
+let TopNavBar: React.ComponentType;
 
 vi.mock("../topNavBar/useTopNavBarLogic", () => ({
-  useTopNavBarLogic: () => mockNav,
+  useTopNavBarLogic: () => {
+    const [walletModalOpen, setWalletModalOpen] = React.useState<boolean>(
+      Boolean(mockNavRef.current?.walletModalOpen)
+    );
+    const [notificationsOpen, setNotificationsOpen] = React.useState<boolean>(
+      Boolean(mockNavRef.current?.notificationsOpen)
+    );
+    const base = (mockNavRef.current ?? {}) as any;
+
+    return {
+      ...base,
+      walletModalOpen,
+      setWalletModalOpen: (next: boolean) => {
+        setWalletModalOpen(next);
+        if (mockNavRef.current) mockNavRef.current.walletModalOpen = next;
+      },
+      notificationsOpen,
+      setNotificationsOpen: (next: boolean) => {
+        setNotificationsOpen(next);
+        if (mockNavRef.current) mockNavRef.current.notificationsOpen = next;
+      },
+    } as MockNav;
+  },
 }));
 
 vi.mock("../topNavBar/WalletSection", () => ({
@@ -46,11 +68,16 @@ vi.mock("../topNavBar/WalletSection", () => ({
 
     return (
       <div>
-        <button type="button" aria-label="openUserMenu" onClick={() => setMenuOpen((v) => !v)}>
+        <button
+          type="button"
+          aria-label="openUserMenu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
           openUserMenu
         </button>
         {menuOpen && (
-          <div role="menu" aria-expanded="true">
+          <div role="menu">
             <button
               type="button"
               onClick={async () => {
@@ -85,19 +112,30 @@ vi.mock("../topNavBar/WalletSection", () => ({
 }));
 
 vi.mock("../WalletModal", () => ({
+  __esModule: true,
   default: ({ isOpen }: { isOpen: boolean }) =>
     isOpen ? <div data-testid="wallet-modal">WalletModal</div> : null,
 }));
 
 vi.mock("../LanguageSwitcher", () => ({
+  __esModule: true,
   default: () => <div data-testid="language-switcher">LanguageSwitcher</div>,
 }));
 
 vi.mock("../MobileMenu", () => ({
+  __esModule: true,
   default: () => <div data-testid="mobile-menu">MobileMenu</div>,
 }));
 
+vi.mock("lucide-react", () => ({
+  Bell: (props: any) => <svg data-testid="bell-icon" {...props} />,
+}));
+
 describe("TopNavBar Component", () => {
+  beforeAll(async () => {
+    TopNavBar = (await import("../TopNavBar")).default;
+  }, 30000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     Object.assign(navigator, {
@@ -107,12 +145,12 @@ describe("TopNavBar Component", () => {
     });
     window.open = vi.fn();
 
-    mockNav = {
+    mockNavRef.current = {
       mounted: true,
       modal: null,
       walletModalOpen: false,
       setWalletModalOpen: (next) => {
-        mockNav.walletModalOpen = next;
+        if (mockNavRef.current) mockNavRef.current.walletModalOpen = next;
       },
       account: null,
       isSepolia: true,
@@ -125,7 +163,7 @@ describe("TopNavBar Component", () => {
       notifications: [],
       notificationsCount: 0,
       setNotificationsOpen: (next) => {
-        mockNav.notificationsOpen = next;
+        if (mockNavRef.current) mockNavRef.current.notificationsOpen = next;
       },
     };
   });
@@ -143,7 +181,9 @@ describe("TopNavBar Component", () => {
   });
 
   it("点击头像应该打开钱包菜单", async () => {
-    mockNav.account = "0x1234567890123456789012345678901234567890";
+    if (mockNavRef.current) {
+      mockNavRef.current.account = "0x1234567890123456789012345678901234567890";
+    }
     render(<TopNavBar />);
 
     fireEvent.click(screen.getByLabelText("openUserMenu"));
@@ -154,10 +194,12 @@ describe("TopNavBar Component", () => {
   });
 
   it("应该能够复制钱包地址", async () => {
-    mockNav.account = "0x1234567890123456789012345678901234567890";
-    mockNav.copyAddress = vi.fn(async () => {
-      await navigator.clipboard.writeText(mockNav.account!);
-    });
+    if (mockNavRef.current) {
+      mockNavRef.current.account = "0x1234567890123456789012345678901234567890";
+      mockNavRef.current.copyAddress = vi.fn(async () => {
+        await navigator.clipboard.writeText(mockNavRef.current?.account!);
+      });
+    }
 
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
@@ -165,7 +207,7 @@ describe("TopNavBar Component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "copyAddress" }));
 
-    expect(mockNav.copyAddress).toHaveBeenCalled();
+    expect(mockNavRef.current?.copyAddress).toHaveBeenCalled();
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       "0x1234567890123456789012345678901234567890"
     );
@@ -173,13 +215,15 @@ describe("TopNavBar Component", () => {
   });
 
   it("点击浏览器链接应该打开新窗口", async () => {
-    mockNav.account = "0x1234567890123456789012345678901234567890";
-    mockNav.openOnExplorer = vi.fn(() => {
-      window.open(
-        "https://sepolia.etherscan.io/address/0x1234567890123456789012345678901234567890",
-        "_blank"
-      );
-    });
+    if (mockNavRef.current) {
+      mockNavRef.current.account = "0x1234567890123456789012345678901234567890";
+      mockNavRef.current.openOnExplorer = vi.fn(() => {
+        window.open(
+          "https://sepolia.etherscan.io/address/0x1234567890123456789012345678901234567890",
+          "_blank"
+        );
+      });
+    }
 
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
@@ -187,7 +231,7 @@ describe("TopNavBar Component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "viewOnExplorer" }));
 
-    expect(mockNav.openOnExplorer).toHaveBeenCalled();
+    expect(mockNavRef.current?.openOnExplorer).toHaveBeenCalled();
     expect(window.open).toHaveBeenCalledWith(
       "https://sepolia.etherscan.io/address/0x1234567890123456789012345678901234567890",
       "_blank"
@@ -195,9 +239,11 @@ describe("TopNavBar Component", () => {
   });
 
   it("错误网络时应该显示切网按钮", async () => {
-    mockNav.account = "0x1234567890123456789012345678901234567890";
-    mockNav.isSepolia = false;
-    mockNav.switchToSepolia = vi.fn(async () => {});
+    if (mockNavRef.current) {
+      mockNavRef.current.account = "0x1234567890123456789012345678901234567890";
+      mockNavRef.current.isSepolia = false;
+      mockNavRef.current.switchToSepolia = vi.fn(async () => {});
+    }
 
     render(<TopNavBar />);
     fireEvent.click(screen.getByLabelText("openUserMenu"));
@@ -208,7 +254,9 @@ describe("TopNavBar Component", () => {
   });
 
   it("should render portal modal when provided", () => {
-    mockNav.modal = <div data-testid="nav-modal">Modal</div>;
+    if (mockNavRef.current) {
+      mockNavRef.current.modal = <div data-testid="nav-modal">Modal</div>;
+    }
     render(<TopNavBar />);
     expect(screen.getByTestId("nav-modal")).toBeInTheDocument();
   });

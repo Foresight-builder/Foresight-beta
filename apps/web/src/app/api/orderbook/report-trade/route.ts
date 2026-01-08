@@ -1,12 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ApiResponses } from "@/lib/apiResponse";
-
-function getRelayerBaseUrl(): string | undefined {
-  const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
-  if (!raw) return undefined;
-  if (!/^https?:\/\//i.test(raw)) return undefined;
-  return raw;
-}
+import { NextRequest } from "next/server";
+import { ApiResponses, proxyJsonResponse } from "@/lib/apiResponse";
+import { getRelayerBaseUrl } from "@/lib/serverUtils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,13 +24,10 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const relayerJson = await relayerRes.json().catch(() => null);
-    return NextResponse.json(
-      relayerJson ?? { success: false, message: "invalid relayer response" },
-      {
-        status: relayerRes.status,
-      }
-    );
+    return proxyJsonResponse(relayerRes, {
+      successMessage: "ok",
+      errorMessage: "Relayer request failed",
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     return ApiResponses.internalError("Failed to report trade", message);
