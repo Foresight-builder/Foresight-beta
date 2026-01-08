@@ -53,19 +53,23 @@ export function useProfileAggregates(args: {
           if (!account) return null;
           const res = await fetch(`/api/user-portfolio?address=${encodeURIComponent(account)}`);
           if (!res.ok) throw new Error("Failed to fetch portfolio");
-          const data = await res.json().catch(() => ({}));
-          const positions = Array.isArray(data.positions) ? data.positions : [];
+          const json = await res.json().catch(() => ({}));
+          const payload =
+            json && typeof json === "object" && "data" in json ? (json as any).data : json;
+          const positions = Array.isArray((payload as any)?.positions)
+            ? (payload as any).positions
+            : [];
           return {
             positions,
             positionsCount: positions.length,
-            stats: data.stats
+            stats: (payload as any)?.stats
               ? {
-                  total_invested: Number(data.stats.total_invested || 0),
-                  active_count: Number(data.stats.active_count || 0),
-                  win_rate: String(data.stats.win_rate || "0%"),
+                  total_invested: Number((payload as any).stats.total_invested || 0),
+                  active_count: Number((payload as any).stats.active_count || 0),
+                  win_rate: String((payload as any).stats.win_rate || "0%"),
                   realized_pnl:
-                    data.stats.realized_pnl != null
-                      ? Number(data.stats.realized_pnl || 0)
+                    (payload as any).stats.realized_pnl != null
+                      ? Number((payload as any).stats.realized_pnl || 0)
                       : undefined,
                 }
               : null,

@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { groupBets, buildPortfolioResponse } from "./compute";
 import { fetchPredictionsMeta, fetchPredictionsStats, fetchUserBets } from "./queries";
 
@@ -21,7 +20,7 @@ export async function handleUserPortfolioGet(req: Request) {
           predictionsMap: {},
           statsMap: {},
         });
-        return NextResponse.json(empty);
+        return successResponse(empty);
       }
       return ApiResponses.internalError("Supabase client not initialized");
     }
@@ -35,7 +34,7 @@ export async function handleUserPortfolioGet(req: Request) {
           predictionsMap: {},
           statsMap: {},
         });
-        return NextResponse.json(empty);
+        return successResponse(empty);
       }
       return ApiResponses.databaseError("Failed to fetch bets", betsError.message);
     }
@@ -50,7 +49,7 @@ export async function handleUserPortfolioGet(req: Request) {
     const { statsMap } = await fetchPredictionsStats(client, predictionIds);
 
     const response = buildPortfolioResponse({ grouped, predictionsMap, statsMap });
-    return NextResponse.json(response);
+    return successResponse(response);
   } catch (error: unknown) {
     console.error("API Error:", error);
     if (process.env.NODE_ENV !== "production") {
@@ -59,7 +58,7 @@ export async function handleUserPortfolioGet(req: Request) {
         predictionsMap: {},
         statsMap: {},
       });
-      return NextResponse.json(empty);
+      return successResponse(empty);
     }
     const message = error instanceof Error ? error.message : "Internal Server Error";
     return ApiResponses.internalError(message);

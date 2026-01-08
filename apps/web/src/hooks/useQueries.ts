@@ -64,15 +64,40 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const message = (parsed as any).error?.message || (parsed as any).message || "Request failed";
-
-    throw new Error(message);
+    const raw: any = parsed || {};
+    const message = raw.error?.message || raw.message || "Request failed";
+    const error = new Error(message);
+    (error as any).status = response.status;
+    if (raw && typeof raw === "object") {
+      if ("error" in raw) {
+        (error as any).error = raw.error;
+      } else {
+        (error as any).error = raw;
+      }
+      const code =
+        typeof raw.code === "string"
+          ? raw.code
+          : raw.error && typeof raw.error.code === "string"
+            ? raw.error.code
+            : undefined;
+      if (code) {
+        (error as any).code = code;
+      }
+    }
+    throw error;
   }
 
   const data: ApiResponse<T> = parsed;
 
   if (!data.success) {
-    throw new Error(data.error?.message || "Request failed");
+    const message = data.error?.message || "Request failed";
+    const error = new Error(message);
+    (error as any).status = response.status;
+    (error as any).error = data.error;
+    if (data.error && typeof data.error.code === "string") {
+      (error as any).code = data.error.code;
+    }
+    throw error;
   }
 
   return data.data;
