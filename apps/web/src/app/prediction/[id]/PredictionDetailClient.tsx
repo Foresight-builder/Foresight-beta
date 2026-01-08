@@ -162,7 +162,6 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   }
 
   const outcomes = prediction.outcomes || [];
-  const hasRelated = false;
   const isMultiOutcome = (prediction.outcomes?.length ?? 0) > 2;
   const yesProb = prediction.stats?.yesProbability ?? 0;
   const noProb = prediction.stats?.noProbability ?? 0;
@@ -445,8 +444,6 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
             </div>
           </div>
         </div>
-
-        {hasRelated && null}
       </div>
     </div>
   );

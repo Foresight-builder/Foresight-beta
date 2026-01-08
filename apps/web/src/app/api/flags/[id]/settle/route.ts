@@ -11,40 +11,37 @@ import {
   issueRandomSticker,
 } from "@/lib/flagRewards";
 
+type SettleRequestBody = {
+  min_days?: number | string;
+  threshold?: number | string;
+};
+
+function jsonError(message: string, status: number, detail?: string) {
+  return NextResponse.json(detail ? { message, detail } : { message }, { status });
+}
+
+function parseNumberWithBounds(value: unknown, fallback: number, min?: number, max?: number) {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  let v = Number.isFinite(n) ? (n as number) : fallback;
+  if (typeof min === "number") v = Math.max(min, v);
+  if (typeof max === "number") v = Math.min(max, v);
+  return v;
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
-    const body = await parseRequestBody(req as any);
-    const rawMinDays = (body as any)?.min_days;
-    const parsedMinDays =
-      typeof rawMinDays === "number"
-        ? rawMinDays
-        : typeof rawMinDays === "string"
-          ? Number(rawMinDays)
-          : NaN;
-    const minDays = Math.max(1, Number.isFinite(parsedMinDays) ? parsedMinDays : 10);
-
-    const rawThreshold = (body as any)?.threshold;
-    const parsedThreshold =
-      typeof rawThreshold === "number"
-        ? rawThreshold
-        : typeof rawThreshold === "string"
-          ? Number(rawThreshold)
-          : NaN;
-    const safeThreshold = Number.isFinite(parsedThreshold) ? parsedThreshold : 0.8;
-    const threshold = Math.min(1, Math.max(0, safeThreshold));
+    if (!flagId) return jsonError("flagId is required", 400);
+    const body = (await parseRequestBody(req as any)) as SettleRequestBody;
+    const minDays = parseNumberWithBounds(body.min_days, 10, 1);
+    const threshold = parseNumberWithBounds(body.threshold, 0.8, 0, 1);
 
     const client = getClient() as any;
-    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
+    if (!client) return jsonError("Service not configured", 500);
 
     const settler_id = await getSessionAddress(req);
-    if (!settler_id)
-      return NextResponse.json(
-        { message: "Unauthorized", detail: "Missing session address" },
-        { status: 401 }
-      );
+    if (!settler_id) return jsonError("Unauthorized", 401, "Missing session address");
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -52,26 +49,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("id", flagId)
       .maybeSingle();
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
-    if (fErr)
-      return NextResponse.json(
-        { message: "Failed to query flag", detail: fErr.message },
-        { status: 500 }
-      );
-    if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
+    if (fErr) return jsonError("Failed to query flag", 500, fErr.message);
+    if (!flag) return jsonError("Flag not found", 404);
     const owner = String(flag.user_id || "");
     if (settler_id.toLowerCase() !== owner.toLowerCase())
-      return NextResponse.json({ message: "Only the owner can settle this flag" }, { status: 403 });
+      return jsonError("Only the owner can settle this flag", 403);
 
     const end = new Date(String(flag.deadline));
-    if (Number.isNaN(end.getTime()))
-      return NextResponse.json({ message: "Invalid flag deadline" }, { status: 500 });
+    if (Number.isNaN(end.getTime())) return jsonError("Invalid flag deadline", 500);
 
     const now = new Date();
-    if (now < end)
-      return NextResponse.json(
-        { message: "Flag deadline has not passed, cannot settle" },
-        { status: 400 }
-      );
+    if (now < end) return jsonError("Flag deadline has not passed, cannot settle", 400);
 
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
 
@@ -137,11 +125,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("review_status", "approved")
       .gte("created_at", startDay.toISOString())
       .lte("created_at", new Date(endDay.getTime() + 86400000 - 1).toISOString());
-    if (aErr)
-      return NextResponse.json(
-        { message: "Failed to query approved check-ins", detail: aErr.message },
-        { status: 500 }
-      );
+    if (aErr) return jsonError("Failed to query approved check-ins", 500, aErr.message);
     if (approvals) {
       const set = new Set<string>();
       for (const r of approvals) {
@@ -219,9 +203,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 200 }
     );
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "Failed to settle flag", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    return jsonError("Failed to settle flag", 500, String(e?.message || e));
   }
 }

@@ -151,6 +151,27 @@ describe("POST /api/flags/[id]/settle", () => {
     expect(data.message).toBe("Unauthorized");
   });
 
+  it("应该在非 owner 调用时返回 403", async () => {
+    const mockedGetSessionAddress = (await import("@/lib/serverUtils"))
+      .getSessionAddress as unknown as ReturnType<typeof vi.fn>;
+    mockedGetSessionAddress.mockResolvedValueOnce("0xdef0000000000000000000000000000000000000");
+
+    const request = createMockNextRequest({
+      method: "POST",
+      url: baseUrl,
+      body: {
+        min_days: 1,
+        threshold: 0.2,
+      },
+    });
+
+    const response = await settleFlag(request, { params: Promise.resolve({ id: "1" }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.message).toBe("Only the owner can settle this flag");
+  });
+
   it("应该在参数正确且有权限时成功结算 flag", async () => {
     const request = createMockNextRequest({
       method: "POST",

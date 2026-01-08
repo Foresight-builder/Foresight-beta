@@ -10,22 +10,22 @@ import {
   issueRandomSticker,
 } from "@/lib/flagRewards";
 
+function jsonError(message: string, status: number, detail?: string) {
+  return NextResponse.json(detail ? { message, detail } : { message }, { status });
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
+    if (!flagId) return jsonError("flagId is required", 400);
 
     const body = await parseRequestBody(req as any);
     const client = getClient() as any;
-    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
+    if (!client) return jsonError("Service not configured", 500);
 
     const userId = await getSessionAddress(req);
-    if (!userId)
-      return NextResponse.json(
-        { message: "Unauthorized", detail: "Missing session address" },
-        { status: 401 }
-      );
+    if (!userId) return jsonError("Unauthorized", 401, "Missing session address");
 
     const isLuckyUser = isLuckyAddress(userId);
 
@@ -40,24 +40,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
-    if (findErr)
-      return NextResponse.json(
-        { message: "Failed to query flag", detail: findErr.message },
-        { status: 500 }
-      );
-    if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
+    if (findErr) return jsonError("Failed to query flag", 500, findErr.message);
+    if (!flag) return jsonError("Flag not found", 404);
     if (String(flag.user_id || "").toLowerCase() !== userId.toLowerCase())
-      return NextResponse.json({ message: "Only the owner can check in" }, { status: 403 });
+      return jsonError("Only the owner can check in", 403);
 
     const now = new Date();
     const deadline = new Date(String(flag.deadline));
-    if (Number.isNaN(deadline.getTime()))
-      return NextResponse.json({ message: "Invalid flag deadline" }, { status: 500 });
-    if (now > deadline)
-      return NextResponse.json(
-        { message: "Flag deadline has passed, cannot check in" },
-        { status: 400 }
-      );
+    if (Number.isNaN(deadline.getTime())) return jsonError("Invalid flag deadline", 500);
+    if (now > deadline) return jsonError("Flag deadline has passed, cannot check in", 400);
 
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const next = new Date(start.getTime() + 86400000);
@@ -70,14 +61,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("user_id", userId)
       .gte("created_at", startIso)
       .lt("created_at", nextIso);
-    if (cnt.error)
-      return NextResponse.json(
-        { message: "Failed to query daily check-ins", detail: cnt.error.message },
-        { status: 500 }
-      );
+    if (cnt.error) return jsonError("Failed to query daily check-ins", 500, cnt.error.message);
     todayCount = Number(cnt.count || 0);
-    if (todayCount >= 100)
-      return NextResponse.json({ message: "Daily check-in limit reached (100)" }, { status: 429 });
+    if (todayCount >= 100) return jsonError("Daily check-in limit reached (100)", 429);
 
     const existingForFlag = await client
       .from("flag_checkins")
@@ -87,10 +73,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .gte("created_at", startIso)
       .lt("created_at", nextIso);
     if (existingForFlag.error)
-      return NextResponse.json(
-        { message: "Failed to query flag daily check-ins", detail: existingForFlag.error.message },
-        { status: 500 }
-      );
+      return jsonError("Failed to query flag daily check-ins", 500, existingForFlag.error.message);
     const alreadyCheckedInFlagToday = Number(existingForFlag.count || 0) > 0;
 
     const historyPayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
@@ -202,11 +185,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         .eq("id", flagId)
         .select("*")
         .maybeSingle();
-      if (fallback.error)
-        return NextResponse.json(
-          { message: "Check-in failed", detail: fallback.error.message },
-          { status: 500 }
-        );
+      if (fallback.error) return jsonError("Check-in failed", 500, fallback.error.message);
       data = fallback.data;
     }
     return NextResponse.json(
@@ -220,9 +199,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 200 }
     );
   } catch (e: any) {
-    return NextResponse.json(
-      { message: "Check-in failed", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+    return jsonError("Check-in failed", 500, String(e?.message || e));
   }
 }
