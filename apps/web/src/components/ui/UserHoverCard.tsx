@@ -109,13 +109,12 @@ export function UserHoverCard({
     }
   }, [followStatusQuery.data, isOwnProfile]);
 
-  // 处理关注/取消关注
   const handleFollowToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!myAccount) {
-      toast.error(t("pleaseConnectWallet") || "Please connect your wallet first");
+      toast.error(t("pleaseConnectWallet"));
       return;
     }
 
@@ -129,20 +128,9 @@ export function UserHoverCard({
       const followed = Boolean(data?.followed);
       setIsFollowed(followed);
       setFollowersCount((prev) => (followed ? prev + 1 : Math.max(0, prev - 1)));
-      toast.success(
-        followed
-          ? t("followSuccess") || "Followed successfully"
-          : t("unfollowSuccess") || "Unfollowed"
-      );
-    } catch (error: any) {
-      const message =
-        (error &&
-          typeof error === "object" &&
-          error !== null &&
-          typeof (error as any).message === "string" &&
-          (error as any).message) ||
-        "Operation failed";
-      toast.error(message);
+      toast.success(followed ? t("followSuccess") : t("unfollowSuccess"));
+    } catch {
+      toast.error(t("followFailed"));
     } finally {
       setIsFollowLoading(false);
     }

@@ -1760,16 +1760,17 @@
     "loadingData": "加载排行榜数据..."
   },
   "userCard": {
-    "volume": "交易量",
+    "volume": "成交量",
     "winRate": "胜率",
-    "trades": "交易次数",
-    "followers": "粉丝",
-    "viewProfile": "查看完整资料",
+    "trades": "成交笔数",
+    "followers": "关注者",
+    "viewProfile": "查看完整主页",
     "follow": "关注",
     "unfollow": "取消关注",
-    "followSuccess": "关注成功",
+    "followSuccess": "已关注",
     "unfollowSuccess": "已取消关注",
     "pleaseConnectWallet": "请先连接钱包",
+    "followFailed": "操作失败，请稍后重试",
     "loading": "处理中..."
   },
   "stickerGallery": {

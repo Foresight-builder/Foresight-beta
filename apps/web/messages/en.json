@@ -1770,6 +1770,7 @@
     "followSuccess": "Followed successfully",
     "unfollowSuccess": "Unfollowed",
     "pleaseConnectWallet": "Please connect your wallet first",
+    "followFailed": "Action failed, please try again",
     "loading": "Processing..."
   },
   "stickerGallery": {

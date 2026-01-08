@@ -1762,7 +1762,7 @@
   },
   "userCard": {
     "volume": "Volumen",
-    "winRate": "Tasa de éxito",
+    "winRate": "Tasa de acierto",
     "trades": "Operaciones",
     "followers": "Seguidores",
     "viewProfile": "Ver perfil completo",
@@ -1771,6 +1771,7 @@
     "followSuccess": "Seguido correctamente",
     "unfollowSuccess": "Has dejado de seguir",
     "pleaseConnectWallet": "Conecta tu billetera primero",
+    "followFailed": "La acción ha fallado, inténtalo de nuevo",
     "loading": "Procesando..."
   },
   "stickerGallery": {
