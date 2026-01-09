@@ -148,7 +148,7 @@ export class DatabasePool {
           .limit(1)
           .single();
         if (error && !error.message.includes("No rows")) {
-          logger.warn("Primary database connection test failed", { error: error.message });
+          logger.warn("Primary database connection test failed", undefined, error);
         } else {
           logger.info("Primary database connected");
           dbConnectionsActive.set({ pool: "primary", type: "write" }, 1);
@@ -206,7 +206,7 @@ export class DatabasePool {
       try {
         await this.checkReplicaHealth();
       } catch (error: any) {
-        logger.warn("Replica health check tick failed", { error: error?.message || String(error) });
+        logger.warn("Replica health check tick failed", undefined, error);
       }
     }, this.config.options?.healthCheckInterval || 30000);
   }

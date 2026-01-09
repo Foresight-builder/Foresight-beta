@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Clock, Zap, BarChart3, RefreshCw } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import GradientPage from "@/components/ui/GradientPage";
 
 interface PerformanceStats {
   [key: string]: {
@@ -23,7 +24,16 @@ interface PerformanceStats {
 export default function PerformanceDashboard() {
   return (
     <Suspense
-      fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}
+      fallback={
+        <GradientPage className="min-h-screen relative overflow-hidden flex items-center justify-center">
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+            <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+          </div>
+          <div className="relative z-10">Loading...</div>
+        </GradientPage>
+      }
     >
       <PerformanceDashboardContent />
     </Suspense>
@@ -104,8 +114,13 @@ function PerformanceDashboardContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 p-6">
-      <div className="max-w-7xl mx-auto">
+    <GradientPage className="min-h-screen relative overflow-hidden p-6">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+      </div>
+      <div className="relative z-10 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -268,6 +283,6 @@ function PerformanceDashboardContent() {
           </div>
         )}
       </div>
-    </div>
+    </GradientPage>
   );
 }

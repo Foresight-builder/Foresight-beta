@@ -5,6 +5,7 @@
 
 import { ethers } from "ethers";
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { OrderBookManager, OrderBook } from "./orderBook.js";
 import type {
   Order,
@@ -819,7 +820,7 @@ export class MatchingEngine extends EventEmitter {
    * 生成撮合 ID
    */
   private generateMatchId(): string {
-    return `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `match-${Date.now()}-${randomUUID()}`;
   }
 
   /**

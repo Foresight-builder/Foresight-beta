@@ -53,6 +53,28 @@ class Logger {
     return this.levelPriority[level] >= this.levelPriority[this.minLevel];
   }
 
+  private normalizeError(error: unknown): LogEntry["error"] | undefined {
+    if (!error) return undefined;
+
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      };
+    }
+
+    if (typeof error === "object") {
+      const obj = error as { name?: unknown; message?: unknown; stack?: unknown };
+      const message = obj.message != null ? String(obj.message) : String(error);
+      const name = obj.name != null ? String(obj.name) : "Error";
+      const stack = typeof obj.stack === "string" ? obj.stack : undefined;
+      return { name, message, stack };
+    }
+
+    return { name: "Error", message: String(error) };
+  }
+
   private formatEntry(entry: LogEntry): string {
     if (this.isJson) {
       return JSON.stringify(entry);
@@ -63,11 +85,11 @@ class Logger {
     const level = entry.level.toUpperCase().padEnd(5);
     const context = entry.context ? ` ${JSON.stringify(entry.context)}` : "";
     const error = entry.error ? ` [${entry.error.name}: ${entry.error.message}]` : "";
-    
+
     return `${timestamp} [${level}] [${entry.service}] ${entry.message}${context}${error}`;
   }
 
-  private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
+  private log(level: LogLevel, message: string, context?: LogContext, error?: unknown): void {
     if (!this.shouldLog(level)) return;
 
     const entry: LogEntry = {
@@ -81,13 +103,7 @@ class Logger {
       entry.context = { ...this.defaultContext, ...context };
     }
 
-    if (error) {
-      entry.error = {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      };
-    }
+    entry.error = this.normalizeError(error);
 
     const output = this.formatEntry(entry);
 
@@ -113,11 +129,11 @@ class Logger {
     this.log("info", message, context);
   }
 
-  warn(message: string, context?: LogContext, error?: Error): void {
+  warn(message: string, context?: LogContext, error?: unknown): void {
     this.log("warn", message, context, error);
   }
 
-  error(message: string, context?: LogContext, error?: Error): void {
+  error(message: string, context?: LogContext, error?: unknown): void {
     this.log("error", message, context, error);
   }
 
@@ -178,4 +194,3 @@ export const redisLogger = new Logger("redis", {
 });
 
 export default logger;
-

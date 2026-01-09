@@ -101,7 +101,12 @@ export default function LeaderboardPage() {
   if (loading && leaderboardData.length === 0) {
     return (
       <GradientPage className="w-full relative overflow-hidden font-sans min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+          <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
           <p className="text-gray-500 font-medium">{t("loadingData")}</p>
         </div>

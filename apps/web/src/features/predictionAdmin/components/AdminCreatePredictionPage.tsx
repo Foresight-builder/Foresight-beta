@@ -486,8 +486,12 @@ export default function AdminCreatePredictionPage() {
   const { locale } = useLocale();
 
   return (
-    <GradientPage className="relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
+    <GradientPage className="relative overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+      </div>
 
       <div className="max-w-5xl mx-auto px-6 pt-24 pb-20 relative z-10">
         <div className="flex items-end justify-between mb-12">

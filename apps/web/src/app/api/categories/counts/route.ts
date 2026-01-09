@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
-import { logApiError } from "@/lib/serverUtils";
+import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 
 // 分类统计数据可以短暂缓存
 export const revalidate = 60; // 1分钟缓存
@@ -69,7 +69,6 @@ export async function GET() {
     );
   } catch (error: any) {
     logApiError("GET /api/categories/counts unhandled error", error);
-    const detail = error?.message || String(error);
-    return ApiResponses.internalError("Failed to fetch category counts", detail);
+    return ApiResponses.internalError("Failed to fetch category counts", getErrorMessage(error));
   }
 }

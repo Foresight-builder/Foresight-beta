@@ -124,6 +124,13 @@ export function parseNumericIds(raw: unknown) {
   return Array.from(new Set(ids));
 }
 
+export function getErrorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message || "");
+  }
+  return String(error || "");
+}
+
 export function logApiError(scope: string, error: unknown) {
   try {
     console.error(scope, error);

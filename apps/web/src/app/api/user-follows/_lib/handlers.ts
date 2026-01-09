@@ -2,8 +2,12 @@ import type { NextRequest } from "next/server";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import { getSessionAddress, logApiError } from "@/lib/serverUtils";
-import { parseRequestBody } from "@/lib/serverUtils";
+import {
+  getErrorMessage,
+  getSessionAddress,
+  logApiError,
+  parseRequestBody,
+} from "@/lib/serverUtils";
 import { parseLimitQuery, parsePageQuery, parseWalletAddressQuery } from "./validators";
 import type {
   UserFollowsCountsResponse,
@@ -77,12 +81,12 @@ export async function handleUserFollowsCountsGet(req: NextRequest) {
 
     if (followersResult?.error) {
       logApiError("GET /api/user-follows/counts followers query failed", followersResult.error);
-      const detail = String(followersResult.error?.message || followersResult.error);
+      const detail = getErrorMessage(followersResult.error);
       return ApiResponses.databaseError("Failed to fetch followers count", detail);
     }
     if (followingResult?.error) {
       logApiError("GET /api/user-follows/counts following query failed", followingResult.error);
-      const detail = String(followingResult.error?.message || followingResult.error);
+      const detail = getErrorMessage(followingResult.error);
       return ApiResponses.databaseError("Failed to fetch following count", detail);
     }
 
@@ -94,10 +98,7 @@ export async function handleUserFollowsCountsGet(req: NextRequest) {
     return successResponse<UserFollowsCountsResponse>(data);
   } catch (error: any) {
     logApiError("GET /api/user-follows/counts unhandled error", error);
-    return ApiResponses.internalError(
-      "Failed to fetch follow counts",
-      error?.message || String(error)
-    );
+    return ApiResponses.internalError("Failed to fetch follow counts", getErrorMessage(error));
   }
 }
 
@@ -128,10 +129,7 @@ export async function handleUserFollowsFollowersUsersGet(req: NextRequest) {
 
     if (followError) {
       logApiError("GET /api/user-follows/followers-users follow query failed", followError);
-      return ApiResponses.databaseError(
-        "Failed to fetch followers",
-        String(followError.message || followError)
-      );
+      return ApiResponses.databaseError("Failed to fetch followers", getErrorMessage(followError));
     }
 
     const followRows = (rawFollowRows ?? []) as Array<Pick<UserFollowsRow, "follower_address">>;
@@ -164,10 +162,7 @@ export async function handleUserFollowsFollowersUsersGet(req: NextRequest) {
     });
   } catch (error: any) {
     logApiError("GET /api/user-follows/followers-users unhandled error", error);
-    return ApiResponses.internalError(
-      "Failed to fetch followers users",
-      error?.message || String(error)
-    );
+    return ApiResponses.internalError("Failed to fetch followers users", getErrorMessage(error));
   }
 }
 
@@ -198,10 +193,7 @@ export async function handleUserFollowsFollowingUsersGet(req: NextRequest) {
 
     if (followError) {
       logApiError("GET /api/user-follows/following-users follow query failed", followError);
-      return ApiResponses.databaseError(
-        "Failed to fetch follows",
-        String(followError.message || followError)
-      );
+      return ApiResponses.databaseError("Failed to fetch follows", getErrorMessage(followError));
     }
 
     const followRows = (rawFollowRows ?? []) as Array<Pick<UserFollowsRow, "following_address">>;
@@ -234,10 +226,7 @@ export async function handleUserFollowsFollowingUsersGet(req: NextRequest) {
     });
   } catch (error: any) {
     logApiError("GET /api/user-follows/following-users unhandled error", error);
-    return ApiResponses.internalError(
-      "Failed to fetch following users",
-      error?.message || String(error)
-    );
+    return ApiResponses.internalError("Failed to fetch following users", getErrorMessage(error));
   }
 }
 
@@ -266,7 +255,7 @@ export async function handleUserFollowsUserPost(req: NextRequest) {
 
     if (existError) {
       logApiError("POST /api/user-follows/user existing query failed", existError);
-      return ApiResponses.databaseError("Query failed", String(existError.message || existError));
+      return ApiResponses.databaseError("Query failed", getErrorMessage(existError));
     }
 
     if (existing) {
@@ -278,10 +267,7 @@ export async function handleUserFollowsUserPost(req: NextRequest) {
 
       if (delError) {
         logApiError("POST /api/user-follows/user unfollow failed", delError);
-        return ApiResponses.databaseError(
-          "Failed to unfollow",
-          String(delError.message || delError)
-        );
+        return ApiResponses.databaseError("Failed to unfollow", getErrorMessage(delError));
       }
 
       return successResponse<UserFollowToggleResponse>({ followed: false });
@@ -294,13 +280,13 @@ export async function handleUserFollowsUserPost(req: NextRequest) {
 
     if (insError) {
       logApiError("POST /api/user-follows/user follow failed", insError);
-      return ApiResponses.databaseError("Failed to follow", String(insError.message || insError));
+      return ApiResponses.databaseError("Failed to follow", getErrorMessage(insError));
     }
 
     return successResponse<UserFollowToggleResponse>({ followed: true });
   } catch (error: any) {
     logApiError("POST /api/user-follows/user unhandled error", error);
-    return ApiResponses.internalError("Failed to toggle follow", error?.message || String(error));
+    return ApiResponses.internalError("Failed to toggle follow", getErrorMessage(error));
   }
 }
 
@@ -325,17 +311,14 @@ export async function handleUserFollowsUserGet(req: NextRequest) {
 
     if (error) {
       logApiError("GET /api/user-follows/user query failed", error);
-      return ApiResponses.databaseError("Query failed", String(error.message || error));
+      return ApiResponses.databaseError("Query failed", getErrorMessage(error));
     }
 
     const res: UserFollowStatusResponse = { followed: !!data };
     return successResponse<UserFollowStatusResponse>(res);
   } catch (error: any) {
     logApiError("GET /api/user-follows/user unhandled error", error);
-    return ApiResponses.internalError(
-      "Failed to fetch follow status",
-      error?.message || String(error)
-    );
+    return ApiResponses.internalError("Failed to fetch follow status", getErrorMessage(error));
   }
 }
 
@@ -424,6 +407,6 @@ export async function handleUserFollowsGet(req: NextRequest) {
     });
   } catch (error: any) {
     logApiError("GET /api/user-follows unhandled error", error);
-    return ApiResponses.internalError("服务器内部错误", error?.message || String(error));
+    return ApiResponses.internalError("服务器内部错误", getErrorMessage(error));
   }
 }

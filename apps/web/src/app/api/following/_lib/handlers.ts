@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { logApiError } from "@/lib/serverUtils";
+import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 import { parseWalletAddressQuery } from "./validators";
 import type { FollowingItem } from "./types";
 
@@ -88,6 +88,6 @@ export async function handleFollowingGet(req: NextRequest) {
     return successResponse<FollowingItem[]>(following);
   } catch (error: any) {
     logApiError("GET /api/following unhandled error", error);
-    return ApiResponses.internalError("Failed to fetch following", error?.message || String(error));
+    return ApiResponses.internalError("Failed to fetch following", getErrorMessage(error));
   }
 }

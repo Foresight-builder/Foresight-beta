@@ -4,8 +4,9 @@
  */
 
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { LeaderElection, getLeaderElection, LeaderElectionConfig } from "./leaderElection.js";
-import { RedisPubSub, getPubSub, CHANNELS, PubSubMessage } from "./pubsub.js";
+import { RedisPubSub, getPubSub, PubSubMessage } from "./pubsub.js";
 import { logger } from "../monitoring/logger.js";
 import { Gauge } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -65,13 +66,33 @@ export class ClusterManager extends EventEmitter {
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
 
+  private stopHeartbeat(): void {
+    if (!this.heartbeatTimer) return;
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
+  }
+
+  private async stopLeaderElection(): Promise<void> {
+    if (!this.leaderElection) return;
+    this.leaderElection.removeListener("became_leader", this.onBecameLeader);
+    this.leaderElection.removeListener("lost_leadership", this.onLostLeadership);
+    await this.leaderElection.stop();
+    this.leaderElection = null;
+  }
+
+  private async stopPubSub(): Promise<void> {
+    if (!this.pubsub) return;
+    await this.pubsub.disconnect();
+    this.pubsub = null;
+  }
+
   private readonly onBecameLeader = () => {
     clusterNodeRole.set({ node_id: this.nodeId }, 1);
     this.emit("became_leader");
     void this.broadcastClusterEvent("leader_changed", {
       newLeader: this.nodeId,
     }).catch((error: any) => {
-      logger.warn("Failed to broadcast leader_changed", { error: error?.message || String(error) });
+      logger.warn("Failed to broadcast leader_changed", undefined, error);
     });
   };
 
@@ -95,7 +116,7 @@ export class ClusterManager extends EventEmitter {
   private generateNodeId(): string {
     const hostname = process.env.HOSTNAME || process.env.POD_NAME || "local";
     const pid = process.pid;
-    const random = Math.random().toString(36).substr(2, 6);
+    const random = randomUUID().slice(0, 8);
     return `${hostname}-${pid}-${random}`;
   }
 
@@ -146,20 +167,9 @@ export class ClusterManager extends EventEmitter {
     } catch (error: any) {
       this.isRunning = false;
 
-      if (this.heartbeatTimer) {
-        clearInterval(this.heartbeatTimer);
-        this.heartbeatTimer = null;
-      }
-
-      if (this.leaderElection) {
-        this.leaderElection.removeListener("became_leader", this.onBecameLeader);
-        this.leaderElection.removeListener("lost_leadership", this.onLostLeadership);
-        await this.leaderElection.stop();
-      }
-
-      if (this.pubsub) {
-        await this.pubsub.disconnect();
-      }
+      this.stopHeartbeat();
+      await this.stopLeaderElection();
+      await this.stopPubSub();
 
       throw error;
     }
@@ -181,26 +191,13 @@ export class ClusterManager extends EventEmitter {
         timestamp: Date.now(),
       });
     } catch (error: any) {
-      logger.warn("Failed to broadcast node_left", { error: error?.message || String(error) });
+      logger.warn("Failed to broadcast node_left", undefined, error);
     }
 
     // 停止心跳
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
-    }
-
-    // 停止 Leader Election
-    if (this.leaderElection) {
-      this.leaderElection.removeListener("became_leader", this.onBecameLeader);
-      this.leaderElection.removeListener("lost_leadership", this.onLostLeadership);
-      await this.leaderElection.stop();
-    }
-
-    // 断开 Pub/Sub
-    if (this.pubsub) {
-      await this.pubsub.disconnect();
-    }
+    this.stopHeartbeat();
+    await this.stopLeaderElection();
+    await this.stopPubSub();
 
     this.nodes.clear();
 
@@ -297,7 +294,7 @@ export class ClusterManager extends EventEmitter {
           }
         }
       } catch (error: any) {
-        logger.warn("Cluster heartbeat failed", { error: error?.message || String(error) });
+        logger.warn("Cluster heartbeat failed", undefined, error);
       }
     }, 15000); // 15 秒
   }

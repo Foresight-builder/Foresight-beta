@@ -4,6 +4,7 @@
  */
 
 import { ethers, Contract, JsonRpcProvider } from "ethers";
+import { randomUUID } from "crypto";
 import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -142,9 +143,7 @@ export class BalanceChecker {
       this.checkTimer = setInterval(() => {
         if (!this.isRunning) return;
         void this.runCheck().catch((error: any) => {
-          logger.error("Scheduled balance check failed", {
-            error: error?.message || String(error),
-          });
+          logger.error("Scheduled balance check failed", undefined, error);
         });
       }, this.config.intervalMs);
     } catch (error) {
@@ -173,7 +172,7 @@ export class BalanceChecker {
    * 运行余额检查
    */
   async runCheck(): Promise<BalanceReport> {
-    const checkId = `balance-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const checkId = `balance-${Date.now()}-${randomUUID()}`;
     const startTime = Date.now();
 
     logger.info("Starting balance check", { checkId });

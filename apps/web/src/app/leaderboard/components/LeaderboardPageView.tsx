@@ -2,7 +2,6 @@
 
 import GradientPage from "@/components/ui/GradientPage";
 import type { LeaderboardUser } from "../data";
-import { FloatingShapes } from "./FloatingShapes";
 import { LeaderboardControls, type LeaderboardControlsProps } from "./LeaderboardControls";
 import { LeaderboardHeader } from "./LeaderboardHeader";
 import { LeaderboardMainSections } from "./LeaderboardMainSections";
@@ -51,11 +50,13 @@ export function LeaderboardPageView({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <FloatingShapes />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+      </div>
 
-      <div className="fixed top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 -z-10 mix-blend-soft-light" />
-
-      <div className="relative max-w-7xl mx-auto px-4 py-8 pb-24">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 pb-24">
         <LeaderboardHeader />
         <LeaderboardControls
           timeRange={timeRange}

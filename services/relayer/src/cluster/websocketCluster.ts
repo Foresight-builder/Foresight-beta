@@ -5,6 +5,7 @@
 
 import { WebSocketServer, WebSocket } from "ws";
 import type { IncomingMessage } from "http";
+import { randomUUID } from "crypto";
 import { RedisPubSub, getPubSub, CHANNELS, PubSubMessage } from "./pubsub.js";
 import { logger } from "../monitoring/logger.js";
 import { Gauge, Counter, Histogram } from "prom-client";
@@ -83,12 +84,12 @@ export class ClusteredWebSocketServer {
   private generateNodeId(): string {
     const hostname = process.env.HOSTNAME || process.env.POD_NAME || "local";
     const pid = process.pid;
-    const random = Math.random().toString(36).substr(2, 6);
+    const random = randomUUID().slice(0, 8);
     return `ws-${hostname}-${pid}-${random}`;
   }
 
   private generateClientId(): string {
-    return `client-${Math.random().toString(36).substr(2, 12)}`;
+    return `client-${randomUUID()}`;
   }
 
   /**
@@ -103,7 +104,7 @@ export class ClusteredWebSocketServer {
     // 连接 Pub/Sub
     this.pubsub = getPubSub({}, this.nodeId);
     const connected = await this.pubsub.connect();
-    
+
     if (!connected) {
       logger.warn("Pub/Sub not available, running in standalone mode");
     } else {
@@ -124,8 +125,8 @@ export class ClusteredWebSocketServer {
     }, 30000);
 
     this.isRunning = true;
-    logger.info("ClusteredWebSocketServer started", { 
-      port: this.port, 
+    logger.info("ClusteredWebSocketServer started", {
+      port: this.port,
       nodeId: this.nodeId,
       pubsubEnabled: connected,
     });
@@ -152,7 +153,7 @@ export class ClusteredWebSocketServer {
    */
   private handlePubSubMessage(message: PubSubMessage<BroadcastMessage>): void {
     const { payload } = message;
-    
+
     if (!payload || !payload.channel) {
       return;
     }
@@ -169,9 +170,9 @@ export class ClusteredWebSocketServer {
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
     const clientId = this.generateClientId();
     const clientIp = req.socket.remoteAddress || "unknown";
-    
+
     logger.info("WebSocket client connected", { clientId, clientIp, nodeId: this.nodeId });
-    
+
     this.clients.set(ws, {
       channels: new Set(),
       lastPing: Date.now(),
@@ -265,7 +266,7 @@ export class ClusteredWebSocketServer {
       channels: Array.from(subscription.channels),
     });
 
-    logger.debug("Client subscribed", { 
+    logger.debug("Client subscribed", {
       clientId: subscription.clientId,
       channels: Array.from(subscription.channels),
     });
@@ -331,7 +332,10 @@ export class ClusteredWebSocketServer {
   private send(ws: WebSocket, data: object): void {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(data));
-      wsClusterMessagesTotal.inc({ direction: "outbound", type: (data as { type?: string }).type || "unknown" });
+      wsClusterMessagesTotal.inc({
+        direction: "outbound",
+        type: (data as { type?: string }).type || "unknown",
+      });
     }
   }
 
@@ -357,7 +361,7 @@ export class ClusteredWebSocketServer {
    */
   async clusterBroadcast(channel: string, type: string, data: unknown): Promise<void> {
     const start = Date.now();
-    
+
     // 先本地广播
     this.localBroadcast(channel, data);
 
@@ -404,12 +408,12 @@ export class ClusteredWebSocketServer {
     const channel = `depth:${depth.marketKey}:${depth.outcomeIndex}`;
     await this.clusterBroadcast(channel, "depth", {
       type: "depth",
-      bids: depth.bids.map(l => ({
+      bids: depth.bids.map((l) => ({
         price: l.price.toString(),
         qty: l.totalQuantity.toString(),
         count: l.orderCount,
       })),
-      asks: depth.asks.map(l => ({
+      asks: depth.asks.map((l) => ({
         price: l.price.toString(),
         qty: l.totalQuantity.toString(),
         count: l.orderCount,
@@ -478,7 +482,7 @@ export class ClusteredWebSocketServer {
    */
   private updateMetrics(): void {
     wsClusterConnectionsTotal.set({ node_id: this.nodeId }, this.clients.size);
-    
+
     let subscriptions = 0;
     for (const sub of this.clients.values()) {
       subscriptions += sub.channels.size;
@@ -544,14 +548,20 @@ export class ClusteredWebSocketServer {
 
 let wsServerInstance: ClusteredWebSocketServer | null = null;
 
-export function getClusteredWebSocketServer(port?: number, nodeId?: string): ClusteredWebSocketServer {
+export function getClusteredWebSocketServer(
+  port?: number,
+  nodeId?: string
+): ClusteredWebSocketServer {
   if (!wsServerInstance) {
     wsServerInstance = new ClusteredWebSocketServer(port, nodeId);
   }
   return wsServerInstance;
 }
 
-export async function initClusteredWebSocketServer(port?: number, nodeId?: string): Promise<ClusteredWebSocketServer> {
+export async function initClusteredWebSocketServer(
+  port?: number,
+  nodeId?: string
+): Promise<ClusteredWebSocketServer> {
   const server = getClusteredWebSocketServer(port, nodeId);
   await server.start();
   return server;
@@ -563,4 +573,3 @@ export async function closeClusteredWebSocketServer(): Promise<void> {
     wsServerInstance = null;
   }
 }
-

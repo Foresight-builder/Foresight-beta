@@ -7,6 +7,7 @@ import type { Database } from "@/lib/database.types";
 import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import { formatAddress } from "@/lib/address";
+import GradientPage from "@/components/ui/GradientPage";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -152,8 +153,13 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-rose-50/30 p-6">
-      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <GradientPage className="min-h-screen relative overflow-hidden p-6">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+        <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
+      </div>
+      <div className="relative z-10 max-w-6xl mx-auto flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{tProposals("review.title")}</h1>
@@ -495,6 +501,6 @@ export default function ReviewPage() {
           </div>
         </div>
       </div>
-    </div>
+    </GradientPage>
   );
 }

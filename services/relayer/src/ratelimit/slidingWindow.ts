@@ -4,6 +4,7 @@
  */
 
 import { logger } from "../monitoring/logger.js";
+import { randomUUID } from "crypto";
 import { Counter, Gauge } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
 import { getRedisClient } from "../redis/client.js";
@@ -109,9 +110,9 @@ export class LocalSlidingWindowLimiter {
 
     // 获取或创建窗口
     let entries = this.windows.get(key) || [];
-    
+
     // 过滤掉过期的条目
-    entries = entries.filter(e => e.windowStart > windowStart);
+    entries = entries.filter((e) => e.windowStart > windowStart);
 
     // 计算当前窗口内的请求数
     const currentCount = entries.reduce((sum, e) => sum + e.count, 0);
@@ -119,7 +120,9 @@ export class LocalSlidingWindowLimiter {
     if (currentCount >= this.config.maxRequests) {
       // 被限流
       const oldestEntry = entries[0];
-      const resetAt = oldestEntry ? oldestEntry.windowStart + this.config.windowMs : now + this.config.windowMs;
+      const resetAt = oldestEntry
+        ? oldestEntry.windowStart + this.config.windowMs
+        : now + this.config.windowMs;
       const retryAfter = Math.ceil((resetAt - now) / 1000);
 
       rateLimitRequestsTotal.inc({ endpoint: req.path, result: "denied" });
@@ -137,7 +140,7 @@ export class LocalSlidingWindowLimiter {
     this.windows.set(key, entries);
 
     const remaining = this.config.maxRequests - currentCount - 1;
-    
+
     rateLimitRequestsTotal.inc({ endpoint: req.path, result: "allowed" });
     rateLimitCurrentUsage.set({ endpoint: req.path, key }, currentCount + 1);
 
@@ -180,7 +183,7 @@ export class LocalSlidingWindowLimiter {
     const windowStart = now - this.config.windowMs;
 
     for (const [key, entries] of this.windows.entries()) {
-      const validEntries = entries.filter(e => e.windowStart > windowStart);
+      const validEntries = entries.filter((e) => e.windowStart > windowStart);
       if (validEntries.length === 0) {
         this.windows.delete(key);
       } else {
@@ -248,7 +251,7 @@ export class RedisSlidingWindowLimiter {
     }
 
     const redis = getRedisClient();
-    
+
     // Redis 不可用时降级到本地
     if (!redis.isReady()) {
       logger.debug("Redis not ready, falling back to local rate limiter");
@@ -269,17 +272,17 @@ export class RedisSlidingWindowLimiter {
 
       // 原子操作：清理过期 + 添加新请求 + 获取计数
       const multi = rawClient.multi();
-      
+
       // 1. 移除过期的条目
       multi.zRemRangeByScore(key, 0, windowStart);
-      
+
       // 2. 添加当前请求
-      const requestId = `${now}-${Math.random().toString(36).substr(2, 9)}`;
+      const requestId = `${now}-${randomUUID()}`;
       multi.zAdd(key, { score: now, value: requestId });
-      
+
       // 3. 获取当前窗口内的请求数
       multi.zCard(key);
-      
+
       // 4. 设置过期时间
       multi.expire(key, Math.ceil(this.config.windowMs / 1000) + 1);
 
@@ -289,7 +292,7 @@ export class RedisSlidingWindowLimiter {
       if (currentCount > this.config.maxRequests) {
         // 被限流，回滚刚才添加的请求
         await rawClient.zRem(key, requestId);
-        
+
         const resetAt = now + this.config.windowMs;
         const retryAfter = Math.ceil(this.config.windowMs / 1000);
 
@@ -304,7 +307,7 @@ export class RedisSlidingWindowLimiter {
       }
 
       const remaining = this.config.maxRequests - currentCount;
-      
+
       rateLimitRequestsTotal.inc({ endpoint: req.path, result: "allowed" });
       rateLimitCurrentUsage.set({ endpoint: req.path, key }, currentCount);
 
@@ -515,4 +518,3 @@ export function closeRateLimiter(): void {
     limiterInstance = null;
   }
 }
-

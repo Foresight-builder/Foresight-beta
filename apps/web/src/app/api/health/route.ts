@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { logApiError } from "@/lib/serverUtils";
+import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 
 // 健康检查结果接口
 interface HealthCheck {
@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest) {
     } catch (e: any) {
       checks.database = {
         ok: false,
-        message: e?.message || String(e),
+        message: getErrorMessage(e),
         latency: Date.now() - dbStart,
         timestamp,
       };
@@ -103,7 +103,7 @@ export async function GET(_req: NextRequest) {
     } catch (e: any) {
       checks.relayer = {
         ok: false,
-        message: e?.name === "AbortError" ? "Timeout" : e?.message || String(e),
+        message: e?.name === "AbortError" ? "Timeout" : getErrorMessage(e),
         latency: Date.now() - relayerStart,
         timestamp,
       };
@@ -122,7 +122,7 @@ export async function GET(_req: NextRequest) {
       } catch (e: any) {
         checks[`table_${table}`] = {
           ok: false,
-          message: e?.message || String(e),
+          message: getErrorMessage(e),
           timestamp,
         };
       }
@@ -196,7 +196,7 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json(
       {
         status: "unhealthy",
-        message: error?.message || String(error),
+        message: getErrorMessage(error),
         timestamp: new Date().toISOString(),
       },
       { status: 503 }

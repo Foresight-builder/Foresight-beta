@@ -3,11 +3,8 @@
  */
 
 import type { Request, Response, NextFunction } from "express";
-import {
-  apiRequestsTotal,
-  apiRequestLatency,
-  apiRateLimitHits,
-} from "../monitoring/metrics.js";
+import { randomUUID } from "crypto";
+import { apiRequestsTotal, apiRequestLatency, apiRateLimitHits } from "../monitoring/metrics.js";
 import { logger } from "../monitoring/logger.js";
 
 /**
@@ -46,8 +43,8 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
 export function rateLimitMetricsMiddleware(path: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const originalSend = res.send.bind(res);
-    
-    res.send = function(body: any) {
+
+    res.send = function (body: any) {
       if (res.statusCode === 429) {
         apiRateLimitHits.inc({ path: normalizePath(path) });
         logger.warn("Rate limit hit", {
@@ -57,7 +54,7 @@ export function rateLimitMetricsMiddleware(path: string) {
       }
       return originalSend(body);
     };
-    
+
     next();
   };
 }
@@ -68,24 +65,25 @@ export function rateLimitMetricsMiddleware(path: string) {
 function normalizePath(path: string): string {
   // 移除查询参数
   const basePath = path.split("?")[0];
-  
+
   // 替换常见的动态参数
-  return basePath
-    .replace(/0x[a-fA-F0-9]+/g, ":address")
-    .replace(/\d+/g, ":id")
-    .replace(/\/+$/, "") || "/";
+  return (
+    basePath
+      .replace(/0x[a-fA-F0-9]+/g, ":address")
+      .replace(/\d+/g, ":id")
+      .replace(/\/+$/, "") || "/"
+  );
 }
 
 /**
  * 请求 ID 中间件
  */
 export function requestIdMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const requestId = req.headers["x-request-id"] as string || 
-    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+  const requestId = (req.headers["x-request-id"] as string) || `${Date.now()}-${randomUUID()}`;
+
   res.setHeader("X-Request-ID", requestId);
   (req as any).requestId = requestId;
-  
+
   next();
 }
 
@@ -109,7 +107,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
   // 响应结束日志
   res.on("finish", () => {
     const duration = Date.now() - startTime;
-    
+
     logger.info("Request completed", {
       requestId,
       method: req.method,
@@ -121,4 +119,3 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
   next();
 }
-

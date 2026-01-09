@@ -4,6 +4,7 @@
  */
 
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { getRedisClient, RedisClient } from "../redis/client.js";
 import { logger } from "../monitoring/logger.js";
 import { Gauge, Counter } from "prom-client";
@@ -98,7 +99,7 @@ export class LeaderElection extends EventEmitter {
   private generateNodeId(): string {
     const hostname = process.env.HOSTNAME || process.env.POD_NAME || "local";
     const pid = process.pid;
-    const random = Math.random().toString(36).substr(2, 8);
+    const random = randomUUID().slice(0, 8);
     return `${hostname}-${pid}-${random}`;
   }
 
@@ -194,7 +195,7 @@ export class LeaderElection extends EventEmitter {
       leaderStatus.set({ node_id: this.config.nodeId }, 0);
       return false;
     } catch (error: any) {
-      logger.error("Failed to acquire leadership", { error: error.message });
+      logger.error("Failed to acquire leadership", undefined, error);
       leaderElectionTotal.inc({ result: "failed" });
       return false;
     }
@@ -296,7 +297,7 @@ export class LeaderElection extends EventEmitter {
       logger.debug("Lock renewed", { nodeId: this.config.nodeId });
       return true;
     } catch (error: any) {
-      logger.error("Failed to renew lock", { error: error.message });
+      logger.error("Failed to renew lock", undefined, error);
       return false;
     }
   }
@@ -314,7 +315,7 @@ export class LeaderElection extends EventEmitter {
       }
       this.lockToken = null;
     } catch (error: any) {
-      logger.error("Failed to release lock", { error: error.message });
+      logger.error("Failed to release lock", undefined, error);
     }
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { normalizeAddress, logApiError } from "@/lib/serverUtils";
+import { getErrorMessage, normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { requireAdmin } from "./admin";
 import { computeProbabilities, fetchPredictionStats, toPredictionStatsResponse } from "./stats";
 import { getTimeAgo, getTimeRemaining } from "./time";
@@ -92,7 +92,7 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
     );
   } catch (error: any) {
     logApiError("GET /api/predictions/[id] detail unhandled error", error);
-    const detail = error?.message || String(error);
+    const detail = getErrorMessage(error);
     return ApiResponses.internalError(
       "Failed to fetch prediction detail",
       process.env.NODE_ENV === "development" ? detail : undefined

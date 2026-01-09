@@ -5,6 +5,7 @@
 
 import { createClient, RedisClientType } from "redis";
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -63,11 +64,11 @@ export const CHANNELS = {
   WS_TRADES: "ws:trades",
   WS_STATS: "ws:stats",
   WS_ORDERS: "ws:orders",
-  
+
   // 集群协调频道
   CLUSTER_EVENTS: "cluster:events",
   LEADER_EVENTS: "cluster:leader",
-  
+
   // 订单簿同步
   ORDERBOOK_SYNC: "orderbook:sync",
 } as const;
@@ -86,7 +87,7 @@ export class RedisPubSub extends EventEmitter {
 
   constructor(config: Partial<PubSubConfig> = {}, nodeId?: string) {
     super();
-    
+
     this.config = {
       host: config.host || process.env.REDIS_HOST || "localhost",
       port: config.port || parseInt(process.env.REDIS_PORT || "6379", 10),
@@ -102,7 +103,7 @@ export class RedisPubSub extends EventEmitter {
   private generateNodeId(): string {
     const hostname = process.env.HOSTNAME || process.env.POD_NAME || "local";
     const pid = process.pid;
-    const random = Math.random().toString(36).substr(2, 6);
+    const random = randomUUID().slice(0, 8);
     return `${hostname}-${pid}-${random}`;
   }
 
@@ -112,7 +113,7 @@ export class RedisPubSub extends EventEmitter {
   async connect(): Promise<boolean> {
     try {
       const url = this.config.url || `redis://${this.config.host}:${this.config.port}`;
-      
+
       // 创建 Publisher
       this.publisher = createClient({
         url,
@@ -133,7 +134,7 @@ export class RedisPubSub extends EventEmitter {
 
       // 创建 Subscriber (需要独立连接)
       this.subscriber = this.publisher.duplicate();
-      
+
       this.subscriber.on("error", (err) => {
         logger.error("PubSub subscriber error", {}, err);
         pubsubConnectionStatus.set({ type: "subscriber" }, 0);
@@ -147,7 +148,7 @@ export class RedisPubSub extends EventEmitter {
 
       this.isConnected = true;
       logger.info("PubSub connected", { nodeId: this.nodeId });
-      
+
       return true;
     } catch (error: any) {
       logger.error("PubSub connection failed", {}, error);
@@ -160,12 +161,12 @@ export class RedisPubSub extends EventEmitter {
    */
   async disconnect(): Promise<void> {
     this.isConnected = false;
-    
+
     if (this.subscriber) {
       await this.subscriber.quit();
       this.subscriber = null;
     }
-    
+
     if (this.publisher) {
       await this.publisher.quit();
       this.publisher = null;
@@ -175,7 +176,7 @@ export class RedisPubSub extends EventEmitter {
     pubsubSubscriptions.set(0);
     pubsubConnectionStatus.set({ type: "publisher" }, 0);
     pubsubConnectionStatus.set({ type: "subscriber" }, 0);
-    
+
     logger.info("PubSub disconnected");
   }
 
@@ -205,9 +206,9 @@ export class RedisPubSub extends EventEmitter {
 
       const fullChannel = this.getChannel(channel);
       await this.publisher.publish(fullChannel, JSON.stringify(message));
-      
+
       pubsubMessagesTotal.inc({ direction: "publish", channel });
-      
+
       logger.debug("Message published", { channel, type });
       return true;
     } catch (error: any) {
@@ -227,18 +228,18 @@ export class RedisPubSub extends EventEmitter {
 
     try {
       const fullChannel = this.getChannel(channel);
-      
+
       await this.subscriber.subscribe(fullChannel, (data) => {
         try {
           const message = JSON.parse(data) as PubSubMessage;
-          
+
           // 忽略自己发送的消息
           if (message.source === this.nodeId) {
             return;
           }
-          
+
           pubsubMessagesTotal.inc({ direction: "receive", channel });
-          
+
           handler(message);
           this.emit("message", channel, message);
         } catch (error: any) {
@@ -248,7 +249,7 @@ export class RedisPubSub extends EventEmitter {
 
       this.subscriptions.add(channel);
       pubsubSubscriptions.set(this.subscriptions.size);
-      
+
       logger.info("Subscribed to channel", { channel });
       return true;
     } catch (error: any) {
@@ -266,10 +267,10 @@ export class RedisPubSub extends EventEmitter {
     try {
       const fullChannel = this.getChannel(channel);
       await this.subscriber.unsubscribe(fullChannel);
-      
+
       this.subscriptions.delete(channel);
       pubsubSubscriptions.set(this.subscriptions.size);
-      
+
       logger.info("Unsubscribed from channel", { channel });
       return true;
     } catch (error: any) {
@@ -281,7 +282,11 @@ export class RedisPubSub extends EventEmitter {
   /**
    * 发布深度更新
    */
-  async publishDepthUpdate(marketKey: string, outcomeIndex: number, depth: unknown): Promise<boolean> {
+  async publishDepthUpdate(
+    marketKey: string,
+    outcomeIndex: number,
+    depth: unknown
+  ): Promise<boolean> {
     return this.publish(CHANNELS.WS_DEPTH, "depth_update", {
       marketKey,
       outcomeIndex,
@@ -360,7 +365,10 @@ export function getPubSub(config?: Partial<PubSubConfig>, nodeId?: string): Redi
   return pubsubInstance;
 }
 
-export async function initPubSub(config?: Partial<PubSubConfig>, nodeId?: string): Promise<RedisPubSub> {
+export async function initPubSub(
+  config?: Partial<PubSubConfig>,
+  nodeId?: string
+): Promise<RedisPubSub> {
   const pubsub = getPubSub(config, nodeId);
   await pubsub.connect();
   return pubsub;
@@ -372,4 +380,3 @@ export async function closePubSub(): Promise<void> {
     pubsubInstance = null;
   }
 }
-

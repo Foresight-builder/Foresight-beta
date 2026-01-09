@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_SETTLEMENT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
 import { getRedisClient } from "../redis/client.js";
+import { generateRandomId } from "../monitoring/index.js";
 
 // 合约 ABI (只需要 batchFill 函数)
 const MARKET_ABI = [
@@ -170,7 +171,7 @@ export class BatchSettler extends EventEmitter {
 
       // 创建批次
       const batch: SettlementBatch = {
-        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `batch-${Date.now()}-${generateRandomId(9)}`,
         chainId: this.chainId,
         marketAddress: this.marketAddress,
         fills,

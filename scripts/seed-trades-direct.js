@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { ethers } from "ethers";
+import { randomUUID } from "crypto";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -104,7 +105,7 @@ async function seedTradesAndOrders() {
           taker_address: taker,
           maker_address: maker,
           is_buy: isBuy,
-          tx_hash: `0xseed_trade_${market.event_id}_${outcome.outcome_index}_${i}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          tx_hash: `0xseed_trade_${market.event_id}_${outcome.outcome_index}_${i}_${Date.now()}_${randomUUID()}`,
           log_index: 0,
           block_number: 1000000 + i,
           block_timestamp: new Date(

@@ -4,6 +4,7 @@
  */
 
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -167,7 +168,7 @@ export class SagaExecutor<TContext> extends EventEmitter {
     logger.info("Saga started", {
       sagaId: execution.id,
       sagaName: execution.sagaName,
-      steps: steps.map(s => s.name),
+      steps: steps.map((s) => s.name),
     });
 
     try {
@@ -206,13 +207,12 @@ export class SagaExecutor<TContext> extends EventEmitter {
       });
 
       this.emit("completed", execution);
-
     } catch (error: any) {
       execution.error = error;
       execution.status = SagaStatus.FAILED;
 
       const failedStep = steps[execution.currentStep];
-      
+
       sagaStepsTotal.inc({
         saga: execution.sagaName,
         step: failedStep?.name || "unknown",
@@ -297,7 +297,7 @@ export class SagaExecutor<TContext> extends EventEmitter {
     let compensationFailed = false;
 
     for (const stepName of completedSteps) {
-      const step = steps.find(s => s.name === stepName);
+      const step = steps.find((s) => s.name === stepName);
       if (!step) continue;
 
       try {
@@ -313,7 +313,6 @@ export class SagaExecutor<TContext> extends EventEmitter {
           step: `${step.name}_compensate`,
           result: "success",
         });
-
       } catch (error: any) {
         compensationFailed = true;
 
@@ -341,7 +340,7 @@ export class SagaExecutor<TContext> extends EventEmitter {
       execution.status = SagaStatus.COMPENSATED;
       execution.completedAt = Date.now();
       sagaExecutionsTotal.inc({ saga: execution.sagaName, result: "compensated" });
-      
+
       sagaDuration.observe(
         { saga: execution.sagaName },
         execution.completedAt - execution.startedAt
@@ -360,14 +359,14 @@ export class SagaExecutor<TContext> extends EventEmitter {
    * 生成执行 ID
    */
   private generateId(): string {
-    return `saga-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `saga-${Date.now()}-${randomUUID()}`;
   }
 
   /**
    * 延时
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -433,7 +432,10 @@ export function createOrderSaga(): SagaDefinition<OrderSagaContext> {
         // TODO: 执行撮合
         // ctx.matchResult = await matchingEngine.match(ctx);
         ctx.matchResult = { matchedAmount: ctx.amount, fills: [] };
-        logger.debug("Matching executed", { orderId: ctx.orderId, matched: ctx.matchResult.matchedAmount.toString() });
+        logger.debug("Matching executed", {
+          orderId: ctx.orderId,
+          matched: ctx.matchResult.matchedAmount.toString(),
+        });
       },
       compensate: async (ctx) => {
         // 撤销撮合结果
@@ -448,7 +450,10 @@ export function createOrderSaga(): SagaDefinition<OrderSagaContext> {
         // TODO: 提交链上结算
         // ctx.settlementBatchId = await settler.submit(ctx.matchResult?.fills);
         ctx.settlementBatchId = `batch-${Date.now()}`;
-        logger.debug("Settlement submitted", { orderId: ctx.orderId, batchId: ctx.settlementBatchId });
+        logger.debug("Settlement submitted", {
+          orderId: ctx.orderId,
+          batchId: ctx.settlementBatchId,
+        });
       },
       compensate: async (ctx) => {
         // 结算已提交无法撤销，需要人工处理
@@ -507,4 +512,3 @@ export async function executeSaga<TContext>(
   }
   return executor.execute(context);
 }
-

@@ -5,6 +5,7 @@
 
 import { ethers, Contract, JsonRpcProvider } from "ethers";
 import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
 import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -182,7 +183,7 @@ export class ChainReconciler extends EventEmitter {
         .maybeSingle();
 
       if (error) {
-        logger.warn("Failed to load reconciliation cursor", { error: error.message });
+        logger.warn("Failed to load reconciliation cursor", undefined, error);
         return null;
       }
 
@@ -191,7 +192,7 @@ export class ChainReconciler extends EventEmitter {
       if (!Number.isFinite(n) || n <= 0) return null;
       return n;
     } catch (error: any) {
-      logger.warn("Failed to load reconciliation cursor", { error: error.message });
+      logger.warn("Failed to load reconciliation cursor", undefined, error);
       return null;
     }
   }
@@ -209,7 +210,7 @@ export class ChainReconciler extends EventEmitter {
         updated_at: new Date().toISOString(),
       });
     } catch (error: any) {
-      logger.warn("Failed to save reconciliation cursor", { error: error.message });
+      logger.warn("Failed to save reconciliation cursor", undefined, error);
     }
   }
 
@@ -249,9 +250,7 @@ export class ChainReconciler extends EventEmitter {
       try {
         await this.runReconciliation();
       } catch (error: any) {
-        logger.error("Scheduled reconciliation run failed", {
-          error: error?.message || String(error),
-        });
+        logger.error("Scheduled reconciliation run failed", undefined, error);
       }
     }, this.config.intervalMs);
   }
@@ -275,7 +274,7 @@ export class ChainReconciler extends EventEmitter {
     if (this.runInFlight) {
       const now = Date.now();
       return {
-        runId: `recon-skip-${now}-${Math.random().toString(36).substr(2, 6)}`,
+        runId: `recon-skip-${now}-${randomUUID()}`,
         startTime: now,
         endTime: now,
         durationMs: 0,
@@ -293,7 +292,7 @@ export class ChainReconciler extends EventEmitter {
       };
     }
     this.runInFlight = true;
-    const runId = `recon-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const runId = `recon-${Date.now()}-${randomUUID()}`;
     const startTime = Date.now();
 
     logger.info("Starting reconciliation run", { runId });
@@ -529,7 +528,7 @@ export class ChainReconciler extends EventEmitter {
 
       if (!onchainFill) {
         discrepancies.push({
-          id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          id: `disc-${Date.now()}-${randomUUID()}`,
           type: "missing_onchain",
           severity: "high",
           description: "Offchain trade has no corresponding onchain fill event",
@@ -554,7 +553,7 @@ export class ChainReconciler extends EventEmitter {
 
       if (amountDiff > this.config.amountTolerance) {
         discrepancies.push({
-          id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          id: `disc-${Date.now()}-${randomUUID()}`,
           type: "amount_mismatch",
           severity: amountDiff > 1_000_000_000_000_000_000n ? "high" : "medium",
           description: "Trade amount mismatch between onchain and offchain",
@@ -578,7 +577,7 @@ export class ChainReconciler extends EventEmitter {
 
       if (!offchainTrade) {
         discrepancies.push({
-          id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          id: `disc-${Date.now()}-${randomUUID()}`,
           type: "missing_offchain",
           severity: "high",
           description: "Onchain fill event has no corresponding offchain trade",
