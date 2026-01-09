@@ -1,4 +1,4 @@
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 import type { ApiResponse } from "@/types/api";
 
 export interface FollowStatus {

@@ -2,7 +2,7 @@ import React from "react";
 import { MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 
 import type { ProposalItem } from "./proposalsListUtils";

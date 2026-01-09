@@ -9,7 +9,7 @@ import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";

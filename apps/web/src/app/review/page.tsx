@@ -6,7 +6,7 @@ import { CheckCircle2, XCircle, AlertCircle, Clock, Edit2, Save, X } from "lucid
 import type { Database } from "@/lib/database.types";
 import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 

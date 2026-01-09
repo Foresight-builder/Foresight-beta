@@ -1,7 +1,7 @@
 import { type FilterSortState } from "@/components/FilterSort";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { normalizeId, isValidId } from "@/lib/ids";
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 
 export type HeroEvent = {
   id: string;

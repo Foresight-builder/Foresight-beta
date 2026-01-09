@@ -16,7 +16,7 @@ import {
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

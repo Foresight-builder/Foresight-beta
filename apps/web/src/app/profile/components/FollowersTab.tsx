@@ -6,15 +6,14 @@ import EmptyState from "@/components/EmptyState";
 import { useTranslations } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
-import type { ProfileUserSummary } from "../types";
 import { useFollowersUsers } from "@/hooks/useQueries";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 
 export function FollowersTab({ address }: { address: string }) {
   const tProfile = useTranslations("profile");
   const tCommon = useTranslations("common");
 
-  const query = useFollowersUsers(address);
+  const query = useFollowersUsers(address, 9);
 
   if (query.isLoading) return <CenteredSpinner />;
   if (query.isError) {
@@ -32,7 +31,7 @@ export function FollowersTab({ address }: { address: string }) {
     );
   }
 
-  const users = query.data || [];
+  const users = query.data ?? [];
 
   if (users.length === 0) {
     return (
@@ -76,6 +75,18 @@ export function FollowersTab({ address }: { address: string }) {
           </UserHoverCard>
         ))}
       </div>
+      {!!query.hasNextPage && (
+        <div className="flex justify-center mt-6">
+          <button
+            type="button"
+            onClick={() => query.fetchNextPage()}
+            disabled={query.isFetchingNextPage}
+            className="px-6 py-2.5 rounded-xl text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {tCommon("more")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ import {
   createHeartParticles,
 } from "@/features/trending/trendingAnimations";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 
 export function useTrendingFollowState(
   accountNorm: string | undefined,
@@ -86,12 +86,13 @@ export function useTrendingFollowState(
       try {
         const res = await fetch(`/api/user-follows?address=${encodeURIComponent(accountNorm)}`);
         if (!res.ok) return;
-        const data = (await res.json()) as {
-          follows?: Array<{ id: number | string }>;
-          total?: number;
-        };
+        const raw = (await res.json()) as unknown;
+        const data =
+          raw && typeof raw === "object" && "success" in raw
+            ? (((raw as any).data || null) as { follows?: Array<{ id: number | string }> } | null)
+            : (raw as { follows?: Array<{ id: number | string }> } | null);
         const ids = new Set<number>(
-          (data.follows || [])
+          (data?.follows || [])
             .map((item) => Number(item.id))
             .filter((id): id is number => Number.isFinite(id))
         );

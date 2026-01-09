@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
 import { verifyToken, decodeToken } from "./jwt";
+import { normalizeAddress } from "./address";
+
+export { normalizeAddress } from "./address";
 
 export type OtpRecord = {
   email: string;
@@ -21,11 +24,6 @@ export type LogItem = {
   error?: string;
   sentAt: number;
 };
-
-export function normalizeAddress(addr: string) {
-  const a = String(addr || "");
-  return a.startsWith("0x") ? a.toLowerCase() : a;
-}
 
 export async function getSessionAddress(req: NextRequest) {
   const raw = req.cookies.get("fs_session")?.value || "";

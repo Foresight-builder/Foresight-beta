@@ -8,7 +8,8 @@ import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useFollowingUsers, useFollowingEvents } from "@/hooks/useQueries";
-import { formatAddress, normalizeAddress } from "@/lib/cn";
+import { formatAddress, normalizeAddress } from "@/lib/address";
+import type { FollowingItem } from "@/app/api/following/_lib/types";
 
 type TabType = "events" | "users";
 
@@ -18,7 +19,6 @@ const USERS_PAGE_SIZE = 9;
 export function FollowingTab({ address }: { address: string | null }) {
   const [activeTab, setActiveTab] = useState<TabType>("events");
   const [visibleEventsCount, setVisibleEventsCount] = useState(EVENTS_PAGE_SIZE);
-  const [visibleUsersCount, setVisibleUsersCount] = useState(USERS_PAGE_SIZE);
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
   const tCommon = useTranslations("common");
@@ -28,17 +28,17 @@ export function FollowingTab({ address }: { address: string | null }) {
 
   useEffect(() => {
     setVisibleEventsCount(EVENTS_PAGE_SIZE);
-    setVisibleUsersCount(USERS_PAGE_SIZE);
   }, [normalizedAddress]);
 
   const eventsQuery = useFollowingEvents(normalizedAddress);
-  const usersQuery = useFollowingUsers(normalizedAddress);
+  const usersQuery = useFollowingUsers(normalizedAddress, USERS_PAGE_SIZE);
 
   const loading = activeTab === "events" ? eventsQuery.isLoading : usersQuery.isLoading;
 
   const renderTabs = () => (
     <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-2xl w-fit">
       <button
+        type="button"
         onClick={() => setActiveTab("events")}
         className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
           activeTab === "events"
@@ -50,6 +50,7 @@ export function FollowingTab({ address }: { address: string | null }) {
         {tProfile("following.tabEvents")}
       </button>
       <button
+        type="button"
         onClick={() => setActiveTab("users")}
         className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
           activeTab === "users"
@@ -104,8 +105,8 @@ export function FollowingTab({ address }: { address: string | null }) {
     );
   }
 
-  const events = eventsQuery.data || [];
-  const users = usersQuery.data || [];
+  const events: FollowingItem[] = eventsQuery.data ?? [];
+  const users = usersQuery.data ?? [];
   const currentData = activeTab === "events" ? events : users;
 
   if (currentData.length === 0) {
@@ -122,7 +123,6 @@ export function FollowingTab({ address }: { address: string | null }) {
   }
 
   const visibleEvents = events.slice(0, visibleEventsCount);
-  const visibleUsers = users.slice(0, visibleUsersCount);
 
   return (
     <div>
@@ -131,7 +131,7 @@ export function FollowingTab({ address }: { address: string | null }) {
       {activeTab === "events" ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {visibleEvents.map((item: any) => (
+            {visibleEvents.map((item) => (
               <Link href={`/prediction/${item.id}`} key={item.id}>
                 <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group h-full flex flex-col">
                   <div className="flex justify-between items-start mb-4">
@@ -182,7 +182,7 @@ export function FollowingTab({ address }: { address: string | null }) {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleUsers.map((user: any) => (
+            {users.map((user) => (
               <UserHoverCard key={user.wallet_address} user={user}>
                 <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex items-center gap-4">
                   <div className="relative">
@@ -207,12 +207,13 @@ export function FollowingTab({ address }: { address: string | null }) {
               </UserHoverCard>
             ))}
           </div>
-          {users.length > visibleUsersCount && (
+          {!!usersQuery.hasNextPage && (
             <div className="flex justify-center mt-6">
               <button
                 type="button"
-                onClick={() => setVisibleUsersCount((prev) => prev + USERS_PAGE_SIZE)}
-                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => usersQuery.fetchNextPage()}
+                disabled={usersQuery.isFetchingNextPage}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {tCommon("more")}
               </button>

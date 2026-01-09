@@ -14,7 +14,7 @@ import { useTrendingList } from "./useTrendingList";
 import { useTrendingFollowState } from "./useTrendingFollowState";
 import { useTrendingAdminEvents } from "./useTrendingAdminEvents";
 import { useTrendingHero } from "./useTrendingHero";
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 import { useCategoryCounts } from "./useCategoryCounts";
 
 type ScrollToSectionOptions = {

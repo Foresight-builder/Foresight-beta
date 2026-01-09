@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
 import { useTranslations } from "@/lib/i18n";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 
 export type FlagItem = {
   id: number;

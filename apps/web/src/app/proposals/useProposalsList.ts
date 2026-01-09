@@ -19,7 +19,7 @@ import { useCategories } from "@/hooks/useQueries";
 import { normalizeId } from "@/lib/ids";
 import { reactQueryFeedback } from "@/lib/apiWithFeedback";
 import { t } from "@/lib/i18n";
-import { normalizeAddress } from "@/lib/cn";
+import { normalizeAddress } from "@/lib/address";
 
 function useProposalUserVotes(walletAddress: string | null) {
   const { data: userVotesData } = useQuery<ProposalUserVoteRow[]>({

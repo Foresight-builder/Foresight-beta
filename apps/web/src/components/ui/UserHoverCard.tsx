@@ -27,7 +27,7 @@ import {
   useUserFollowCounts,
   useUserFollowStatus,
 } from "@/hooks/useQueries";
-import { formatAddress, normalizeAddress } from "@/lib/cn";
+import { formatAddress, normalizeAddress } from "@/lib/address";
 
 // 用户预览数据类型
 export type UserPreviewData = {

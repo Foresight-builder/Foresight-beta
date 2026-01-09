@@ -3,7 +3,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Users, ShieldCheck, CheckCircle2, Clock, History, Target } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";
-import { formatAddress } from "@/lib/cn";
+import { formatAddress } from "@/lib/address";
 import { useLocale } from "@/lib/i18n";
 import { formatDate, formatDateTime } from "@/lib/format";
 

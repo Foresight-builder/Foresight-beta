@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiErrorCode, type ApiSuccessResponse, type ApiErrorResponse } from "@/types/api";
+import { logApiError } from "@/lib/serverUtils";
 
 /**
  * 创建成功响应
@@ -105,7 +106,7 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
     try {
       return await handler(...args);
     } catch (error: any) {
-      console.error("API Error:", error);
+      logApiError("API Error", error);
 
       // 处理已知错误类型
       if (error.code === "PGRST116") {

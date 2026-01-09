@@ -170,7 +170,7 @@ export function getRarityClass(r: string) {
   }
 }
 
-import { normalizeAddress } from "./cn";
+import { normalizeAddress } from "./address";
 
 const LUCKY_ADDRESSES = [
   "0x23d930b75a647a11a12b94d747488aa232375859",

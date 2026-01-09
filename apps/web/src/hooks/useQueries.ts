@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { normalizeAddress } from "@/lib/cn";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { normalizeAddress } from "@/lib/address";
 import type { ApiResponse } from "@/types/api";
 import type { Prediction as TrendingPrediction } from "@/features/trending/trendingModel";
 import type { UserProfile } from "@/lib/supabase";
@@ -9,6 +9,13 @@ import type {
   ProfilePosition,
   ProfileUserSummary,
 } from "@/app/profile/types";
+import type { FollowingItem } from "@/app/api/following/_lib/types";
+import type {
+  UserFollowsCountsResponse,
+  UserFollowsUsersResponse,
+  UserFollowStatusResponse,
+  UserFollowToggleResponse,
+} from "@/app/api/user-follows/_lib/types";
 
 /**
  * Query Keys 常量
@@ -27,8 +34,10 @@ export const QueryKeys = {
   userFollowCounts: (address: string) => ["profile", "follows", "counts", address] as const,
   userFollowStatus: (target: string, follower: string | null | undefined) =>
     ["profile", "follows", "status", target, follower] as const,
-  profileFollowersUsers: (address: string) => ["profile", "followers", address] as const,
-  profileFollowingUsers: (address: string) => ["profile", "following", "users", address] as const,
+  profileFollowersUsers: (address: string, limit: number) =>
+    ["profile", "followers", "users", address, limit] as const,
+  profileFollowingUsers: (address: string, limit: number) =>
+    ["profile", "following", "users", address, limit] as const,
   profileFollowingEvents: (address: string) => ["profile", "following", "events", address] as const,
 
   orders: (params: {
@@ -49,9 +58,7 @@ export const QueryKeys = {
   market: (contract: string, chainId: number) => ["market", contract, chainId] as const,
 } as const;
 
-export type UserFollowToggleResult = {
-  followed: boolean;
-};
+export type UserFollowToggleResult = UserFollowToggleResponse;
 
 export async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -207,14 +214,13 @@ export function useUserHistory(address?: string | null) {
 
 export function useUserFollowCounts(address?: string | null) {
   const norm = address ? normalizeAddress(address) : null;
-  return useQuery({
+  return useQuery<UserFollowsCountsResponse>({
     queryKey: QueryKeys.userFollowCounts(norm || ""),
     queryFn: () =>
       norm
-        ? fetcher<{
-            followersCount: number;
-            followingCount: number;
-          }>(`/api/user-follows/counts?address=${encodeURIComponent(norm)}`)
+        ? fetcher<UserFollowsCountsResponse>(
+            `/api/user-follows/counts?address=${encodeURIComponent(norm)}`
+          )
         : Promise.resolve({
             followersCount: 0,
             followingCount: 0,
@@ -227,11 +233,11 @@ export function useUserFollowCounts(address?: string | null) {
 export function useUserFollowStatus(target?: string | null, follower?: string | null) {
   const targetNorm = target ? normalizeAddress(target) : null;
   const followerNorm = follower ? normalizeAddress(follower) : null;
-  return useQuery({
+  return useQuery<boolean>({
     queryKey: QueryKeys.userFollowStatus(targetNorm || "", followerNorm || ""),
     queryFn: () =>
       targetNorm && followerNorm && targetNorm !== followerNorm
-        ? fetcher<{ followed: boolean }>(
+        ? fetcher<UserFollowStatusResponse>(
             `/api/user-follows/user?targetAddress=${encodeURIComponent(
               targetNorm
             )}&followerAddress=${encodeURIComponent(followerNorm)}`
@@ -242,31 +248,67 @@ export function useUserFollowStatus(target?: string | null, follower?: string | 
   });
 }
 
-export function useFollowersUsers(address?: string | null) {
+export function useFollowersUsers(address?: string | null, limit = 9) {
   const norm = address ? normalizeAddress(address) : null;
-  return useQuery<ProfileUserSummary[]>({
-    queryKey: QueryKeys.profileFollowersUsers(norm || ""),
-    queryFn: () =>
-      norm
-        ? fetcher<{ users: ProfileUserSummary[] }>(
-            `/api/user-follows/followers-users?address=${encodeURIComponent(norm)}`
-          ).then((res) => (Array.isArray(res.users) ? res.users : []))
-        : Promise.resolve([]),
+  return useInfiniteQuery<UserFollowsUsersResponse, Error, ProfileUserSummary[]>({
+    queryKey: QueryKeys.profileFollowersUsers(norm || "", limit),
+    queryFn: ({ pageParam }) => {
+      const page = typeof pageParam === "number" && Number.isFinite(pageParam) ? pageParam : 1;
+      if (!norm) return Promise.resolve({ users: [], total: 0, page, limit });
+      const query = new URLSearchParams();
+      query.set("address", norm);
+      query.set("page", String(page));
+      query.set("limit", String(limit));
+      return fetcher<UserFollowsUsersResponse>(
+        `/api/user-follows/followers-users?${query.toString()}`
+      );
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce(
+        (sum, p) => sum + (Array.isArray(p.users) ? p.users.length : 0),
+        0
+      );
+      const total = Number(lastPage?.total || 0);
+      if (total > 0) return loaded < total ? lastPage.page + 1 : undefined;
+      return Array.isArray(lastPage?.users) && lastPage.users.length >= limit
+        ? lastPage.page + 1
+        : undefined;
+    },
+    select: (data) => data.pages.flatMap((p) => (Array.isArray(p.users) ? p.users : [])),
     enabled: !!norm,
     staleTime: 2 * 60 * 1000,
   });
 }
 
-export function useFollowingUsers(address?: string | null) {
+export function useFollowingUsers(address?: string | null, limit = 9) {
   const norm = address ? normalizeAddress(address) : null;
-  return useQuery<ProfileUserSummary[]>({
-    queryKey: QueryKeys.profileFollowingUsers(norm || ""),
-    queryFn: () =>
-      norm
-        ? fetcher<{ users: ProfileUserSummary[] }>(
-            `/api/user-follows/following-users?address=${encodeURIComponent(norm)}`
-          ).then((res) => (Array.isArray(res.users) ? res.users : []))
-        : Promise.resolve([]),
+  return useInfiniteQuery<UserFollowsUsersResponse, Error, ProfileUserSummary[]>({
+    queryKey: QueryKeys.profileFollowingUsers(norm || "", limit),
+    queryFn: ({ pageParam }) => {
+      const page = typeof pageParam === "number" && Number.isFinite(pageParam) ? pageParam : 1;
+      if (!norm) return Promise.resolve({ users: [], total: 0, page, limit });
+      const query = new URLSearchParams();
+      query.set("address", norm);
+      query.set("page", String(page));
+      query.set("limit", String(limit));
+      return fetcher<UserFollowsUsersResponse>(
+        `/api/user-follows/following-users?${query.toString()}`
+      );
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce(
+        (sum, p) => sum + (Array.isArray(p.users) ? p.users.length : 0),
+        0
+      );
+      const total = Number(lastPage?.total || 0);
+      if (total > 0) return loaded < total ? lastPage.page + 1 : undefined;
+      return Array.isArray(lastPage?.users) && lastPage.users.length >= limit
+        ? lastPage.page + 1
+        : undefined;
+    },
+    select: (data) => data.pages.flatMap((p) => (Array.isArray(p.users) ? p.users : [])),
     enabled: !!norm,
     staleTime: 2 * 60 * 1000,
   });
@@ -274,11 +316,11 @@ export function useFollowingUsers(address?: string | null) {
 
 export function useFollowingEvents(address?: string | null) {
   const norm = address ? normalizeAddress(address) : null;
-  return useQuery({
+  return useQuery<FollowingItem[]>({
     queryKey: QueryKeys.profileFollowingEvents(norm || ""),
     queryFn: () =>
       norm
-        ? fetcher<any[]>(`/api/following?address=${encodeURIComponent(norm)}`)
+        ? fetcher<FollowingItem[]>(`/api/following?address=${encodeURIComponent(norm)}`)
         : Promise.resolve([]),
     enabled: !!norm,
     staleTime: 2 * 60 * 1000,
