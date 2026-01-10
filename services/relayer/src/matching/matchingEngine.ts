@@ -14,6 +14,7 @@ import type {
   Trade,
   MarketEvent,
   MatchingEngineConfig,
+  OrderErrorCode,
 } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
@@ -56,6 +57,7 @@ export class MatchingEngine extends EventEmitter {
   private sequenceCounter: bigint = 0n;
   private redisSnapshotLoadAttempts: Set<string> = new Set();
   private snapshotQueueLastAtMs: Map<string, number> = new Map();
+  private clientOrderIdCache: Map<string, { expiresAtMs: number; result: MatchResult }> = new Map();
 
   // 🚀 批量结算器 (Polymarket 模式)
   private batchSettlers: Map<string, BatchSettler> = new Map();
@@ -229,83 +231,190 @@ export class MatchingEngine extends EventEmitter {
    * 提交新订单并尝试撮合
    */
   async submitOrder(orderInput: OrderInput): Promise<MatchResult> {
+    let riskLockToken: string | null = null;
+    let inflightAcquired = false;
     try {
       if (!orderInput.marketKey || orderInput.marketKey.trim().length === 0) {
-        return { success: false, matches: [], remainingOrder: null, error: "Invalid marketKey" };
+        return {
+          success: false,
+          matches: [],
+          remainingOrder: null,
+          error: "Invalid marketKey",
+          errorCode: "INVALID_MARKET_KEY",
+        };
       }
       if (!Number.isInteger(orderInput.outcomeIndex) || orderInput.outcomeIndex < 0) {
-        return { success: false, matches: [], remainingOrder: null, error: "Invalid outcomeIndex" };
+        return {
+          success: false,
+          matches: [],
+          remainingOrder: null,
+          error: "Invalid outcomeIndex",
+          errorCode: "INVALID_OUTCOME_INDEX",
+        };
       }
-      return await this.withBookLock(orderInput.marketKey, orderInput.outcomeIndex, async () => {
-        // 1. 验证订单
-        const validationResult = await this.validateOrder(orderInput);
-        if (!validationResult.valid) {
-          return {
+      const cached = this.getClientOrderIdCachedResult(orderInput);
+      if (cached) return cached;
+
+      const cachedRemote = await this.getClientOrderIdCachedResultRemote(orderInput);
+      if (cachedRemote) {
+        this.setClientOrderIdCachedResult(orderInput, cachedRemote);
+        return cachedRemote;
+      }
+
+      const redis = getRedisClient();
+      const idempotencyKey = this.getClientOrderIdCacheKey(orderInput);
+      const ttlMs = Math.max(1000, Number(process.env.RELAYER_CLIENT_ORDER_ID_TTL_MS || "60000"));
+      const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
+      const inflightKey = idempotencyKey ? `client_order_inflight:${idempotencyKey}` : null;
+      const resultKey = idempotencyKey ? `client_order_result:${idempotencyKey}` : null;
+      const inflight =
+        inflightKey && redis.isReady()
+          ? await redis.setNx(inflightKey, String(Date.now()), Math.min(60, ttlSeconds))
+          : false;
+      inflightAcquired = inflight;
+      if (inflightKey && redis.isReady() && !inflightAcquired) {
+        const waited = await this.waitForRemoteClientOrderIdResult(resultKey!, 2000);
+        if (waited) {
+          this.setClientOrderIdCachedResult(orderInput, waited);
+          return waited;
+        }
+        const failure: MatchResult = {
+          success: false,
+          matches: [],
+          remainingOrder: null,
+          error: "Orderbook busy",
+          errorCode: "ORDERBOOK_BUSY",
+        };
+        await this.setClientOrderIdCachedResultRemote(orderInput, failure);
+        this.setClientOrderIdCachedResult(orderInput, failure);
+        return failure;
+      }
+
+      const riskLockEnabled =
+        String(process.env.RELAYER_RISK_LOCK_ENABLED || "true").toLowerCase() !== "false";
+      if (riskLockEnabled && redis.isReady() && supabaseAdmin && orderInput.isBuy) {
+        const maker = orderInput.maker.toLowerCase();
+        const lockKey = `risk:balance:${maker}`;
+        riskLockToken = await redis.acquireLock(lockKey, 30000, 50, 100);
+        if (!riskLockToken) {
+          const failure: MatchResult = {
             success: false,
             matches: [],
             remainingOrder: null,
-            error: validationResult.error,
+            error: "Orderbook busy",
+            errorCode: "ORDERBOOK_BUSY",
           };
+          await this.setClientOrderIdCachedResultRemote(orderInput, failure);
+          this.setClientOrderIdCachedResult(orderInput, failure);
+          return failure;
         }
+      }
 
-        // 2. 创建内部订单对象
-        const order = this.createOrder(orderInput);
-
-        if (order.postOnly) {
-          const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
-          while (true) {
-            const counterOrder = book.getBestCounterOrder(order.isBuy);
-            if (!counterOrder) break;
-            if (this.isExpired(counterOrder)) {
-              book.removeOrder(counterOrder.id);
-              await this.updateOrderStatus(counterOrder, "expired");
-              continue;
-            }
-            if (this.pricesMatch(order, counterOrder)) {
-              return {
-                success: false,
-                matches: [],
-                remainingOrder: null,
-                error: "Post-only order would be immediately executed",
-              };
-            }
-            break;
+      const result = await this.withBookLock(
+        orderInput.marketKey,
+        orderInput.outcomeIndex,
+        async () => {
+          // 1. 验证订单
+          const validationResult = await this.validateOrder(orderInput);
+          if (!validationResult.valid) {
+            const failure: MatchResult = {
+              success: false,
+              matches: [],
+              remainingOrder: null,
+              error: validationResult.error,
+              errorCode: validationResult.errorCode,
+            };
+            this.setClientOrderIdCachedResult(orderInput, failure);
+            await this.setClientOrderIdCachedResultRemote(orderInput, failure);
+            return failure;
           }
-          await this.addToOrderBook(order);
-          return {
-            success: true,
-            matches: [],
-            remainingOrder: order,
-          };
-        }
 
-        // 3. 尝试撮合
-        const matchResult = await this.matchOrder(order);
+          // 2. 创建内部订单对象
+          const order = this.createOrder(orderInput);
 
-        // 4. 如果有剩余,加入订单簿
-        if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
-          await this.addToOrderBook(matchResult.remainingOrder);
-        }
-
-        // 5. 广播事件
-        if (matchResult.matches.length > 0) {
-          for (const match of matchResult.matches) {
-            const trade = this.matchToTrade(match);
-            this.emit("trade", trade);
-            this.emitEvent({ type: "trade", trade });
+          if (order.postOnly) {
+            const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+            while (true) {
+              const counterOrder = this.config.enableSelfTradeProtection
+                ? book.getBestCounterOrder(order.isBuy, order.maker)
+                : book.getBestCounterOrder(order.isBuy);
+              if (!counterOrder) break;
+              if (this.isExpired(counterOrder)) {
+                book.removeOrder(counterOrder.id);
+                await this.updateOrderStatus(counterOrder, "expired");
+                continue;
+              }
+              if (this.pricesMatch(order, counterOrder)) {
+                const failure: MatchResult = {
+                  success: false,
+                  matches: [],
+                  remainingOrder: null,
+                  error: "Post-only order would be immediately executed",
+                  errorCode: "INVALID_POST_ONLY",
+                };
+                this.setClientOrderIdCachedResult(orderInput, failure);
+                await this.setClientOrderIdCachedResultRemote(orderInput, failure);
+                return failure;
+              }
+              break;
+            }
+            await this.addToOrderBook(order);
+            const success: MatchResult = {
+              success: true,
+              matches: [],
+              remainingOrder: order,
+            };
+            this.setClientOrderIdCachedResult(orderInput, success);
+            await this.setClientOrderIdCachedResultRemote(orderInput, success);
+            return success;
           }
-        }
 
-        return matchResult;
-      });
+          // 3. 尝试撮合
+          const matchResult = await this.matchOrder(order);
+
+          // 4. 如果有剩余,加入订单簿
+          if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
+            await this.addToOrderBook(matchResult.remainingOrder);
+          }
+
+          // 5. 广播事件
+          if (matchResult.matches.length > 0) {
+            for (const match of matchResult.matches) {
+              const trade = this.matchToTrade(match);
+              this.emit("trade", trade);
+              this.emitEvent({ type: "trade", trade });
+            }
+          }
+
+          this.setClientOrderIdCachedResult(orderInput, matchResult);
+          await this.setClientOrderIdCachedResultRemote(orderInput, matchResult);
+          return matchResult;
+        }
+      );
+      this.setClientOrderIdCachedResult(orderInput, result);
+      await this.setClientOrderIdCachedResultRemote(orderInput, result);
+      return result;
     } catch (error: any) {
       console.error("[MatchingEngine] submitOrder error:", error);
+      const isBusy = String(error?.message || "").includes("Orderbook busy");
       return {
         success: false,
         matches: [],
         remainingOrder: null,
         error: error?.message || "Unknown error",
+        errorCode: isBusy ? "ORDERBOOK_BUSY" : undefined,
       };
+    } finally {
+      const redis = getRedisClient();
+      const idempotencyKey = this.getClientOrderIdCacheKey(orderInput);
+      const inflightKey = idempotencyKey ? `client_order_inflight:${idempotencyKey}` : null;
+      if (inflightAcquired && inflightKey && redis.isReady()) {
+        await redis.del(inflightKey);
+      }
+      if (riskLockToken) {
+        const maker = orderInput.maker.toLowerCase();
+        await redis.releaseLock(`risk:balance:${maker}`, riskLockToken);
+      }
     }
   }
 
@@ -327,13 +436,33 @@ export class MatchingEngine extends EventEmitter {
       if (order.isBuy) {
         for (const level of depth.asks) {
           if (order.price < level.price) break;
-          required -= level.totalQuantity;
+          let available = level.totalQuantity;
+          if (this.config.enableSelfTradeProtection) {
+            const excluded = order.maker;
+            available = 0n;
+            for (const o of level.orders) {
+              if (o.remainingAmount <= 0n) continue;
+              if (o.maker === excluded) continue;
+              available += o.remainingAmount;
+            }
+          }
+          required -= available;
           if (required <= 0n) break;
         }
       } else {
         for (const level of depth.bids) {
           if (order.price > level.price) break;
-          required -= level.totalQuantity;
+          let available = level.totalQuantity;
+          if (this.config.enableSelfTradeProtection) {
+            const excluded = order.maker;
+            available = 0n;
+            for (const o of level.orders) {
+              if (o.remainingAmount <= 0n) continue;
+              if (o.maker === excluded) continue;
+              available += o.remainingAmount;
+            }
+          }
+          required -= available;
           if (required <= 0n) break;
         }
       }
@@ -349,7 +478,9 @@ export class MatchingEngine extends EventEmitter {
 
     while (order.remainingAmount > 0n) {
       // 获取对手盘最优订单
-      const counterOrder = book.getBestCounterOrder(order.isBuy);
+      const counterOrder = this.config.enableSelfTradeProtection
+        ? book.getBestCounterOrder(order.isBuy, order.maker)
+        : book.getBestCounterOrder(order.isBuy);
 
       if (!counterOrder) {
         // 没有对手盘,停止撮合
@@ -444,7 +575,7 @@ export class MatchingEngine extends EventEmitter {
       this.emitDepthUpdate(book);
     }
 
-    if (order.tif === "IOC" || order.tif === "FOK") {
+    if (order.tif === "IOC" || order.tif === "FOK" || order.tif === "FAK") {
       if (order.remainingAmount === 0n) {
         order.status = "filled";
       } else if (matches.length === 0) {
@@ -603,69 +734,119 @@ export class MatchingEngine extends EventEmitter {
   /**
    * 验证订单
    */
-  private async validateOrder(input: OrderInput): Promise<{ valid: boolean; error?: string }> {
+  private async validateOrder(input: OrderInput): Promise<{
+    valid: boolean;
+    error?: string;
+    errorCode?: OrderErrorCode;
+  }> {
     // 1. 验证基本参数
     if (!input.marketKey || input.marketKey.trim().length === 0) {
-      return { valid: false, error: "Invalid marketKey" };
+      return { valid: false, error: "Invalid marketKey", errorCode: "INVALID_MARKET_KEY" };
     }
     if (!Number.isInteger(input.outcomeIndex) || input.outcomeIndex < 0) {
-      return { valid: false, error: "Invalid outcomeIndex" };
+      return { valid: false, error: "Invalid outcomeIndex", errorCode: "INVALID_OUTCOME_INDEX" };
     }
     if (!Number.isInteger(input.chainId) || input.chainId <= 0) {
-      return { valid: false, error: "Invalid chainId" };
+      return { valid: false, error: "Invalid chainId", errorCode: "INVALID_CHAIN_ID" };
     }
     if (!ethers.isAddress(input.verifyingContract)) {
-      return { valid: false, error: "Invalid verifying contract address" };
+      return {
+        valid: false,
+        error: "Invalid verifying contract address",
+        errorCode: "INVALID_VERIFYING_CONTRACT",
+      };
     }
     if (!Number.isInteger(input.expiry) || input.expiry < 0) {
-      return { valid: false, error: "Invalid expiry" };
+      return { valid: false, error: "Invalid expiry", errorCode: "INVALID_EXPIRY" };
     }
     try {
       BigInt(input.salt);
     } catch {
-      return { valid: false, error: "Invalid salt" };
+      return { valid: false, error: "Invalid salt", errorCode: "INVALID_SALT" };
     }
 
     if (!ethers.isAddress(input.maker)) {
-      return { valid: false, error: "Invalid maker address" };
+      return { valid: false, error: "Invalid maker address", errorCode: "INVALID_MAKER" };
     }
 
     if (input.price < this.config.minPrice || input.price > this.config.maxPrice) {
-      return { valid: false, error: "Price out of range" };
+      return { valid: false, error: "Price out of range", errorCode: "INVALID_PRICE" };
     }
 
     const tickOffset = input.price - this.config.minPrice;
     if (tickOffset % this.config.priceTickSize !== 0n) {
-      return { valid: false, error: "Price not aligned to tick size" };
+      return {
+        valid: false,
+        error: "Price not aligned to tick size",
+        errorCode: "INVALID_TICK_SIZE",
+      };
     }
 
     if (input.amount < this.config.minOrderAmount) {
-      return { valid: false, error: "Amount below minimum" };
+      return { valid: false, error: "Amount below minimum", errorCode: "INVALID_AMOUNT" };
     }
 
     if (input.amount > this.config.maxOrderAmount) {
-      return { valid: false, error: "Amount exceeds maximum" };
+      return { valid: false, error: "Amount exceeds maximum", errorCode: "INVALID_AMOUNT" };
     }
 
-    if (input.tif && input.tif !== "IOC" && input.tif !== "FOK") {
-      return { valid: false, error: "Invalid time in force" };
+    if (
+      input.tif &&
+      input.tif !== "IOC" &&
+      input.tif !== "FOK" &&
+      input.tif !== "FAK" &&
+      input.tif !== "GTC" &&
+      input.tif !== "GTD"
+    ) {
+      return { valid: false, error: "Invalid time in force", errorCode: "INVALID_TIME_IN_FORCE" };
     }
 
-    if (input.postOnly && input.tif && (input.tif === "IOC" || input.tif === "FOK")) {
-      return { valid: false, error: "Post-only cannot be combined with IOC/FOK" };
+    if (
+      input.postOnly &&
+      input.tif &&
+      (input.tif === "IOC" || input.tif === "FOK" || input.tif === "FAK")
+    ) {
+      return {
+        valid: false,
+        error: "Post-only cannot be combined with IOC/FAK/FOK",
+        errorCode: "INVALID_POST_ONLY",
+      };
     }
 
-    if (input.expiry !== 0 && Math.floor(Date.now() / 1000) >= input.expiry) {
-      return { valid: false, error: "Order expired" };
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (input.tif === "GTD") {
+      if (input.expiry === 0) {
+        return { valid: false, error: "GTD requires expiry", errorCode: "INVALID_EXPIRY" };
+      }
+      if (nowSeconds >= input.expiry) {
+        return { valid: false, error: "Order expired", errorCode: "ORDER_EXPIRED" };
+      }
+      if (this.config.gtdMaxExpiryDays && this.config.gtdMaxExpiryDays > 0) {
+        const maxExpiry = nowSeconds + Math.floor(this.config.gtdMaxExpiryDays * 86400);
+        if (input.expiry > maxExpiry) {
+          return { valid: false, error: "Expiry too far in future", errorCode: "INVALID_EXPIRY" };
+        }
+      }
+    } else if (input.expiry !== 0 && nowSeconds >= input.expiry) {
+      return { valid: false, error: "Order expired", errorCode: "ORDER_EXPIRED" };
     }
 
     // 2. 验证签名
     const signatureValid = await this.verifySignature(input);
     if (!signatureValid) {
-      return { valid: false, error: "Invalid signature" };
+      return { valid: false, error: "Invalid signature", errorCode: "INVALID_SIGNATURE" };
     }
 
     // 3. 检查订单是否已存在 (防止重放)
+    const localOrderId = `${input.maker.toLowerCase()}-${input.salt}`;
+    const localBook = this.bookManager.getBook(input.marketKey, input.outcomeIndex);
+    if (localBook?.hasOrder(localOrderId)) {
+      return {
+        valid: false,
+        error: "Order with this salt already exists",
+        errorCode: "DUPLICATE_ORDER",
+      };
+    }
     const exists = await this.checkOrderExists(
       input.chainId,
       input.verifyingContract.toLowerCase(),
@@ -673,7 +854,11 @@ export class MatchingEngine extends EventEmitter {
       input.salt
     );
     if (exists) {
-      return { valid: false, error: "Order with this salt already exists" };
+      return {
+        valid: false,
+        error: "Order with this salt already exists",
+        errorCode: "DUPLICATE_ORDER",
+      };
     }
 
     const riskCheck = await this.checkBalanceAndRisk(input);
@@ -686,7 +871,7 @@ export class MatchingEngine extends EventEmitter {
 
   private async checkBalanceAndRisk(
     input: OrderInput
-  ): Promise<{ valid: boolean; error?: string }> {
+  ): Promise<{ valid: boolean; error?: string; errorCode?: OrderErrorCode }> {
     try {
       const makerAddress = input.maker.toLowerCase();
 
@@ -720,7 +905,11 @@ export class MatchingEngine extends EventEmitter {
         const limitUsdc = BigInt(Math.floor(this.config.maxMarketLongExposureUsdc * 1e6));
         const newLongExposure = marketLongUsdc + (input.isBuy ? orderCostUsdc : 0n);
         if (newLongExposure > limitUsdc) {
-          return { valid: false, error: "Market long exposure limit exceeded" };
+          return {
+            valid: false,
+            error: "Market long exposure limit exceeded",
+            errorCode: "MARKET_LONG_EXPOSURE_LIMIT",
+          };
         }
       }
 
@@ -728,7 +917,11 @@ export class MatchingEngine extends EventEmitter {
         const limitUsdc = BigInt(Math.floor(this.config.maxMarketShortExposureUsdc * 1e6));
         const newShortExposure = marketShortUsdc + (!input.isBuy ? orderCostUsdc : 0n);
         if (newShortExposure > limitUsdc) {
-          return { valid: false, error: "Market short exposure limit exceeded" };
+          return {
+            valid: false,
+            error: "Market short exposure limit exceeded",
+            errorCode: "MARKET_SHORT_EXPOSURE_LIMIT",
+          };
         }
       }
 
@@ -765,6 +958,7 @@ export class MatchingEngine extends EventEmitter {
         .from("orders")
         .select("price, remaining")
         .eq("maker_address", makerAddress)
+        .eq("is_buy", true)
         .in("status", ["open", "partially_filled"]);
 
       let reservedUsdc = 0n;
@@ -777,13 +971,13 @@ export class MatchingEngine extends EventEmitter {
       const totalRequiredUsdc = reservedUsdc + orderCostUsdc;
 
       if (totalRequiredUsdc > offchainBalanceUsdc) {
-        return { valid: false, error: "Insufficient balance" };
+        return { valid: false, error: "Insufficient balance", errorCode: "INSUFFICIENT_BALANCE" };
       }
 
       return { valid: true };
     } catch (error: any) {
       console.error("[MatchingEngine] Balance check failed", error);
-      return { valid: false, error: "Balance check failed" };
+      return { valid: false, error: "Balance check failed", errorCode: "BALANCE_CHECK_FAILED" };
     }
   }
 
@@ -1378,6 +1572,108 @@ export class MatchingEngine extends EventEmitter {
     }
     return stats;
   }
+
+  private getClientOrderIdCacheKey(input: OrderInput): string | null {
+    const raw = typeof input.clientOrderId === "string" ? input.clientOrderId.trim() : "";
+    if (!raw) return null;
+    return `${input.maker.toLowerCase()}:${input.marketKey}:${input.outcomeIndex}:${raw}`;
+  }
+
+  private async getClientOrderIdCachedResultRemote(input: OrderInput): Promise<MatchResult | null> {
+    const redis = getRedisClient();
+    if (!redis.isReady()) return null;
+    const key = this.getClientOrderIdCacheKey(input);
+    if (!key) return null;
+    const raw = await redis.get(`client_order_result:${key}`);
+    if (!raw) return null;
+    return this.deserializeMatchResult(raw);
+  }
+
+  private async waitForRemoteClientOrderIdResult(
+    resultKey: string,
+    timeoutMs: number
+  ): Promise<MatchResult | null> {
+    const redis = getRedisClient();
+    if (!redis.isReady()) return null;
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      const raw = await redis.get(resultKey);
+      if (raw) return this.deserializeMatchResult(raw);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return null;
+  }
+
+  private async setClientOrderIdCachedResultRemote(
+    input: OrderInput,
+    result: MatchResult
+  ): Promise<void> {
+    const redis = getRedisClient();
+    if (!redis.isReady()) return;
+    const key = this.getClientOrderIdCacheKey(input);
+    if (!key) return;
+    const ttlMs = Math.max(1000, Number(process.env.RELAYER_CLIENT_ORDER_ID_TTL_MS || "60000"));
+    const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
+    await redis.set(`client_order_result:${key}`, this.serializeMatchResult(result), ttlSeconds);
+  }
+
+  private serializeMatchResult(result: MatchResult): string {
+    return JSON.stringify(result, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
+  }
+
+  private deserializeMatchResult(raw: string): MatchResult | null {
+    try {
+      const bigintKeys = new Set([
+        "price",
+        "amount",
+        "remainingAmount",
+        "sequence",
+        "matchedAmount",
+        "matchedPrice",
+        "makerFee",
+        "takerFee",
+        "volume24h",
+        "lastTradePrice",
+      ]);
+      return JSON.parse(raw, (k, v) => {
+        if (typeof v === "string" && bigintKeys.has(k) && /^-?\d+$/.test(v)) {
+          try {
+            return BigInt(v);
+          } catch {
+            return v;
+          }
+        }
+        return v;
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  private getClientOrderIdCachedResult(input: OrderInput): MatchResult | null {
+    const key = this.getClientOrderIdCacheKey(input);
+    if (!key) return null;
+    const cached = this.clientOrderIdCache.get(key);
+    if (!cached) return null;
+    if (cached.expiresAtMs <= Date.now()) {
+      this.clientOrderIdCache.delete(key);
+      return null;
+    }
+    return cached.result;
+  }
+
+  private setClientOrderIdCachedResult(input: OrderInput, result: MatchResult): void {
+    const key = this.getClientOrderIdCacheKey(input);
+    if (!key) return;
+    const ttlMs = Math.max(1000, Number(process.env.RELAYER_CLIENT_ORDER_ID_TTL_MS || "60000"));
+    this.clientOrderIdCache.set(key, { expiresAtMs: Date.now() + ttlMs, result });
+    if (this.clientOrderIdCache.size > 20000) {
+      const now = Date.now();
+      for (const [k, v] of this.clientOrderIdCache.entries()) {
+        if (v.expiresAtMs <= now) this.clientOrderIdCache.delete(k);
+      }
+    }
+  }
 }
 
 /**
@@ -1395,6 +1691,7 @@ export interface OrderInput {
   signature: string;
   chainId: number;
   verifyingContract: string;
-  tif?: "IOC" | "FOK";
+  tif?: "IOC" | "FOK" | "FAK" | "GTC" | "GTD";
   postOnly?: boolean;
+  clientOrderId?: string;
 }

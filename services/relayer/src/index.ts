@@ -306,13 +306,14 @@ function sendApiError(
   req: express.Request,
   res: express.Response,
   status: number,
-  payload: { message: string; detail?: any }
+  payload: { message: string; detail?: any; errorCode?: string | null }
 ) {
   const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
   return res.status(status).json({
     success: false,
     message: payload.message,
     ...(typeof payload.detail !== "undefined" ? { detail: payload.detail } : {}),
+    ...(typeof payload.errorCode !== "undefined" ? { errorCode: payload.errorCode } : {}),
     ...(requestId ? { requestId } : {}),
   });
 }
@@ -515,8 +516,18 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
           orderBody?.marketAddress ||
           ""
       ),
-      tif: (orderBody?.tif as "IOC" | "FOK" | undefined) ?? undefined,
+      tif:
+        typeof (orderBody?.tif ?? body.tif) === "string"
+          ? ((String(orderBody?.tif ?? body.tif)
+              .trim()
+              .toUpperCase() as any) ?? undefined)
+          : undefined,
       postOnly: Boolean(orderBody?.postOnly ?? orderBody?.post_only),
+      clientOrderId:
+        typeof (orderBody?.clientOrderId ?? orderBody?.client_order_id ?? body.clientOrderId) ===
+        "string"
+          ? String(orderBody?.clientOrderId ?? orderBody?.client_order_id ?? body.clientOrderId)
+          : undefined,
     };
 
     // 提交到撮合引擎
@@ -525,6 +536,7 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
     if (!result.success) {
       return sendApiError(req, res, 400, {
         message: result.error || "Order submission failed",
+        errorCode: result.errorCode || null,
       });
     }
 

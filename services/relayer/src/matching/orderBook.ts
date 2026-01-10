@@ -54,6 +54,25 @@ class PriceLevelNode {
     return null;
   }
 
+  getFirstOrderExcludingMaker(excludedMaker?: string): Order | null {
+    const excluded = excludedMaker ? excludedMaker.toLowerCase() : null;
+    for (let i = 0; i < this.orderQueue.length; ) {
+      const orderId = this.orderQueue[i];
+      const order = this.orders.get(orderId);
+      if (!order || order.remainingAmount <= 0n) {
+        this.orderQueue.splice(i, 1);
+        if (order) this.orders.delete(orderId);
+        continue;
+      }
+      if (excluded && order.maker === excluded) {
+        i++;
+        continue;
+      }
+      return order;
+    }
+    return null;
+  }
+
   isEmpty(): boolean {
     return this.orders.size === 0 || this.totalQuantity === 0n;
   }
@@ -130,6 +149,17 @@ class OneSideBook {
     const bestPrice = this.getBestPrice();
     if (bestPrice === null) return null;
     return this.levels.get(bestPrice.toString()) || null;
+  }
+
+  getBestOrderExcludingMaker(excludedMaker?: string): Order | null {
+    const excluded = excludedMaker ? excludedMaker.toLowerCase() : undefined;
+    for (const price of this.sortedPrices) {
+      const level = this.levels.get(price.toString());
+      if (!level || level.isEmpty()) continue;
+      const order = level.getFirstOrderExcludingMaker(excluded);
+      if (order) return order;
+    }
+    return null;
   }
 
   /**
@@ -336,7 +366,13 @@ export class OrderBook {
   /**
    * 获取对手盘最优订单 (用于撮合)
    */
-  getBestCounterOrder(isBuy: boolean): Order | null {
+  getBestCounterOrder(isBuy: boolean, excludedMaker?: string): Order | null {
+    const excluded = excludedMaker ? excludedMaker.toLowerCase() : undefined;
+    if (excluded) {
+      return isBuy
+        ? this.asks.getBestOrderExcludingMaker(excluded)
+        : this.bids.getBestOrderExcludingMaker(excluded);
+    }
     return isBuy ? this.getBestAsk() : this.getBestBid();
   }
 

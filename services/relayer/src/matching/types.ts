@@ -22,7 +22,7 @@ export interface Order {
   sequence: bigint; // 排序序号 (时间优先)
   status: OrderStatus; // 订单状态
   createdAt: number; // 创建时间戳
-  tif?: "IOC" | "FOK";
+  tif?: "IOC" | "FOK" | "FAK" | "GTC" | "GTD";
   postOnly?: boolean;
 }
 
@@ -53,7 +53,30 @@ export interface MatchResult {
   matches: Match[];
   remainingOrder: Order | null; // 未完全成交的剩余订单
   error?: string;
+  errorCode?: OrderErrorCode;
 }
+
+export type OrderErrorCode =
+  | "INVALID_MARKET_KEY"
+  | "INVALID_OUTCOME_INDEX"
+  | "INVALID_CHAIN_ID"
+  | "INVALID_VERIFYING_CONTRACT"
+  | "INVALID_MAKER"
+  | "INVALID_SALT"
+  | "INVALID_EXPIRY"
+  | "INVALID_SIGNATURE"
+  | "INVALID_PRICE"
+  | "INVALID_TICK_SIZE"
+  | "INVALID_AMOUNT"
+  | "INVALID_TIME_IN_FORCE"
+  | "INVALID_POST_ONLY"
+  | "ORDER_EXPIRED"
+  | "DUPLICATE_ORDER"
+  | "INSUFFICIENT_BALANCE"
+  | "MARKET_LONG_EXPOSURE_LIMIT"
+  | "MARKET_SHORT_EXPOSURE_LIMIT"
+  | "BALANCE_CHECK_FAILED"
+  | "ORDERBOOK_BUSY";
 
 // ============ 订单簿相关类型 ============
 
@@ -133,8 +156,10 @@ export interface MatchingEngineConfig {
   priceTickSize: bigint;
   batchSettlementInterval: number;
   batchSettlementThreshold: number;
+  enableSelfTradeProtection?: boolean;
   maxMarketLongExposureUsdc?: number;
   maxMarketShortExposureUsdc?: number;
+  gtdMaxExpiryDays?: number;
 }
 
 export const DEFAULT_CONFIG: MatchingEngineConfig = {
@@ -151,6 +176,8 @@ export const DEFAULT_CONFIG: MatchingEngineConfig = {
   priceTickSize: 1n,
   batchSettlementInterval: 5000,
   batchSettlementThreshold: 10,
+  enableSelfTradeProtection: false,
   maxMarketLongExposureUsdc: 0,
   maxMarketShortExposureUsdc: 0,
+  gtdMaxExpiryDays: 0,
 };

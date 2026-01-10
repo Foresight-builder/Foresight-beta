@@ -470,7 +470,7 @@ describe("MatchingEngine", () => {
         signature: "0x1234",
         chainId: 80002,
         verifyingContract: "0x1234567890123456789012345678901234567890",
-        tif: "GTC" as any,
+        tif: "BAD" as any,
       };
 
       const result = await engine.submitOrder(order);
@@ -501,6 +501,10 @@ describe("MatchingEngine", () => {
       const fokResult = await engine.submitOrder({ ...common, tif: "FOK" });
       expect(fokResult.success).toBe(false);
       expect(fokResult.error).toContain("Post-only");
+
+      const fakResult = await engine.submitOrder({ ...common, tif: "FAK" });
+      expect(fakResult.success).toBe(false);
+      expect(fakResult.error).toContain("Post-only");
     });
   });
 
@@ -616,6 +620,68 @@ describe("MatchingEngine", () => {
       expect(book.getOrderCount()).toBe(0);
     });
 
+    it("should execute FAK order and not leave resting quantity", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+
+      const existingAsk: Order = createTestOrder({
+        id: "ask-1",
+        isBuy: false,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+      });
+      book.addOrder(existingAsk);
+
+      const fakOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 600000n,
+        amount: 2_000_000_000_000_000_000n,
+        salt: "20003",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "FAK",
+      };
+
+      const result = await engine.submitOrder(fakOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(1);
+      expect(result.matches[0].matchedAmount).toBe(1_000_000_000_000_000_000n);
+      expect(result.remainingOrder).toBeNull();
+      expect(book.getOrderCount()).toBe(0);
+    });
+
+    it("should reject GTD order without expiry", async () => {
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const gtdOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "90001",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTD",
+      };
+
+      const result = await engine.submitOrder(gtdOrder);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe("INVALID_EXPIRY");
+    });
+
     it("should cancel unfilled IOC order without placing it on book", async () => {
       (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
       (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
@@ -725,6 +791,57 @@ describe("MatchingEngine", () => {
       expect(result.matches.length).toBe(0);
       expect(result.remainingOrder).toBeNull();
       expect(book.getOrderCount()).toBe(1);
+    });
+  });
+
+  describe("Self trade protection", () => {
+    it("should not match against own resting order when enabled", async () => {
+      const engineStp = new MatchingEngine({
+        makerFeeBps: 0,
+        takerFeeBps: 40,
+        minOrderAmount: 1_000_000_000_000n,
+        maxOrderAmount: 1_000_000_000_000_000_000_000n,
+        enableSelfTradeProtection: true,
+      });
+
+      (engineStp as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engineStp as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+
+      const maker = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+      const manager = (engineStp as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:stp", 0);
+      book.addOrder(
+        createTestOrder({
+          id: `${maker}-1`,
+          marketKey: "80002:stp",
+          maker,
+          outcomeIndex: 0,
+          isBuy: false,
+          price: 500000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
+
+      const result = await engineStp.submitOrder({
+        marketKey: "80002:stp",
+        maker,
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 600000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "100",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "IOC",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(0);
+      expect(book.getOrderCount()).toBe(1);
+
+      await engineStp.shutdown();
     });
   });
 

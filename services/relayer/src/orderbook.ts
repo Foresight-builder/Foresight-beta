@@ -139,6 +139,7 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
     .from("orders")
     .upsert(upsertRow, {
       onConflict: "verifying_contract,chain_id,maker_address,maker_salt",
+      ignoreDuplicates: true,
     })
     .select()
     .maybeSingle();
@@ -147,7 +148,19 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
     console.error("[placeSignedOrder] Supabase Error:", error);
     throw new Error(error.message);
   }
-  return data;
+  if (data) return data;
+
+  const { data: existing, error: readError } = await supabaseAdmin
+    .from("orders")
+    .select("*")
+    .eq("verifying_contract", vc)
+    .eq("chain_id", chainId)
+    .eq("maker_address", maker)
+    .eq("maker_salt", order.salt.toString())
+    .maybeSingle();
+
+  if (readError) throw new Error(readError.message);
+  return existing;
 }
 
 export async function cancelSalt(input: z.infer<typeof InputSchemaCancelSalt>) {
