@@ -1,9 +1,10 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
+import { toast } from "@/lib/toast";
 import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
@@ -13,6 +14,8 @@ import { mergeMessages } from "./chatPanel/utils/mergeMessages";
 import { ChatHeader } from "./chatPanel/ui/ChatHeader";
 import { MessagesList } from "./chatPanel/ui/MessagesList";
 import { ChatInputArea } from "./chatPanel/ui/ChatInputArea";
+import EmptyState from "@/components/EmptyState";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 function buildDebatePrefix(
   stance: NonNullable<ChatMessageView["debate_stance"]>,
@@ -106,14 +109,25 @@ export default function ChatPanel({
     multisigSign,
   } = useWallet();
   const tChat = useTranslations("chat");
+  const tCommon = useTranslations("common");
 
-  const { messages } = useDiscussionMessages(eventId);
-  const { forumMessages } = useForumThreads(eventId);
+  const {
+    messages,
+    loading: discussionLoading,
+    error: discussionError,
+    refresh: refreshDiscussion,
+  } = useDiscussionMessages(eventId);
+  const {
+    forumMessages,
+    loading: forumLoading,
+    error: forumError,
+    refresh: refreshForum,
+  } = useForumThreads(eventId);
   const { nameMap } = useNameMap({ messages, forumMessages, account });
 
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
@@ -209,10 +223,19 @@ export default function ChatPanel({
     return tChat("header.withTopic").replace("{title}", t);
   }, [roomTitle, tChat]);
 
+  const loadFailed = discussionError || forumError;
+  const loadLoading = discussionLoading || forumLoading;
+  const retryLoad = useCallback(() => {
+    refreshDiscussion();
+    refreshForum();
+  }, [refreshDiscussion, refreshForum]);
+
   const sendMessage = async (imageUrl?: string) => {
     if (!input.trim() && !imageUrl) return;
     if (!account) {
-      setError(tChat("errors.walletRequired"));
+      const msg = tChat("errors.walletRequired");
+      setSendError(msg);
+      toast.error(tCommon("error"), msg);
       return;
     }
     const effectiveDebateMode = partition === "debate" || debateMode;
@@ -220,7 +243,7 @@ export default function ChatPanel({
       ? `${buildDebatePrefix(debateStance, debateKind)} ${input}`
       : input;
     setSending(true);
-    setError(null);
+    setSendError(null);
     try {
       const res = await fetch("/api/discussions", {
         method: "POST",
@@ -243,7 +266,9 @@ export default function ChatPanel({
       setReplyTo(null);
       setPartition(effectiveDebateMode ? "debate" : "chat");
     } catch (e: any) {
-      setError(tChat("errors.sendFailed"));
+      const msg = tChat("errors.sendFailed");
+      setSendError(msg);
+      toast.error(tCommon("error"), msg);
     } finally {
       setSending(false);
     }
@@ -298,15 +323,36 @@ export default function ChatPanel({
         })}
       </div>
 
-      <MessagesList
-        mergedMessages={filteredMessages}
-        account={account}
-        displayName={displayName}
-        tChat={tChat}
-        setInput={setInput}
-        listRef={listRef}
-        setReplyTo={setReplyTo} // 确保正确传递状态设置函数
-      />
+      {loadFailed ? (
+        <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 bg-transparent custom-scrollbar">
+          <EmptyState
+            icon={AlertTriangle}
+            title={tCommon("loadFailed")}
+            description={tChat("empty.description")}
+            action={{
+              label: tCommon("retry"),
+              onClick: retryLoad,
+            }}
+          />
+        </div>
+      ) : loadLoading && filteredMessages.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center px-4 py-10 bg-transparent">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{tCommon("loading")}</span>
+          </div>
+        </div>
+      ) : (
+        <MessagesList
+          mergedMessages={filteredMessages}
+          account={account}
+          displayName={displayName}
+          tChat={tChat}
+          setInput={setInput}
+          listRef={listRef}
+          setReplyTo={setReplyTo}
+        />
+      )}
 
       <ChatInputArea
         account={account}
@@ -325,7 +371,7 @@ export default function ChatPanel({
         replyTo={replyTo}
         setReplyTo={setReplyTo}
         displayName={displayName}
-        error={error}
+        error={sendError}
         debateMode={debateMode}
         setDebateMode={setDebateMode}
         debateStance={debateStance}

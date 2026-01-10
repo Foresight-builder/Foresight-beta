@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
@@ -42,6 +42,11 @@ type MarketPlanPreview = {
   partialFill: boolean;
 };
 
+type ConfirmState = null | {
+  message: string;
+  onConfirm: () => void | Promise<void>;
+};
+
 export function usePredictionDetail() {
   const params = useParams();
   const { account, provider: walletProvider, switchNetwork } = useWallet();
@@ -75,6 +80,18 @@ export function usePredictionDetail() {
   const { trades } = useTradesPolling(market);
   const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
   const [marketPlanLoading, setMarketPlanLoading] = useState(false);
+
+  const [marketConfirmState, setMarketConfirmState] = useState<ConfirmState>(null);
+  const closeMarketConfirm = useCallback(() => setMarketConfirmState(null), []);
+  const cancelMarketConfirm = useCallback(() => {
+    setMarketConfirmState(null);
+    setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
+  }, [tTrading]);
+  const runMarketConfirm = useCallback(() => {
+    const action = marketConfirmState?.onConfirm;
+    closeMarketConfirm();
+    void action?.();
+  }, [closeMarketConfirm, marketConfirmState]);
 
   const { depthBuy, depthSell, bestBid, bestAsk } = useOrderbookDepthPolling({
     market,
@@ -310,6 +327,28 @@ export function usePredictionDetail() {
     });
   };
 
+  const handleOrderError = useCallback(
+    (e: any) => {
+      let msg = e?.message || tTrading("orderFlow.tradeFailed");
+      if (tradeSide === "sell") {
+        const lower = msg.toLowerCase();
+        const looksLikeNoBalance =
+          lower.includes("insufficient") ||
+          lower.includes("balance") ||
+          lower.includes("no tokens") ||
+          lower.includes("not enough");
+        if (looksLikeNoBalance) {
+          msg = tTrading("orderFlow.sellNoBalance");
+        } else {
+          msg = `${msg} ${tTrading("orderFlow.sellMaybeNoMint")}`;
+        }
+      }
+      setOrderMsg(msg);
+      toast.error(tTrading("toast.orderFailedTitle"), msg || tTrading("toast.orderFailedDesc"));
+    },
+    [tTrading, tradeSide]
+  );
+
   const submitOrder = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -425,82 +464,92 @@ export function usePredictionDetail() {
           totalCost: totalStr,
           slippage: slippageStr,
         });
-        const ok = typeof window !== "undefined" ? window.confirm(confirmMsg) : true;
-        if (!ok) {
-          setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
-          return;
-        }
+        setMarketConfirmState({
+          message: confirmMsg,
+          onConfirm: async () => {
+            setIsSubmitting(true);
+            setOrderMsg(null);
+            try {
+              if (tradeSide === "buy") {
+                const allowance = await tokenContract.allowance(account, market.market);
+                if (allowance < totalCostBN) {
+                  setOrderMsg(tTrading("orderFlow.approving"));
+                  const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
+                  await txApp.wait();
+                }
+              } else {
+                const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+                const outcomeTokenAddress = await marketContract.outcomeToken();
+                const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+                const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+                if (!isApproved) {
+                  setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
+                  const tx1155 = await outcome1155.setApprovalForAll(market.market, true);
+                  await tx1155.wait();
+                }
+              }
 
-        if (tradeSide === "buy") {
-          const allowance = await tokenContract.allowance(account, market.market);
-          if (allowance < totalCostBN) {
-            setOrderMsg(tTrading("orderFlow.approving"));
-            const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
-            await txApp.wait();
-          }
-        } else {
-          const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-          const outcomeTokenAddress = await marketContract.outcomeToken();
-          const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
-          if (!isApproved) {
-            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-            const tx1155 = await outcome1155.setApprovalForAll(market.market, true);
-            await tx1155.wait();
-          }
-        }
+              if (!RELAYER_BASE) {
+                throw new Error(tTrading("orderFlow.relayerNotConfigured"));
+              }
 
-        if (!RELAYER_BASE) {
-          throw new Error(tTrading("orderFlow.relayerNotConfigured"));
-        }
+              const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+              const ordersArr: any[] = [];
+              const sigArr: string[] = [];
+              const fillArr: bigint[] = [];
+              for (const f of fills) {
+                const fillAmount = BigInt(String(f.fillAmount || "0"));
+                if (fillAmount <= 0n) continue;
+                const req = f.req || {};
+                ordersArr.push({
+                  maker: String(req.maker),
+                  outcomeIndex: Number(req.outcomeIndex),
+                  isBuy: Boolean(req.isBuy),
+                  price: BigInt(String(req.price)),
+                  amount: BigInt(String(req.amount)),
+                  salt: BigInt(String(req.salt)),
+                  expiry: BigInt(String(req.expiry || "0")),
+                });
+                sigArr.push(String(f.signature));
+                fillArr.push(fillAmount);
+              }
 
-        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-        const ordersArr: any[] = [];
-        const sigArr: string[] = [];
-        const fillArr: bigint[] = [];
-        for (const f of fills) {
-          const fillAmount = BigInt(String(f.fillAmount || "0"));
-          if (fillAmount <= 0n) continue;
-          const req = f.req || {};
-          ordersArr.push({
-            maker: String(req.maker),
-            outcomeIndex: Number(req.outcomeIndex),
-            isBuy: Boolean(req.isBuy),
-            price: BigInt(String(req.price)),
-            amount: BigInt(String(req.amount)),
-            salt: BigInt(String(req.salt)),
-            expiry: BigInt(String(req.expiry || "0")),
-          });
-          sigArr.push(String(f.signature));
-          fillArr.push(fillAmount);
-        }
+              if (ordersArr.length === 0) throw new Error(tTrading("orderFlow.noFillableOrders"));
+              setOrderMsg(
+                formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                  count: ordersArr.length,
+                })
+              );
+              const tx = await marketContract.batchFill(ordersArr, sigArr, fillArr);
+              const receipt = await tx.wait();
 
-        if (ordersArr.length === 0) throw new Error(tTrading("orderFlow.noFillableOrders"));
-        setOrderMsg(
-          formatTranslation(tTrading("orderFlow.matchingInProgress"), {
-            count: ordersArr.length,
-          })
-        );
-        const tx = await marketContract.batchFill(ordersArr, sigArr, fillArr);
-        const receipt = await tx.wait();
+              try {
+                await fetch(`${API_BASE}/orderbook/report-trade`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    chainId: market.chain_id,
+                    txHash: receipt.hash,
+                  }),
+                });
+              } catch {}
 
-        // 仍保留回灌兜底（relayer 后续会自动索引，这里留一层兼容）
-        try {
-          await fetch(`${API_BASE}/orderbook/report-trade`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chainId: market.chain_id,
-              txHash: receipt.hash,
-            }),
-          });
-        } catch {}
-
-        if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
-        else setOrderMsg(tTrading("orderFlow.filled"));
-        setAmountInput("");
-        await refreshUserOrders();
-        toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
+              if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
+              else setOrderMsg(tTrading("orderFlow.filled"));
+              setAmountInput("");
+              await refreshUserOrders();
+              toast.success(
+                tTrading("toast.orderSuccessTitle"),
+                tTrading("toast.orderSuccessDesc")
+              );
+            } catch (e: any) {
+              handleOrderError(e);
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        });
+        setIsSubmitting(false);
         return;
       }
 
@@ -649,22 +698,7 @@ export function usePredictionDetail() {
         throw new Error(json.message || tTrading("orderFlow.orderFailedFallback"));
       }
     } catch (e: any) {
-      let msg = e?.message || tTrading("orderFlow.tradeFailed");
-      if (tradeSide === "sell") {
-        const lower = msg.toLowerCase();
-        const looksLikeNoBalance =
-          lower.includes("insufficient") ||
-          lower.includes("balance") ||
-          lower.includes("no tokens") ||
-          lower.includes("not enough");
-        if (looksLikeNoBalance) {
-          msg = tTrading("orderFlow.sellNoBalance");
-        } else {
-          msg = `${msg} ${tTrading("orderFlow.sellMaybeNoMint")}`;
-        }
-      }
-      setOrderMsg(msg);
-      toast.error(tTrading("toast.orderFailedTitle"), msg || tTrading("toast.orderFailedDesc"));
+      handleOrderError(e);
     } finally {
       setIsSubmitting(false);
     }
@@ -717,5 +751,10 @@ export function usePredictionDetail() {
     cancelOrder,
     marketPlanPreview,
     marketPlanLoading,
+    marketConfirmOpen: marketConfirmState !== null,
+    marketConfirmMessage: marketConfirmState?.message || null,
+    cancelMarketConfirm,
+    runMarketConfirm,
+    closeMarketConfirm,
   };
 }

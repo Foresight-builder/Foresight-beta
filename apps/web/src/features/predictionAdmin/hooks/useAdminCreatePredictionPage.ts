@@ -25,7 +25,17 @@ export function useAdminCreatePredictionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showDraftMenu, setShowDraftMenu] = useState(false);
 
-  const { lastSaved, msg, setMsg, manualSaveDraft, clearDraft } = usePredictionDraft({
+  const {
+    lastSaved,
+    msg,
+    setMsg,
+    manualSaveDraft,
+    clearDraft,
+    draftConfirmOpen,
+    draftConfirmMessage,
+    closeDraftConfirm,
+    confirmDraft,
+  } = usePredictionDraft({
     form,
     setForm,
     outcomes,
@@ -119,6 +129,10 @@ export function useAdminCreatePredictionPage() {
     msg,
     manualSaveDraft,
     clearDraft,
+    draftConfirmOpen,
+    draftConfirmMessage,
+    closeDraftConfirm,
+    confirmDraft,
     setField,
     onAddOutcome,
     onDelOutcome,

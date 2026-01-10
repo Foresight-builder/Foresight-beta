@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ChatMessageView } from "../types";
 
 export function useForumThreads(eventId: number) {
   const [forumThreads, setForumThreads] = useState<any[]>([]);
   const [forumMessages, setForumMessages] = useState<ChatMessageView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     const loadForum = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const res = await fetch(`/api/forum?eventId=${eventId}`);
+        if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
         const threads = Array.isArray(data?.threads) ? data.threads : [];
         setForumThreads(threads);
@@ -34,10 +44,14 @@ export function useForumThreads(eventId: number) {
         });
         fm.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         setForumMessages(fm);
-      } catch {}
+        setLoading(false);
+      } catch {
+        setError("load_failed");
+        setLoading(false);
+      }
     };
     loadForum();
-  }, [eventId]);
+  }, [eventId, reloadKey]);
 
-  return { forumThreads, forumMessages };
+  return { forumThreads, forumMessages, loading, error, refresh };
 }

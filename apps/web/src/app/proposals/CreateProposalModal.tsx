@@ -79,9 +79,14 @@ export default function CreateProposalModal({
         try {
           errorPayload = await res.json();
         } catch {
-          errorPayload = { status: res.status };
+          errorPayload = null;
         }
-        handleApiError(errorPayload, "errors.somethingWrong");
+        const mergedErrorPayload =
+          errorPayload && typeof errorPayload === "object" && errorPayload !== null
+            ? { ...(errorPayload as Record<string, unknown>), status: res.status }
+            : { status: res.status };
+
+        handleApiError(mergedErrorPayload, "errors.somethingWrong");
         return;
       }
 

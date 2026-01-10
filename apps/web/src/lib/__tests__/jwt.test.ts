@@ -1,7 +1,10 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { webcrypto } from "crypto";
 import { createToken, verifyToken, createRefreshToken, decodeToken } from "../jwt";
+import { getSession } from "../session";
+import { getSessionAddress } from "../serverUtils";
+import { createMockNextRequest } from "../../test/apiTestHelpers";
 
 if (!(globalThis as any).crypto) {
   (globalThis as any).crypto = webcrypto as any;
@@ -101,6 +104,57 @@ describe("JWT Token Management", () => {
       const payload = decodeToken(invalidToken);
 
       expect(payload).toBeNull();
+    });
+  });
+
+  describe("Session helpers", () => {
+    it("getSession should read payload from fs_session", async () => {
+      const token = await createToken(testAddress, testChainId);
+      const req = createMockNextRequest({
+        url: "http://localhost:3000/api/auth/me",
+        cookies: { fs_session: token },
+      });
+
+      const payload = await getSession(req);
+      expect(payload?.address).toBe(testAddress.toLowerCase());
+      expect(payload?.chainId).toBe(testChainId);
+    });
+
+    it("getSession should fall back to fs_refresh when fs_session missing", async () => {
+      const refreshToken = await createRefreshToken(testAddress, testChainId);
+      const req = createMockNextRequest({
+        url: "http://localhost:3000/api/auth/me",
+        cookies: { fs_refresh: refreshToken },
+      });
+
+      const payload = await getSession(req);
+      expect(payload?.address).toBe(testAddress.toLowerCase());
+      expect(payload?.chainId).toBe(testChainId);
+    });
+
+    it("getSessionAddress should fall back to fs_refresh when fs_session missing", async () => {
+      const refreshToken = await createRefreshToken(testAddress, testChainId);
+      const req = createMockNextRequest({
+        url: "http://localhost:3000/api/forum/vote",
+        cookies: { fs_refresh: refreshToken },
+      });
+
+      const addr = await getSessionAddress(req);
+      expect(addr).toBe(testAddress.toLowerCase());
+    });
+
+    it("getSessionAddress should prefer fs_session over fs_refresh", async () => {
+      const sessionAddr = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+      const refreshAddr = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+      const sessionToken = await createToken(sessionAddr, testChainId);
+      const refreshToken = await createRefreshToken(refreshAddr, testChainId);
+      const req = createMockNextRequest({
+        url: "http://localhost:3000/api/forum/vote",
+        cookies: { fs_session: sessionToken, fs_refresh: refreshToken },
+      });
+
+      const addr = await getSessionAddress(req);
+      expect(addr).toBe(sessionAddr);
     });
   });
 });

@@ -8,6 +8,7 @@ import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import { formatAddress } from "@/lib/address";
 import GradientPage from "@/components/ui/GradientPage";
+import { toast } from "@/lib/toast";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -118,13 +119,13 @@ export default function ReviewPage() {
         }),
       });
       if (!res.ok) {
-        alert("Failed to update metadata");
+        toast.error(tProposals("review.alertSubmitFailed"));
         return;
       }
       setEditing(false);
       await loadItems();
     } catch {
-      alert("Failed to update metadata");
+      toast.error(tProposals("review.alertSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -133,7 +134,7 @@ export default function ReviewPage() {
   const submitAction = async (action: "approve" | "reject" | "needs_changes") => {
     if (!selected) return;
     if ((action === "reject" || action === "needs_changes") && !reason.trim()) {
-      alert(tProposals("review.alertReasonRequired"));
+      toast.warning(tProposals("review.alertReasonRequired"));
       return;
     }
     setSubmitting(true);
@@ -144,13 +145,13 @@ export default function ReviewPage() {
         body: JSON.stringify({ action, reason }),
       });
       if (!res.ok) {
-        alert(tProposals("review.alertSubmitFailed"));
+        toast.error(tProposals("review.alertSubmitFailed"));
         return;
       }
       setReason("");
       await loadItems();
     } catch {
-      alert(tProposals("review.alertSubmitFailed"));
+      toast.error(tProposals("review.alertSubmitFailed"));
     } finally {
       setSubmitting(false);
     }

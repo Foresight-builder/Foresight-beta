@@ -67,6 +67,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const [installUrl, setInstallUrl] = useState<string>("");
   const [walletStep, setWalletStep] = useState<WalletStep>("select");
   const [mounted, setMounted] = useState(false);
+  const verifiedEmailRef = React.useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -156,7 +157,11 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         const p = data?.profile;
         if (p) {
           setUsername(String(p.username || ""));
-          setEmail(String(p.email || ""));
+          const nextEmail = String(p.email || "");
+          setEmail(nextEmail);
+          const verified = Boolean(nextEmail && /.+@.+\..+/.test(nextEmail));
+          setEmailVerified(verified);
+          verifiedEmailRef.current = verified ? nextEmail.trim().toLowerCase() : null;
         }
       } catch {
       } finally {
@@ -164,6 +169,24 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       }
     })();
   }, [isOpen, showProfileForm, normalizedAccount]);
+
+  const setEmailWithReset = React.useCallback(
+    (value: string) => {
+      setEmail(value);
+      const norm = String(value || "")
+        .trim()
+        .toLowerCase();
+      if (verifiedEmailRef.current && norm === verifiedEmailRef.current) {
+        setEmailVerified(true);
+        return;
+      }
+      setEmailVerified(false);
+      setOtpRequested(false);
+      setOtp("");
+      setCodePreview(null);
+    },
+    [setOtpRequested]
+  );
 
   const installMap: Record<string, { name: string; url: string }> = {
     metamask: { name: "MetaMask", url: "https://metamask.io/download/" },
@@ -251,7 +274,11 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
             setShowProfileForm(true);
             setWalletStep("profile");
             setUsername(String(p?.username || ""));
-            setEmail(String(p?.email || ""));
+            const nextEmail = String(p?.email || "");
+            setEmail(nextEmail);
+            const verified = Boolean(nextEmail && /.+@.+\..+/.test(nextEmail));
+            setEmailVerified(verified);
+            verifiedEmailRef.current = verified ? nextEmail.trim().toLowerCase() : null;
             setSelectedWallet(null);
             return;
           }
@@ -371,6 +398,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       });
       setOtpRequested(true);
       setEmailVerified(false);
+      verifiedEmailRef.current = null;
       if (data?.codePreview) {
         setOtp(String(data.codePreview || ""));
         setCodePreview(String(data.codePreview || ""));
@@ -378,7 +406,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         setCodePreview(null);
       }
     } catch (e: any) {
-      setProfileError(tWalletModal("errors.otpSendFailed"));
+      setProfileError(String(e?.message || tWalletModal("errors.otpSendFailed")));
     } finally {
       setEmailLoading(false);
     }
@@ -394,8 +422,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         body: JSON.stringify({ walletAddress: addr, email, code: otp }),
       });
       setEmailVerified(true);
+      verifiedEmailRef.current = email.trim().toLowerCase();
     } catch (e: any) {
-      setProfileError(tWalletModal("errors.otpVerifyFailed"));
+      setProfileError(String(e?.message || tWalletModal("errors.otpVerifyFailed")));
     } finally {
       setEmailLoading(false);
     }
@@ -435,7 +464,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     authError,
     selectedWallet,
     email,
-    setEmail,
+    setEmail: setEmailWithReset,
     otpRequested,
     setOtpRequested,
     otp,

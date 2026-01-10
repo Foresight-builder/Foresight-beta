@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bell } from "lucide-react";
 import Link from "next/link";
@@ -11,14 +11,31 @@ import { useTopNavBarLogic } from "./topNavBar/useTopNavBarLogic";
 import { WalletSection } from "./topNavBar/WalletSection";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
+import { Modal } from "@/components/ui/Modal";
 
 export default function TopNavBar() {
   const nav = useTopNavBarLogic();
   const { mounted, modal, walletModalOpen, setWalletModalOpen } = nav;
   const tNotifications = useTranslations("notifications");
+  const tCommon = useTranslations("common");
   const { locale } = useLocale();
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
   const notificationsPanelRef = useRef<HTMLDivElement | null>(null);
+  const [confirmState, setConfirmState] = useState<null | {
+    message: string;
+    onConfirm: () => void;
+  }>(null);
+
+  const closeConfirm = useCallback(() => setConfirmState(null), []);
+
+  const confirmBusy =
+    nav.archiveAllNotificationsLoading || nav.archiveNotificationIdLoading !== null;
+  const runConfirm = useCallback(() => {
+    if (!confirmState || confirmBusy) return;
+    const action = confirmState.onConfirm;
+    closeConfirm();
+    action();
+  }, [closeConfirm, confirmBusy, confirmState]);
 
   const badgeText = useMemo(() => {
     if (!nav.notificationsCount) return "";
@@ -175,13 +192,10 @@ export default function TopNavBar() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            typeof window !== "undefined" &&
-                            !window.confirm(tNotifications("confirmArchiveAll"))
-                          ) {
-                            return;
-                          }
-                          nav.handleArchiveAllNotifications();
+                          setConfirmState({
+                            message: tNotifications("confirmArchiveAll"),
+                            onConfirm: () => nav.handleArchiveAllNotifications(),
+                          });
                         }}
                         disabled={nav.archiveAllNotificationsLoading}
                         className="text-[11px] font-normal text-gray-500 hover:text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -268,13 +282,11 @@ export default function TopNavBar() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                if (
-                                  typeof window !== "undefined" &&
-                                  !window.confirm(tNotifications("confirmArchiveOne"))
-                                ) {
-                                  return;
-                                }
-                                nav.handleArchiveNotification(item.id, item.unread);
+                                setConfirmState({
+                                  message: tNotifications("confirmArchiveOne"),
+                                  onConfirm: () =>
+                                    nav.handleArchiveNotification(item.id, item.unread),
+                                });
                               }}
                               disabled={nav.archiveNotificationIdLoading === item.id}
                             >
@@ -309,6 +321,44 @@ export default function TopNavBar() {
           <WalletSection nav={nav} />
         </div>
       </div>
+
+      <Modal
+        open={confirmState !== null}
+        onClose={closeConfirm}
+        role="alertdialog"
+        ariaLabelledby="notifications-confirm-title"
+        ariaDescribedby="notifications-confirm-desc"
+      >
+        <div className="bg-white rounded-xl shadow-xl p-5 w-[92vw] max-w-sm border border-gray-100">
+          <h3 id="notifications-confirm-title" className="text-sm font-semibold text-gray-900">
+            {tCommon("confirm")}
+          </h3>
+          <p
+            id="notifications-confirm-desc"
+            className="mt-2 text-sm text-gray-600 whitespace-pre-wrap"
+          >
+            {confirmState?.message || ""}
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={closeConfirm}
+              disabled={confirmBusy}
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={runConfirm}
+              disabled={confirmBusy}
+            >
+              {tCommon("confirm")}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {mounted && modal && createPortal(modal, document.body)}
 

@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { SignJWT } from "jose";
+import { createHash } from "crypto";
 import {
   getEmailOtpShared,
   normalizeAddress,
@@ -10,12 +12,47 @@ import {
 } from "@/lib/serverUtils";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
+const EMAIL_OTP_COOKIE = "fs_email_otp";
+const EMAIL_OTP_ISSUER = "foresight-email-otp";
+const EMAIL_OTP_AUDIENCE = "foresight-users";
+
 function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email);
 }
 
 function genCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function resolveEmailOtpSecret(): { secretBytes: Uint8Array; secretString: string } {
+  const raw = (process.env.JWT_SECRET || "").trim();
+  if (raw) return { secretBytes: new TextEncoder().encode(raw), secretString: raw };
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing JWT_SECRET");
+  }
+  const fallback = "your-secret-key-change-in-production";
+  return { secretBytes: new TextEncoder().encode(fallback), secretString: fallback };
+}
+
+function hashEmailOtpCode(code: string, secretString: string): string {
+  return createHash("sha256").update(`${code}:${secretString}`, "utf8").digest("hex");
+}
+
+async function createEmailOtpToken(payload: {
+  email: string;
+  address: string;
+  codeHash: string;
+  failCount: number;
+  lockUntil: number;
+}) {
+  const { secretBytes } = resolveEmailOtpSecret();
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(EMAIL_OTP_ISSUER)
+    .setAudience(EMAIL_OTP_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime("15m")
+    .sign(secretBytes);
 }
 
 async function sendMailSMTP(email: string, code: string) {
@@ -53,6 +90,7 @@ export async function POST(req: NextRequest) {
       .trim()
       .toLowerCase();
     const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
+    const storeKey = `${walletAddress}:${email}`;
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
@@ -65,7 +103,7 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
     const now = Date.now();
     const rec =
-      store.get(email) ||
+      store.get(storeKey) ||
       ({
         email,
         address: walletAddress,
@@ -103,7 +141,7 @@ export async function POST(req: NextRequest) {
     rec.sentAtList.push(now);
     rec.address = walletAddress;
     rec.createdIp = ip || rec.createdIp;
-    store.set(email, rec);
+    store.set(storeKey, rec);
 
     logs.push({ email, address: walletAddress, status: "queued", sentAt: now } as LogItem);
     try {
@@ -116,7 +154,23 @@ export async function POST(req: NextRequest) {
         sentAt: Date.now(),
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
-      return successResponse({ expiresInSec: 900 }, "验证码已发送");
+      const codeHash = hashEmailOtpCode(code, resolveEmailOtpSecret().secretString);
+      const token = await createEmailOtpToken({
+        email,
+        address: walletAddress,
+        codeHash,
+        failCount: 0,
+        lockUntil: 0,
+      });
+      const res = successResponse({ expiresInSec: 900 }, "验证码已发送");
+      res.cookies.set(EMAIL_OTP_COOKIE, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 15 * 60,
+      });
+      return res;
     } catch (err: unknown) {
       const errMessage = err instanceof Error ? err.message : String(err);
       try {
@@ -144,13 +198,29 @@ export async function POST(req: NextRequest) {
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
       if (process.env.NODE_ENV !== "production") {
-        return successResponse(
+        const codeHash = hashEmailOtpCode(code, resolveEmailOtpSecret().secretString);
+        const token = await createEmailOtpToken({
+          email,
+          address: walletAddress,
+          codeHash,
+          failCount: 0,
+          lockUntil: 0,
+        });
+        const res = successResponse(
           {
             codePreview: code,
             expiresInSec: 900,
           },
           "开发环境：邮件发送失败，已直接返回验证码"
         );
+        res.cookies.set(EMAIL_OTP_COOKIE, token, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: false,
+          path: "/",
+          maxAge: 15 * 60,
+        });
+        return res;
       }
       return ApiResponses.internalError("邮件发送失败", errMessage);
     }

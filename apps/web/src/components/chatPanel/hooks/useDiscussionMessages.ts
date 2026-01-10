@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ChatMessageView } from "../types";
 
@@ -24,14 +24,21 @@ function binaryInsertPosition(arr: ChatMessageView[], target: ChatMessageView): 
 
 export function useDiscussionMessages(eventId: number) {
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
-    let channel: any = null;
-    let isSubscribed = true;
-
+    let cancelled = false;
     const load = async () => {
       try {
-        if (!isSubscribed) return;
+        if (cancelled) return;
+        setLoading(true);
+        setError(null);
 
         if (supabase) {
           const { data, error } = await supabase
@@ -39,7 +46,7 @@ export function useDiscussionMessages(eventId: number) {
             .select("*")
             .eq("proposal_id", eventId)
             .order("created_at", { ascending: true });
-          if (!error && isSubscribed) {
+          if (!error && !cancelled) {
             const list = Array.isArray(data) ? data : [];
             setMessages(
               list.map((r: any) => ({
@@ -54,13 +61,15 @@ export function useDiscussionMessages(eventId: number) {
                 reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
               }))
             );
+            setLoading(false);
             return;
           }
         }
 
         const res = await fetch(`/api/discussions?proposalId=${eventId}`);
+        if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
-        if (!isSubscribed) return;
+        if (cancelled) return;
 
         const list = Array.isArray(data?.discussions) ? data.discussions : [];
         setMessages(
@@ -76,10 +85,25 @@ export function useDiscussionMessages(eventId: number) {
             reply_to_content: r.reply_to_content ? String(r.reply_to_content) : undefined,
           }))
         );
-      } catch {}
+        setLoading(false);
+      } catch {
+        if (!cancelled) {
+          setError("load_failed");
+          setLoading(false);
+        }
+      }
     };
 
-    load();
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, reloadKey]);
+
+  useEffect(() => {
+    let channel: any = null;
+    let isSubscribed = true;
 
     if (supabase) {
       channel = supabase
@@ -173,5 +197,5 @@ export function useDiscussionMessages(eventId: number) {
     };
   }, [eventId]);
 
-  return { messages, setMessages };
+  return { messages, setMessages, loading, error, refresh };
 }

@@ -40,13 +40,19 @@ export async function createSession(
  * 从请求中获取会话
  */
 export async function getSession(req: NextRequest): Promise<JWTPayload | null> {
-  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
+  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value || "";
+  if (token) {
+    const payload = await verifyToken(token);
+    if (payload) return payload;
   }
 
-  return await verifyToken(token);
+  const refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value || "";
+  if (refreshToken) {
+    const payload = await verifyToken(refreshToken);
+    if (payload) return payload;
+  }
+
+  return null;
 }
 
 /**
@@ -54,13 +60,19 @@ export async function getSession(req: NextRequest): Promise<JWTPayload | null> {
  */
 export async function getSessionFromCookies(): Promise<JWTPayload | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value || "";
+  if (token) {
+    const payload = await verifyToken(token);
+    if (payload) return payload;
   }
 
-  return await verifyToken(token);
+  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value || "";
+  if (refreshToken) {
+    const payload = await verifyToken(refreshToken);
+    if (payload) return payload;
+  }
+
+  return null;
 }
 
 /**

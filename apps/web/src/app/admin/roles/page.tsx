@@ -6,6 +6,7 @@ import { useTranslations } from "@/lib/i18n";
 import GradientPage from "@/components/ui/GradientPage";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
+import { toast } from "@/lib/toast";
 
 interface RoleUser {
   wallet_address: string;
@@ -75,14 +76,14 @@ export default function RolesPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         const msg = data?.message || t("updateFailed");
-        alert(msg);
+        toast.error(t("updateFailed"), String(msg || ""));
         return;
       }
       setUsers((prev) =>
         prev.map((u) => (u.wallet_address === wallet ? { ...u, is_reviewer: !current } : u))
       );
     } catch (e: any) {
-      alert(e?.message || t("updateFailed"));
+      toast.error(t("updateFailed"), String(e?.message || ""));
     } finally {
       setSavingWallet(null);
     }

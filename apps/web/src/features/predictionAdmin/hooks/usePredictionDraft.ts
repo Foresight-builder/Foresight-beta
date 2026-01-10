@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
 import { CATEGORY_MAPPING } from "@/features/trending/trendingModel";
 import type { Outcome, PredictionForm } from "../types";
 import { DRAFT_KEY, DEFAULT_FORM, DEFAULT_OUTCOMES } from "../constants";
@@ -22,8 +23,20 @@ export function usePredictionDraft({
   setOutcomes,
   tTrendingAdmin,
 }: UsePredictionDraftParams) {
+  const tCommon = useTranslations("common");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmState, setConfirmState] = useState<null | {
+    message: string;
+    onConfirm: () => void;
+  }>(null);
+
+  const closeConfirm = useCallback(() => setConfirmState(null), []);
+  const runConfirm = useCallback(() => {
+    const action = confirmState?.onConfirm;
+    closeConfirm();
+    action?.();
+  }, [closeConfirm, confirmState]);
 
   const manualSaveDraft = () => {
     const payload = { form, outcomes, ts: Date.now() };
@@ -40,36 +53,39 @@ export function usePredictionDraft({
     try {
       const data = JSON.parse(saved);
       setTimeout(() => {
-        if (!window.confirm(tTrendingAdmin("draft.restoreConfirm"))) return;
-
-        if (data.form) {
-          setForm((previous) => {
-            const next = { ...previous, ...data.form };
-            const rawCategory = String(next.category || "");
-            if (rawCategory) {
-              next.category = CATEGORY_MAPPING[rawCategory] || rawCategory;
+        setConfirmState({
+          message: tTrendingAdmin("draft.restoreConfirm"),
+          onConfirm: () => {
+            if (data.form) {
+              setForm((previous) => {
+                const next = { ...previous, ...data.form };
+                const rawCategory = String(next.category || "");
+                if (rawCategory) {
+                  next.category = CATEGORY_MAPPING[rawCategory] || rawCategory;
+                }
+                return next;
+              });
             }
-            return next;
-          });
-        }
 
-        if (data.outcomes) {
-          setOutcomes(data.outcomes);
-        }
+            if (data.outcomes) {
+              setOutcomes(data.outcomes);
+            }
 
-        if (data.ts) {
-          setLastSaved(new Date(data.ts));
-        }
+            if (data.ts) {
+              setLastSaved(new Date(data.ts));
+            }
 
-        toast.success(
-          tTrendingAdmin("draft.restoredToastTitle"),
-          tTrendingAdmin("draft.restoredToastDesc")
-        );
+            toast.success(
+              tTrendingAdmin("draft.restoredToastTitle"),
+              tTrendingAdmin("draft.restoredToastDesc")
+            );
+          },
+        });
       }, 100);
     } catch (error) {
-      console.error("Failed to load draft", error);
+      toast.error(tCommon("error"), tCommon("loadFailed"));
     }
-  }, [setForm, setOutcomes, tTrendingAdmin]);
+  }, [setForm, setOutcomes, tTrendingAdmin, tCommon]);
 
   useEffect(() => {
     if (!form.title && !form.description && outcomes.length === 2 && outcomes[0].label === "Yes") {
@@ -86,12 +102,16 @@ export function usePredictionDraft({
   }, [form, outcomes]);
 
   const clearDraft = () => {
-    if (!window.confirm(tTrendingAdmin("draft.clearConfirm"))) return;
-    localStorage.removeItem(DRAFT_KEY);
-    setForm(DEFAULT_FORM);
-    setOutcomes(DEFAULT_OUTCOMES);
-    setLastSaved(null);
-    setMsg(tTrendingAdmin("draft.clearedMsg"));
+    setConfirmState({
+      message: tTrendingAdmin("draft.clearConfirm"),
+      onConfirm: () => {
+        localStorage.removeItem(DRAFT_KEY);
+        setForm(DEFAULT_FORM);
+        setOutcomes(DEFAULT_OUTCOMES);
+        setLastSaved(null);
+        setMsg(tTrendingAdmin("draft.clearedMsg"));
+      },
+    });
   };
 
   return {
@@ -100,5 +120,9 @@ export function usePredictionDraft({
     setMsg,
     manualSaveDraft,
     clearDraft,
+    draftConfirmOpen: confirmState !== null,
+    draftConfirmMessage: confirmState?.message || "",
+    closeDraftConfirm: closeConfirm,
+    confirmDraft: runConfirm,
   };
 }

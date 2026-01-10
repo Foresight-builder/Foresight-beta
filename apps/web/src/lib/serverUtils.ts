@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { verifyToken, decodeToken } from "./jwt";
+import { verifyToken } from "./jwt";
 import { normalizeAddress } from "./address";
 
 export { normalizeAddress } from "./address";
@@ -26,25 +26,16 @@ export type LogItem = {
 };
 
 export async function getSessionAddress(req: NextRequest) {
-  const raw = req.cookies.get("fs_session")?.value || "";
-  if (!raw) return "";
-
-  try {
-    const obj = JSON.parse(raw) as unknown;
-    if (obj && typeof obj === "object" && "address" in obj) {
-      const addr = String((obj as { address?: unknown }).address || "");
-      if (addr) return normalizeAddress(addr);
-    }
-  } catch {}
-
-  const payload = await verifyToken(raw);
-  if (payload?.address) {
-    return normalizeAddress(String(payload.address));
+  const sessionToken = req.cookies.get("fs_session")?.value || "";
+  if (sessionToken) {
+    const payload = await verifyToken(sessionToken);
+    if (payload?.address) return normalizeAddress(String(payload.address));
   }
 
-  const decoded = decodeToken(raw);
-  if (decoded?.address) {
-    return normalizeAddress(String(decoded.address));
+  const refreshToken = req.cookies.get("fs_refresh")?.value || "";
+  if (refreshToken) {
+    const payload = await verifyToken(refreshToken);
+    if (payload?.address) return normalizeAddress(String(payload.address));
   }
 
   return "";

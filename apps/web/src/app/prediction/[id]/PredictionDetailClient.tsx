@@ -7,6 +7,7 @@ import { MarketChart } from "@/components/market/MarketChart";
 import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
+import { Modal } from "@/components/ui/Modal";
 import { Loader2 } from "lucide-react";
 import { useUserPortfolio } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
@@ -94,6 +95,7 @@ function buildBreadcrumbJsonLd(
 
 export default function PredictionDetailClient({ relatedProposalId }: PredictionDetailClientProps) {
   const tMarket = useTranslations("market");
+  const tCommon = useTranslations("common");
   const {
     loading,
     error,
@@ -141,6 +143,10 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     cancelOrder,
     marketPlanPreview,
     marketPlanLoading,
+    marketConfirmOpen,
+    marketConfirmMessage,
+    cancelMarketConfirm,
+    runMarketConfirm,
   } = usePredictionDetail();
 
   const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(account || undefined);
@@ -446,6 +452,42 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           </div>
         </div>
       </div>
+
+      <Modal
+        open={marketConfirmOpen}
+        onClose={cancelMarketConfirm}
+        role="alertdialog"
+        ariaLabelledby="market-order-confirm-title"
+        ariaDescribedby="market-order-confirm-desc"
+      >
+        <div className="bg-white rounded-xl shadow-xl p-5 w-[92vw] max-w-sm border border-gray-100">
+          <h3 id="market-order-confirm-title" className="text-sm font-semibold text-gray-900">
+            {tCommon("confirm")}
+          </h3>
+          <p
+            id="market-order-confirm-desc"
+            className="mt-2 text-sm text-gray-600 whitespace-pre-wrap"
+          >
+            {marketConfirmMessage || ""}
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={cancelMarketConfirm}
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              onClick={runMarketConfirm}
+            >
+              {tCommon("confirm")}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

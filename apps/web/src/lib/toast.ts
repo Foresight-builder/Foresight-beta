@@ -28,7 +28,7 @@ function safeLog(
     // 使用固定的 console 方法，避免动态访问
     const logMessage = `${prefix} ${message}${desc}`;
     if (level === "error") {
-      console.error(logMessage);
+      console.warn(logMessage);
     } else if (level === "warn") {
       console.warn(logMessage);
     } else {
@@ -219,21 +219,35 @@ function getCodeErrorText(code: string, defaultMessageKey: string) {
 export function handleApiError(error: unknown, defaultMessage = "errors.somethingWrong") {
   // 直接使用 console 记录，避免与 logger 的循环依赖
   if (process.env.NODE_ENV === "development") {
-    console.error("❌ [API Error]", error);
+    try {
+      console.warn("❌ [API Error]", error);
+    } catch {}
   }
 
   const payload = extractApiErrorPayload(error);
 
-  if (payload && typeof payload.status === "number" && Number.isFinite(payload.status)) {
-    const { title, description } = getStatusErrorText(payload.status, defaultMessage);
-    toast.error(title, description);
+  const status =
+    payload && typeof payload.status === "number" && Number.isFinite(payload.status)
+      ? payload.status
+      : undefined;
+
+  if (status !== undefined && status >= 400 && status <= 599) {
+    const { title, description } = getStatusErrorText(status, defaultMessage);
+    const serverMessage =
+      payload && typeof payload.message === "string" ? payload.message.trim() : "";
+    const effectiveDescription =
+      status >= 400 && status < 500 && serverMessage ? serverMessage : description;
+    toast.error(title, effectiveDescription);
     return;
   }
 
   if (payload && payload.code) {
-    const { title, description } = getCodeErrorText(payload.code, defaultMessage);
-    toast.error(title, description);
-    return;
+    const normalized = payload.code.toUpperCase();
+    if (normalized !== "SUCCESS" && normalized !== "OK") {
+      const { title, description } = getCodeErrorText(payload.code, defaultMessage);
+      toast.error(title, description);
+      return;
+    }
   }
 
   const message =

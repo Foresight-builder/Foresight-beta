@@ -6,6 +6,7 @@ import GradientPage from "@/components/ui/GradientPage";
 import DatePicker from "@/components/ui/DatePicker";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import {
   AlignLeft,
   ArrowRight,
@@ -476,6 +477,10 @@ export default function AdminCreatePredictionPage() {
     msg,
     manualSaveDraft,
     clearDraft,
+    draftConfirmOpen,
+    draftConfirmMessage,
+    closeDraftConfirm,
+    confirmDraft,
     setField,
     onAddOutcome,
     onDelOutcome,
@@ -483,6 +488,7 @@ export default function AdminCreatePredictionPage() {
     submit,
   } = useAdminCreatePredictionPage();
   const tAdminRoles = useTranslations("adminRoles");
+  const tCommon = useTranslations("common");
   const { locale } = useLocale();
 
   return (
@@ -576,6 +582,42 @@ export default function AdminCreatePredictionPage() {
           </Card>
         </motion.div>
       </div>
+
+      <Modal
+        open={draftConfirmOpen}
+        onClose={closeDraftConfirm}
+        role="alertdialog"
+        ariaLabelledby="prediction-draft-confirm-title"
+        ariaDescribedby="prediction-draft-confirm-desc"
+      >
+        <div className="bg-white rounded-xl shadow-xl p-5 w-[92vw] max-w-sm border border-gray-100">
+          <h3 id="prediction-draft-confirm-title" className="text-sm font-semibold text-gray-900">
+            {tCommon("confirm")}
+          </h3>
+          <p
+            id="prediction-draft-confirm-desc"
+            className="mt-2 text-sm text-gray-600 whitespace-pre-wrap"
+          >
+            {draftConfirmMessage}
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={closeDraftConfirm}
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              onClick={confirmDraft}
+            >
+              {tCommon("confirm")}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </GradientPage>
   );
 }

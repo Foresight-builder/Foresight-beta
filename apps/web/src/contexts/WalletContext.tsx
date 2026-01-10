@@ -98,16 +98,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // SIWE 认证状态
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authAddress, setAuthAddress] = useState<string | null>(null);
-  const authCheckingRef = React.useRef(false);
+  const authRequestIdRef = React.useRef(0);
   const siweLoggingInRef = React.useRef(false);
 
-  // 检查当前认证状态（带防重复）
+  // 检查当前认证状态（最后一次调用胜出，避免竞态导致状态回滚）
   const checkAuth = useCallback(async () => {
-    // 防止重复调用
-    if (authCheckingRef.current) return;
-    authCheckingRef.current = true;
+    const requestId = (authRequestIdRef.current += 1);
     try {
       const res = await fetch("/api/auth/me", { method: "GET" });
+      if (requestId !== authRequestIdRef.current) return;
       if (res.ok) {
         const data = await res.json();
         if (data?.address) {
@@ -119,10 +118,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(false);
       setAuthAddress(null);
     } catch {
+      if (requestId !== authRequestIdRef.current) return;
       setIsAuthenticated(false);
       setAuthAddress(null);
-    } finally {
-      authCheckingRef.current = false;
     }
   }, []);
 
@@ -145,11 +143,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       siweLoggingInRef.current = false;
     }
   }, [siweLoginBase, isAuthenticated, authAddress]);
-
-  // 初始化时检查认证状态（仅执行一次）
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
 
   useEffect(() => {
     if (walletState.account && rawProvider) {
