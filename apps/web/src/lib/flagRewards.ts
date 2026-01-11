@@ -7,6 +7,11 @@ type TierConfig = {
   settleDropRate: number;
 };
 
+type TierSettleRule = {
+  minDays: number;
+  threshold: number;
+};
+
 type Rarity = "common" | "rare" | "epic" | "legendary";
 
 type RarityWeight = {
@@ -85,6 +90,29 @@ const TIER_CONFIG_MAP: Record<FlagTier, TierConfig> = {
 
 export function getTierConfig(tier: FlagTier): TierConfig {
   return TIER_CONFIG_MAP[tier];
+}
+
+const TIER_SETTLE_RULES: Record<FlagTier, TierSettleRule> = {
+  light: {
+    minDays: 1,
+    threshold: 0.8,
+  },
+  standard: {
+    minDays: 7,
+    threshold: 0.8,
+  },
+  intense: {
+    minDays: 10,
+    threshold: 0.8,
+  },
+  hardcore: {
+    minDays: 10,
+    threshold: 0.85,
+  },
+};
+
+export function getTierSettleRule(tier: FlagTier): TierSettleRule {
+  return TIER_SETTLE_RULES[tier];
 }
 
 const RARITY_CONFIG: Record<

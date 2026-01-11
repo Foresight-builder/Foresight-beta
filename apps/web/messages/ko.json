@@ -1739,6 +1739,8 @@
       "settleSuccessTitle": "플래그 정산이 완료됐어요 ✅",
       "statusLabel": "상태",
       "approvedDaysLabel": "승인된 일수",
+      "ratioLabel": "완료율",
+      "ruleLabel": "규칙",
       "settleFailedTitle": "정산이 아직 끝나지 않았어요",
       "retryLater": "잠시 후에 다시 시도해 주세요.",
       "checkinSuccessNoStickerDesc": "노력은 잘 기록됐어요. 이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요.",

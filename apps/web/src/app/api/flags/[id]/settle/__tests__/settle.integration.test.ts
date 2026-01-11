@@ -114,8 +114,9 @@ vi.mock("@/lib/ids", () => {
 vi.mock("@/lib/flagRewards", () => {
   return {
     getFlagTotalDaysFromRange: (start: Date, end: Date) => 10,
-    getFlagTierFromTotalDays: () => "bronze",
+    getFlagTierFromTotalDays: () => "light",
     getTierConfig: () => ({ settleDropRate: 0 }),
+    getTierSettleRule: () => ({ minDays: 1, threshold: 0.2 }),
     isLuckyAddress: () => false,
     issueRandomSticker: vi.fn(),
   };
@@ -170,10 +171,7 @@ describe("POST /api/flags/[id]/settle", () => {
     const request = createMockNextRequest({
       method: "POST",
       url: baseUrl,
-      body: {
-        min_days: 1,
-        threshold: 0.2,
-      },
+      body: {},
     });
 
     const response = await settleFlag(request, { params: Promise.resolve({ id: "1" }) });
@@ -188,10 +186,7 @@ describe("POST /api/flags/[id]/settle", () => {
     const request = createMockNextRequest({
       method: "POST",
       url: baseUrl,
-      body: {
-        min_days: 1,
-        threshold: 0.2,
-      },
+      body: {},
     });
 
     const response = await settleFlag(request, { params: Promise.resolve({ id: "1" }) });

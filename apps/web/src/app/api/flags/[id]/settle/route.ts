@@ -8,6 +8,7 @@ import {
   getFlagTotalDaysFromRange,
   getFlagTierFromTotalDays,
   getTierConfig,
+  getTierSettleRule,
   isLuckyAddress,
   issueRandomSticker,
 } from "@/lib/flagRewards";
@@ -27,8 +28,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const flagId = normalizeId(id);
     if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
     await parseRequestBody(req as any);
-    const minDays = 10;
-    const threshold = 0.8;
 
     const client = getClient() as any;
     if (!client) return ApiResponses.internalError("Service not configured");
@@ -165,13 +164,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const ratio = approvedDays / totalDays;
-    const status = ratio >= threshold && approvedDays >= minDays ? "success" : "failed";
+    const tier = getFlagTierFromTotalDays(totalDays);
+    const settleRule = getTierSettleRule(tier);
+    const effectiveMinDays = Math.min(settleRule.minDays, totalDays);
+    const status =
+      ratio >= settleRule.threshold && approvedDays >= effectiveMinDays ? "success" : "failed";
     const metrics = {
       approvedDays,
       totalDays,
       ratio,
-      threshold,
-      minDays,
+      threshold: settleRule.threshold,
+      minDays: effectiveMinDays,
       startDay: startDay.toISOString(),
       endDay: endDay.toISOString(),
     };
@@ -201,7 +204,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return ApiResponses.databaseError("Failed to create settlement", settleErr.message);
       }
 
-      const tier = getFlagTierFromTotalDays(totalDays);
       const tierConfig = getTierConfig(tier);
       const rewardRoll = Math.random();
       const baseShouldReward = status === "success" && rewardRoll < tierConfig.settleDropRate;

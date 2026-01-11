@@ -1507,6 +1507,8 @@
       "settleSuccessTitle": "Flag settled ✅",
       "statusLabel": "Status",
       "approvedDaysLabel": "Approved days",
+      "ratioLabel": "Completion rate",
+      "ruleLabel": "Rule",
       "settleFailedTitle": "Settlement didn't go through",
       "retryLater": "Please try again in a little while.",
       "checkinSuccessNoStickerDesc": "Your effort is saved—no sticker this time, but many more rolls ahead.",

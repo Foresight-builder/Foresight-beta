@@ -1507,6 +1507,8 @@
       "settleSuccessTitle": "Flag liquidado ✅",
       "statusLabel": "Estado",
       "approvedDaysLabel": "Días aprobados",
+      "ratioLabel": "Tasa de cumplimiento",
+      "ruleLabel": "Regla",
       "settleFailedTitle": "La liquidación no se completó",
       "retryLater": "Inténtalo de nuevo dentro de un momento.",
       "checkinSuccessNoStickerDesc": "Tu esfuerzo ya está guardado; esta vez no hubo sticker, pero vendrán muchos más.",

@@ -256,6 +256,33 @@ export default function FlagsPage() {
       loadFlags();
       setSettleOpen(false);
 
+      const statusKey = String(ret?.status || "");
+      const statusLabel =
+        statusKey === "active" ||
+        statusKey === "pending_review" ||
+        statusKey === "success" ||
+        statusKey === "failed"
+          ? tFlags(`card.status.${statusKey}`)
+          : statusKey;
+      const approvedDays = ret?.metrics?.approvedDays || 0;
+      const totalDays = ret?.metrics?.totalDays || 0;
+      const ratioPercent = Math.round((ret?.metrics?.ratio || 0) * 100);
+      const thresholdPercent = Math.round((ret?.metrics?.threshold || 0) * 100);
+      const minDays = ret?.metrics?.minDays || 0;
+      const baseDescParts = [
+        `${tFlags("toast.statusLabel")}: ${statusLabel}`,
+        `${tFlags("toast.approvedDaysLabel")} ${approvedDays}/${totalDays}`,
+      ];
+      if (totalDays > 0) {
+        baseDescParts.push(`${tFlags("toast.ratioLabel")}: ${ratioPercent}%`);
+      }
+      if (minDays > 0 && thresholdPercent > 0) {
+        baseDescParts.push(
+          `${tFlags("toast.ruleLabel")}: ≥${minDays}${tFlags("card.time.daysLabel")}, ≥${thresholdPercent}%`
+        );
+      }
+      const descBase = baseDescParts.join("，");
+
       if (ret.sticker_earned) {
         if (ret.sticker) {
           setEarnedSticker(ret.sticker);
@@ -267,13 +294,9 @@ export default function FlagsPage() {
             setStickerOpen(true);
           }
         }
+        toast.success(tFlags("toast.settleSuccessTitle"), descBase);
       } else {
-        const statusText = String(ret?.status || "");
-        const approvedDays = ret?.metrics?.approvedDays || 0;
-        const totalDays = ret?.metrics?.totalDays || 0;
-        const desc = `${tFlags("toast.statusLabel")}: ${statusText}, ${tFlags(
-          "toast.approvedDaysLabel"
-        )} ${approvedDays}/${totalDays}, ${tFlags("toast.noStickerSuffix")}`;
+        const desc = `${descBase}，${tFlags("toast.noStickerSuffix")}`;
         toast.success(tFlags("toast.settleSuccessTitle"), desc);
       }
     } catch (e) {
