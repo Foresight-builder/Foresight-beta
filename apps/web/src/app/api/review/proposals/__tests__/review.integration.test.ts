@@ -4,6 +4,12 @@ import { createMockNextRequest } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
 import { getReviewerSession } from "@/lib/reviewAuth";
 
+vi.mock("../../../predictions/_lib/createPrediction", () => {
+  return {
+    createPrediction: vi.fn().mockResolvedValue({ newPrediction: { id: 123 } }),
+  };
+});
+
 vi.mock("@/lib/supabase", () => {
   const existingThread = {
     id: 1,

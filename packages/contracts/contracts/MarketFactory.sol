@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./interfaces/IMarket.sol";
+import "./interfaces/IOracleRegistrar.sol";
 
 /// @title MarketFactory
 /// @author Foresight
@@ -106,6 +107,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     error CollateralNotAllowed();
     error OracleNotAllowed();
     error NotAContract();
+    error OracleRegistrationFailed();
 
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZER
@@ -265,6 +267,19 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             data
         );
 
+        if (oracleToUse == umaOracle && _isUmaOracleAdapter(oracleToUse)) {
+            uint8 oc = _readOutcomeCount(market);
+            if (oc == 0) revert OracleRegistrationFailed();
+            try IOracleRegistrar(oracleToUse).registerMarket(bytes32(marketId), uint64(resolutionTime), oc) {} catch {
+                revert OracleRegistrationFailed();
+            }
+        } else {
+            uint8 oc = _readOutcomeCount(market);
+            if (oc != 0 && oracleToUse.code.length > 0) {
+                try IOracleRegistrar(oracleToUse).registerMarket(bytes32(marketId), uint64(resolutionTime), oc) {} catch {}
+            }
+        }
+
         // Store market info
         markets[marketId] = MarketInfo({
             market: market,
@@ -287,6 +302,29 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             feeBpsToUse,
             resolutionTime
         );
+    }
+
+    function _readOutcomeCount(address market) private view returns (uint8) {
+        (bool ok, bytes memory data) = market.staticcall(abi.encodeWithSignature("outcomeCount()"));
+        if (!ok || data.length < 32) return 0;
+        uint256 v = abi.decode(data, (uint256));
+        if (v == 0 || v > type(uint8).max) return 0;
+        return uint8(v);
+    }
+
+    function _isUmaOracleAdapter(address oracleAddr) private view returns (bool) {
+        if (oracleAddr.code.length == 0) return false;
+
+        (bool okUma, bytes memory umaData) = oracleAddr.staticcall(abi.encodeWithSignature("uma()"));
+        if (!okUma || umaData.length < 32) return false;
+
+        (bool okBond, bytes memory bondData) = oracleAddr.staticcall(abi.encodeWithSignature("bondCurrency()"));
+        if (!okBond || bondData.length < 32) return false;
+
+        (bool okRole, bytes memory roleData) = oracleAddr.staticcall(abi.encodeWithSignature("REGISTRAR_ROLE()"));
+        if (!okRole || roleData.length < 32) return false;
+
+        return true;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

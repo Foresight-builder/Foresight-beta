@@ -307,28 +307,6 @@ async function createMarketOnchain(args: {
     throw err;
   }
 
-  // Register market with UMA Oracle
-  try {
-    const abiOracle = [
-      "function registerMarket(bytes32 marketId, uint64 resolutionTime, uint8 outcomeCount) external",
-    ];
-    const oracleContract = new ethers.Contract(cfg.oracle, abiOracle, signer);
-
-    // Convert uint256 marketId to bytes32
-    const marketIdBytes32 = ethers.zeroPadValue(ethers.toBeHex(marketIdVal), 32);
-
-    const regTx = await oracleContract.registerMarket(
-      marketIdBytes32,
-      args.resolutionTimeSec,
-      args.outcomeCount
-    );
-    await regTx.wait();
-  } catch (err: any) {
-    console.warn("Failed to register market with oracle:", err.message);
-    // We don't throw here to avoid failing the whole process if oracle is already registered or different type
-    // But for UMA it is critical.
-  }
-
   return {
     chainId: cfg.chainId,
     market: marketAddress,

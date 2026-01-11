@@ -36,6 +36,7 @@ export const oracleAdapterAbi = [
   "function settleOutcome(bytes32 marketId) external",
   "function getMarketStatus(bytes32 marketId) external view returns (uint8 status, uint256 outcome, bytes32 assertionId, uint8 reassertionCount)",
   "function getOutcome(bytes32 marketId) external view returns (uint256)",
+  "function uma() external view returns (address)",
 ] as const;
 
 export const erc1155Abi = [

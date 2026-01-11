@@ -65,6 +65,11 @@ async function main() {
   const mfAddress = await mf.getAddress();
   console.log("MarketFactory:", mfAddress);
 
+  const REGISTRAR_ROLE = await umaAdapter.REGISTRAR_ROLE();
+  if (!(await umaAdapter.hasRole(REGISTRAR_ROLE, mfAddress))) {
+    await (await umaAdapter.grantRole(REGISTRAR_ROLE, mfAddress)).wait();
+  }
+
   const protocolFeeTo = env.PROTOCOL_FEE_TO || deployerAddress;
   const totalFeeBps = env.PROTOCOL_TOTAL_FEE_BPS ? Number(env.PROTOCOL_TOTAL_FEE_BPS) : 80;
   const lpFeeBps = env.LP_FEE_BPS ? Number(env.LP_FEE_BPS) : 40;

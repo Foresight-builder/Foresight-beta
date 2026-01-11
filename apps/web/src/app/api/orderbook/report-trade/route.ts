@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       const { maker, salt, amount } = item;
 
       // Fetch current order
-      const { data: order, error: fetchErr } = await client
+      const { data: order, error: fetchErr } = await (client as any)
         .from("orders")
         .select("id, remaining, status")
         .eq("maker_address", maker)
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       const newRemaining = currentRemaining > amount ? currentRemaining - amount : 0n;
       const newStatus = newRemaining === 0n ? "filled" : "partially_filled";
 
-      const { error: updateErr } = await client
+      const { error: updateErr } = await (client as any)
         .from("orders")
         .update({
           remaining: newRemaining.toString(),

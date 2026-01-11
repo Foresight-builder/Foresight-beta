@@ -82,6 +82,17 @@ async function main() {
   await mf.initialize(deployerAddress, defaultOracleAddress);
   const mfAddress = await mf.getAddress();
 
+  const tryGrantRegistrar = async () => {
+    try {
+      const oracle = await hre.ethers.getContractAt("UMAOracleAdapterV2", defaultOracleAddress);
+      const REGISTRAR_ROLE = await oracle.REGISTRAR_ROLE();
+      if (!(await oracle.hasRole(REGISTRAR_ROLE, mfAddress))) {
+        await (await oracle.grantRole(REGISTRAR_ROLE, mfAddress)).wait();
+      }
+    } catch {}
+  };
+  await tryGrantRegistrar();
+
   const protocolFeeTo = env.PROTOCOL_FEE_TO || deployerAddress;
   const totalFeeBps = env.PROTOCOL_TOTAL_FEE_BPS ? Number(env.PROTOCOL_TOTAL_FEE_BPS) : 80;
   const lpFeeBps = env.LP_FEE_BPS ? Number(env.LP_FEE_BPS) : 40;

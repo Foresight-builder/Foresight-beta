@@ -95,6 +95,11 @@ async function main() {
   const mfAddress = await mf.getAddress();
   console.log("MarketFactory:", mfAddress);
 
+  const REGISTRAR_ROLE = await umaAdapter.REGISTRAR_ROLE();
+  if (!(await umaAdapter.hasRole(REGISTRAR_ROLE, mfAddress))) {
+    await (await umaAdapter.grantRole(REGISTRAR_ROLE, mfAddress)).wait();
+  }
+
   // Deploy templates
   const OffchainBinaryMarket = await hre.ethers.getContractFactory("OffchainBinaryMarket");
   const binImpl = await OffchainBinaryMarket.deploy();
@@ -137,7 +142,8 @@ async function main() {
   ).wait();
   const createdBinLog = receiptBin.logs.find((l: any) => {
     try {
-      return mf.interface.parseLog(l).name === "MarketCreated";
+      const parsed = mf.interface.parseLog(l);
+      return parsed?.name === "MarketCreated";
     } catch {
       return false;
     }
@@ -166,7 +172,8 @@ async function main() {
   ).wait();
   const createdMultiLog = receiptMulti.logs.find((l: any) => {
     try {
-      return mf.interface.parseLog(l).name === "MarketCreated";
+      const parsed = mf.interface.parseLog(l);
+      return parsed?.name === "MarketCreated";
     } catch {
       return false;
     }

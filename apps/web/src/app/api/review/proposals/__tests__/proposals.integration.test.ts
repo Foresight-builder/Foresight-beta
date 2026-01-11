@@ -16,9 +16,11 @@ vi.mock("@/lib/supabase", () => {
         eq: () => ({
           eq: () => ({
             order: () => ({
-              limit: () => ({
-                data: items,
-                error: null,
+              order: () => ({
+                limit: () => ({
+                  data: items,
+                  error: null,
+                }),
               }),
             }),
           }),

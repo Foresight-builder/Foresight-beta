@@ -3,7 +3,7 @@ import ForumChatDetailClient from "./ForumChatDetailClient";
 import { getClient } from "@/lib/supabase";
 
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 async function getPredictionForChat(id: number) {
@@ -21,7 +21,7 @@ async function getPredictionForChat(id: number) {
 }
 
 export default async function Page({ params }: Props) {
-  const id = params.id;
+  const { id } = await params;
   const idNum = Number(id);
   if (!Number.isFinite(idNum) || idNum <= 0) {
     notFound();

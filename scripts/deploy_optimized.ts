@@ -17,7 +17,9 @@ async function main() {
     env.COLLATERAL_TOKEN_ADDRESS ||
     (chainId === 137 ? env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON : "") ||
     (chainId === 80002 ? env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY : "") ||
-    (chainId === 11155111 ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA : "") ||
+    (chainId === 11155111
+      ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA
+      : "") ||
     (chainId === 1337
       ? env.USDC_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST
       : "") ||
@@ -65,6 +67,11 @@ async function main() {
   const marketFactoryAddress = await marketFactory.getAddress();
   console.log(`MarketFactory deployed to: ${marketFactoryAddress}`);
 
+  const REGISTRAR_ROLE = await umaAdapter.REGISTRAR_ROLE();
+  if (!(await umaAdapter.hasRole(REGISTRAR_ROLE, marketFactoryAddress))) {
+    await (await umaAdapter.grantRole(REGISTRAR_ROLE, marketFactoryAddress)).wait();
+  }
+
   // 4. Deploy OffchainBinaryMarket template
   const OffchainBinaryMarket = await hre.ethers.getContractFactory("OffchainBinaryMarket");
   const binaryTemplate = await OffchainBinaryMarket.deploy();
@@ -74,7 +81,11 @@ async function main() {
 
   // 5. Register template
   const templateId = hre.ethers.id("OFFCHAIN_BINARY_V1");
-  await marketFactory.registerTemplate(templateId, binaryMarketTemplateAddress, "Offchain Binary v1");
+  await marketFactory.registerTemplate(
+    templateId,
+    binaryMarketTemplateAddress,
+    "Offchain Binary v1"
+  );
   console.log(`OffchainBinaryMarket template registered with ID: ${templateId}`);
 
   // 6. Create a new OffchainBinaryMarket instance (fee=0 per requirement)
@@ -93,7 +104,8 @@ async function main() {
   const receipt = await tx.wait();
   const log = receipt.logs.find((l: any) => {
     try {
-      return marketFactory.interface.parseLog(l).name === "MarketCreated";
+      const parsed = marketFactory.interface.parseLog(l);
+      return parsed?.name === "MarketCreated";
     } catch {
       return false;
     }

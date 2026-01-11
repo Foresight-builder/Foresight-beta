@@ -68,6 +68,11 @@ async function main() {
   const marketFactoryAddress = await marketFactory.getAddress();
   console.log(`MarketFactory deployed to: ${marketFactoryAddress}`);
 
+  const REGISTRAR_ROLE = await umaOracleAdapter.REGISTRAR_ROLE();
+  if (!(await umaOracleAdapter.hasRole(REGISTRAR_ROLE, marketFactoryAddress))) {
+    await (await umaOracleAdapter.grantRole(REGISTRAR_ROLE, marketFactoryAddress)).wait();
+  }
+
   const feeBpsWinner = 200;
   const feeToAddress = process.env.MARKET_FEE_TO || deployerAddress;
   await marketFactory.setFee(feeBpsWinner, feeToAddress);
