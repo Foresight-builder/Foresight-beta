@@ -1335,6 +1335,12 @@
         "friend": "Friend check"
       },
       "proofImageAlt": "Check-in image",
+      "tier": {
+        "light": "Light",
+        "standard": "Standard",
+        "intense": "Intense",
+        "hardcore": "Hardcore"
+      },
       "actions": {
         "history": "History",
         "checkin": "Check in",
@@ -1421,10 +1427,12 @@
       "title": "Rules & Rewards",
       "tiers": "Tiers",
       "dropRates": "Drop Rates",
-      "light": "Light (1-7 days): 40% Drop",
-      "standard": "Standard (8-14 days): 70% Drop",
-      "intense": "Intense (15-30 days): 100% Drop",
-      "hardcore": "Hardcore (>30 days): 100% Drop (Higher Rarity)"
+      "light": "Light (1-7 days): needs roughly 70% of days approved to succeed, with a solid chance to drop a sticker at settlement.",
+      "standard": "Standard (8-14 days): usually requires at least 5 approved days and around a 75% completion ratio.",
+      "intense": "Intense (15-30 days): expects at least 10 approved days and a strong overall completion ratio, with higher drop chances when you succeed.",
+      "hardcore": "Hardcore (>30 days): tuned for higher completion ratios (around 85%) and more days, with better odds of high-rarity stickers.",
+      "settleRuleHint": "The system automatically adjusts the required days and completion ratio based on how long your Flag runs, so longer challenges have stricter but clearer success criteria.",
+      "rewardHint": "Both check-ins and final settlement can drop stickers; longer and better-completed challenges enjoy noticeably higher drop rates and rarities."
     },
     "settleModal": {
       "title": "Settle Challenge",
@@ -1463,7 +1471,7 @@
         "successCondition": "Success condition"
       },
       "successCondition": {
-        "default": "This challenge counts as successful when at least 10 check-in days are approved and approved days account for at least 80% of the entire challenge period."
+        "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio."
       },
       "actions": {
         "approve": "Approve",

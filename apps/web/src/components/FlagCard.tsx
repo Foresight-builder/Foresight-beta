@@ -13,6 +13,7 @@ import {
 import LazyImage from "@/components/ui/LazyImage";
 import { useTranslations } from "@/lib/i18n";
 import { formatAddress } from "@/lib/address";
+import { getFlagTierFromTotalDays } from "@/lib/flagRewards";
 
 export type FlagItem = {
   id: number;
@@ -94,8 +95,11 @@ export const FlagCard = memo(function FlagCard({
   const StatusIcon = s.icon;
 
   const calculateStats = () => {
-    const start = new Date(flag.created_at).getTime();
-    const end = new Date(flag.deadline).getTime();
+    const created = new Date(flag.created_at);
+    const deadline = new Date(flag.deadline);
+    const start = new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime();
+    const endDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+    const end = endDay.getTime() + 86400000 - 1;
     const now = Date.now();
 
     const totalDuration = end - start;
@@ -103,7 +107,7 @@ export const FlagCard = memo(function FlagCard({
 
     const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
 
-    const daysActive = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
+    const daysActive = Math.max(1, Math.ceil(elapsed / 86400000));
 
     const msLeft = end - now;
     let remainText = tFlags("card.time.finished");
@@ -117,10 +121,15 @@ export const FlagCard = memo(function FlagCard({
       }
     }
 
-    return { progress, daysActive, remainText };
+    const totalDays = Math.max(
+      1,
+      Math.floor((endDay.getTime() - new Date(start).getTime()) / 86400000) + 1
+    );
+    const tier = getFlagTierFromTotalDays(totalDays);
+    return { progress, daysActive, remainText, totalDays, tier };
   };
 
-  const { progress, daysActive, remainText } = calculateStats();
+  const { progress, daysActive, remainText, totalDays, tier } = calculateStats();
 
   // Random rotation for "sticker/photo" vibe
   const rotate = Math.random() * 2 - 1;
@@ -235,10 +244,16 @@ export const FlagCard = memo(function FlagCard({
 
             <div className="bg-gray-50 rounded-xl p-3 border-2 border-dashed border-gray-200 mb-4 relative group-hover:border-purple-200 transition-colors">
               <div className="flex items-center justify-between text-xs font-black mb-2">
-                <div className="flex items-center gap-1.5 text-gray-700">
-                  <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
-                  <span>
-                    {daysActive} {tFlags("card.time.daysLabel")}
+                <div className="flex items-center gap-2 text-gray-700">
+                  <div className="flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
+                    <span>
+                      {daysActive} {tFlags("card.time.daysLabel")}
+                    </span>
+                  </div>
+                  <span className="text-gray-400 text-[10px] px-2 py-0.5 rounded-full bg-white border border-gray-100">
+                    {tFlags(`card.tier.${tier}`)} · {totalDays}
+                    {tFlags("card.time.daysLabel")}
                   </span>
                 </div>
                 <span className="text-gray-400 bg-white px-2 py-0.5 rounded-md shadow-sm border border-gray-100">

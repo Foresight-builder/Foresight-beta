@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (cnt.error)
       return ApiResponses.databaseError("Failed to query daily check-ins", cnt.error.message);
     todayCount = Number(cnt.count || 0);
-    if (todayCount >= 100) return ApiResponses.rateLimit("Daily check-in limit reached (100)");
+    if (todayCount >= 30) return ApiResponses.rateLimit("Daily check-in limit reached (30)");
 
     const existingForFlag = await client
       .from("flag_checkins")

@@ -1335,6 +1335,12 @@
         "friend": "Verificación de amigo"
       },
       "proofImageAlt": "Imagen de check-in",
+      "tier": {
+        "light": "Ligero",
+        "standard": "Estándar",
+        "intense": "Intenso",
+        "hardcore": "Extremo"
+      },
       "actions": {
         "history": "Historial",
         "checkin": "Hacer check-in",
@@ -1421,10 +1427,12 @@
       "title": "Reglas y recompensas",
       "tiers": "Niveles de dificultad",
       "dropRates": "Probabilidades de obtención",
-      "light": "Ligero (1-7 días): 40% de obtención",
-      "standard": "Estándar (8-14 días): 70% de obtención",
-      "intense": "Intenso (15-30 días): 100% de obtención",
-      "hardcore": "Extremo (>30 días): 100% de obtención (mayor rareza)"
+      "light": "Ligero (1-7 días): suele bastar con aprobar alrededor del 70% de los días para considerar el reto completado y tener una buena probabilidad de sticker al liquidar.",
+      "standard": "Estándar (8-14 días): normalmente se necesitan al menos 5 días aprobados y una tasa de cumplimiento cercana al 75%.",
+      "intense": "Intenso (15-30 días): requiere al menos 10 días aprobados y una tasa de éxito alta; los retos largos tienen más probabilidades de recompensa al finalizar.",
+      "hardcore": "Extremo (>30 días): pensado para tasas de cumplimiento más exigentes (aprox. 85%) y más días de constancia, con mejores opciones de stickers de alta rareza.",
+      "settleRuleHint": "El sistema ajusta automáticamente cuántos días aprobados y qué porcentaje de cumplimiento se necesitan según la duración del reto.",
+      "rewardHint": "Tanto los check-ins como la liquidación final pueden otorgar stickers; cuanto más largo y mejor cumplido el reto, mayores las probabilidades y la rareza de las recompensas."
     },
     "settleModal": {
       "title": "Liquidar reto",
@@ -1463,7 +1471,7 @@
         "successCondition": "Condición de éxito"
       },
       "successCondition": {
-        "default": "Este reto se considera exitoso cuando al menos 10 días de check-in han sido aprobados y los días aprobados representan al menos el 80% de todo el período del reto."
+        "default": "El sistema ajusta la condición de éxito según la duración del reto: en retos cortos suele bastar con que la mayoría de los días estén aprobados, mientras que en retos largos se exigen más días aprobados y una tasa de cumplimiento más alta."
       },
       "actions": {
         "approve": "Aprobar",

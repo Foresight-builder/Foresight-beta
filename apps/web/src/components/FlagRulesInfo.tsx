@@ -14,7 +14,7 @@ export function FlagRulesInfo({ tFlags }: FlagRulesInfoProps) {
         <Trophy className="w-4 h-4 text-amber-500" />
         {tFlags("rules.title")}
       </div>
-      <div className="space-y-2 text-xs font-bold text-gray-500">
+      <div className="space-y-3 text-xs font-bold text-gray-500">
         <div className="grid grid-cols-1 gap-1.5">
           <p className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
@@ -33,6 +33,8 @@ export function FlagRulesInfo({ tFlags }: FlagRulesInfoProps) {
             {tFlags("rules.hardcore")}
           </p>
         </div>
+        <p className="text-[11px] text-gray-400">{tFlags("rules.settleRuleHint")}</p>
+        <p className="text-[11px] text-gray-400">{tFlags("rules.rewardHint")}</p>
       </div>
     </div>
   );

@@ -71,20 +71,20 @@ export function getFlagTierFromFlag(flag: Database["public"]["Tables"]["flags"][
 
 const TIER_CONFIG_MAP: Record<FlagTier, TierConfig> = {
   light: {
-    checkinDropRate: 0.02,
-    settleDropRate: 0.4,
+    checkinDropRate: 0.03,
+    settleDropRate: 0.6,
   },
   standard: {
-    checkinDropRate: 0.04,
-    settleDropRate: 0.7,
+    checkinDropRate: 0.05,
+    settleDropRate: 0.75,
   },
   intense: {
-    checkinDropRate: 0.06,
-    settleDropRate: 1,
+    checkinDropRate: 0.07,
+    settleDropRate: 0.9,
   },
   hardcore: {
-    checkinDropRate: 0.08,
-    settleDropRate: 1,
+    checkinDropRate: 0.09,
+    settleDropRate: 0.9,
   },
 };
 
@@ -95,11 +95,11 @@ export function getTierConfig(tier: FlagTier): TierConfig {
 const TIER_SETTLE_RULES: Record<FlagTier, TierSettleRule> = {
   light: {
     minDays: 1,
-    threshold: 0.8,
+    threshold: 0.7,
   },
   standard: {
-    minDays: 7,
-    threshold: 0.8,
+    minDays: 5,
+    threshold: 0.75,
   },
   intense: {
     minDays: 10,

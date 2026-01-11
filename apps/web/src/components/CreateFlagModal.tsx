@@ -259,7 +259,10 @@ export default function CreateFlagModal({
             </div>
 
             {/* Right Content Area */}
-            <div className="flex-1 flex flex-col relative h-full min-h-[500px]">
+            <div
+              className="flex-1 flex flex-col relative h-full min-h-[500px] overflow-y-auto"
+              style={{ maxHeight: "calc(100vh - 96px)" }}
+            >
               {/* Close Button */}
               <button
                 onClick={onClose}
@@ -268,7 +271,7 @@ export default function CreateFlagModal({
                 <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
               </button>
 
-              <div className="p-8 md:p-12 flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-8 md:p-12 flex-1 custom-scrollbar">
                 <motion.div
                   key={step}
                   initial={{ opacity: 0, x: 20 }}

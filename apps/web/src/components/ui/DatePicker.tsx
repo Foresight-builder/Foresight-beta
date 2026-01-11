@@ -66,6 +66,7 @@ export default function DatePicker({
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setIsTimeOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -80,6 +81,8 @@ export default function DatePicker({
   const getFirstDayOfMonth = (year: number, month: number) => {
     return new Date(year, month, 1).getDay();
   };
+
+  const [isTimeOpen, setIsTimeOpen] = useState(false);
 
   const handlePrevMonth = () => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
@@ -129,16 +132,13 @@ export default function DatePicker({
     }
   };
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = e.target.value;
-
+  const updateTime = (newTime: string) => {
     if (selectedDate) {
       const [h, m] = newTime.split(":").map(Number);
       const newDate = new Date(selectedDate);
       newDate.setHours(h);
       newDate.setMinutes(m);
 
-      // If today, don't allow past time
       const now = new Date();
       if (
         newDate.getFullYear() === now.getFullYear() &&
@@ -146,7 +146,6 @@ export default function DatePicker({
         newDate.getDate() === now.getDate()
       ) {
         if (newDate < now) {
-          // If past time is selected on today, reset to current time or don't allow
           const currentH = now.getHours().toString().padStart(2, "0");
           const currentM = (now.getMinutes() + 1).toString().padStart(2, "0");
           setTime(`${currentH}:${currentM}`);
@@ -160,6 +159,11 @@ export default function DatePicker({
     } else {
       setTime(newTime);
     }
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    updateTime(newTime);
   };
 
   const emitChange = (date: Date) => {
@@ -214,10 +218,12 @@ export default function DatePicker({
       return dateToCompare < min;
     }
 
-    // Default: cannot select dates before today
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return dateToCompare < today;
   };
+
+  const hoursOptions = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+  const minutesOptions = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"));
 
   const formatDisplay = () => {
     if (!value) return "";
@@ -326,19 +332,73 @@ export default function DatePicker({
               })}
             </div>
 
-            {/* Time Picker */}
             {includeTime && (
-              <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                  <Clock className="w-4 h-4 text-purple-500" />
-                  <span>{tCommon("datePicker.timeLabel")}</span>
+              <div className="border-t border-gray-100 pt-4 mt-1">
+                <div className="relative flex items-center justify-between gap-3 rounded-2xl bg-gray-50 px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs font-bold tracking-[0.2em] uppercase text-gray-500">
+                    <Clock className="w-4 h-4 text-purple-500" />
+                    <span>{tCommon("datePicker.timeLabel")}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTimeOpen(!isTimeOpen)}
+                    className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400"
+                  >
+                    <span className="tabular-nums">{time}</span>
+                    <Clock className="w-4 h-4 text-gray-400" />
+                  </button>
+
+                  <AnimatePresence>
+                    {isTimeOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 bottom-full mb-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 grid grid-cols-2 gap-2 z-50"
+                      >
+                        <div className="max-h-52 overflow-y-auto pr-1">
+                          {hoursOptions.map((h) => (
+                            <button
+                              key={h}
+                              type="button"
+                              onClick={() => {
+                                const [, m] = time.split(":");
+                                updateTime(`${h}:${m}`);
+                              }}
+                              className={`w-full text-center text-sm py-1.5 rounded-lg tabular-nums ${
+                                time.split(":")[0] === h
+                                  ? "bg-purple-500 text-white font-semibold"
+                                  : "text-gray-800 hover:bg-gray-100"
+                              }`}
+                            >
+                              {h}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="max-h-52 overflow-y-auto pl-1 border-l border-gray-100">
+                          {minutesOptions.map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                const [h] = time.split(":");
+                                updateTime(`${h}:${m}`);
+                              }}
+                              className={`w-full text-center text-sm py-1.5 rounded-lg tabular-nums ${
+                                time.split(":")[1] === m
+                                  ? "bg-purple-500 text-white font-semibold"
+                                  : "text-gray-800 hover:bg-gray-100"
+                              }`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={handleTimeChange}
-                  className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-sm font-medium text-gray-900 focus:ring-2 focus:ring-purple-100 focus:border-purple-400 outline-none"
-                />
               </div>
             )}
 
