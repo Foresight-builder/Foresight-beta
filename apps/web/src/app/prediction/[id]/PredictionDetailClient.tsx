@@ -7,6 +7,7 @@ import { MarketChart } from "@/components/market/MarketChart";
 import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
+import { SettlementPanel } from "./components/SettlementPanel";
 import { Modal } from "@/components/ui/Modal";
 import { Loader2 } from "lucide-react";
 import { useUserPortfolio } from "@/hooks/useQueries";

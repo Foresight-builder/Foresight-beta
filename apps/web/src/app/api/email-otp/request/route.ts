@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import {
@@ -9,54 +8,8 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-
-function isValidEmail(email: string) {
-  return /.+@.+\..+/.test(email);
-}
-
-function genCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function resolveEmailOtpSecret(): { secretString: string } {
-  const raw = (process.env.JWT_SECRET || "").trim();
-  if (raw) return { secretString: raw };
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Missing JWT_SECRET");
-  }
-  const fallback = "your-secret-key-change-in-production";
-  return { secretString: fallback };
-}
-
-function hashEmailOtpCode(code: string, secretString: string): string {
-  return createHash("sha256").update(`${code}:${secretString}`, "utf8").digest("hex");
-}
-
-async function sendMailSMTP(email: string, code: string) {
-  const host = process.env.SMTP_HOST || "";
-  const port = Number(process.env.SMTP_PORT || 0);
-  const secure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true";
-  const user = process.env.SMTP_USER || "";
-  const pass = process.env.SMTP_PASS || "";
-  const from = process.env.SMTP_FROM || "noreply@localhost";
-  if (!host || !port || !user || !pass) throw new Error("SMTP 未配置完整");
-  const nodemailerMod = (await import("nodemailer")) as typeof import("nodemailer");
-  const transporter = nodemailerMod.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-  });
-  const subject = "您的验证码";
-  const html = `<div style="font-family:system-ui,Segoe UI,Arial">验证码：<b>${code}</b>（15分钟内有效）。如非本人操作请忽略。</div>`;
-  const text = `验证码：${code}（15分钟内有效）。如非本人操作请忽略。`;
-  const info = await transporter.sendMail({ from, to: email, subject, text, html });
-  const messageId =
-    typeof (info as { messageId?: unknown }).messageId === "string"
-      ? (info as { messageId: string }).messageId
-      : "";
-  return String(messageId || "");
-}
+import { sendMailSMTP } from "@/lib/emailService";
+import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -81,6 +34,49 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const nowMs = now.getTime();
 
+    // 1. Global Rate Limit (Per Wallet)
+    const { data: allWalletOtps, error: fetchAllErr } = await client
+      .from("email_otps")
+      .select("last_sent_at, sent_in_window")
+      .eq("wallet_address", walletAddress);
+
+    if (fetchAllErr) {
+      return ApiResponses.databaseError("Failed to fetch wallet otps", fetchAllErr.message);
+    }
+
+    const minIntervalMs = 60_000;
+    let globalLastSentMs = 0;
+    let activeEmailsInWindow = 0;
+    const rateWindowMs = 60 * 60_000;
+
+    if (allWalletOtps && Array.isArray(allWalletOtps)) {
+      for (const r of allWalletOtps) {
+        const t = r.last_sent_at ? new Date(r.last_sent_at).getTime() : 0;
+        if (t > globalLastSentMs) {
+          globalLastSentMs = t;
+        }
+        if (nowMs - t < rateWindowMs) {
+          activeEmailsInWindow++;
+        }
+      }
+    }
+
+    if (globalLastSentMs && nowMs - globalLastSentMs < minIntervalMs) {
+      const waitSec = Math.ceil((minIntervalMs - (nowMs - globalLastSentMs)) / 1000);
+      return ApiResponses.rateLimit(`请求过于频繁，请 ${waitSec} 秒后重试`);
+    }
+
+    // Limit number of distinct emails targeted in the last hour
+    const maxEmailsInWindow = 10;
+    if (activeEmailsInWindow >= maxEmailsInWindow) {
+      // Check if we are retrying an existing active email (which is allowed under this limit, but caught by per-email limit)
+      // Actually, if we are updating an existing one, the count doesn't increase.
+      // But we haven't fetched the specific record yet.
+      // If we are adding a NEW email, count increases.
+      // Let's rely on the count of rows logic.
+    }
+
+    // 2. Specific Email Logic
     const { data: existing, error: fetchErr } = await client
       .from("email_otps")
       .select(
@@ -95,30 +91,30 @@ export async function POST(req: NextRequest) {
 
     const rec = (existing || null) as Database["public"]["Tables"]["email_otps"]["Row"] | null;
 
+    if (!rec && activeEmailsInWindow >= maxEmailsInWindow) {
+      return ApiResponses.rateLimit("近期请求的邮箱数量过多，请稍后重试");
+    }
+
     if (rec?.lock_until && new Date(rec.lock_until).getTime() > nowMs) {
       const waitMin = Math.ceil((new Date(rec.lock_until).getTime() - nowMs) / 60000);
       return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
     }
 
-    const lastSentAtMs = rec?.last_sent_at ? new Date(rec.last_sent_at).getTime() : 0;
+    // Per-email frequency limit (redundant with global if sending to same email, but good to keep)
+    // Actually global check covers the "too fast" part.
+    // We just need to check the "max retries per hour" part for this email.
+
     const sentWindowStartAtMs = rec?.sent_window_start_at
       ? new Date(rec.sent_window_start_at).getTime()
       : 0;
     const sentInWindow = Number(rec?.sent_in_window || 0);
-    const rateWindowMs = 60 * 60_000;
-    const minIntervalMs = 60_000;
     const maxInWindow = 5;
-
-    if (lastSentAtMs && nowMs - lastSentAtMs < minIntervalMs) {
-      const waitSec = Math.ceil((minIntervalMs - (nowMs - lastSentAtMs)) / 1000);
-      return ApiResponses.rateLimit(`请求过于频繁，请 ${waitSec} 秒后重试`);
-    }
 
     const windowReset = !sentWindowStartAtMs || nowMs - sentWindowStartAtMs >= rateWindowMs;
     const nextWindowStartAt = windowReset ? now : new Date(sentWindowStartAtMs);
     const nextSentInWindow = (windowReset ? 0 : sentInWindow) + 1;
     if (nextSentInWindow > maxInWindow) {
-      return ApiResponses.rateLimit("请求过于频繁，请稍后重试");
+      return ApiResponses.rateLimit("该邮箱请求过于频繁，请稍后重试");
     }
 
     const code = genCode();

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
 import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isMissingMarketKeyColumn(
   error: { code?: string; message?: string | null } | null
@@ -22,6 +23,13 @@ function normalizeDepthSideForRelayer(side: string | null): "buy" | "sell" {
 
 export async function GET(req: NextRequest) {
   try {
+    // 1. IP Rate Limit (Lenient for depth charts as they are polled)
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.lenient, "depth_ip");
+    if (!limitResult.success) {
+      return ApiResponses.rateLimit("Too many depth requests");
+    }
+
     const url = new URL(req.url);
     const contract = url.searchParams.get("contract");
     const chainId = url.searchParams.get("chainId");
@@ -87,7 +95,8 @@ export async function GET(req: NextRequest) {
       .eq("chain_id", chainIdNum)
       .eq("outcome_index", outcomeNum)
       .eq("is_buy", isBuy)
-      .in("status", ["open", "partially_filled", "filled_partial"]);
+      .in("status", ["open", "partially_filled", "filled_partial"])
+      .limit(1000); // Limit to top 1000 orders to build depth
 
     if (marketKey) {
       query = query.eq("market_key", marketKey);
@@ -105,7 +114,8 @@ export async function GET(req: NextRequest) {
         .eq("chain_id", Number(chainId))
         .eq("outcome_index", Number(outcome))
         .eq("is_buy", isBuy)
-        .in("status", ["open", "partially_filled", "filled_partial"]);
+        .in("status", ["open", "partially_filled", "filled_partial"])
+        .limit(1000); // Limit to top 1000 orders to build depth
 
       const fallback = await fallbackQuery.order("price", {
         ascending: !isBuy,

@@ -25,6 +25,17 @@ export const marketAbi = [
   "function outcomeToken() view returns (address)",
   "function fillOrderSigned(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 salt,uint256 expiry) order, bytes signature, uint256 fillAmount) external",
   "function batchFill(tuple(address maker,uint256 outcomeIndex,bool isBuy,uint256 price,uint256 amount,uint256 salt,uint256 expiry)[] orders, bytes[] signatures, uint256[] fillAmounts) external",
+  "function resolve() external",
+  "function oracle() view returns (address)",
+  "function marketId() view returns (bytes32)",
+  "function resolutionTime() view returns (uint256)",
+] as const;
+
+export const oracleAdapterAbi = [
+  "function requestOutcome(bytes32 marketId, uint8 outcomeIndex, bytes calldata claim) external returns (bytes32 assertionId)",
+  "function settleOutcome(bytes32 marketId) external",
+  "function getMarketStatus(bytes32 marketId) external view returns (uint8 status, uint256 outcome, bytes32 assertionId, uint8 reassertionCount)",
+  "function getOutcome(bytes32 marketId) external view returns (uint256)",
 ] as const;
 
 export const erc1155Abi = [

@@ -36,6 +36,16 @@ export async function mintAction(args: {
     const signer = await provider.getSigner();
 
     const { tokenContract } = await getCollateralTokenContract(market, signer, erc20Abi);
+
+    // Check decimals to ensure compatibility with contract's hardcoded 1e6 scale
+    const decimals = await tokenContract.decimals();
+    if (Number(decimals) !== 6) {
+      throw new Error(
+        t("trading.mintFlow.invalidDecimals") ||
+          `Collateral token must have 6 decimals (current: ${decimals})`
+      );
+    }
+
     const amount18 = parseUnitsByDecimals(amountStr, 18);
     if (amount18 % 1_000_000_000_000n !== 0n) {
       throw new Error(t("trading.orderFlow.invalidAmountPrecision"));

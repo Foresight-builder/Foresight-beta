@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
   normalizeAddress,
@@ -9,24 +8,7 @@ import {
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-
-function isValidEmail(email: string) {
-  return /.+@.+\..+/.test(email);
-}
-
-function resolveEmailOtpSecret(): { secretString: string } {
-  const raw = (process.env.JWT_SECRET || "").trim();
-  if (raw) return { secretString: raw };
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Missing JWT_SECRET");
-  }
-  const fallback = "your-secret-key-change-in-production";
-  return { secretString: fallback };
-}
-
-function hashEmailOtpCode(code: string, secretString: string): string {
-  return createHash("sha256").update(`${code}:${secretString}`, "utf8").digest("hex");
-}
+import { isValidEmail, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 
 export async function POST(req: NextRequest) {
   try {

@@ -4,9 +4,17 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { ethers } from "ethers";
 import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
 import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. IP Rate Limit
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.relaxed, "cancel_salt_ip");
+    if (!limitResult.success) {
+      return ApiResponses.rateLimit("Too many requests from this IP");
+    }
+
     const rawBody = await req.text();
 
     const relayerBase = getRelayerBaseUrl();
@@ -56,6 +64,17 @@ export async function POST(req: NextRequest) {
     }
     if (!ethers.isAddress(String(maker))) {
       return ApiResponses.badRequest("Invalid maker");
+    }
+
+    // 2. Maker Rate Limit (in-memory/Redis check, reusing checkRateLimit for simplicity)
+    // Using a different namespace "cancel_salt_maker"
+    const makerLimitResult = await checkRateLimit(
+      String(maker).toLowerCase(),
+      RateLimits.moderate,
+      "cancel_salt_maker"
+    );
+    if (!makerLimitResult.success) {
+      return ApiResponses.rateLimit("Too many cancel requests for this address");
     }
 
     const domain = {

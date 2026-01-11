@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isMissingMarketKeyColumn(
   error: { code?: string; message?: string | null } | null
@@ -15,6 +16,13 @@ function isMissingMarketKeyColumn(
 
 export async function GET(req: NextRequest) {
   try {
+    // 1. IP Rate Limit (Lenient for quotes as they are high frequency)
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.lenient, "quote_ip");
+    if (!limitResult.success) {
+      return ApiResponses.rateLimit("Too many quote requests");
+    }
+
     const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
@@ -59,7 +67,8 @@ export async function GET(req: NextRequest) {
       .eq("chain_id", chainId)
       .eq("outcome_index", outcome)
       .eq("is_buy", makerIsBuy)
-      .in("status", ["open", "partially_filled", "filled_partial"]);
+      .in("status", ["open", "partially_filled", "filled_partial"])
+      .limit(1000); // Prevent fetching too many rows
 
     if (marketKey) {
       query = query.eq("market_key", marketKey);
@@ -77,7 +86,8 @@ export async function GET(req: NextRequest) {
         .eq("chain_id", chainId)
         .eq("outcome_index", outcome)
         .eq("is_buy", makerIsBuy)
-        .in("status", ["open", "partially_filled", "filled_partial"]);
+        .in("status", ["open", "partially_filled", "filled_partial"])
+        .limit(1000); // Prevent fetching too many rows
 
       const fallback = await fallbackQuery;
       orders = fallback.data ?? [];

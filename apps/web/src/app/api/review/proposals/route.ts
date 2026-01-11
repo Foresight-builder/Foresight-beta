@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       .select("*")
       .eq("event_id", 0)
       .eq("review_status", status)
+      .order("upvotes", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) {

@@ -9,49 +9,9 @@ import {
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 import { normalizeCategory } from "@/features/trending/trendingModel";
-import { isAdminSession } from "../admin/performance/_lib/auth";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
-
-function isAutoMarketEnabled(): boolean {
-  const raw = process.env.FORUM_AUTO_MARKET_ENABLED;
-  if (raw == null) return true;
-  const s = String(raw).toLowerCase();
-  if (s === "0" || s === "false" || s === "off" || s === "no") return false;
-  return true;
-}
-
-async function isUnderDailyAutoMarketLimit(client: any): Promise<boolean> {
-  const rawLimit = process.env.FORUM_AUTO_MARKET_DAILY_LIMIT;
-  const n = rawLimit ? Number(rawLimit) : NaN;
-  const limit = Number.isFinite(n) && n > 0 ? n : 3;
-  if (!limit) return false;
-  const now = new Date();
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0)
-  );
-  const { count, error } = await client
-    .from("predictions")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", start.toISOString());
-  if (error) {
-    logApiError("maybeAutoCreatePrediction count predictions failed", error);
-    return false;
-  }
-  const used = typeof count === "number" ? count : 0;
-  return used < limit;
-}
-
-function actionLabel(v: string): string {
-  const normalized = normalizeActionVerb(v);
-  if (normalized === "价格达到") return "价格是否会达到";
-  if (normalized === "将会发生") return "是否将会发生";
-  if (normalized === "将会赢得") return "是否将会赢得";
-  if (!normalized) return "是否将会发生";
-  if (normalized.includes("是否")) return normalized;
-  return `是否${normalized}`;
-}
 
 function normalizeActionVerb(v: string): string {
   const s = String(v || "").trim();
@@ -61,113 +21,15 @@ function normalizeActionVerb(v: string): string {
   return s;
 }
 
-async function maybeAutoCreatePrediction(
-  client: any,
-  eventId: number,
-  threads: any[],
-  comments: any[]
-) {
-  if (!isAutoMarketEnabled()) return;
-  const byThread: Record<string, { comments: number; participants: Set<string> }> = {};
-  threads.forEach((t) => {
-    byThread[String(t.id)] = { comments: 0, participants: new Set([String(t.user_id || "")]) };
-  });
-  comments.forEach((c) => {
-    const k = String(c.thread_id);
-    if (!byThread[k]) byThread[k] = { comments: 0, participants: new Set() };
-    byThread[k].comments += 1;
-    if (c.user_id) byThread[k].participants.add(String(c.user_id));
-  });
-  const calc = (t: any) => {
-    const m = byThread[String(t.id)] || { comments: 0, participants: new Set<string>() };
-    const score =
-      Number(t.upvotes || 0) * 2 +
-      Number(t.downvotes || 0) * 0 +
-      Number(m.comments || 0) +
-      Number((m.participants || new Set()).size || 0);
-    return { id: Number(t.id), score };
-  };
-  const ranked = threads.map(calc).sort((a, b) => b.score - a.score);
-  const top = ranked[0];
-  if (!top) return;
-  const now = Date.now();
-  const { data: topRow } = await client
-    .from("forum_threads")
-    .select("*")
-    .eq("id", top.id)
-    .maybeSingle();
-  const { data: others } = await client
-    .from("forum_threads")
-    .select("id")
-    .eq("event_id", eventId)
-    .neq("id", top.id);
-  const topSince = topRow?.hot_since ? new Date(topRow.hot_since).getTime() : 0;
-  if (!topSince)
-    await client
-      .from("forum_threads")
-      .update({ hot_since: new Date().toISOString() })
-      .eq("id", top.id);
-  if (others && others.length)
-    await client
-      .from("forum_threads")
-      .update({ hot_since: null })
-      .in(
-        "id",
-        (others as any[]).map((x) => x.id)
-      );
-  const rawThreshold = process.env.FORUM_AUTO_MARKET_MIN_HOT_MS;
-  const nThreshold = rawThreshold ? Number(rawThreshold) : NaN;
-  const thresholdMs = Number.isFinite(nThreshold) && nThreshold > 0 ? nThreshold : 30 * 60 * 1000;
-  const ok = topSince && now - topSince >= thresholdMs;
-  if (!ok) return;
-  const reviewStatus = String(topRow?.review_status || "");
-  if (reviewStatus !== "approved") return;
-  if (Number(topRow?.created_prediction_id || 0) > 0) return;
-  const subj = String(topRow?.subject_name || "");
-  const verb = String(topRow?.action_verb || "");
-  const target = String(topRow?.target_value || "");
-  if (!subj || !verb || !target) return;
-  const cat = String(topRow?.category || "科技");
-  const deadline = topRow?.deadline
-    ? new Date(topRow.deadline).toISOString()
-    : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-  const titlePreview = String(topRow?.title_preview || "");
-  const criteriaPreview = String(topRow?.criteria_preview || "");
-  if (!criteriaPreview) return;
-  const canCreateToday = await isUnderDailyAutoMarketLimit(client);
-  if (!canCreateToday) return;
-  const eventTitle = `${subj}${actionLabel(verb)}${target}`;
-  const seed = (eventTitle || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-  const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
-  const { data: pred, error } = await client
-    .from("predictions")
-    .insert({
-      title: eventTitle,
-      description: titlePreview || eventTitle,
-      category: cat || "其他",
-      deadline,
-      min_stake: 0.1,
-      criteria: criteriaPreview || "以客观可验证来源为准，截止前满足条件视为达成",
-      image_url: imageUrl,
-      reference_url: "",
-      status: "active",
-    })
-    .select()
-    .maybeSingle();
-  if (error) return;
-  if (pred?.id)
-    await client
-      .from("forum_threads")
-      .update({ created_prediction_id: Number(pred.id) })
-      .eq("id", top.id);
-}
-
 // GET /api/forum?eventId=1
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const eventId = normalizeId(searchParams.get("eventId"));
-  if (eventId === null || eventId <= 0) {
-    return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
+  const eventIdRaw = searchParams.get("eventId");
+  // Allow 0 for proposals
+  const eventId = eventIdRaw === "0" ? 0 : normalizeId(eventIdRaw);
+
+  if (eventId === null || eventId < 0) {
+    return ApiResponses.invalidParameters("eventId 必填且必须为非负整数");
   }
   try {
     const client = getClient();
@@ -185,7 +47,6 @@ export async function GET(req: NextRequest) {
     }
     const ids = (threads || []).map((t: any) => t.id);
     let commentsByThread: Record<string, any[]> = {};
-    let commentsArr: any[] = [];
     if (ids.length > 0) {
       const { data: comments, error: cErr } = await client
         .from("forum_comments")
@@ -196,18 +57,13 @@ export async function GET(req: NextRequest) {
         logApiError("GET /api/forum query comments failed", cErr);
         return ApiResponses.databaseError("查询评论失败", cErr.message);
       }
-      commentsArr = comments || [];
+      const commentsArr = comments || [];
       commentsArr.forEach((c: any) => {
         const k = String(c.thread_id);
         (commentsByThread[k] = commentsByThread[k] || []).push(c);
       });
     }
-    try {
-      const admin = await isAdminSession(client as any, req);
-      if (admin.ok) {
-        await maybeAutoCreatePrediction(client, eventId, threads || [], commentsArr);
-      }
-    } catch {}
+
     const merged = (threads || []).map((t: any) => ({
       id: Number(t.id),
       event_id: Number(t.event_id),
@@ -291,12 +147,15 @@ async function isUnderThreadRateLimit(client: any, walletAddress: string): Promi
 export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req);
-    const eventId = normalizeId(body?.eventId);
+    // Allow 0 for proposals
+    const eventIdRaw = body?.eventId;
+    const eventId = eventIdRaw === 0 || eventIdRaw === "0" ? 0 : normalizeId(eventIdRaw);
+
     const title = String(body?.title || "");
     const rawContent = String(body?.content || "");
     const rawWalletAddress = String(body?.walletAddress || "");
-    if (eventId === null || eventId <= 0) {
-      return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
+    if (eventId === null || eventId < 0) {
+      return ApiResponses.invalidParameters("eventId 必填且必须为非负整数");
     }
     if (!title.trim()) {
       return ApiResponses.invalidParameters("标题必填");

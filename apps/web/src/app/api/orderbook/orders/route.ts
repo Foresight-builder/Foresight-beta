@@ -7,6 +7,7 @@ import { successResponse, ApiResponses, proxyJsonResponse } from "@/lib/apiRespo
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
 import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
 type DbClient = SupabaseClient<Database>;
@@ -72,6 +73,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. IP Rate Limit
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.relaxed, "create_order_ip");
+    if (!limitResult.success) {
+      return ApiResponses.rateLimit("Too many requests from this IP");
+    }
+
     const rawBody = await req.text();
     const body = (() => {
       try {
@@ -126,6 +134,21 @@ export async function POST(req: NextRequest) {
 
     if (!ethers.isAddress(vc)) {
       return ApiResponses.badRequest("Invalid contract address");
+    }
+
+    // 2. Maker Address Rate Limit (Database check)
+    if (order?.maker && ethers.isAddress(order.maker)) {
+      const makerAddr = String(order.maker).toLowerCase();
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+      const { count, error: countErr } = await client
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("maker_address", makerAddr)
+        .gt("created_at", oneMinuteAgo);
+
+      if (!countErr && count !== null && count > 20) {
+        return ApiResponses.rateLimit("Order creation rate limit exceeded for this address");
+      }
     }
 
     const orderData: EIP712Order = {

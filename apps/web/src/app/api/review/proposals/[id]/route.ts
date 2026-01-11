@@ -4,8 +4,17 @@ import { Database } from "@/lib/database.types";
 import { getSessionAddress, logApiError, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
+import { createPrediction } from "../../../predictions/_lib/createPrediction";
 
 type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
+
+function actionLabel(v: string): string {
+  const s = String(v || "").trim();
+  if (s === "priceReach") return "价格是否会达到";
+  if (s === "willHappen") return "是否将会发生";
+  if (s === "willWin") return "是否将会赢得";
+  return "是否将会发生";
+}
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -106,17 +115,61 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return ApiResponses.notFound("not_found");
     }
     const now = new Date().toISOString();
-    const existingRow = existing as ForumThreadRow;
+    const existingRow = existing as any;
     let reviewStatus = String(existingRow.review_status || "");
-    if (action === "approve") reviewStatus = "approved";
-    if (action === "reject") reviewStatus = "rejected";
-    if (action === "needs_changes") reviewStatus = "needs_changes";
-    const updatePayload: Partial<ForumThreadRow> = {
-      review_status: reviewStatus,
+    const updatePayload: any = {
       reviewed_by: auth.userId,
       reviewed_at: now,
       review_reason: reason || existingRow.review_reason || null,
     };
+
+    if (action === "approve") {
+      reviewStatus = "approved";
+      if (!existingRow.created_prediction_id) {
+        let title = existingRow.title_preview;
+        if (!title) {
+          const subj = existingRow.subject_name || "";
+          const verb = existingRow.action_verb || "";
+          const target = existingRow.target_value || "";
+          if (subj && verb && target) {
+            title = `${subj}${actionLabel(verb)}${target}`;
+          } else {
+            title = existingRow.title || "Untitled Prediction";
+          }
+        }
+
+        const seed = (title || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+        const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+
+        const deadline = existingRow.deadline
+          ? new Date(existingRow.deadline).toISOString()
+          : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+
+        try {
+          const result = await createPrediction(client, {
+            title: title || "Untitled",
+            description: existingRow.title_preview || title || "No description",
+            category: existingRow.category || "其他",
+            deadline,
+            minStake: 0.1,
+            criteria:
+              existingRow.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成",
+            image_url: imageUrl,
+          });
+          if (result.newPrediction?.id) {
+            updatePayload.created_prediction_id = result.newPrediction.id;
+          }
+        } catch (err: any) {
+          logApiError("Failed to create prediction on approve", err);
+          return ApiResponses.internalError("failed_to_create_market", err.message);
+        }
+      }
+    }
+    if (action === "reject") reviewStatus = "rejected";
+    if (action === "needs_changes") reviewStatus = "needs_changes";
+
+    updatePayload.review_status = reviewStatus;
+
     if (action === "edit_metadata" && patch && typeof patch === "object") {
       const allowedKeys = [
         "category",

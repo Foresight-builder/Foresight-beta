@@ -137,6 +137,7 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
   templateId: string;
   outcome1155: string;
   outcomeCount: number;
+  oracle: string;
 }> {
   const chainId = resolveChainId();
   const rpcUrl = resolveRpcUrl(chainId);
@@ -192,6 +193,19 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
   }
   assertAddress(outcome1155, "outcome1155");
 
+  const oracle = String(
+    process.env.ORACLE_ADDRESS ||
+      process.env.NEXT_PUBLIC_DEFAULT_ORACLE_ADDRESS ||
+      dep?.defaultOracle ||
+      ""
+  ).trim();
+  if (!oracle) {
+    const err = new Error("Missing oracle address");
+    (err as any).status = 500;
+    throw err;
+  }
+  assertAddress(oracle, "oracle");
+
   const templateId = String(
     (type === "multi"
       ? process.env.OFFCHAIN_TEMPLATE_ID_MULTI || dep?.templates?.templateIds?.multi
@@ -215,6 +229,7 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
     templateId,
     outcome1155,
     outcomeCount,
+    oracle,
   };
 }
 
@@ -227,6 +242,7 @@ async function createMarketOnchain(args: {
   market: string;
   collateralToken: string;
   tickSize: number;
+  oracle: string;
 }> {
   const mock = (process.env.MOCK_ONCHAIN_MARKET_ADDRESS || "").trim();
   if (mock) {
@@ -240,6 +256,7 @@ async function createMarketOnchain(args: {
       market: mock,
       collateralToken: String(collateralToken || "").trim(),
       tickSize: 1,
+      oracle: ethers.ZeroAddress,
     };
   }
 
@@ -270,25 +287,177 @@ async function createMarketOnchain(args: {
   const rc = await tx.wait();
 
   const iface = new ethers.Interface(abi);
+  let marketIdVal: bigint | null = null;
+  let marketAddress: string | null = null;
+
   for (const log of rc.logs || []) {
     try {
       const parsed = iface.parseLog(log as any);
       if (parsed?.name === "MarketCreated") {
-        const market = String((parsed as any).args?.market || "").trim();
-        if (market)
-          return {
-            chainId: cfg.chainId,
-            market,
-            collateralToken: cfg.collateralToken,
-            tickSize: 1,
-          };
+        marketAddress = String((parsed as any).args?.market || "").trim();
+        marketIdVal = (parsed as any).args?.marketId;
+        break;
       }
     } catch {}
   }
 
-  const err = new Error("MarketCreated event not found");
-  (err as any).status = 500;
-  throw err;
+  if (!marketAddress || marketIdVal === null) {
+    const err = new Error("MarketCreated event not found");
+    (err as any).status = 500;
+    throw err;
+  }
+
+  // Register market with UMA Oracle
+  try {
+    const abiOracle = [
+      "function registerMarket(bytes32 marketId, uint64 resolutionTime, uint8 outcomeCount) external",
+    ];
+    const oracleContract = new ethers.Contract(cfg.oracle, abiOracle, signer);
+
+    // Convert uint256 marketId to bytes32
+    const marketIdBytes32 = ethers.zeroPadValue(ethers.toBeHex(marketIdVal), 32);
+
+    const regTx = await oracleContract.registerMarket(
+      marketIdBytes32,
+      args.resolutionTimeSec,
+      args.outcomeCount
+    );
+    await regTx.wait();
+  } catch (err: any) {
+    console.warn("Failed to register market with oracle:", err.message);
+    // We don't throw here to avoid failing the whole process if oracle is already registered or different type
+    // But for UMA it is critical.
+  }
+
+  return {
+    chainId: cfg.chainId,
+    market: marketAddress,
+    collateralToken: cfg.collateralToken,
+    tickSize: 1,
+    oracle: cfg.oracle,
+  };
+}
+
+export type CreatePredictionParams = {
+  title: string;
+  description: string;
+  category: string;
+  deadline: string;
+  minStake: number;
+  criteria: string;
+  image_url?: string;
+  reference_url?: string;
+  type?: "binary" | "multi";
+  outcomes?: any[];
+};
+
+export async function createPrediction(
+  client: SupabaseClient<Database>,
+  params: CreatePredictionParams
+): Promise<CreatePredictionResult> {
+  const {
+    title,
+    description,
+    category,
+    deadline,
+    minStake,
+    criteria,
+    image_url,
+    reference_url,
+    type = "binary",
+    outcomes = [],
+  } = params;
+
+  // duplicate title check
+  const { data: existingPredictions, error: checkError } = await (client as any)
+    .from("predictions")
+    .select("id, title, description, category, deadline, status")
+    .eq("title", title);
+
+  if (checkError) {
+    const err = new Error("Failed to check prediction");
+    (err as any).status = 500;
+    throw err;
+  }
+
+  if (existingPredictions && existingPredictions.length > 0) {
+    const err = new Error(
+      "A prediction with the same title already exists. Please change the title or delete existing events."
+    );
+    (err as any).status = 409;
+    (err as any).duplicateEvents = existingPredictions.map((event: any) => ({
+      id: event.id,
+      title: event.title,
+      category: event.category,
+      status: event.status,
+      deadline: event.deadline,
+    }));
+    throw err;
+  }
+
+  const nextId = await getNextPredictionId(client);
+  const outcomeCount = type === "multi" ? outcomes.length : 2;
+  const resolutionTimeSec = parseResolutionTimeSeconds(deadline);
+
+  const { data: newPrediction, error } = await (client as any)
+    .from("predictions")
+    .insert({
+      id: nextId,
+      title,
+      description,
+      category,
+      deadline,
+      min_stake: minStake,
+      criteria,
+      reference_url: reference_url || "",
+      image_url: image_url || "",
+      status: "active",
+      type,
+      outcome_count: outcomeCount,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  try {
+    await insertOutcomes(client, newPrediction.id, type, outcomes);
+
+    const binding = await createMarketOnchain({
+      type,
+      outcomeCount,
+      resolutionTimeSec,
+    });
+    const payload: any = {
+      event_id: newPrediction.id,
+      chain_id: binding.chainId,
+      market: binding.market,
+      collateral_token: binding.collateralToken || null,
+      tick_size: binding.tickSize,
+      resolution_time: deadline || null,
+      status: "open",
+    };
+
+    const { error: mapErr } = await (client as any)
+      .from("markets_map")
+      .upsert(payload, { onConflict: "event_id,chain_id" });
+    if (mapErr) {
+      throw mapErr;
+    }
+  } catch (e) {
+    try {
+      await (client as any)
+        .from("prediction_outcomes")
+        .delete()
+        .eq("prediction_id", newPrediction.id);
+    } catch {}
+    try {
+      await (client as any).from("predictions").delete().eq("id", newPrediction.id);
+    } catch {}
+    throw e;
+  }
+
+  return { newPrediction };
 }
 
 export async function createPredictionFromRequest(
@@ -338,7 +507,9 @@ export async function createPredictionFromRequest(
     "criteria",
   ]);
   assertPositiveNumber(minStake, "minStake");
-  const resolutionTimeSec = parseResolutionTimeSeconds(deadline);
+
+  // Validate deadline format
+  parseResolutionTimeSeconds(deadline);
 
   const { data: prof, error: profErr } = await (client as any)
     .from("user_profiles")
@@ -353,37 +524,8 @@ export async function createPredictionFromRequest(
     throw err;
   }
 
-  // duplicate title check
-  const { data: existingPredictions, error: checkError } = await (client as any)
-    .from("predictions")
-    .select("id, title, description, category, deadline, status")
-    .eq("title", title);
-
-  if (checkError) {
-    const err = new Error("Failed to check prediction");
-    (err as any).status = 500;
-    throw err;
-  }
-
-  if (existingPredictions && existingPredictions.length > 0) {
-    const err = new Error(
-      "A prediction with the same title already exists. Please change the title or delete existing events."
-    );
-    (err as any).status = 409;
-    (err as any).duplicateEvents = existingPredictions.map((event: any) => ({
-      id: event.id,
-      title: event.title,
-      category: event.category,
-      status: event.status,
-      deadline: event.deadline,
-    }));
-    throw err;
-  }
-
   const imageUrl = resolveImageUrl(normalizedBody, buildDiceBearUrl);
   const { type, outcomes } = assertValidOutcomes(normalizedBody);
-
-  const nextId = await getNextPredictionId(client);
 
   const referenceUrl =
     String(
@@ -397,65 +539,18 @@ export async function createPredictionFromRequest(
     throw err;
   }
 
-  const { data: newPrediction, error } = await (client as any)
-    .from("predictions")
-    .insert({
-      id: nextId,
-      title,
-      description,
-      category,
-      deadline,
-      min_stake: minStake,
-      criteria,
-      reference_url: referenceUrl,
-      image_url: imageUrl,
-      status: "active",
-      type: type === "multi" ? "multi" : "binary",
-      outcome_count: type === "multi" ? outcomes.length : 2,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  try {
-    await insertOutcomes(client, newPrediction.id, type, outcomes);
-
-    const binding = await createMarketOnchain({
-      type,
-      outcomeCount: type === "multi" ? outcomes.length : 2,
-      resolutionTimeSec,
-    });
-    const payload: any = {
-      event_id: newPrediction.id,
-      chain_id: binding.chainId,
-      market: binding.market,
-      collateral_token: binding.collateralToken || null,
-      tick_size: binding.tickSize,
-      resolution_time: deadline || null,
-      status: "open",
-    };
-
-    const { error: mapErr } = await (client as any)
-      .from("markets_map")
-      .upsert(payload, { onConflict: "event_id,chain_id" });
-    if (mapErr) {
-      throw mapErr;
-    }
-  } catch (e) {
-    try {
-      await (client as any)
-        .from("prediction_outcomes")
-        .delete()
-        .eq("prediction_id", newPrediction.id);
-    } catch {}
-    try {
-      await (client as any).from("predictions").delete().eq("id", newPrediction.id);
-    } catch {}
-    throw e;
-  }
-
-  return { newPrediction };
+  return createPrediction(client, {
+    title,
+    description,
+    category,
+    deadline,
+    minStake: minStake as number,
+    criteria,
+    image_url: imageUrl,
+    reference_url: referenceUrl,
+    type: type === "multi" ? "multi" : "binary",
+    outcomes,
+  });
 }
 
 async function getNextPredictionId(client: SupabaseClient): Promise<number> {

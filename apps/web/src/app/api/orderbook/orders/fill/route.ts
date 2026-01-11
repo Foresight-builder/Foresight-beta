@@ -78,93 +78,115 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("Invalid fillAmount");
     }
 
-    const runSelect = async (useMk: boolean) => {
-      let q = client
-        .from("orders")
-        .select("id, remaining, status")
-        .eq("chain_id", chainIdNum)
-        .eq("verifying_contract", vc.toLowerCase())
-        .eq("maker_address", maker.toLowerCase())
-        .eq("maker_salt", String(salt))
-        .in("status", ["open", "partially_filled", "filled_partial"]);
-      if (useMk && mk) {
-        q = q.eq("market_key", mk);
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // 1. Fetch current order
+      const runSelect = async (useMk: boolean) => {
+        let q = client
+          .from("orders")
+          .select("id, remaining, status")
+          .eq("chain_id", chainIdNum)
+          .eq("verifying_contract", vc.toLowerCase())
+          .eq("maker_address", maker.toLowerCase())
+          .eq("maker_salt", String(salt))
+          .in("status", ["open", "partially_filled", "filled_partial"]);
+        if (useMk && mk) {
+          q = q.eq("market_key", mk);
+        }
+        return q.maybeSingle();
+      };
+
+      let { data, error } = await runSelect(true);
+      if (error && mk) {
+        const pgError = error as PostgrestError;
+        const msg = String(pgError.message || "");
+        const code = pgError.code ? String(pgError.code) : "";
+        if (code === "42703" || /market_key/i.test(msg)) {
+          ({ data, error } = await runSelect(false));
+        }
       }
-      return q.maybeSingle();
-    };
 
-    let { data, error } = await runSelect(true);
-    if (error && mk) {
-      const pgError = error as PostgrestError;
-      const msg = String(pgError.message || "");
-      const code = pgError.code ? String(pgError.code) : "";
-      if (code === "42703" || /market_key/i.test(msg)) {
-        ({ data, error } = await runSelect(false));
+      if (error) {
+        return ApiResponses.databaseError("Order query failed", error.message);
       }
-    }
 
-    if (error) {
-      return ApiResponses.databaseError("Order query failed", error.message);
-    }
-
-    if (!data) {
-      return ApiResponses.notFound("Order not found or already closed");
-    }
-
-    const orderRow = data as OrdersRow;
-    const remainingStr = String(orderRow.remaining ?? "0");
-    let remainingBN: bigint;
-    try {
-      remainingBN = BigInt(remainingStr);
-    } catch {
-      return NextResponse.json(
-        { success: false, message: "Invalid remaining amount on order" },
-        { status: 500 }
-      );
-    }
-
-    if (remainingBN <= 0n) {
-      return successResponse({
-        id: orderRow.id,
-        remaining: "0",
-        status: orderRow.status || "filled",
-      });
-    }
-
-    const newRemaining = remainingBN > fillBN ? remainingBN - fillBN : 0n;
-    const newStatus = newRemaining === 0n ? "filled" : "partially_filled";
-
-    const runUpdate = async (useMk: boolean) => {
-      let q = client
-        .from("orders")
-        .update({
-          remaining: newRemaining.toString(),
-          status: newStatus,
-        } as never)
-        .eq("id", orderRow.id)
-        .select("id, remaining, status");
-      if (useMk && mk) {
-        q = q.eq("market_key", mk);
+      if (!data) {
+        return ApiResponses.notFound("Order not found or already closed");
       }
-      return q.maybeSingle();
-    };
 
-    let { data: updated, error: updateError } = await runUpdate(true);
-    if (updateError && mk) {
-      const pgError = updateError as PostgrestError;
-      const msg = String(pgError.message || "");
-      const code = pgError.code ? String(pgError.code) : "";
-      if (code === "42703" || /market_key/i.test(msg)) {
-        ({ data: updated, error: updateError } = await runUpdate(false));
+      const orderRow = data as OrdersRow;
+      const remainingStr = String(orderRow.remaining ?? "0");
+      let remainingBN: bigint;
+      try {
+        remainingBN = BigInt(remainingStr);
+      } catch {
+        return NextResponse.json(
+          { success: false, message: "Invalid remaining amount on order" },
+          { status: 500 }
+        );
       }
+
+      if (remainingBN <= 0n) {
+        return successResponse({
+          id: orderRow.id,
+          remaining: "0",
+          status: orderRow.status || "filled",
+        });
+      }
+
+      const newRemaining = remainingBN > fillBN ? remainingBN - fillBN : 0n;
+      const newStatus = newRemaining === 0n ? "filled" : "partially_filled";
+
+      // 2. Optimistic Update
+      const runUpdate = async (useMk: boolean) => {
+        let q = client
+          .from("orders")
+          .update({
+            remaining: newRemaining.toString(),
+            status: newStatus,
+          } as never)
+          .eq("id", orderRow.id)
+          .eq("remaining", remainingStr) // Optimistic Lock
+          .select("id, remaining, status");
+
+        if (useMk && mk) {
+          q = q.eq("market_key", mk);
+        }
+        return q.maybeSingle();
+      };
+
+      let { data: updated, error: updateError } = await runUpdate(true);
+
+      // Handle potential column missing error for market_key
+      if (updateError && mk) {
+        const pgError = updateError as PostgrestError;
+        const msg = String(pgError.message || "");
+        const code = pgError.code ? String(pgError.code) : "";
+        if (code === "42703" || /market_key/i.test(msg)) {
+          ({ data: updated, error: updateError } = await runUpdate(false));
+        }
+      }
+
+      if (updateError) {
+        lastError = updateError;
+        // If DB error is not related to concurrency (e.g. connection lost), maybe we should stop?
+        // But for simplicity, we treat it as retryable or return error.
+        // Actually if it is a real DB error, we should return.
+        return ApiResponses.databaseError("Order update failed", updateError.message);
+      }
+
+      if (updated) {
+        // Success
+        return successResponse(updated);
+      }
+
+      // If updated is null, it means the row was modified by someone else (remaining didn't match).
+      // Loop continues to retry.
     }
 
-    if (updateError) {
-      const message = updateError.message || "Order update failed";
-      return ApiResponses.databaseError("Order update failed", message);
-    }
-
-    return successResponse(updated);
+    return ApiResponses.conflict("Order update conflict after retries");
   } catch (e: unknown) {
     logApiError("POST /api/orderbook/orders/fill", e);
     const message = e instanceof Error ? e.message : String(e);
