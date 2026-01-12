@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
-import { getPendingReviewCountForWitness } from "@/lib/flagRewards";
+import { getPendingReviewCountForWitness, getTodayPendingCheckins } from "@/lib/flagRewards";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,10 +26,18 @@ export async function GET(req: NextRequest) {
       witnessId: viewer,
     });
 
-    const dbCount = Number(unreadDb.count || 0);
-    const count = dbCount + pendingReviewCount;
+    const { count: todayPendingCheckins } = await getTodayPendingCheckins({
+      client,
+      userId: viewer,
+    });
 
-    return NextResponse.json({ count, dbCount, pendingReviewCount }, { status: 200 });
+    const dbCount = Number(unreadDb.count || 0);
+    const count = dbCount + pendingReviewCount + todayPendingCheckins;
+
+    return NextResponse.json(
+      { count, dbCount, pendingReviewCount, todayPendingCheckins },
+      { status: 200 }
+    );
   } catch (error: any) {
     return ApiResponses.internalError(error?.message || "Request failed");
   }

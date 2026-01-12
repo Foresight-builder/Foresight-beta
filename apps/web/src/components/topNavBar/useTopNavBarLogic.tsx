@@ -58,6 +58,7 @@ export function useTopNavBarLogic() {
       url?: string;
       unread?: boolean;
       read_at?: string | null;
+      payload?: unknown;
     }>
   >([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -185,6 +186,7 @@ export function useTopNavBarLogic() {
             const id = String(n?.id || "");
             const created_at = String(n?.created_at || "");
             const read_at = n?.read_at ? String(n.read_at) : null;
+            const payload = n?.payload;
             const base = {
               id,
               type,
@@ -194,6 +196,7 @@ export function useTopNavBarLogic() {
               unread: !read_at,
               title: String(n?.title || ""),
               message: String(n?.message || ""),
+              payload,
             };
             if (type === "pending_review") {
               const count = Number(base.message || 0);
@@ -201,6 +204,34 @@ export function useTopNavBarLogic() {
                 ...base,
                 title: tNotifications("pendingReviewTitle"),
                 message: tNotifications("pendingReviewMessage").replace("{count}", String(count)),
+                url: "/flags",
+                read_at: null,
+                unread: true,
+              };
+            }
+            if (type === "flag_checkin_reminder") {
+              const count = Number(base.message || 0);
+              const sampleTitles = Array.isArray((payload as any)?.sampleTitles)
+                ? ((payload as any).sampleTitles as string[])
+                : [];
+              const normalizedTitles = sampleTitles
+                .map((x) => (typeof x === "string" ? x.trim() : ""))
+                .filter((x) => x);
+              const truncateTitle = (value: string) =>
+                value.length > 30 ? `${value.slice(0, 30)}…` : value;
+              const visibleTitles = normalizedTitles.slice(0, 3).map(truncateTitle);
+              const baseMessage = tNotifications("flagCheckinReminderMessage").replace(
+                "{count}",
+                String(count)
+              );
+              const samplePart =
+                visibleTitles.length > 0
+                  ? `: ${visibleTitles.join(", ")}${count > visibleTitles.length ? "…" : ""}`
+                  : "";
+              return {
+                ...base,
+                title: tNotifications("flagCheckinReminderTitle"),
+                message: `${baseMessage}${samplePart}`,
                 url: "/flags",
                 read_at: null,
                 unread: true,
@@ -241,29 +272,37 @@ export function useTopNavBarLogic() {
         void tick();
       }, delayMs);
     };
-    const load = async () => {
+    const load = async (): Promise<number | null> => {
       if (!viewerId) {
         if (!cancelled) {
           setNotificationsCount(0);
         }
-        return;
+        return 0;
       }
       try {
         const countRes = await fetch("/api/notifications/unread-count", { cache: "no-store" });
         const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
         const count = Number(countJson?.count || 0);
-        if (!cancelled) setNotificationsCount(Number.isFinite(count) ? count : 0);
+        if (!cancelled) {
+          setNotificationsCount(Number.isFinite(count) ? count : 0);
+        }
+        return Number.isFinite(count) ? count : 0;
       } catch {
         if (!cancelled) {
           setNotificationsCount(0);
         }
+        return 0;
       }
     };
     const tick = async () => {
       if (cancelled) return;
       if (!pageVisible) return;
       if (!viewerId) {
-        await load();
+        const c = await load();
+        if (!cancelled) {
+          const delay = c !== null && Number.isFinite(c) && c > 0 ? 60000 : 180000;
+          schedule(delay);
+        }
         return;
       }
       if (pollingInFlightRef.current) {
@@ -271,11 +310,15 @@ export function useTopNavBarLogic() {
         return;
       }
       pollingInFlightRef.current = true;
+      let c: number | null = null;
       try {
-        await load();
+        c = await load();
       } finally {
         pollingInFlightRef.current = false;
-        schedule(60000);
+        if (!cancelled) {
+          const delay = c !== null && Number.isFinite(c) && c > 0 ? 60000 : 180000;
+          schedule(delay);
+        }
       }
     };
     schedule(0);
@@ -301,11 +344,17 @@ export function useTopNavBarLogic() {
       return;
     }
     const unreadIds = notifications
-      .filter((n) => n.type !== "pending_review" && n.unread)
+      .filter((n) => n.type !== "pending_review" && n.type !== "flag_checkin_reminder" && n.unread)
       .map((n) => n.id);
     void markNotificationsRead(unreadIds);
     setNotifications((prev) =>
-      prev.map((n) => (n.type === "pending_review" ? n : n.unread ? { ...n, unread: false } : n))
+      prev.map((n) =>
+        n.type === "pending_review" || n.type === "flag_checkin_reminder"
+          ? n
+          : n.unread
+            ? { ...n, unread: false }
+            : n
+      )
     );
     setNotificationsOpen(true);
   }, [viewerId, notificationsOpen, notifications, markNotificationsRead]);

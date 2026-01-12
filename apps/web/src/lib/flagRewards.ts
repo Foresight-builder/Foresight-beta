@@ -217,16 +217,83 @@ export async function getPendingReviewCountForWitness(options: {
 }): Promise<number> {
   const { client, witnessId } = options;
   try {
-    const { data } = await client
+    const { count, error } = await client
       .from("flags")
-      .select("id")
+      .select("id", { count: "exact", head: true })
       .eq("witness_id", witnessId)
       .eq("status", "pending_review")
       .eq("verification_type", "witness");
-    if (!Array.isArray(data)) return 0;
-    return data.length;
+    if (error) return 0;
+    const n = Number(count || 0);
+    return Number.isFinite(n) && n > 0 ? n : 0;
   } catch {
     return 0;
+  }
+}
+
+export async function getTodayPendingCheckins(options: {
+  client: any;
+  userId: string;
+}): Promise<{ count: number; sampleTitles: string[] }> {
+  const { client, userId } = options;
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const next = new Date(start.getTime() + msDay);
+    const startIso = start.toISOString();
+    const nextIso = next.toISOString();
+
+    const todayDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const { data } = await client
+      .from("flags")
+      .select(
+        `
+        id,
+        title,
+        deadline,
+        flag_checkins!left (
+          id,
+          created_at
+        )
+      `
+      )
+      .eq("user_id", userId)
+      .eq("status", "active");
+
+    if (!Array.isArray(data) || data.length === 0) return { count: 0, sampleTitles: [] };
+
+    let pending = 0;
+    const sampleTitles: string[] = [];
+
+    for (const raw of data as any[]) {
+      const idNum = Number(raw?.id);
+      const title = typeof raw?.title === "string" ? String(raw.title).trim() : "";
+      const deadline = raw?.deadline ? new Date(String(raw.deadline)) : null;
+      if (!Number.isFinite(idNum) || !deadline) continue;
+
+      const deadlineDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+      if (deadlineDay.getTime() < todayDayStart.getTime()) continue;
+
+      const checkins = Array.isArray((raw as any)?.flag_checkins)
+        ? ((raw as any).flag_checkins as any[])
+        : [];
+      const hasTodayCheckin = checkins.some((c: any) => {
+        const createdAt = c?.created_at ? new Date(String(c.created_at)) : null;
+        if (!createdAt) return false;
+        return createdAt >= start && createdAt < next;
+      });
+      if (hasTodayCheckin) continue;
+
+      pending++;
+      if (title && sampleTitles.length < 3) {
+        sampleTitles.push(title);
+      }
+    }
+
+    return { count: pending, sampleTitles };
+  } catch {
+    return { count: 0, sampleTitles: [] };
   }
 }
 

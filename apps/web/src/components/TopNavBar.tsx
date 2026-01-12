@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell } from "lucide-react";
+import { Bell, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import WalletModal from "./WalletModal";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -53,7 +53,11 @@ export default function TopNavBar() {
       nav.notifications.filter((item) => {
         if (nav.notificationsFilter === "all") return true;
         if (nav.notificationsFilter === "review") {
-          return item.type === "pending_review" || item.type === "checkin_review";
+          return (
+            item.type === "pending_review" ||
+            item.type === "checkin_review" ||
+            item.type === "flag_checkin_reminder"
+          );
         }
         if (nav.notificationsFilter === "challenge") {
           return item.type === "witness_invite";
@@ -61,7 +65,8 @@ export default function TopNavBar() {
         return (
           item.type !== "pending_review" &&
           item.type !== "checkin_review" &&
-          item.type !== "witness_invite"
+          item.type !== "witness_invite" &&
+          item.type !== "flag_checkin_reminder"
         );
       }),
     [nav.notifications, nav.notificationsFilter]
@@ -240,62 +245,80 @@ export default function TopNavBar() {
                   )}
                 {filteredNotifications.length > 0 && (
                   <div className="max-h-72 overflow-y-auto">
-                    {filteredNotifications.map((item) => (
-                      <Link
-                        key={item.id}
-                        href={item.url || "/flags"}
-                        className="block px-3 py-2 hover:bg-gray-50"
-                        onClick={() => nav.setNotificationsOpen(false)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`text-xs truncate ${
-                                  item.unread
-                                    ? "font-bold text-gray-900"
-                                    : "font-semibold text-gray-900"
-                                }`}
-                              >
-                                {item.title}
-                              </div>
-                              {item.unread && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                              )}
-                            </div>
-                            {item.message && (
-                              <div className="mt-0.5 text-[11px] text-gray-600 line-clamp-2">
-                                {item.message}
+                    {filteredNotifications.map((item) => {
+                      const isTaskNotification =
+                        item.type === "pending_review" ||
+                        item.type === "checkin_review" ||
+                        item.type === "flag_checkin_reminder";
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.url || "/flags"}
+                          className={`block px-3 py-2 ${
+                            isTaskNotification ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-gray-50"
+                          }`}
+                          onClick={() => nav.setNotificationsOpen(false)}
+                        >
+                          <div className="flex items-start gap-2">
+                            {isTaskNotification && (
+                              <div className="mt-0.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
                               </div>
                             )}
-                            <div className="mt-0.5 text-[10px] text-gray-400">
-                              {formatRelativeTime(item.created_at, new Date(), locale, {
-                                numeric: "auto",
-                                style: "short",
-                              }) || formatDateTime(item.created_at, locale)}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {isTaskNotification && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-100 text-[10px] font-medium text-blue-700">
+                                    {tNotifications("filterReview")}
+                                  </span>
+                                )}
+                                <div
+                                  className={`text-xs truncate ${
+                                    item.unread
+                                      ? "font-bold text-gray-900"
+                                      : "font-semibold text-gray-900"
+                                  }`}
+                                >
+                                  {item.title}
+                                </div>
+                                {item.unread && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                )}
+                              </div>
+                              {item.message && (
+                                <div className="mt-0.5 text-[11px] text-gray-600 line-clamp-2">
+                                  {item.message}
+                                </div>
+                              )}
+                              <div className="mt-0.5 text-[10px] text-gray-400">
+                                {formatRelativeTime(item.created_at, new Date(), locale, {
+                                  numeric: "auto",
+                                  style: "short",
+                                }) || formatDateTime(item.created_at, locale)}
+                              </div>
                             </div>
+                            {item.type !== "pending_review" && (
+                              <button
+                                type="button"
+                                className="ml-2 text-[11px] text-gray-400 hover:text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setConfirmState({
+                                    message: tNotifications("confirmArchiveOne"),
+                                    onConfirm: () =>
+                                      nav.handleArchiveNotification(item.id, item.unread),
+                                  });
+                                }}
+                                disabled={nav.archiveNotificationIdLoading === item.id}
+                              >
+                                {tNotifications("archive")}
+                              </button>
+                            )}
                           </div>
-                          {item.type !== "pending_review" && (
-                            <button
-                              type="button"
-                              className="ml-2 text-[11px] text-gray-400 hover:text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setConfirmState({
-                                  message: tNotifications("confirmArchiveOne"),
-                                  onConfirm: () =>
-                                    nav.handleArchiveNotification(item.id, item.unread),
-                                });
-                              }}
-                              disabled={nav.archiveNotificationIdLoading === item.id}
-                            >
-                              {tNotifications("archive")}
-                            </button>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                     {nav.notificationsHasMore && (
                       <button
                         type="button"

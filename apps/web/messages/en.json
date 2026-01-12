@@ -1940,6 +1940,8 @@
     "fallbackGenericTitle": "Notifications",
     "pendingReviewTitle": "Pending check-in reviews",
     "pendingReviewMessage": "{count} check-ins need your review",
+    "flagCheckinReminderTitle": "Daily check-in reminder",
+    "flagCheckinReminderMessage": "{count} flags have not been checked in today",
     "centerTitle": "Notifications",
     "ariaLabel": "Notifications",
     "empty": "No notifications",

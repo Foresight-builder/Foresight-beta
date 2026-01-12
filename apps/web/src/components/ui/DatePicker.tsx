@@ -347,6 +347,12 @@ export default function DatePicker({
                     <span className="tabular-nums">{time}</span>
                     <Clock className="w-4 h-4 text-gray-400" />
                   </button>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={handleTimeChange}
+                    className="absolute opacity-0 w-0 h-0 p-0 m-0"
+                  />
 
                   <AnimatePresence>
                     {isTimeOpen && (

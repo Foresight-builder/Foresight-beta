@@ -182,6 +182,8 @@
     "fallbackWitnessInviteTitle": "도전 초대",
     "pendingReviewTitle": "대기 중인 체크인 검토",
     "pendingReviewMessage": "{count}개의 체크인을 검토해야 합니다",
+    "flagCheckinReminderTitle": "오늘의 체크인 알림",
+    "flagCheckinReminderMessage": "오늘 아직 체크인하지 않은 플래그가 {count}개 있습니다",
     "summary": "총 {count}개의 미처리 알림",
     "markAllRead": "모두 읽음으로 표시",
     "markAllReadLoading": "표시 중...",

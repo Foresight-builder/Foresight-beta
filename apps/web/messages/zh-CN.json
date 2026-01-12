@@ -1944,6 +1944,8 @@
     "fallbackGenericTitle": "通知",
     "pendingReviewTitle": "待审核打卡",
     "pendingReviewMessage": "你有 {count} 个打卡需要审核",
+    "flagCheckinReminderTitle": "今日打卡提醒",
+    "flagCheckinReminderMessage": "你有 {count} 个 Flag 今日尚未打卡",
     "centerTitle": "通知中心",
     "ariaLabel": "通知",
     "empty": "暂无通知",

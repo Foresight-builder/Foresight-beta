@@ -1941,6 +1941,8 @@
     "fallbackGenericTitle": "Notificaciones",
     "pendingReviewTitle": "Revisiones de check-in pendientes",
     "pendingReviewMessage": "Tienes {count} check-ins por revisar",
+    "flagCheckinReminderTitle": "Recordatorio de check-in diario",
+    "flagCheckinReminderMessage": "{count} flags aún no tienen check-in hoy",
     "centerTitle": "Centro de notificaciones",
     "ariaLabel": "Notificaciones",
     "empty": "Sin notificaciones",

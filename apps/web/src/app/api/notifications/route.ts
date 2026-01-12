@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
-import { getPendingReviewCountForWitness } from "@/lib/flagRewards";
+import { getPendingReviewCountForWitness, getTodayPendingCheckins } from "@/lib/flagRewards";
 
 type NotificationItem = {
   id: string;
@@ -12,6 +12,7 @@ type NotificationItem = {
   url: string | null;
   created_at: string;
   read_at: string | null;
+  payload?: unknown;
 };
 
 function parseCursor(raw: string | null) {
@@ -76,25 +77,51 @@ export async function GET(req: NextRequest) {
       read_at: r?.read_at ? String(r.read_at) : null,
     }));
 
-    const pendingReviewCount = await getPendingReviewCountForWitness({
-      client,
-      witnessId: viewer,
-    });
+    let pendingReviewCount = 0;
+    let todayPendingCheckins = 0;
+    let sampleTitles: string[] = [];
+    const syntheticItems: NotificationItem[] = [];
 
-    const syntheticItems: NotificationItem[] =
-      pendingReviewCount > 0
-        ? [
-            {
-              id: `pending_review:${viewer}`,
-              type: "pending_review",
-              title: "",
-              message: String(pendingReviewCount),
-              url: "/flags",
-              created_at: new Date().toISOString(),
-              read_at: null,
-            },
-          ]
-        : [];
+    if (!cursor) {
+      pendingReviewCount = await getPendingReviewCountForWitness({
+        client,
+        witnessId: viewer,
+      });
+
+      const today = await getTodayPendingCheckins({
+        client,
+        userId: viewer,
+      });
+      todayPendingCheckins = today.count;
+      sampleTitles = today.sampleTitles;
+
+      if (pendingReviewCount > 0) {
+        syntheticItems.push({
+          id: `pending_review:${viewer}`,
+          type: "pending_review",
+          title: "",
+          message: String(pendingReviewCount),
+          url: "/flags",
+          created_at: new Date().toISOString(),
+          read_at: null,
+        });
+      }
+
+      if (todayPendingCheckins > 0) {
+        syntheticItems.push({
+          id: `flag_checkin_reminder:${viewer}`,
+          type: "flag_checkin_reminder",
+          title: "",
+          message: String(todayPendingCheckins),
+          url: "/flags",
+          created_at: new Date().toISOString(),
+          read_at: null,
+          payload: {
+            sampleTitles,
+          },
+        } as any);
+      }
+    }
 
     const combined = [...syntheticItems, ...items];
     const last = items[items.length - 1];
