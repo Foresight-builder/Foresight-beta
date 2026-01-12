@@ -11,6 +11,19 @@
 
 ### 🚀 新增
 
+#### 运行时安全与可观测性
+
+- ✨ 全局中间件注入 x-request-id 并对 `/api/siwe/verify` 启用严格限流（5 次/分钟/每 IP）
+- ✨ 事件采集统一化：开发打印、生产持久化 Supabase analytics_events，支持 RED 聚合查询
+- ✨ 限流工具支持 Upstash Redis 优先、内存回退；预设档位 strict/moderate/relaxed/lenient
+
+### 📖 文档
+
+- 📖 DOCS.md：新增“认证与会话”“限流与中间件”“可观测性与事件”“API 响应规范”
+- 📖 README.md：新增“运行时安全与可观测性”摘要
+- 📖 SECURITY.md：新增“运行时安全与风控”章节（CSP、限流、SIWE、OTP、事件审计）
+- 📖 CONTRIBUTING.md：补充提交前本地自检与脚本指引
+
 #### 社交系统 (Social Network)
 
 - ✨ **用户关注系统** - 实现用户间双向关注逻辑，新增 `user_follows` 数据库架构。

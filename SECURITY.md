@@ -175,6 +175,41 @@ npm audit fix
 
 ---
 
+## 运行时安全与风控
+
+### Web 应用安全头
+
+- 严格 CSP、HSTS、X-Frame-Options、X-Content-Type-Options、X-XSS-Protection、Referrer-Policy、Permissions-Policy
+- 生产环境移除不必要的内联与 eval
+- 参考实现: [next.config.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/next.config.ts#L70-L129)
+
+### 全局与业务限流
+
+- 全局中间件对 /api/siwe/verify 进行严格限流（5 次/分钟/每 IP）
+- 业务端点叠加细粒度限流（如邮箱 OTP 的钱包+IP、邮箱窗口、最小重发间隔、失败锁定）
+- 限流实现支持 Upstash Redis 或内存回退
+- 参考: [middleware.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/middleware.ts), [rateLimit.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/rateLimit.ts)
+
+### 认证与会话安全
+
+- SIWE 校验域名与来源、可用链、nonce 重放防护
+- 成功登录后设置 fs_session（7 天）与 fs_refresh（30 天），仅 HTTP-only
+- 参考: [verify/route.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/siwe/verify/route.ts#L7-L143), [session.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/session.ts)
+
+### 邮箱 OTP 风控
+
+- 严格限流：钱包+IP 组合、IP 窗口、同钱包多邮箱窗口、同邮箱小时窗口、最小重发间隔
+- 校验失败 3 次锁定 1 小时；验证码过期与回收策略
+- 参考: [email-otp/request](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/request/route.ts), [email-otp/verify](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/verify/route.ts)
+
+### 事件与审计
+
+- 服务端事件在生产环境持久化到 Supabase analytics_events，支持按分钟 RED 聚合
+- 中间件注入 x-request-id 贯穿链路用于排错与审计
+- 参考: [serverUtils.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/serverUtils.ts#L139-L156), [analytics/events](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/analytics/events/route.ts)
+
+---
+
 ## 智能合约安全
 
 ### 已实施的安全措施

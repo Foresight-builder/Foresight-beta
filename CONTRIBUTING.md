@@ -151,18 +151,24 @@ git checkout -b fix/bug-description
 ### 2. 开发与测试
 
 ```bash
-# 运行测试
-npm run test
+# Web 子仓测试
+npm run test:web
 
-# 运行 lint
-npm run lint
+# Lint
+npm run lint -w apps/web
 
 # 类型检查
-npm run typecheck
+npm run typecheck -w apps/web
 
 # 全部检查
 npm run check:all
 ```
+
+#### 提交前本地自检
+
+- 确保 3 项均通过：Lint、Typecheck、Tests
+- 文档更新场景下，保证链接引用有效（README/DOCS/SECURITY/Relayer 文档中的代码引用）
+- 避免新增不必要的文档文件；优先编辑现有文件
 
 ### 3. 提交变更
 
@@ -255,7 +261,7 @@ export default function (props) {
 cd apps/web
 
 # 运行测试
-npm run test
+npm run test:run
 
 # 监听模式
 npm run test:ui

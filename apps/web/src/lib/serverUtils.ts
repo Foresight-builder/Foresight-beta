@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { verifyToken } from "./jwt";
 import { normalizeAddress } from "./address";
+import { getClient } from "./supabase";
 
 export { normalizeAddress } from "./address";
 
@@ -133,4 +134,32 @@ export function getRelayerBaseUrl(): string | undefined {
   if (!raw) return undefined;
   if (!/^https?:\/\//i.test(raw)) return undefined;
   return raw;
+}
+
+export async function logApiEvent(event: string, properties?: Record<string, unknown>) {
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      console.info(JSON.stringify({ evt: event, ...((properties as any) || {}) }));
+      return;
+    }
+    const client = getClient();
+    if (!client) return;
+    await (client as any)
+      .from("analytics_events")
+      .insert({
+        event_name: event,
+        event_properties: properties || {},
+        created_at: new Date().toISOString(),
+      })
+      .catch(() => {});
+  } catch {}
+}
+
+export function getRequestId(req: Request): string {
+  try {
+    const h = (req as any).headers as Headers | undefined;
+    return h?.get("x-request-id") || "";
+  } catch {
+    return "";
+  }
 }

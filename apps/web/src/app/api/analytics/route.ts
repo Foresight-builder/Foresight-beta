@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 // 获取设备类型
 function getDeviceType(userAgent: string): string {
@@ -30,6 +31,11 @@ function getOS(userAgent: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "analytics_post_ip");
+    if (!rl.success) {
+      return ApiResponses.rateLimit("Too many analytics events");
+    }
     const body = await req.json();
 
     const {

@@ -33,6 +33,10 @@
 - [安全规范](#安全规范)
 - [测试指南](#测试指南)
 - [性能优化](#性能优化)
+- [认证与会话](#认证与会话)
+- [限流与中间件](#限流与中间件)
+- [可观测性与事件](#可观测性与事件)
+- [API 响应规范](#api-响应规范)
 
 ---
 
@@ -395,6 +399,125 @@ constructor(
 4. 执行
    └── execute(target, value, data, predecessor, salt)
 ```
+
+---
+
+## 认证与会话
+
+### SIWE（Sign-In With Ethereum）
+
+- 端点
+  - GET /api/siwe/nonce：生成并下发 siwe_nonce Cookie
+  - POST /api/siwe/verify：验证签名并创建会话
+- 验证要点
+  - 校验 message 与 signature 基本格式
+  - 必填字段：domain、address、uri、version、chainId、nonce、issuedAt
+  - 域名与来源校验：domain 必须等于请求 host，uri 必须等于请求 origin
+  - 允许链：1、11155111、137、80002、56、8217、1001
+  - 重放防护：校验 siwe_nonce Cookie 与消息内 nonce 一致
+- 会话创建
+  - 成功后设置 Cookie：fs_session（7 天）、fs_refresh（30 天）
+  - 参考实现：[verify/route.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/siwe/verify/route.ts)
+  - 会话工具：[session.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/session.ts)
+
+### 邮箱 OTP 绑定
+
+- 端点
+  - POST /api/email-otp/request：发送验证码（需已有会话，地址匹配）
+  - POST /api/email-otp/verify：验证 6 位验证码并绑定邮箱
+- 风控与速率限制
+  - 全局限流：钱包+IP 组合强限制（严格档）
+  - 1 分钟最小重发间隔（同钱包）
+  - IP 窗口限制：10 分钟内最多 30 次
+  - 同钱包 1 小时内最多 10 个不同邮箱
+  - 同邮箱每小时最多 5 次请求
+  - 校验失败 3 次将锁定 1 小时
+- 数据表（简述）
+  - email_otps：保存 code_hash、expires_at、sent_in_window、fail_count、lock_until 等
+- 参考实现：
+  - 请求：[email-otp/request](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/request/route.ts)
+  - 验证：[email-otp/verify](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/verify/route.ts)
+
+---
+
+## 限流与中间件
+
+### 限流实现
+
+- 工具位置：[rateLimit.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/rateLimit.ts)
+- 预设档位
+  - strict: 5/min
+  - moderate: 20/min
+  - relaxed: 60/min
+  - lenient: 120/min
+- 存储后端
+  - 优先 Upstash Redis（通过环境变量自动检测）
+  - 无配置时回退到内存 Map（开发环境）
+- 返回结构
+  - { success, remaining, resetAt }，配合命名空间 namespace 做隔离
+- IP 提取
+  - 优先 X-Forwarded-For，其次 X-Real-IP，缺省为 "unknown"
+
+### 全局中间件
+
+- 位置：[middleware.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/middleware.ts)
+- 能力
+  - 注入并回传 x-request-id（无则生成）
+  - 对 /api/siwe/verify 应用严格限流（按 IP，边界层 429）
+- 说明
+  - 中间件限流优先于路由内限流，能在更前面拦截恶意洪泛
+  - 业务路由可叠加更细粒度的限流（如 OTP 的钱包+IP 组合）
+
+---
+
+## 可观测性与事件
+
+### 事件采集
+
+- 工具函数：[serverUtils.ts/logApiEvent](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/serverUtils.ts#L139-L156)
+- 行为
+  - 开发环境：Console 输出 JSON
+  - 生产环境：写入 Supabase 表 analytics_events（event_name、event_properties、created_at）
+- 常见事件
+  - siwe_verify_success / siwe_verify_rate_limited
+  - email_otp_sent / email_otp_rate_limited / email_otp_dev_preview
+
+### RED 指标视图
+
+- 端点：[analytics/events](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/analytics/events/route.ts)
+  - POST：接收业务自定义事件（生产环境可持久化）
+  - GET：管理员查询聚合后的 RED 视图（按分钟分桶）
+- 权限
+  - 仅登录管理员可访问 GET；请求有中等限流
+- x-request-id 传播
+  - 中间件注入 x-request-id
+  - 服务端可通过 getRequestId(req) 读取并串联日志
+
+---
+
+## API 响应规范
+
+- 类型定义：[types/api.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/types/api.ts)
+- 快捷响应工具：[apiResponse.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/apiResponse.ts)
+- 错误代码
+  - 认证类：UNAUTHORIZED、INVALID_SIGNATURE、SESSION_EXPIRED
+  - 验证类：VALIDATION_ERROR、INVALID_PARAMETERS、INVALID_ADDRESS
+  - 资源类：NOT_FOUND、ALREADY_EXISTS
+  - 权限类：FORBIDDEN、INSUFFICIENT_PERMISSIONS
+  - 业务类：ORDER_EXPIRED、INSUFFICIENT_BALANCE、MARKET_CLOSED
+  - 系统类：INTERNAL_ERROR、DATABASE_ERROR、NETWORK_ERROR、RATE_LIMIT
+- 示例
+  - 成功：
+    {
+    "success": true,
+    "data": {...},
+    "message": "ok"
+    }
+  - 失败（429）：
+    {
+    "success": false,
+    "error": { "message": "请求过于频繁", "code": "RATE_LIMIT", "timestamp": "..." }
+    }
 
 ---
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { getClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 /**
  * 全局搜索 API
@@ -29,6 +30,14 @@ import type { Database } from "@/lib/database.types";
  */
 export async function GET(request: NextRequest) {
   try {
+    const ip = getIP(request);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "search_get_ip");
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Too many requests", results: [], total: 0 },
+        { status: 429 }
+      );
+    }
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 
@@ -212,6 +221,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getIP(request);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "search_post_ip");
+    if (!rl.success) {
+      return NextResponse.json({ suggestions: [] }, { status: 429 });
+    }
     const { query } = (await request.json().catch(() => ({}))) as {
       query?: string;
     };

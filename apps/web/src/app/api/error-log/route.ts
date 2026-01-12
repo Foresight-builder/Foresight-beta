@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.moderate, "error_log_post_ip");
+    if (!rl.success) {
+      return ApiResponses.rateLimit("Too many error logs");
+    }
     const body = await req.json();
 
     const { error, stack, digest, url, userAgent, componentStack } = body;

@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses, proxyJsonResponse, successResponse } from "@/lib/apiResponse";
-import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
 import { marketAbi } from "@/app/prediction/[id]/_lib/abis";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.moderate, "report_trade_ip");
+    if (!limitResult.success) {
+      try {
+        await logApiEvent("report_trade_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+        });
+      } catch {}
+      return ApiResponses.rateLimit("Too many report trade requests");
+    }
     const rawBody = await req.text();
     const body = (() => {
       try {
@@ -24,6 +35,11 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: rawBody || "{}",
       });
+      try {
+        await logApiEvent(relayerRes.ok ? "report_trade_proxy_ok" : "report_trade_proxy_fail", {
+          status: relayerRes.status,
+        });
+      } catch {}
       return proxyJsonResponse(relayerRes, {
         successMessage: "ok",
         errorMessage: "Relayer request failed",
@@ -73,6 +89,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (filledEvents.length === 0) {
+      try {
+        await logApiEvent("report_trade_no_events", {});
+      } catch {}
       return successResponse({ updated: 0 }, "No fill events found in transaction");
     }
 

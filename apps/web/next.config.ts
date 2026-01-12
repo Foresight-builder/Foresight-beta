@@ -69,6 +69,10 @@ const nextConfig: NextConfig = {
 
   // 安全 Headers
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
+    const scriptSrc = isProd
+      ? "script-src 'self' https://vercel.live https://*.sentry.io"
+      : "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.sentry.io";
     return [
       {
         source: "/:path*",
@@ -105,7 +109,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.sentry.io",
+              scriptSrc,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https: http:",
               "font-src 'self' data: https://fonts.gstatic.com",

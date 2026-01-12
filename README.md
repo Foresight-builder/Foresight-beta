@@ -79,6 +79,26 @@
 
 ---
 
+## 🔒 运行时安全与可观测性
+
+- 安全响应头与 CSP
+  - 统一由 Next 配置下发严格安全头，生产禁用 unsafe-inline/unsafe-eval
+  - 参考: [next.config.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/next.config.ts#L70-L129)
+- 全局中间件
+  - 注入并回传 x-request-id，贯穿服务端日志与事件链路
+  - 对 /api/siwe/verify 施加严格限流（5 次/分钟/每 IP）
+  - 参考: [middleware.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/middleware.ts)
+- 速率限制策略
+  - Upstash Redis 优先；无配置时回退内存实现（开发环境）
+  - 档位：strict/moderate/relaxed/lenient；返回剩余额度与重置时间
+  - 参考: [rateLimit.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/rateLimit.ts)
+- 事件与 RED 指标
+  - logApiEvent 开发打印、生产入库 Supabase analytics_events
+  - 管理员可按分钟拉取 RED 聚合视图
+  - 参考: [serverUtils.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/serverUtils.ts#L139-L156), [analytics/events](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/analytics/events/route.ts)
+
+---
+
 ## ✨ 产品特性
 
 ### 🎯 预测市场

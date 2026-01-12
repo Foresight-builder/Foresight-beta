@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 const RESOLUTION_SECONDS: Record<string, number> = {
   "1m": 60,
@@ -23,6 +24,11 @@ type Candle = {
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.lenient, "candles_ip");
+    if (!limitResult.success) {
+      return ApiResponses.rateLimit("Too many candles requests");
+    }
     const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");

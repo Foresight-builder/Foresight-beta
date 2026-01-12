@@ -6,7 +6,7 @@ import type { Database } from "@/lib/database.types";
 import { successResponse, ApiResponses, proxyJsonResponse } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
-import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
@@ -77,6 +77,11 @@ export async function POST(req: NextRequest) {
     const ip = getIP(req);
     const limitResult = await checkRateLimit(ip, RateLimits.relaxed, "create_order_ip");
     if (!limitResult.success) {
+      try {
+        await logApiEvent("order_create_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+        });
+      } catch {}
       return ApiResponses.rateLimit("Too many requests from this IP");
     }
 
@@ -97,6 +102,11 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: rawBody || "{}",
       });
+      try {
+        await logApiEvent(relayerRes.ok ? "order_create_proxy_ok" : "order_create_proxy_fail", {
+          status: relayerRes.status,
+        });
+      } catch {}
       return proxyJsonResponse(relayerRes, {
         successMessage: "ok",
         errorMessage: "Relayer request failed",
@@ -124,15 +134,24 @@ export async function POST(req: NextRequest) {
     const vc = vcRaw.trim();
 
     if (!chainId || !vc || !order || !signature) {
+      try {
+        await logApiEvent("order_create_invalid_params", { hasChainId: !!chainId, hasVc: !!vc });
+      } catch {}
       return ApiResponses.invalidParameters("Missing required fields");
     }
 
     const chainIdNum = Number(chainId);
     if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
+      try {
+        await logApiEvent("order_create_invalid_chain", { chainId });
+      } catch {}
       return ApiResponses.badRequest("Invalid chainId");
     }
 
     if (!ethers.isAddress(vc)) {
+      try {
+        await logApiEvent("order_create_invalid_contract", { contract: vc });
+      } catch {}
       return ApiResponses.badRequest("Invalid contract address");
     }
 
@@ -147,6 +166,9 @@ export async function POST(req: NextRequest) {
         .gt("created_at", oneMinuteAgo);
 
       if (!countErr && count !== null && count > 20) {
+        try {
+          await logApiEvent("order_create_rate_limited_maker", { maker: makerAddr.slice(0, 8) });
+        } catch {}
         return ApiResponses.rateLimit("Order creation rate limit exceeded for this address");
       }
     }
@@ -170,15 +192,26 @@ export async function POST(req: NextRequest) {
     if (!paramsValidation.valid) {
       if (isOrderExpired(orderData.expiry)) {
         console.warn("Order validation failed: expired", paramsValidation.error);
+        try {
+          await logApiEvent("order_create_expired", { maker: orderData.maker.slice(0, 8) });
+        } catch {}
         return ApiResponses.orderExpired(paramsValidation.error || "Order expired");
       }
       console.warn("Order validation failed: params", paramsValidation.error);
+      try {
+        await logApiEvent("order_create_invalid", { reason: paramsValidation.error || "" });
+      } catch {}
       return ApiResponses.badRequest(paramsValidation.error || "Invalid order parameters");
     }
 
     const signatureValidation = await verifyOrderSignature(orderData, signature, chainIdNum, vc);
     if (!signatureValidation.valid) {
       console.warn("Order validation failed: signature", signatureValidation.error);
+      try {
+        await logApiEvent("order_create_invalid_signature", {
+          reason: signatureValidation.error || "",
+        });
+      } catch {}
       return ApiResponses.invalidSignature(signatureValidation.error || "Invalid order signature");
     }
 
@@ -238,9 +271,22 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error("Error creating order:", insertError);
+      try {
+        await logApiEvent("order_create_db_error", { code: (insertError as any)?.code || "" });
+      } catch {}
       return ApiResponses.databaseError("Failed to create order", insertError.message);
     }
 
+    try {
+      await logApiEvent("order_create_success", {
+        chainId: chainIdNum,
+        contract: vc.slice(0, 10),
+        maker: orderData.maker.slice(0, 8),
+        outcomeIndex: orderData.outcomeIndex,
+        isBuy: orderData.isBuy,
+        hasMarketKey: !!mk,
+      });
+    } catch {}
     return successResponse({ orderId: orderData.salt }, "Order created successfully");
   } catch (e: unknown) {
     logApiError("POST /api/orderbook/orders", e);

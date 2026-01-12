@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,15 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getIP(request);
+    const rl = await checkRateLimit(
+      ip || "unknown",
+      RateLimits.lenient,
+      "analytics_vitals_post_ip"
+    );
+    if (!rl.success) {
+      return ApiResponses.rateLimit("Too many vitals events");
+    }
     const metric = await request.json();
 
     const client = getClient();

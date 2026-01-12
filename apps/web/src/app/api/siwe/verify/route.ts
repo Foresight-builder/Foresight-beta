@@ -1,11 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SiweMessage } from "siwe";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import { parseRequestBody, logApiError, logApiEvent, getRequestId } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
     const payload = await parseRequestBody(req);
+    const ip = getIP(req);
+    const reqId = getRequestId(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.moderate, "siwe-verify");
+    if (!rl.success) {
+      try {
+        console.info(
+          JSON.stringify({
+            evt: "siwe_verify_rate_limited",
+            ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+            resetAt: rl.resetAt,
+          })
+        );
+        await logApiEvent("siwe_verify_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+          resetAt: rl.resetAt,
+          requestId: reqId || undefined,
+        });
+      } catch {}
+      return ApiResponses.rateLimit("请求过于频繁");
+    }
 
     const messageVal = payload?.message;
     const signatureVal = payload?.signature;
@@ -90,6 +111,21 @@ export async function POST(req: NextRequest) {
 
     const { createSession } = await import("@/lib/session");
     await createSession(res, address, chainId);
+    try {
+      console.info(
+        JSON.stringify({
+          evt: "siwe_verify_success",
+          addr: address ? String(address).slice(0, 8) : "",
+          chainId,
+          ts: Date.now(),
+        })
+      );
+      await logApiEvent("siwe_verify_success", {
+        addr: address ? String(address).slice(0, 8) : "",
+        chainId,
+        requestId: reqId || undefined,
+      });
+    } catch {}
 
     res.cookies.set("siwe_nonce", "", {
       httpOnly: true,

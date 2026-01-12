@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
-import { logApiError } from "@/lib/serverUtils";
+import { logApiError, logApiEvent } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export const revalidate = 5; // 5 seconds cache
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const limitResult = await checkRateLimit(ip, RateLimits.lenient, "trades_ip");
+    if (!limitResult.success) {
+      try {
+        await logApiEvent("trades_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+        });
+      } catch {}
+      return ApiResponses.rateLimit("Too many trades requests");
+    }
     const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");

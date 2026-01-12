@@ -291,6 +291,14 @@ services/relayer/
 
 ## 🆘 故障排除
 
+### 与 Web 事件体系对齐
+
+- Web 侧会将关键业务事件写入 Supabase `analytics_events`，并提供 RED 聚合查询端点
+- Relayer 侧通过 Prometheus 指标暴露撮合/结算等运行状态，二者互补
+- 建议在可观测性平台（Grafana + 自建面板）中统一展示：
+  - Web：登录与风控事件（Rate/Errors/Duration）
+  - Relayer：撮合速率、延迟分布、失败率、待结算队列
+
 ### 常见问题
 
 #### 订单提交失败

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
-import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isMissingMarketKeyColumn(
@@ -27,6 +27,11 @@ export async function GET(req: NextRequest) {
     const ip = getIP(req);
     const limitResult = await checkRateLimit(ip, RateLimits.lenient, "depth_ip");
     if (!limitResult.success) {
+      try {
+        await logApiEvent("depth_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+        });
+      } catch {}
       return ApiResponses.rateLimit("Too many depth requests");
     }
 

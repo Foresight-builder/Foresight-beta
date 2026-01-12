@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { logApiError } from "@/lib/serverUtils";
+import { logApiError, logApiEvent } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isMissingMarketKeyColumn(
@@ -20,6 +20,11 @@ export async function GET(req: NextRequest) {
     const ip = getIP(req);
     const limitResult = await checkRateLimit(ip, RateLimits.lenient, "quote_ip");
     if (!limitResult.success) {
+      try {
+        await logApiEvent("quote_rate_limited", {
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+        });
+      } catch {}
       return ApiResponses.rateLimit("Too many quote requests");
     }
 

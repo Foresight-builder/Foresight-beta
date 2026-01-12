@@ -11,6 +11,8 @@ import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse"
 import { ApiErrorCode } from "@/types/api";
 import { sendMailSMTP } from "@/lib/emailService";
 import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
+import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
+import { logApiEvent, getRequestId } from "@/lib/serverUtils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +33,33 @@ export async function POST(req: NextRequest) {
       return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
+    const ip = getIP(req);
+    const reqId = getRequestId(req);
+    const rlKey = `${walletAddress || "unknown"}:${ip || "unknown"}`;
+    const rl = await checkRateLimit(rlKey, RateLimits.strict, "email-otp-request");
+    if (!rl.success) {
+      try {
+        console.info(
+          JSON.stringify({
+            evt: "email_otp_rate_limited",
+            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+            resetAt: rl.resetAt,
+          })
+        );
+        await logApiEvent("email_otp_rate_limited", {
+          addr: walletAddress ? walletAddress.slice(0, 8) : "",
+          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+          resetAt: rl.resetAt,
+          requestId: reqId || undefined,
+        });
+      } catch {}
+      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429, {
+        reason: "GLOBAL_RL_UPSTASH",
+      });
+    }
+
     const now = new Date();
     const nowMs = now.getTime();
 
@@ -181,6 +209,21 @@ export async function POST(req: NextRequest) {
 
     try {
       await sendMailSMTP(email, code);
+      try {
+        console.info(
+          JSON.stringify({
+            evt: "email_otp_sent",
+            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            emailDomain: email.split("@")[1] || "",
+            ts: Date.now(),
+          })
+        );
+        await logApiEvent("email_otp_sent", {
+          addr: walletAddress ? walletAddress.slice(0, 8) : "",
+          emailDomain: email.split("@")[1] || "",
+          requestId: reqId || undefined,
+        });
+      } catch {}
       const res = successResponse({ expiresInSec: 900 }, "验证码已发送");
       return res;
     } catch (err: unknown) {
@@ -212,6 +255,21 @@ export async function POST(req: NextRequest) {
         } catch {}
       }
       if (isDev) {
+        try {
+          console.info(
+            JSON.stringify({
+              evt: "email_otp_dev_preview",
+              addr: walletAddress ? walletAddress.slice(0, 8) : "",
+              emailDomain: email.split("@")[1] || "",
+              ts: Date.now(),
+            })
+          );
+          await logApiEvent("email_otp_dev_preview", {
+            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            emailDomain: email.split("@")[1] || "",
+            requestId: reqId || undefined,
+          });
+        } catch {}
         const res = successResponse(
           {
             codePreview: code,

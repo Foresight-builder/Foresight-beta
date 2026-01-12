@@ -3,9 +3,15 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { getPendingReviewCountForWitness, getTodayPendingCheckins } from "@/lib/flagRewards";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "notifications_unread_ip");
+    if (!rl.success) {
+      return ApiResponses.rateLimit("Too many requests");
+    }
     const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase not configured");
 
