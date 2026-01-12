@@ -8,6 +8,7 @@ export type WalletEmailSectionProps = {
   otpRequested: boolean;
   otp: string;
   setOtp: (value: string) => void;
+  codePreview: string | null;
   emailLoading: boolean;
   authError: string | null;
   canRequest: boolean;
@@ -24,6 +25,7 @@ export function WalletEmailSection({
   otpRequested,
   otp,
   setOtp,
+  codePreview,
   emailLoading,
   authError,
   canRequest,
@@ -66,22 +68,15 @@ export function WalletEmailSection({
           {authError && <div className="text-sm text-red-600">{authError}</div>}
           <div className="flex items-center gap-2">
             <button
-              onClick={handleRequestOtp}
+              onClick={handleSendMagicLink}
               disabled={!canRequest || emailLoading}
-              className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-4 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
+              className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-4 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all font-semibold"
             >
               {emailLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Mail className="w-4 h-4" />
               )}
-              {tLogin("sendOtp")}
-            </button>
-            <button
-              onClick={handleSendMagicLink}
-              disabled={!canRequest || emailLoading}
-              className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900 disabled:opacity-60"
-            >
               {tLogin("sendMagicLink")}
             </button>
           </div>
@@ -102,7 +97,14 @@ export function WalletEmailSection({
             className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
             placeholder="••••••"
           />
-          <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
+          {codePreview ? (
+            <div className="text-xs text-green-600">
+              {tWalletModal("devCodePreviewPrefix")}
+              {codePreview}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
+          )}
           {authError && <div className="text-sm text-red-600">{authError}</div>}
           <div className="flex items-center gap-2">
             <button

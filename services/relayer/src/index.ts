@@ -48,18 +48,108 @@ import { initChainReconciler, closeChainReconciler } from "./reconciliation/inde
 let clusterIsActive = false;
 
 // 环境变量校验与读取
+const EthPrivateKeySchema = z.preprocess(
+  (v) => {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (/^[0-9a-fA-F]{64}$/.test(s)) return "0x" + s;
+    return s;
+  },
+  z.string().regex(/^0x[0-9a-fA-F]{64}$/)
+);
+
+const EthAddressSchema = z.preprocess(
+  (v) => {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (/^[0-9a-fA-F]{40}$/.test(s)) return "0x" + s;
+    return s;
+  },
+  z.string().regex(/^0x[0-9a-fA-F]{40}$/)
+);
+
+const BoolSchema = z.preprocess((v) => {
+  if (typeof v === "boolean") return v;
+  if (typeof v !== "string") return v;
+  const s = v.trim().toLowerCase();
+  if (s === "1" || s === "true" || s === "yes" || s === "on") return true;
+  if (s === "0" || s === "false" || s === "no" || s === "off") return false;
+  return v;
+}, z.boolean());
+
+function maybeNonEmptyString(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  return s.length > 0 ? s : undefined;
+}
+
+function maybeUrl(v: unknown): string | undefined {
+  const s = maybeNonEmptyString(v);
+  if (!s) return undefined;
+  try {
+    const u = new URL(s);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return undefined;
+    return u.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function maybeIntString(v: unknown): string | undefined {
+  const s = maybeNonEmptyString(v);
+  if (!s) return undefined;
+  if (!/^\d+$/.test(s)) return undefined;
+  return s;
+}
+
+function maybeBoolString(v: unknown): string | undefined {
+  const s = maybeNonEmptyString(v);
+  if (!s) return undefined;
+  const lower = s.toLowerCase();
+  if (
+    lower === "1" ||
+    lower === "0" ||
+    lower === "true" ||
+    lower === "false" ||
+    lower === "yes" ||
+    lower === "no" ||
+    lower === "on" ||
+    lower === "off"
+  ) {
+    return lower;
+  }
+  return undefined;
+}
+
+function maybeEthPrivateKey(v: unknown): string | undefined {
+  const s = maybeNonEmptyString(v);
+  if (!s) return undefined;
+  if (/^[0-9a-fA-F]{64}$/.test(s)) return "0x" + s;
+  if (/^0x[0-9a-fA-F]{64}$/.test(s)) return s;
+  return undefined;
+}
+
+function maybeEthAddress(v: unknown): string | undefined {
+  const s = maybeNonEmptyString(v);
+  if (!s) return undefined;
+  if (/^[0-9a-fA-F]{40}$/.test(s)) return "0x" + s;
+  if (/^0x[0-9a-fA-F]{40}$/.test(s)) return s;
+  return undefined;
+}
+
 const EnvSchema = z.object({
-  BUNDLER_PRIVATE_KEY: z
+  BUNDLER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
+  OPERATOR_PRIVATE_KEY: EthPrivateKeySchema.optional(),
+  RELAYER_GASLESS_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
+  GASLESS_ENABLED: BoolSchema.optional(),
+  RELAYER_GASLESS_PAYMASTER_URL: z.string().url().optional(),
+  RPC_URL: z.string().url().optional(),
+  CHAIN_ID: z
     .preprocess(
-      (v) => {
-        const s = typeof v === "string" ? v : "";
-        if (/^[0-9a-fA-F]{64}$/.test(s)) return "0x" + s;
-        return s;
-      },
-      z.string().regex(/^0x[0-9a-fA-F]{64}$/)
+      (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
+      z.number().int().positive()
     )
     .optional(),
-  RPC_URL: z.string().url().optional(),
+  RELAYER_LEADER_PROXY_URL: z.string().url().optional(),
+  RELAYER_LEADER_URL: z.string().url().optional(),
   RELAYER_PORT: z
     .preprocess(
       (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
@@ -72,25 +162,73 @@ const EnvSchema = z.object({
       z.number().int().positive()
     )
     .optional(),
+  NEXT_PUBLIC_PROXY_WALLET_TYPE: z.enum(["safe", "proxy"]).optional(),
+  PROXY_WALLET_FACTORY_ADDRESS: EthAddressSchema.optional(),
+  SAFE_FACTORY_ADDRESS: EthAddressSchema.optional(),
+  SAFE_SINGLETON_ADDRESS: EthAddressSchema.optional(),
+  SAFE_FALLBACK_HANDLER_ADDRESS: EthAddressSchema.optional(),
 });
 
-const rawPriv = process.env.BUNDLER_PRIVATE_KEY || process.env.PRIVATE_KEY;
-const privStr = typeof rawPriv === "string" ? rawPriv.trim() : "";
-const maybePriv =
-  /^[0-9a-fA-F]{64}$/.test(privStr) || /^0x[0-9a-fA-F]{64}$/.test(privStr) ? privStr : undefined;
 const rawEnv = {
-  BUNDLER_PRIVATE_KEY: maybePriv,
-  RPC_URL: process.env.RPC_URL,
-  RELAYER_PORT: process.env.RELAYER_PORT,
-  PORT: process.env.PORT,
+  BUNDLER_PRIVATE_KEY: maybeEthPrivateKey(
+    process.env.BUNDLER_PRIVATE_KEY || process.env.PRIVATE_KEY
+  ),
+  OPERATOR_PRIVATE_KEY: maybeEthPrivateKey(process.env.OPERATOR_PRIVATE_KEY),
+  RELAYER_GASLESS_SIGNER_PRIVATE_KEY: maybeEthPrivateKey(
+    process.env.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
+  ),
+  GASLESS_ENABLED: maybeBoolString(process.env.GASLESS_ENABLED),
+  RELAYER_GASLESS_PAYMASTER_URL: maybeUrl(process.env.RELAYER_GASLESS_PAYMASTER_URL),
+  RPC_URL: maybeUrl(process.env.RPC_URL),
+  CHAIN_ID: maybeIntString(process.env.CHAIN_ID),
+  RELAYER_LEADER_PROXY_URL: maybeUrl(process.env.RELAYER_LEADER_PROXY_URL),
+  RELAYER_LEADER_URL: maybeUrl(process.env.RELAYER_LEADER_URL),
+  RELAYER_PORT: maybeIntString(process.env.RELAYER_PORT),
+  PORT: maybeIntString(process.env.PORT),
+  NEXT_PUBLIC_PROXY_WALLET_TYPE: (() => {
+    const t = String(process.env.NEXT_PUBLIC_PROXY_WALLET_TYPE || "")
+      .trim()
+      .toLowerCase();
+    return t === "safe" || t === "proxy" ? (t as any) : undefined;
+  })(),
+  PROXY_WALLET_FACTORY_ADDRESS: maybeEthAddress(process.env.PROXY_WALLET_FACTORY_ADDRESS),
+  SAFE_FACTORY_ADDRESS: maybeEthAddress(process.env.SAFE_FACTORY_ADDRESS),
+  SAFE_SINGLETON_ADDRESS: maybeEthAddress(process.env.SAFE_SINGLETON_ADDRESS),
+  SAFE_FALLBACK_HANDLER_ADDRESS: maybeEthAddress(process.env.SAFE_FALLBACK_HANDLER_ADDRESS),
 };
 
 const parsed = EnvSchema.safeParse(rawEnv);
 if (!parsed.success) {
-  console.warn("Relayer config invalid, bundler disabled:", parsed.error.flatten().fieldErrors);
+  console.warn("Relayer env invalid:", parsed.error.flatten().fieldErrors);
 }
 
 export const BUNDLER_PRIVATE_KEY = parsed.success ? parsed.data.BUNDLER_PRIVATE_KEY : undefined;
+export const OPERATOR_PRIVATE_KEY = parsed.success ? parsed.data.OPERATOR_PRIVATE_KEY : undefined;
+export const RELAYER_GASLESS_SIGNER_PRIVATE_KEY = parsed.success
+  ? parsed.data.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
+  : undefined;
+export const GASLESS_ENABLED = parsed.success ? (parsed.data.GASLESS_ENABLED ?? false) : false;
+export const RELAYER_GASLESS_PAYMASTER_URL = parsed.success
+  ? parsed.data.RELAYER_GASLESS_PAYMASTER_URL
+  : undefined;
+export const CHAIN_ID = parsed.success ? parsed.data.CHAIN_ID : undefined;
+export const RELAYER_LEADER_PROXY_URL = parsed.success
+  ? parsed.data.RELAYER_LEADER_PROXY_URL
+  : undefined;
+export const RELAYER_LEADER_URL = parsed.success ? parsed.data.RELAYER_LEADER_URL : undefined;
+export const PROXY_WALLET_TYPE = parsed.success
+  ? parsed.data.NEXT_PUBLIC_PROXY_WALLET_TYPE
+  : undefined;
+export const PROXY_WALLET_FACTORY_ADDRESS = parsed.success
+  ? parsed.data.PROXY_WALLET_FACTORY_ADDRESS
+  : undefined;
+export const SAFE_FACTORY_ADDRESS = parsed.success ? parsed.data.SAFE_FACTORY_ADDRESS : undefined;
+export const SAFE_SINGLETON_ADDRESS = parsed.success
+  ? parsed.data.SAFE_SINGLETON_ADDRESS
+  : undefined;
+export const SAFE_FALLBACK_HANDLER_ADDRESS = parsed.success
+  ? parsed.data.SAFE_FALLBACK_HANDLER_ADDRESS
+  : undefined;
 export const RPC_URL =
   (parsed.success ? parsed.data.RPC_URL : undefined) || "http://127.0.0.1:8545";
 export const RELAYER_PORT =
@@ -116,6 +254,10 @@ import { MatchingEngine, MarketWebSocketServer, type OrderInput } from "./matchi
 import { clusterFollowerRejectedTotal } from "./monitoring/metrics.js";
 import { proxyToLeader } from "./cluster/leaderProxy.js";
 import { ClusteredWebSocketServer } from "./cluster/websocketCluster.js";
+import {
+  MetaTransactionHandler,
+  type MetaTransactionRequest,
+} from "./settlement/metaTransaction.js";
 
 export const app = express();
 
@@ -544,6 +686,12 @@ const limitReportTrade = createRoleBasedLimiter("RELAYER_RATE_LIMIT_REPORT_TRADE
   anon: 60,
   windowMs: 60000,
 });
+const limitGasless = createRoleBasedLimiter("RELAYER_RATE_LIMIT_GASLESS", {
+  admin: 200,
+  trader: 60,
+  anon: 20,
+  windowMs: 60000,
+});
 
 type IdempotencyEntry = {
   expiresAtMs: number;
@@ -712,6 +860,8 @@ function microCacheSet<T>(
 
 const depthMicroCache = new Map<string, MicroCacheEntry<any>>();
 const statsMicroCache = new Map<string, MicroCacheEntry<any>>();
+const gaslessQuotaMicroCache = new Map<string, MicroCacheEntry<number>>();
+const intentStatusMicroCache = new Map<string, MicroCacheEntry<any>>();
 
 function sendNotLeader(
   res: express.Response,
@@ -744,6 +894,104 @@ function sendApiError(
     ...(typeof payload.errorCode !== "undefined" ? { errorCode: payload.errorCode } : {}),
     ...(requestId ? { requestId } : {}),
   });
+}
+
+function getGaslessQuotaKey(userAddress: string): string {
+  return `gasless:quota:day:${userAddress.toLowerCase()}`;
+}
+
+async function getGaslessQuotaUsage(
+  userAddress: string
+): Promise<{ used: number; remaining: number }> {
+  const limit =
+    Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0") > 0
+      ? Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0")
+      : 0;
+  if (limit <= 0) return { used: 0, remaining: Number.POSITIVE_INFINITY };
+
+  const cacheKey = userAddress.toLowerCase();
+  const cached = microCacheGet(gaslessQuotaMicroCache, cacheKey);
+  if (typeof cached === "number") {
+    return { used: cached, remaining: Math.max(0, limit - cached) };
+  }
+
+  const redis = getRedisClient();
+  if (!redis.isReady()) return { used: 0, remaining: limit };
+
+  const raw = await redis.get(getGaslessQuotaKey(userAddress));
+  const used = raw ? Number(raw) || 0 : 0;
+  microCacheSet(gaslessQuotaMicroCache, cacheKey, 5000, used, 5000);
+  return { used, remaining: Math.max(0, limit - used) };
+}
+
+async function addGaslessQuotaUsage(userAddress: string, costUsd: number): Promise<void> {
+  if (!(Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0") > 0)) return;
+  if (!(Number.isFinite(costUsd) && costUsd > 0)) return;
+  const redis = getRedisClient();
+  if (!redis.isReady()) return;
+  const key = getGaslessQuotaKey(userAddress);
+  const now = Date.now();
+  const endOfDay =
+    new Date(now).setUTCHours(23, 59, 59, 999) - new Date(now).getTimezoneOffset() * 60000;
+  const ttlSeconds = Math.max(60, Math.floor((endOfDay - now) / 1000));
+  try {
+    await redis.incrByFloat(key, costUsd);
+    await redis.expire(key, ttlSeconds);
+  } catch {}
+  const cacheKey = userAddress.toLowerCase();
+  const cached = microCacheGet(gaslessQuotaMicroCache, cacheKey);
+  if (typeof cached === "number") {
+    const next = cached + costUsd;
+    microCacheSet(gaslessQuotaMicroCache, cacheKey, 5000, next, 5000);
+  }
+}
+
+type IntentStatus = "pending" | "confirming" | "failed";
+
+type TradeIntentRecord = {
+  id: string;
+  type: "trade";
+  userAddress: string;
+  marketKey: string;
+  chainId: number;
+  createdAt: number;
+  updatedAt: number;
+  status: IntentStatus;
+  txHash: string | null;
+  error: string | null;
+};
+
+function getIntentRedisKey(id: string): string {
+  return `intent:${id}`;
+}
+
+async function saveTradeIntent(record: TradeIntentRecord): Promise<void> {
+  const redis = getRedisClient();
+  const ttlSeconds = Math.max(
+    60,
+    Math.floor((Number(process.env.RELAYER_INTENT_TTL_MS || "86400000") || 86400000) / 1000)
+  );
+  try {
+    await redis.set(getIntentRedisKey(record.id), JSON.stringify(record), { EX: ttlSeconds });
+  } catch {}
+  microCacheSet(intentStatusMicroCache, record.id, 5000, record, 5000);
+}
+
+async function loadIntent(id: string): Promise<TradeIntentRecord | null> {
+  const cached = microCacheGet(intentStatusMicroCache, id) as TradeIntentRecord | null;
+  if (cached) return cached;
+  const redis = getRedisClient();
+  if (!redis.isReady()) return null;
+  try {
+    const raw = await redis.get(getIntentRedisKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TradeIntentRecord;
+    if (!parsed || typeof parsed !== "object") return null;
+    microCacheSet(intentStatusMicroCache, id, 5000, parsed, 5000);
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 const allowedOriginsRaw = process.env.RELAYER_CORS_ORIGINS || "";
@@ -839,6 +1087,328 @@ app.post("/", async (req, res) => {
   }
 });
 
+const HexAddressSchema = z
+  .string()
+  .trim()
+  .regex(/^0x[0-9a-fA-F]{40}$/)
+  .transform((v) => v.toLowerCase());
+
+const BigIntFromNumberishSchema = z.preprocess((v) => {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return v;
+    return BigInt(Math.trunc(v));
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return v;
+    try {
+      return BigInt(s);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+}, z.bigint());
+
+const GaslessOrderSchema = z.object({
+  marketKey: z.string().min(1),
+  chainId: z.number().int().positive(),
+  marketAddress: HexAddressSchema,
+  usdcAddress: HexAddressSchema.optional(),
+  userAddress: HexAddressSchema,
+  fillAmount: BigIntFromNumberishSchema,
+  order: z.object({
+    maker: HexAddressSchema,
+    outcomeIndex: z.number().int().min(0),
+    isBuy: z.boolean(),
+    price: BigIntFromNumberishSchema,
+    amount: BigIntFromNumberishSchema,
+    salt: BigIntFromNumberishSchema,
+    expiry: BigIntFromNumberishSchema,
+  }),
+  orderSignature: z.string().min(1),
+  permit: z
+    .object({
+      owner: HexAddressSchema,
+      spender: HexAddressSchema,
+      value: BigIntFromNumberishSchema,
+      nonce: BigIntFromNumberishSchema,
+      deadline: BigIntFromNumberishSchema,
+      signature: z.string().min(1),
+    })
+    .optional(),
+  meta: z
+    .object({
+      clientOrderId: z.string().max(128).optional(),
+      deviceId: z.string().max(128).optional(),
+      intentType: z.enum(["order"]).optional(),
+      maxCostUsd: z.number().positive().optional(),
+    })
+    .optional(),
+});
+
+app.post(
+  "/v2/gasless/order",
+  limitGasless,
+  requireApiKey("orders", "v2_gasless_order"),
+  async (req, res) => {
+    try {
+      if (!GASLESS_ENABLED || !RELAYER_GASLESS_SIGNER_PRIVATE_KEY) {
+        return sendApiError(req, res, 503, {
+          message: "Gasless disabled",
+          errorCode: "GASLESS_DISABLED",
+        });
+      }
+
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/v2/gasless/order");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/v2/gasless/order" });
+          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/gasless/order" });
+          return;
+        }
+      }
+
+      const idemKey = getIdempotencyKey(req, "/v2/gasless/order");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+
+      let parsed: z.infer<typeof GaslessOrderSchema>;
+      try {
+        parsed = GaslessOrderSchema.parse(req.body || {});
+      } catch (e: any) {
+        if (e instanceof z.ZodError) {
+          return sendApiError(req, res, 400, {
+            message: "gasless order validation failed",
+            detail: e.flatten(),
+            errorCode: "VALIDATION_ERROR",
+          });
+        }
+        return sendApiError(req, res, 400, {
+          message: "gasless order validation failed",
+          detail: String(e?.message || e),
+          errorCode: "VALIDATION_ERROR",
+        });
+      }
+
+      const userAddress = parsed.userAddress.toLowerCase();
+      const quota = await getGaslessQuotaUsage(userAddress);
+      if (quota.remaining <= 0) {
+        return sendApiError(req, res, 429, {
+          message: "Gasless quota exceeded",
+          errorCode: "GASLESS_QUOTA_EXCEEDED",
+        });
+      }
+
+      const intentCostUsd =
+        typeof parsed.meta?.maxCostUsd === "number" && parsed.meta.maxCostUsd > 0
+          ? parsed.meta.maxCostUsd
+          : Number(process.env.RELAYER_GASLESS_DEFAULT_COST_USD || "0.1");
+      if (Number.isFinite(intentCostUsd) && intentCostUsd > 0 && quota.remaining < intentCostUsd) {
+        return sendApiError(req, res, 429, {
+          message: "Gasless quota insufficient for intent",
+          errorCode: "GASLESS_QUOTA_EXCEEDED",
+        });
+      }
+
+      const marketKey = parsed.marketKey;
+      const marketKeyParts = marketKey.split(":");
+      if (marketKeyParts.length < 2) {
+        return sendApiError(req, res, 400, {
+          message: "Invalid marketKey",
+          errorCode: "INVALID_MARKET_KEY",
+        });
+      }
+
+      const redis = getRedisClient();
+      if (!redis.isReady()) {
+        return sendApiError(req, res, 503, {
+          message: "Redis not ready",
+          errorCode: "REDIS_UNAVAILABLE",
+        });
+      }
+
+      const riskKeyUser = `risk:blacklist:user:${userAddress}`;
+      const riskKeyIp = `risk:blacklist:ip:${getClientIp(req)}`;
+      const [userFlag, ipFlag] = await Promise.all([redis.get(riskKeyUser), redis.get(riskKeyIp)]);
+      if (userFlag === "1" || ipFlag === "1") {
+        return sendApiError(req, res, 403, {
+          message: "Gasless blocked by risk control",
+          errorCode: "GASLESS_BLOCKED",
+        });
+      }
+
+      const marketKeyPrefix = `${parsed.chainId}:`;
+      if (!marketKey.startsWith(marketKeyPrefix)) {
+        return sendApiError(req, res, 400, {
+          message: "marketKey does not match chainId",
+          errorCode: "INVALID_MARKET_KEY",
+        });
+      }
+
+      const fillAmount = parsed.fillAmount;
+      const order: MetaTransactionRequest["order"] = {
+        maker: parsed.order.maker,
+        outcomeIndex: parsed.order.outcomeIndex,
+        isBuy: parsed.order.isBuy,
+        price: parsed.order.price,
+        amount: parsed.order.amount,
+        salt: parsed.order.salt,
+        expiry: parsed.order.expiry,
+      };
+
+      const permit = parsed.permit
+        ? {
+            owner: parsed.permit.owner,
+            spender: parsed.permit.spender,
+            value: parsed.permit.value,
+            nonce: parsed.permit.nonce,
+            deadline: parsed.permit.deadline,
+            signature: parsed.permit.signature,
+          }
+        : undefined;
+
+      const metaTxRequest: MetaTransactionRequest = {
+        order,
+        orderSignature: parsed.orderSignature,
+        fillAmount,
+        permit,
+        requestedAt: Date.now(),
+        userAddress,
+      };
+
+      const usdcAddress =
+        parsed.usdcAddress ||
+        (process.env.COLLATERAL_TOKEN_ADDRESS as string | undefined) ||
+        (process.env.USDC_ADDRESS as string | undefined) ||
+        (process.env.NEXT_PUBLIC_USDC_ADDRESS as string | undefined) ||
+        "";
+      if (!usdcAddress) {
+        return sendApiError(req, res, 500, {
+          message: "USDC address not configured",
+          errorCode: "USDC_NOT_CONFIGURED",
+        });
+      }
+
+      if (!provider) {
+        return sendApiError(req, res, 503, {
+          message: "RPC provider not available",
+          errorCode: "RPC_UNAVAILABLE",
+        });
+      }
+
+      const handler = new MetaTransactionHandler(
+        parsed.chainId,
+        parsed.marketAddress,
+        usdcAddress,
+        RELAYER_GASLESS_SIGNER_PRIVATE_KEY,
+        RPC_URL
+      );
+
+      const intentId = `intent-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const now = Date.now();
+      const baseIntent: TradeIntentRecord = {
+        id: intentId,
+        type: "trade",
+        userAddress,
+        marketKey,
+        chainId: parsed.chainId,
+        createdAt: now,
+        updatedAt: now,
+        status: "pending",
+        txHash: null,
+        error: null,
+      };
+      await saveTradeIntent(baseIntent);
+
+      const result = await handler.processMetaTransaction(metaTxRequest);
+      if (!result.success) {
+        const failedIntent: TradeIntentRecord = {
+          ...baseIntent,
+          status: "failed",
+          updatedAt: Date.now(),
+          error: result.error || "Gasless order failed",
+        };
+        await saveTradeIntent(failedIntent);
+        return sendApiError(req, res, 400, {
+          message: result.error || "Gasless order failed",
+          errorCode: "GASLESS_FAILED",
+        });
+      }
+
+      const confirmingIntent: TradeIntentRecord = {
+        ...baseIntent,
+        status: "confirming",
+        updatedAt: Date.now(),
+        txHash: result.txHash || null,
+      };
+      await saveTradeIntent(confirmingIntent);
+
+      if (Number.isFinite(intentCostUsd) && intentCostUsd > 0) {
+        void addGaslessQuotaUsage(userAddress, intentCostUsd).catch(() => {});
+      }
+
+      const responseBody = {
+        success: true,
+        data: {
+          intentId,
+          txHash: result.txHash || null,
+          marketKey,
+          userAddress,
+          chainId: parsed.chainId,
+        },
+      };
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      logger.error("v2 gasless order failed", { path: "/v2/gasless/order" }, e);
+      return sendApiError(req, res, 500, {
+        message: "Gasless order failed",
+        detail: String(e?.message || e),
+        errorCode: "INTERNAL_ERROR",
+      });
+    }
+  }
+);
+
+app.get("/v2/intents/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) {
+      return sendApiError(req, res, 400, {
+        message: "Intent id is required",
+        errorCode: "INTENT_ID_REQUIRED",
+      });
+    }
+    const record = await loadIntent(id);
+    if (!record) {
+      return sendApiError(req, res, 404, {
+        message: "Intent not found",
+        errorCode: "INTENT_NOT_FOUND",
+      });
+    }
+    res.json({
+      success: true,
+      data: record,
+    });
+  } catch (e: any) {
+    return sendApiError(req, res, 500, {
+      message: "Failed to load intent",
+      detail: String(e?.message || e),
+      errorCode: "INTERNAL_ERROR",
+    });
+  }
+});
+
 // Off-chain orderbook API (legacy - 保留兼容)
 app.post(
   "/orderbook/orders",
@@ -884,34 +1454,6 @@ app.post(
     }
   }
 );
-
-// ============================================================
-// 🚀 新撮合引擎 API v2 - 高性能链下撮合
-// ============================================================
-
-const HexAddressSchema = z
-  .string()
-  .trim()
-  .regex(/^0x[0-9a-fA-F]{40}$/)
-  .transform((v) => v.toLowerCase());
-
-const BigIntFromNumberishSchema = z.preprocess((v) => {
-  if (typeof v === "bigint") return v;
-  if (typeof v === "number") {
-    if (!Number.isFinite(v)) return v;
-    return BigInt(Math.trunc(v));
-  }
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (!s) return v;
-    try {
-      return BigInt(s);
-    } catch {
-      return v;
-    }
-  }
-  return v;
-}, z.bigint());
 
 const OrderInputSchema = z.object({
   marketKey: z.string().min(1),

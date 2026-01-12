@@ -348,6 +348,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     try {
       await auth.requestEmailOtp(email);
       setOtpRequested(true);
+      setCodePreview(null);
     } catch {}
     setEmailLoading(false);
   };
@@ -366,7 +367,18 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     if (!canRequest || !auth) return;
     setEmailLoading(true);
     try {
-      await auth.sendMagicLink(email);
+      const data = await auth.sendMagicLink(email);
+      setOtpRequested(true);
+      const previewCode =
+        data && typeof (data as any).codePreview === "string"
+          ? String((data as any).codePreview)
+          : "";
+      if (previewCode) {
+        setOtp(previewCode);
+        setCodePreview(previewCode);
+      } else {
+        setCodePreview(null);
+      }
     } catch {}
     setEmailLoading(false);
   };

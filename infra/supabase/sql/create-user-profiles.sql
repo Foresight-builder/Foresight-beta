@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 );
 
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS is_reviewer BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS proxy_wallet_address TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS proxy_wallet_type TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS embedded_wallet_provider TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS embedded_wallet_address TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_proxy_wallet_address_unique
+  ON public.user_profiles (proxy_wallet_address)
+  WHERE proxy_wallet_address IS NOT NULL AND proxy_wallet_address <> '';
 
 -- Enable RLS
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
@@ -29,8 +36,19 @@ ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 -- client can be supabaseAdmin or supabase (anon).
 -- If it uses supabase (anon), we need RLS allowing read.
 
-CREATE POLICY "Allow public read access" ON public.user_profiles
-  FOR SELECT USING (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policies
+        WHERE schemaname = 'public'
+        AND tablename = 'user_profiles'
+        AND policyname = 'Allow public read access'
+    ) THEN
+        CREATE POLICY "Allow public read access" ON public.user_profiles FOR SELECT USING (true);
+    END IF;
+END
+$$;
 
 -- Allow users to update their own profile?
 -- The API handles updates using supabaseAdmin usually?

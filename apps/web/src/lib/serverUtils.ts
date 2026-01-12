@@ -163,3 +163,131 @@ export function getRequestId(req: Request): string {
     return "";
   }
 }
+
+export type ProxyWalletType = "safe" | "proxy";
+
+export type ProxyWalletConfig = {
+  type: ProxyWalletType;
+  proxyWalletFactoryAddress?: string;
+  safeFactoryAddress?: string;
+  safeSingletonAddress?: string;
+  safeFallbackHandlerAddress?: string;
+};
+
+export type GaslessConfig = {
+  enabled: boolean;
+  signerPrivateKeyConfigured: boolean;
+  paymasterUrl?: string;
+};
+
+function isEthAddress(addr: string): boolean {
+  return /^0x[a-f0-9]{40}$/.test(addr);
+}
+
+function normalizeEthAddressMaybe(raw: unknown): string | undefined {
+  const norm = normalizeAddress(String(raw || ""));
+  if (!norm) return undefined;
+  const lower = norm.toLowerCase();
+  if (!isEthAddress(lower)) return undefined;
+  return lower;
+}
+
+function parseBoolEnv(raw: unknown): boolean | undefined {
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw !== "string") return undefined;
+  const v = raw.trim().toLowerCase();
+  if (!v) return undefined;
+  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
+  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
+  return undefined;
+}
+
+export function getProxyWalletConfig(): {
+  ok: boolean;
+  config?: ProxyWalletConfig;
+  error?: string;
+} {
+  const rawType = String(process.env.NEXT_PUBLIC_PROXY_WALLET_TYPE || "")
+    .trim()
+    .toLowerCase();
+  if (!rawType) return { ok: true, config: undefined };
+  if (rawType !== "safe" && rawType !== "proxy") {
+    return { ok: false, error: "Invalid NEXT_PUBLIC_PROXY_WALLET_TYPE" };
+  }
+
+  const proxyWalletFactoryAddress = normalizeEthAddressMaybe(
+    process.env.PROXY_WALLET_FACTORY_ADDRESS
+  );
+  const safeFactoryAddress = normalizeEthAddressMaybe(process.env.SAFE_FACTORY_ADDRESS);
+  const safeSingletonAddress = normalizeEthAddressMaybe(process.env.SAFE_SINGLETON_ADDRESS);
+  const safeFallbackHandlerAddress = normalizeEthAddressMaybe(
+    process.env.SAFE_FALLBACK_HANDLER_ADDRESS
+  );
+
+  const config: ProxyWalletConfig = {
+    type: rawType,
+    ...(proxyWalletFactoryAddress ? { proxyWalletFactoryAddress } : {}),
+    ...(safeFactoryAddress ? { safeFactoryAddress } : {}),
+    ...(safeSingletonAddress ? { safeSingletonAddress } : {}),
+    ...(safeFallbackHandlerAddress ? { safeFallbackHandlerAddress } : {}),
+  };
+
+  if (rawType === "safe") {
+    if (!config.safeFactoryAddress || !config.safeSingletonAddress) {
+      return {
+        ok: false,
+        error: "Safe proxy wallet requires SAFE_FACTORY_ADDRESS and SAFE_SINGLETON_ADDRESS",
+      };
+    }
+  }
+
+  if (rawType === "proxy") {
+    if (!config.proxyWalletFactoryAddress) {
+      return { ok: false, error: "Proxy wallet requires PROXY_WALLET_FACTORY_ADDRESS" };
+    }
+  }
+
+  return { ok: true, config };
+}
+
+export function getGaslessConfig(): { ok: boolean; config: GaslessConfig; error?: string } {
+  const enabled = parseBoolEnv(process.env.GASLESS_ENABLED) ?? false;
+  const paymasterUrlRaw = String(process.env.RELAYER_GASLESS_PAYMASTER_URL || "").trim();
+  let paymasterUrl: string | undefined;
+  if (paymasterUrlRaw) {
+    try {
+      const u = new URL(paymasterUrlRaw);
+      if (!["http:", "https:"].includes(u.protocol)) {
+        return {
+          ok: false,
+          config: { enabled, signerPrivateKeyConfigured: false },
+          error: "Invalid RELAYER_GASLESS_PAYMASTER_URL",
+        };
+      }
+      paymasterUrl = u.toString();
+    } catch {
+      return {
+        ok: false,
+        config: { enabled, signerPrivateKeyConfigured: false },
+        error: "Invalid RELAYER_GASLESS_PAYMASTER_URL",
+      };
+    }
+  }
+
+  const signerKey = String(process.env.RELAYER_GASLESS_SIGNER_PRIVATE_KEY || "").trim();
+  const signerPrivateKeyConfigured =
+    /^0x[0-9a-fA-F]{64}$/.test(signerKey) || /^[0-9a-fA-F]{64}$/.test(signerKey);
+
+  if (enabled && !signerPrivateKeyConfigured) {
+    return {
+      ok: false,
+      config: { enabled, signerPrivateKeyConfigured, ...(paymasterUrl ? { paymasterUrl } : {}) },
+      error: "GASLESS_ENABLED requires RELAYER_GASLESS_SIGNER_PRIVATE_KEY",
+    };
+  }
+
+  return {
+    ok: true,
+    config: { enabled, signerPrivateKeyConfigured, ...(paymasterUrl ? { paymasterUrl } : {}) },
+  };
+}

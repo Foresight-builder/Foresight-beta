@@ -27,6 +27,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { normalizedAccount } = useWallet();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [proxyEnsured, setProxyEnsured] = useState(false);
 
   const address = normalizedAccount || null;
   const profileQuery = useUserProfileInfo(address);
@@ -35,6 +36,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     if (!address) {
       setProfile(null);
       setError(null);
+      setProxyEnsured(false);
       return;
     }
     if (profileQuery.isError) {
@@ -44,10 +46,43 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (profileQuery.data) {
-      setProfile(profileQuery.data.profile ?? null);
+      const p = profileQuery.data.profile ?? null;
+      setProfile(p);
       setError(null);
+      if (p && p.proxy_wallet_address) {
+        setProxyEnsured(true);
+      }
     }
   }, [address, profileQuery.data, profileQuery.isError, profileQuery.error]);
+
+  useEffect(() => {
+    if (!address) return;
+    if (proxyEnsured) return;
+    if (!profile || profile.proxy_wallet_address) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch("/api/wallets/proxy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) return;
+        if (cancelled) return;
+        await profileQuery.refetch();
+      } catch {}
+      if (!cancelled) {
+        setProxyEnsured(true);
+      }
+    };
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, profile, proxyEnsured, profileQuery]);
 
   const refreshProfile = useCallback(async () => {
     await profileQuery.refetch();

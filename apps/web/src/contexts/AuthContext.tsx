@@ -1,6 +1,5 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
 import { useTranslations } from "@/lib/i18n";
 
 interface AuthContextValue {
@@ -12,7 +11,9 @@ interface AuthContextValue {
   // 验证邮箱 OTP（6 位验证码）
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
   // 可选：直接发送魔法链接（不输入验证码）
-  sendMagicLink: (email: string) => Promise<void>;
+  sendMagicLink: (
+    email: string
+  ) => Promise<{ expiresInSec: number; codePreview?: string; magicLinkPreview?: string }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -20,93 +21,87 @@ interface AuthContextValue {
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export type AuthUser = AuthContextValue["user"];
 
+type ApiOk<T> = { success: true; data: T; message?: string };
+type ApiFail = { success: false; error?: { message?: string } };
+
+async function fetchApiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const json = (await res.json().catch(() => null)) as ApiOk<T> | ApiFail | null;
+  if (!res.ok || !json || (json as any).success !== true) {
+    const msg =
+      (json as any)?.error?.message || (json as any)?.message || `Request failed: ${res.status}`;
+    throw new Error(String(msg));
+  }
+  return (json as ApiOk<T>).data;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthContextValue["user"]>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const tAuth = useTranslations("auth");
   const tWalletModal = useTranslations("walletModal");
 
   const refreshSession = async () => {
-    if (!supabase) return;
-    const { data, error } = await (supabase as any).auth.getSession();
-    if (error) {
-      console.error("Session refresh error:", error);
+    try {
+      const me = await fetch("/api/auth/me", { method: "GET" });
+      if (!me.ok) {
+        setUser(null);
+        return;
+      }
+      const meJson = (await me.json().catch(() => null)) as any;
+      const address = typeof meJson?.address === "string" ? String(meJson.address) : "";
+      if (!address) {
+        setUser(null);
+        return;
+      }
+      const profile = await fetchApiJson<{
+        profile?: { email?: string; username?: string } | null;
+      }>(`/api/user-profiles?address=${encodeURIComponent(address)}`, { method: "GET" }).catch(
+        () => null
+      );
+      const email =
+        profile && profile.profile && typeof profile.profile.email === "string"
+          ? String(profile.profile.email)
+          : null;
+      const username =
+        profile && profile.profile && typeof profile.profile.username === "string"
+          ? String(profile.profile.username)
+          : "";
+      setUser({
+        id: address,
+        email,
+        user_metadata: username ? { username } : undefined,
+      });
+    } catch {
+      setUser(null);
     }
-    const sessUser = data?.session?.user || null;
-    setUser(
-      sessUser
-        ? {
-            id: sessUser.id,
-            email: sessUser.email ?? null,
-            user_metadata: sessUser.user_metadata,
-          }
-        : null
-    );
   };
 
   useEffect(() => {
     let mounted = true;
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-    (supabase as any).auth.getSession().then(({ data, error }: any) => {
-      if (!mounted) return;
-      if (error) {
-        setError(error.message);
+    void (async () => {
+      try {
+        await refreshSession();
+      } catch (e: any) {
+        if (mounted) setError(e?.message || String(e));
+      } finally {
+        if (mounted) setLoading(false);
       }
-      const sessUser = data?.session?.user || null;
-      setUser(
-        sessUser
-          ? {
-              id: sessUser.id,
-              email: sessUser.email ?? null,
-              user_metadata: sessUser.user_metadata,
-            }
-          : null
-      );
-      setLoading(false);
-    });
-
-    // 监听会话变化
-    const { data: sub } = (supabase as any).auth.onAuthStateChange((_event: any, session: any) => {
-      const sessUser = session?.user || null;
-      setUser(
-        sessUser
-          ? {
-              id: sessUser.id,
-              email: sessUser.email ?? null,
-              user_metadata: sessUser.user_metadata,
-            }
-          : null
-      );
-      setLoading(false);
-    });
+    })();
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe?.();
     };
   }, []);
-
-  const signInWithEmailOtp = async (email: string) => {
-    const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-    if (!supabase) throw new Error(tAuth("supabaseNotConfigured"));
-    const { error } = await (supabase as any).auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: redirectTo,
-      },
-    });
-    if (error) throw error;
-  };
 
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
-      await signInWithEmailOtp(email);
+      await fetchApiJson<{ expiresInSec: number; codePreview?: string }>("/api/email-otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, mode: "login" }),
+      });
     } catch (e: any) {
       const msg =
         typeof e?.message === "string" && e.message
@@ -120,23 +115,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyEmailOtp = async (email: string, token: string) => {
     setError(null);
     try {
-      if (!supabase) throw new Error(tAuth("supabaseNotConfigured"));
-      const { data, error } = await (supabase as any).auth.verifyOtp({
-        type: "email",
-        email,
-        token,
+      const data = await fetchApiJson<{ ok: boolean; address?: string }>("/api/email-otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: token, mode: "login" }),
       });
-      if (error) throw error;
-      const sessUser = data?.user || data?.session?.user || null;
-      setUser(
-        sessUser
-          ? {
-              id: sessUser.id,
-              email: sessUser.email ?? null,
-              user_metadata: sessUser.user_metadata,
-            }
-          : null
-      );
+      const address = typeof data?.address === "string" ? String(data.address) : "";
+      setUser(address ? { id: address, email: email.trim().toLowerCase() } : null);
+      await refreshSession();
     } catch (e: any) {
       const msg =
         typeof e?.message === "string" && e.message
@@ -150,7 +136,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendMagicLink = async (email: string) => {
     setError(null);
     try {
-      await signInWithEmailOtp(email);
+      return await fetchApiJson<{
+        expiresInSec: number;
+        codePreview?: string;
+        magicLinkPreview?: string;
+      }>("/api/email-magic-link/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
     } catch (e: any) {
       const msg =
         typeof e?.message === "string" && e.message
@@ -163,8 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setError(null);
-    if (!supabase) return;
-    await (supabase as any).auth.signOut();
+    try {
+      await fetch("/api/siwe/logout", { method: "POST" });
+    } catch {}
+    setUser(null);
   };
 
   const value: AuthContextValue = {

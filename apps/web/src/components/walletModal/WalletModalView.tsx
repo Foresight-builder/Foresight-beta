@@ -188,6 +188,7 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
                 otpRequested={otpRequested}
                 otp={otp}
                 setOtp={setOtp}
+                codePreview={codePreview}
                 emailLoading={emailLoading}
                 authError={authError}
                 canRequest={canRequest}

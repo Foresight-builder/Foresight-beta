@@ -129,6 +129,10 @@ export interface Database {
           email: string | null;
           is_admin: boolean;
           is_reviewer: boolean;
+          proxy_wallet_address: string | null;
+          proxy_wallet_type: string | null;
+          embedded_wallet_provider: string | null;
+          embedded_wallet_address: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -138,6 +142,10 @@ export interface Database {
           email?: string | null;
           is_admin?: boolean;
           is_reviewer?: boolean;
+          proxy_wallet_address?: string | null;
+          proxy_wallet_type?: string | null;
+          embedded_wallet_provider?: string | null;
+          embedded_wallet_address?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -147,6 +155,10 @@ export interface Database {
           email?: string | null;
           is_admin?: boolean;
           is_reviewer?: boolean;
+          proxy_wallet_address?: string | null;
+          proxy_wallet_type?: string | null;
+          embedded_wallet_provider?: string | null;
+          embedded_wallet_address?: string | null;
           created_at?: string;
           updated_at?: string;
         };

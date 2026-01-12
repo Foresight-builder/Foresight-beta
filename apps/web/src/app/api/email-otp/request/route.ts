@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
@@ -6,13 +7,25 @@ import {
   getSessionAddress,
   parseRequestBody,
   logApiError,
+  logApiEvent,
+  getRequestId,
 } from "@/lib/serverUtils";
 import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";
 import { sendMailSMTP } from "@/lib/emailService";
 import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
-import { logApiEvent, getRequestId } from "@/lib/serverUtils";
+
+function isValidEthAddress(addr: string) {
+  return /^0x[a-f0-9]{40}$/.test(normalizeAddress(String(addr || "")));
+}
+
+function deriveDeterministicAddressFromEmail(email: string, secretString: string) {
+  const h = createHash("sha256")
+    .update(`email-login:${email}:${secretString}`, "utf8")
+    .digest("hex");
+  return normalizeAddress(`0x${h.slice(0, 40)}`);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,11 +36,27 @@ export async function POST(req: NextRequest) {
     const email = String(payload?.email || "")
       .trim()
       .toLowerCase();
-    const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
+    const walletAddressRaw = String(payload?.walletAddress || "");
+    const walletAddress = normalizeAddress(walletAddressRaw);
+    const requestedMode = typeof payload?.mode === "string" ? String(payload.mode) : "";
+    const mode: "login" | "bind" =
+      requestedMode === "login" || requestedMode === "bind"
+        ? (requestedMode as any)
+        : isValidEthAddress(walletAddress)
+          ? "bind"
+          : "login";
+    const secretString = resolveEmailOtpSecret().secretString;
+    const walletKey =
+      mode === "login" ? deriveDeterministicAddressFromEmail(email, secretString) : walletAddress;
 
-    const sessAddr = await getSessionAddress(req);
-    if (!sessAddr || sessAddr !== walletAddress) {
-      return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
+    if (mode === "bind") {
+      const sessAddr = await getSessionAddress(req);
+      if (!sessAddr || sessAddr !== walletAddress) {
+        return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
+      }
+      if (!isValidEthAddress(walletAddress)) {
+        return ApiResponses.invalidParameters("钱包地址无效");
+      }
     }
     if (!isValidEmail(email)) {
       return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
@@ -35,20 +64,20 @@ export async function POST(req: NextRequest) {
 
     const ip = getIP(req);
     const reqId = getRequestId(req);
-    const rlKey = `${walletAddress || "unknown"}:${ip || "unknown"}`;
+    const rlKey = `${walletKey || "unknown"}:${ip || "unknown"}`;
     const rl = await checkRateLimit(rlKey, RateLimits.strict, "email-otp-request");
     if (!rl.success) {
       try {
         console.info(
           JSON.stringify({
             evt: "email_otp_rate_limited",
-            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            addr: walletKey ? walletKey.slice(0, 8) : "",
             ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
             resetAt: rl.resetAt,
           })
         );
         await logApiEvent("email_otp_rate_limited", {
-          addr: walletAddress ? walletAddress.slice(0, 8) : "",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
           ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
           resetAt: rl.resetAt,
           requestId: reqId || undefined,
@@ -67,7 +96,7 @@ export async function POST(req: NextRequest) {
     const { data: allWalletOtps, error: fetchAllErr } = await client
       .from("email_otps")
       .select("last_sent_at, sent_in_window")
-      .eq("wallet_address", walletAddress);
+      .eq("wallet_address", walletKey);
 
     if (fetchAllErr) {
       return ApiResponses.databaseError("Failed to fetch wallet otps", fetchAllErr.message);
@@ -139,7 +168,7 @@ export async function POST(req: NextRequest) {
       .select(
         "wallet_address, email, expires_at, last_sent_at, sent_window_start_at, sent_in_window, fail_count, lock_until"
       )
-      .eq("wallet_address", walletAddress)
+      .eq("wallet_address", walletKey)
       .eq("email", email)
       .maybeSingle();
     if (fetchErr) {
@@ -186,9 +215,9 @@ export async function POST(req: NextRequest) {
 
     const code = genCode();
     const expiresAt = new Date(nowMs + 15 * 60_000);
-    const codeHash = hashEmailOtpCode(code, resolveEmailOtpSecret().secretString);
+    const codeHash = hashEmailOtpCode(code, secretString);
     const otpRow: Database["public"]["Tables"]["email_otps"]["Insert"] = {
-      wallet_address: walletAddress,
+      wallet_address: walletKey,
       email,
       code_hash: codeHash,
       expires_at: expiresAt.toISOString(),
@@ -213,13 +242,13 @@ export async function POST(req: NextRequest) {
         console.info(
           JSON.stringify({
             evt: "email_otp_sent",
-            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            addr: walletKey ? walletKey.slice(0, 8) : "",
             emailDomain: email.split("@")[1] || "",
             ts: Date.now(),
           })
         );
         await logApiEvent("email_otp_sent", {
-          addr: walletAddress ? walletAddress.slice(0, 8) : "",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
           emailDomain: email.split("@")[1] || "",
           requestId: reqId || undefined,
         });
@@ -229,14 +258,17 @@ export async function POST(req: NextRequest) {
     } catch (err: unknown) {
       const errMessage = err instanceof Error ? err.message : String(err);
       try {
+        const smtpUrl = (process.env.SMTP_URL || "").trim();
         const host = process.env.SMTP_HOST || "";
         const port = Number(process.env.SMTP_PORT || 0);
         const secure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true";
         const user = process.env.SMTP_USER || "";
         const maskedUser = user ? user.replace(/(^.).*(?=@)/, "$1***") : "";
+        const maskedUrl = smtpUrl ? smtpUrl.replace(/:\/\/([^:]+):([^@]+)@/, "://$1:***@") : "";
         console.error("[email-otp] SMTP send error", {
           email,
           address: walletAddress,
+          url: maskedUrl,
           host,
           port,
           secure,
@@ -250,7 +282,7 @@ export async function POST(req: NextRequest) {
           await client
             .from("email_otps")
             .delete()
-            .eq("wallet_address", walletAddress)
+            .eq("wallet_address", walletKey)
             .eq("email", email);
         } catch {}
       }
@@ -259,13 +291,13 @@ export async function POST(req: NextRequest) {
           console.info(
             JSON.stringify({
               evt: "email_otp_dev_preview",
-              addr: walletAddress ? walletAddress.slice(0, 8) : "",
+              addr: walletKey ? walletKey.slice(0, 8) : "",
               emailDomain: email.split("@")[1] || "",
               ts: Date.now(),
             })
           );
           await logApiEvent("email_otp_dev_preview", {
-            addr: walletAddress ? walletAddress.slice(0, 8) : "",
+            addr: walletKey ? walletKey.slice(0, 8) : "",
             emailDomain: email.split("@")[1] || "",
             requestId: reqId || undefined,
           });

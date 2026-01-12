@@ -126,8 +126,8 @@ describe("useWalletModalLogic 邮箱登录流程", () => {
     expect(result.current.emailLoading).toBe(false);
   });
 
-  it("点击发送魔法链接不会切换到 OTP 模式", async () => {
-    sendMagicLinkMock.mockResolvedValueOnce(undefined);
+  it("点击发送魔法链接会切换到 OTP 模式", async () => {
+    sendMagicLinkMock.mockResolvedValueOnce({ expiresInSec: 600, codePreview: "123456" });
 
     const { result } = renderHook(() =>
       useWalletModalLogic({
@@ -148,7 +148,8 @@ describe("useWalletModalLogic 邮箱登录流程", () => {
 
     expect(sendMagicLinkMock).toHaveBeenCalledTimes(1);
     expect(sendMagicLinkMock).toHaveBeenCalledWith("magic@example.com");
-    expect(result.current.otpRequested).toBe(false);
+    expect(result.current.otpRequested).toBe(true);
+    expect(result.current.otp).toBe("123456");
     expect(result.current.emailLoading).toBe(false);
   });
 });

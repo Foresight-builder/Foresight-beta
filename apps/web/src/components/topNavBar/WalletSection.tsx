@@ -105,6 +105,12 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
                             {walletTypeLabel}
                           </span>
                         )}
+                        {userProfile?.profile?.proxy_wallet_address && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-gray-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Proxy
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">

@@ -1,15 +1,28 @@
+import { createHash } from "crypto";
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import {
-  normalizeAddress,
-  getSessionAddress,
-  parseRequestBody,
-  logApiError,
-} from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
-import { isValidEmail, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 import { ApiErrorCode } from "@/types/api";
+import { createSession } from "@/lib/session";
+import { hashEmailOtpCode, isValidEmail, resolveEmailOtpSecret } from "@/lib/otpUtils";
+import {
+  getSessionAddress,
+  logApiError,
+  normalizeAddress,
+  parseRequestBody,
+} from "@/lib/serverUtils";
+
+function isValidEthAddress(addr: string) {
+  return /^0x[a-f0-9]{40}$/.test(normalizeAddress(String(addr || "")));
+}
+
+function deriveDeterministicAddressFromEmail(email: string, secretString: string) {
+  const h = createHash("sha256")
+    .update(`email-login:${email}:${secretString}`, "utf8")
+    .digest("hex");
+  return normalizeAddress(`0x${h.slice(0, 40)}`);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +32,15 @@ export async function POST(req: NextRequest) {
       .trim()
       .toLowerCase();
     const code = String(payload?.code || "").trim();
-    const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
-
-    const sessAddr = await getSessionAddress(req);
-    if (!sessAddr || sessAddr !== walletAddress) {
-      return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
-    }
+    const walletAddressRaw = String(payload?.walletAddress || "");
+    const walletAddress = normalizeAddress(walletAddressRaw);
+    const requestedMode = typeof payload?.mode === "string" ? String(payload.mode) : "";
+    const mode: "login" | "bind" =
+      requestedMode === "login" || requestedMode === "bind"
+        ? (requestedMode as any)
+        : isValidEthAddress(walletAddress)
+          ? "bind"
+          : "login";
     if (!isValidEmail(email)) {
       return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
@@ -37,10 +53,24 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     const nowMs = now.getTime();
+    const secretString = resolveEmailOtpSecret().secretString;
+
+    if (mode === "bind") {
+      const sessAddr = await getSessionAddress(req);
+      if (!sessAddr || sessAddr !== walletAddress) {
+        return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
+      }
+      if (!isValidEthAddress(walletAddress)) {
+        return ApiResponses.invalidParameters("钱包地址无效");
+      }
+    }
+
+    const walletKey =
+      mode === "login" ? deriveDeterministicAddressFromEmail(email, secretString) : walletAddress;
     const { data: recRaw, error: fetchErr } = await client
       .from("email_otps")
       .select("wallet_address, email, code_hash, expires_at, fail_count, lock_until")
-      .eq("wallet_address", walletAddress)
+      .eq("wallet_address", walletKey)
       .eq("email", email)
       .maybeSingle();
     if (fetchErr) {
@@ -65,7 +95,7 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidParameters("验证码已过期");
     }
 
-    const inputHash = hashEmailOtpCode(code, resolveEmailOtpSecret().secretString);
+    const inputHash = hashEmailOtpCode(code, secretString);
     if (inputHash !== String(rec.code_hash || "")) {
       const nextFail = Number(rec.fail_count || 0) + 1;
       const nextLockUntil = nextFail >= 3 ? new Date(nowMs + 60 * 60_000).toISOString() : null;
@@ -75,7 +105,7 @@ export async function POST(req: NextRequest) {
           fail_count: nextFail,
           lock_until: nextLockUntil,
         } satisfies Database["public"]["Tables"]["email_otps"]["Update"])
-        .eq("wallet_address", walletAddress)
+        .eq("wallet_address", walletKey)
         .eq("email", email);
       if (updErr) {
         return ApiResponses.databaseError("Failed to update otp", updErr.message);
@@ -94,28 +124,74 @@ export async function POST(req: NextRequest) {
           });
     }
 
-    // 通过验证：绑定邮箱到钱包地址
-    const { error: upsertErr } = await client.from("user_profiles").upsert(
-      {
-        wallet_address: walletAddress,
-        email,
-      } as Database["public"]["Tables"]["user_profiles"]["Insert"],
-      { onConflict: "wallet_address" }
-    );
-    if (upsertErr) {
-      return ApiResponses.databaseError("Failed to bind email", upsertErr.message);
-    }
-
     const { error: delErr } = await client
       .from("email_otps")
       .delete()
-      .eq("wallet_address", walletAddress)
+      .eq("wallet_address", walletKey)
       .eq("email", email);
     if (delErr) {
       return ApiResponses.databaseError("Failed to clear otp", delErr.message);
     }
 
-    const res = successResponse({ ok: true }, "验证成功");
+    let sessionAddress = walletAddress;
+    if (mode === "login") {
+      const { data: existingList, error: existingErr } = await client
+        .from("user_profiles")
+        .select("wallet_address,email,proxy_wallet_type")
+        .eq("email", email)
+        .limit(10);
+
+      if (existingErr) {
+        return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
+      }
+
+      const list = Array.isArray(existingList) ? existingList : [];
+      const preferred =
+        list.find((r: any) => !String(r?.proxy_wallet_type || "").trim()) ||
+        list.find(
+          (r: any) =>
+            String(r?.proxy_wallet_type || "")
+              .trim()
+              .toLowerCase() === "email"
+        ) ||
+        list[0];
+
+      if (preferred?.wallet_address && isValidEthAddress(preferred.wallet_address)) {
+        sessionAddress = normalizeAddress(preferred.wallet_address);
+      } else {
+        sessionAddress = deriveDeterministicAddressFromEmail(email, secretString);
+        const nowIso = new Date().toISOString();
+        const { error: upsertErr } = await client.from("user_profiles").upsert(
+          {
+            wallet_address: sessionAddress,
+            email,
+            proxy_wallet_address: email,
+            proxy_wallet_type: "email",
+            updated_at: nowIso,
+          } as Database["public"]["Tables"]["user_profiles"]["Insert"],
+          { onConflict: "wallet_address" }
+        );
+        if (upsertErr) {
+          return ApiResponses.databaseError("Failed to bind email", upsertErr.message);
+        }
+      }
+    } else {
+      const { error: upsertErr } = await client.from("user_profiles").upsert(
+        {
+          wallet_address: walletAddress,
+          email,
+        } as Database["public"]["Tables"]["user_profiles"]["Insert"],
+        { onConflict: "wallet_address" }
+      );
+      if (upsertErr) {
+        return ApiResponses.databaseError("Failed to bind email", upsertErr.message);
+      }
+    }
+
+    const res = successResponse({ ok: true, address: sessionAddress }, "验证成功");
+    if (mode === "login") {
+      await createSession(res, sessionAddress);
+    }
     return res;
   } catch (e: any) {
     const detail = String(e?.message || e);

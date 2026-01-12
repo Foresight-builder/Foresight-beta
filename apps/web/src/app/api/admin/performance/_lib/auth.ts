@@ -11,46 +11,6 @@ export async function isAdminSession(
   client: SupabaseClient,
   req: NextRequest
 ): Promise<AdminSession> {
-  try {
-    const {
-      data: { session },
-    } = await client.auth.getSession();
-
-    if (session && session.user) {
-      let isAdmin = false;
-
-      if (session.user.email) {
-        const { data: profile } = await (client as any)
-          .from("user_profiles")
-          .select("is_admin")
-          .eq("email", session.user.email)
-          .maybeSingle();
-        if ((profile as any)?.is_admin) isAdmin = true;
-      }
-
-      const walletFromMeta =
-        (session.user as any).user_metadata?.wallet_address || (session.user as any).wallet_address;
-      const walletAddress = normalizeAddress(String(walletFromMeta || ""));
-
-      if (!isAdmin && walletAddress) {
-        const { data: profile } = await (client as any)
-          .from("user_profiles")
-          .select("is_admin")
-          .eq("wallet_address", walletAddress)
-          .maybeSingle();
-        if ((profile as any)?.is_admin) isAdmin = true;
-      }
-
-      if (!isAdmin && walletAddress && isAdminAddress(walletAddress)) {
-        isAdmin = true;
-      }
-
-      if (isAdmin) {
-        return { ok: true, reason: "ok", sessionUserId: session.user.id };
-      }
-    }
-  } catch {}
-
   const sessAddr = await getSessionAddress(req);
   const addr = normalizeAddress(String(sessAddr || ""));
   if (!/^0x[a-f0-9]{40}$/.test(addr)) {
@@ -68,5 +28,5 @@ export async function isAdminSession(
     return { ok: false, reason: "forbidden" };
   }
 
-  return { ok: true, reason: "ok", sessionUserId: null };
+  return { ok: true, reason: "ok", sessionUserId: addr };
 }

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { getErrorMessage, logApiError } from "@/lib/serverUtils";
+import {
+  getErrorMessage,
+  getGaslessConfig,
+  getProxyWalletConfig,
+  logApiError,
+} from "@/lib/serverUtils";
 
 // 健康检查结果接口
 interface HealthCheck {
@@ -30,12 +35,16 @@ export async function GET(_req: NextRequest) {
     const timestamp = new Date().toISOString();
 
     // 环境变量检查
+    const proxyWallet = getProxyWalletConfig();
+    const gasless = getGaslessConfig();
     const config = {
       NEXT_PUBLIC_SUPABASE_URL: (process.env.NEXT_PUBLIC_SUPABASE_URL || "").length > 0,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").length > 0,
       NEXT_PUBLIC_RELAYER_URL: (process.env.NEXT_PUBLIC_RELAYER_URL || "").length > 0,
       SUPABASE_SERVICE_ROLE_KEY: (process.env.SUPABASE_SERVICE_ROLE_KEY || "").length > 0,
       JWT_SECRET: (process.env.JWT_SECRET || "").length > 0,
+      PROXY_WALLET_CONFIG_OK: proxyWallet.ok,
+      GASLESS_CONFIG_OK: gasless.ok,
     };
 
     // 基础连通性与表存在检查

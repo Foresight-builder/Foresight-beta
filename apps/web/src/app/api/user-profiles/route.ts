@@ -49,19 +49,26 @@ export async function GET(req: NextRequest) {
     if (list.length > 0) {
       const { data, error } = await client
         .from("user_profiles")
-        .select("wallet_address, username, email, is_admin")
+        .select(
+          "wallet_address, username, email, is_admin, is_reviewer, proxy_wallet_address, proxy_wallet_type, embedded_wallet_provider, embedded_wallet_address"
+        )
         .in("wallet_address", list);
       if (error) {
         return ApiResponses.databaseError("Failed to fetch profiles", error.message);
       }
-      const rows = (data || []).map((p: Database["public"]["Tables"]["user_profiles"]["Row"]) => ({
-        ...p,
-        email:
-          viewerIsAdmin || (viewer && normalizeAddress(p?.wallet_address || "") === viewer)
-            ? p?.email || ""
-            : "",
-        is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || ""),
-      }));
+      const rows = (data || []).map((p: Database["public"]["Tables"]["user_profiles"]["Row"]) => {
+        const canViewSensitive =
+          viewerIsAdmin || (viewer && normalizeAddress(p?.wallet_address || "") === viewer);
+        return {
+          ...p,
+          proxy_wallet_address: canViewSensitive ? (p?.proxy_wallet_address ?? null) : null,
+          proxy_wallet_type: canViewSensitive ? (p?.proxy_wallet_type ?? null) : null,
+          embedded_wallet_provider: canViewSensitive ? (p?.embedded_wallet_provider ?? null) : null,
+          embedded_wallet_address: canViewSensitive ? (p?.embedded_wallet_address ?? null) : null,
+          email: canViewSensitive ? p?.email || "" : "",
+          is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || ""),
+        };
+      });
       return successResponse(
         {
           profile: null,
@@ -80,6 +87,11 @@ export async function GET(req: NextRequest) {
         username: "",
         email: "",
         is_admin: false,
+        is_reviewer: false,
+        proxy_wallet_address: null,
+        proxy_wallet_type: null,
+        embedded_wallet_provider: null,
+        embedded_wallet_address: null,
       };
       return successResponse(
         {
@@ -91,7 +103,9 @@ export async function GET(req: NextRequest) {
     }
     const { data: rawData, error } = await client
       .from("user_profiles")
-      .select("wallet_address, username, email, is_admin")
+      .select(
+        "wallet_address, username, email, is_admin, is_reviewer, proxy_wallet_address, proxy_wallet_type, embedded_wallet_provider, embedded_wallet_address"
+      )
       .eq("wallet_address", address)
       .maybeSingle();
 
@@ -103,6 +117,11 @@ export async function GET(req: NextRequest) {
         username: "",
         email: "",
         is_admin: isAdminAddress(address),
+        is_reviewer: false,
+        proxy_wallet_address: null,
+        proxy_wallet_type: null,
+        embedded_wallet_provider: null,
+        embedded_wallet_address: null,
       };
       return successResponse(
         {
@@ -112,10 +131,19 @@ export async function GET(req: NextRequest) {
         "Profile not found, using fallback"
       );
     }
+    const canViewSensitive = viewerIsAdmin || (viewer && address === viewer);
     const profile = data
       ? {
           ...data,
-          email: viewerIsAdmin || address === viewer ? String(data?.email || "") : "",
+          proxy_wallet_address: canViewSensitive ? (data?.proxy_wallet_address ?? null) : null,
+          proxy_wallet_type: canViewSensitive ? (data?.proxy_wallet_type ?? null) : null,
+          embedded_wallet_provider: canViewSensitive
+            ? (data?.embedded_wallet_provider ?? null)
+            : null,
+          embedded_wallet_address: canViewSensitive
+            ? (data?.embedded_wallet_address ?? null)
+            : null,
+          email: canViewSensitive ? String(data?.email || "") : "",
           is_admin: !!data?.is_admin || isAdminAddress(address),
         }
       : {
@@ -123,6 +151,11 @@ export async function GET(req: NextRequest) {
           username: "",
           email: "",
           is_admin: isAdminAddress(address),
+          is_reviewer: false,
+          proxy_wallet_address: null,
+          proxy_wallet_type: null,
+          embedded_wallet_provider: null,
+          embedded_wallet_address: null,
         };
     return successResponse(
       {

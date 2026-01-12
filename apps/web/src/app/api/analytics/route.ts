@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
 // 获取设备类型
 function getDeviceType(userAgent: string): string {
@@ -62,10 +63,8 @@ export async function POST(req: NextRequest) {
     if (process.env.NODE_ENV === "production") {
       const client = getClient();
       if (client) {
-        // 尝试获取当前用户 ID
-        const {
-          data: { session },
-        } = await client.auth.getSession();
+        const sessAddr = await getSessionAddress(req);
+        const sessionId = sessAddr ? normalizeAddress(String(sessAddr || "")) : null;
 
         await (client as any)
           .from("web_vitals")
@@ -77,7 +76,8 @@ export async function POST(req: NextRequest) {
             metric_id: id,
             navigation_type: navigationType,
             page_url: url,
-            user_id: session?.user?.id || null,
+            user_id: null,
+            session_id: sessionId,
             device_type: deviceType,
             browser,
             os,

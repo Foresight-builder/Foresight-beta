@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: Request) {
@@ -18,18 +16,7 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return ApiResponses.invalidParameters("参数无效：缺少邮箱或密码");
     }
-    if (!supabase) {
-      return ApiResponses.internalError("Supabase 未配置");
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      return ApiResponses.unauthorized("登录失败");
-    }
-    return NextResponse.json({
-      message: "ok",
-      data: { session: { expires_at: data.session?.expires_at, user: data.session?.user } },
-    });
+    return ApiResponses.badRequest("该接口已弃用，请使用邮箱验证码或钱包登录");
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
     return ApiResponses.internalError("登录失败", detail);
