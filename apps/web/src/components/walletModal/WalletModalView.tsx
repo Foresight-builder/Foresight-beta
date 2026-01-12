@@ -38,6 +38,7 @@ export type WalletModalViewProps = WalletModalProps & {
   setUsername: (value: string) => void;
   rememberMe: boolean;
   setRememberMe: (value: boolean) => void;
+  resendLeft: number;
   profileError: string | null;
   canSubmitProfile: boolean;
   profileLoading: boolean;
@@ -92,6 +93,7 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
   setUsername,
   rememberMe,
   setRememberMe,
+  resendLeft,
   profileError,
   canSubmitProfile,
   profileLoading,
@@ -167,6 +169,7 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
               setUsername={setUsername}
               rememberMe={rememberMe}
               setRememberMe={setRememberMe}
+              resendLeft={resendLeft}
               profileError={profileError}
               canSubmitProfile={canSubmitProfile}
               profileLoading={profileLoading}

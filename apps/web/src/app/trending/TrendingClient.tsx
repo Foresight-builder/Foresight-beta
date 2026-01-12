@@ -72,6 +72,88 @@ function TrendingPageView({
         tNav={i18n.tNav}
       />
 
+      <section className="relative z-10 px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8">
+        <div className="max-w-5xl mx-auto bg-white/70 border border-white/80 backdrop-blur-xl rounded-3xl shadow-sm px-4 py-4 sm:px-6 sm:py-5">
+          <p className="text-xs sm:text-sm text-gray-700 mb-4 text-center">
+            {i18n.tTrending("platformDescription")}
+          </p>
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-purple-600 text-white text-xs font-semibold">
+                1
+              </span>
+              <div className="space-y-1">
+                <div className="text-xs sm:text-sm font-semibold text-gray-900">
+                  {i18n.tNav("proposals")}
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-600 leading-relaxed">
+                  {i18n.tTrending("sections.descPart1")}{" "}
+                  <Link
+                    href="/proposals"
+                    className="text-purple-600 hover:text-purple-700 hover:underline"
+                  >
+                    {i18n.tNav("proposals")}
+                  </Link>{" "}
+                  {i18n.tTrending("sections.descPart2")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-purple-600 text-white text-xs font-semibold">
+                2
+              </span>
+              <div className="space-y-1">
+                <div className="text-xs sm:text-sm font-semibold text-gray-900">
+                  {i18n.tNav("forum")}
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-600 leading-relaxed">
+                  {i18n.tTrending("sections.descPart3")}{" "}
+                  <Link
+                    href="/forum"
+                    className="text-purple-600 hover:text-purple-700 hover:underline"
+                  >
+                    {i18n.tNav("forum")}
+                  </Link>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-purple-600 text-white text-xs font-semibold">
+                3
+              </span>
+              <div className="space-y-1">
+                <div className="text-xs sm:text-sm font-semibold text-gray-900">
+                  {i18n.tNav("flags")}
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-600 leading-relaxed">
+                  {i18n.tTrending("sections.descPart4")}{" "}
+                  <Link
+                    href="/flags"
+                    className="text-purple-600 hover:text-purple-700 hover:underline"
+                  >
+                    {i18n.tNav("flags")}
+                  </Link>{" "}
+                  {i18n.tTrending("sections.descPart5")}{" "}
+                  <Link
+                    href="/leaderboard"
+                    className="text-purple-600 hover:text-purple-700 hover:underline"
+                  >
+                    {i18n.tNav("leaderboard")}
+                  </Link>{" "}
+                  {i18n.tTrending("sections.descPart6")}{" "}
+                  <Link
+                    href="/search"
+                    className="text-purple-600 hover:text-purple-700 hover:underline"
+                  >
+                    {i18n.tTrending("sections.searchLink")}
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section
         ref={list.eventsSectionRef}
         className="relative z-10 px-4 sm:px-6 lg:px-10 py-10 sm:py-12 bg-white/40 backdrop-blur-xl rounded-t-[3rem] border-t border-white/50"

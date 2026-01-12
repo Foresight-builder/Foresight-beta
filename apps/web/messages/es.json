@@ -1050,6 +1050,8 @@
       "verifiedTag": "Verificado",
       "verifyEmail": "Verificar correo",
       "otpTip": "El código es válido por 15 minutos. Tras 3 fallos se bloqueará 1 hora.",
+      "resendHintPrefix": "Reintentar en ",
+      "resendHintSuffix": "s",
       "rememberMe": "Recordarme",
       "submit": "Guardar y continuar",
       "later": "Más tarde",

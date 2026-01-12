@@ -1373,6 +1373,8 @@
       "verifiedTag": "인증됨",
       "verifyEmail": "이메일 인증",
       "otpTip": "코드는 15분간 유효합니다. 3번 실패 시 1시간 동안 잠금됩니다.",
+      "resendHintPrefix": "",
+      "resendHintSuffix": "초 후 다시 전송 가능",
       "rememberMe": "로그인 상태 유지",
       "submit": "저장 및 계속",
       "later": "나중에",

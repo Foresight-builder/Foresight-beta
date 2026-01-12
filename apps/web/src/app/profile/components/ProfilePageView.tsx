@@ -101,6 +101,35 @@ export function ProfilePageView({
   const [otpInput, setOtpInput] = useState<string>("");
   const [otpRequested, setOtpRequested] = useState(false);
   const [codePreview, setCodePreview] = useState<string | null>(null);
+  const [resendLeft, setResendLeft] = useState(0);
+  const resendTimerRef = useRef<number | null>(null);
+
+  const clearResendTimer = () => {
+    if (resendTimerRef.current !== null) {
+      window.clearInterval(resendTimerRef.current);
+      resendTimerRef.current = null;
+    }
+  };
+
+  const startResendCountdown = (seconds: number) => {
+    if (seconds <= 0) {
+      setResendLeft(0);
+      return;
+    }
+    clearResendTimer();
+    setResendLeft(seconds);
+    const id = window.setInterval(() => {
+      setResendLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(id);
+          resendTimerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    resendTimerRef.current = id;
+  };
 
   useEffect(() => {
     const existing = String(profileInfo?.email || "")
@@ -142,9 +171,31 @@ export function ProfilePageView({
         setCodePreview(null);
       }
       toast.success(tWalletModal("profile.sendOtpWithValidity"));
+      startResendCountdown(60);
     },
     onError: (error: unknown) => {
       handleApiError(error, "walletModal.errors.otpSendFailed");
+      const raw = error as any;
+      const inner =
+        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
+          ? raw.error
+          : null;
+      const details = inner && typeof inner.details === "object" ? inner.details : null;
+      if (details && typeof details === "object") {
+        const reason = String((details as any).reason || "");
+        if (reason === "GLOBAL_MIN_INTERVAL") {
+          startResendCountdown(60);
+        } else if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
+          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
+          startResendCountdown(seconds);
+        } else if (
+          (reason === "EMAIL_TOO_FREQUENT" || reason === "IP_RATE_LIMIT") &&
+          typeof (details as any).windowMinutes === "number"
+        ) {
+          const seconds = Math.max(60, Math.round((details as any).windowMinutes * 60));
+          startResendCountdown(seconds);
+        }
+      }
     },
   });
 
@@ -165,12 +216,36 @@ export function ProfilePageView({
       setOtpInput("");
       setCodePreview(null);
       toast.success(tCommon("success"));
+      clearResendTimer();
+      setResendLeft(0);
       await queryClient.invalidateQueries({ queryKey: QueryKeys.userProfile(accountNorm) });
     },
     onError: (error: unknown) => {
       handleApiError(error, "walletModal.errors.otpVerifyFailed");
+      const raw = error as any;
+      const inner =
+        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
+          ? raw.error
+          : null;
+      const details = inner && typeof inner.details === "object" ? inner.details : null;
+      if (details && typeof details === "object") {
+        const reason = String((details as any).reason || "");
+        if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
+          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
+          startResendCountdown(seconds);
+        } else if (reason === "OTP_TOO_MANY_ATTEMPTS") {
+          startResendCountdown(60 * 60);
+        }
+      }
     },
   });
+
+  useEffect(() => {
+    return () => {
+      clearResendTimer();
+      setResendLeft(0);
+    };
+  }, []);
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -271,6 +346,7 @@ export function ProfilePageView({
     !!accountNorm &&
     !!userId &&
     /.+@.+\..+/.test(String(emailInput || "").trim()) &&
+    resendLeft === 0 &&
     !requestEmailOtpMutation.isPending &&
     !verifyEmailOtpMutation.isPending;
   const canVerifyOtp =
@@ -379,6 +455,8 @@ export function ProfilePageView({
                           setOtpRequested(false);
                           setOtpInput("");
                           setCodePreview(null);
+                          clearResendTimer();
+                          setResendLeft(0);
                         }}
                         placeholder="name@example.com"
                         className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
@@ -406,7 +484,7 @@ export function ProfilePageView({
                             {tCommon("loading")}
                           </span>
                         ) : (
-                          tWalletModal("profile.sendOtpWithValidity")
+                          `${tWalletModal("profile.sendOtpWithValidity")}${resendLeft > 0 ? ` (${resendLeft}s)` : ""}`
                         )}
                       </button>
 
@@ -452,6 +530,13 @@ export function ProfilePageView({
                           <div className="text-xs text-gray-500 font-medium">
                             {tWalletModal("profile.otpTip")}
                           </div>
+                          {resendLeft > 0 && (
+                            <div className="text-xs text-gray-600 font-medium">
+                              {tWalletModal("profile.resendHintPrefix")}
+                              {resendLeft}
+                              {tWalletModal("profile.resendHintSuffix")}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>

@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const tAuth = useTranslations("auth");
+  const tWalletModal = useTranslations("walletModal");
 
   const refreshSession = async () => {
     if (!supabase) return;
@@ -107,7 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailOtp(email);
     } catch (e: any) {
-      setError(e?.message || String(e));
+      const msg =
+        typeof e?.message === "string" && e.message
+          ? e.message
+          : tWalletModal("errors.otpSendFailed");
+      setError(msg);
       throw e;
     }
   };
@@ -133,7 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : null
       );
     } catch (e: any) {
-      setError(e?.message || String(e));
+      const msg =
+        typeof e?.message === "string" && e.message
+          ? e.message
+          : tWalletModal("errors.otpVerifyFailed");
+      setError(msg);
       throw e;
     }
   };
@@ -143,7 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailOtp(email);
     } catch (e: any) {
-      setError(e?.message || String(e));
+      const msg =
+        typeof e?.message === "string" && e.message
+          ? e.message
+          : tWalletModal("errors.otpSendFailed");
+      setError(msg);
       throw e;
     }
   };

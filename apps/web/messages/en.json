@@ -1050,6 +1050,8 @@
       "verifiedTag": "Verified",
       "verifyEmail": "Verify email",
       "otpTip": "The code is valid for 15 minutes. 3 failed attempts will lock for 1 hour.",
+      "resendHintPrefix": "Resend available in ",
+      "resendHintSuffix": "s",
       "rememberMe": "Remember me",
       "submit": "Save and continue",
       "later": "Maybe later",

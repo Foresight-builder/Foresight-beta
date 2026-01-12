@@ -11,6 +11,7 @@ export type WalletProfileFormProps = {
   emailLoading: boolean;
   emailVerified: boolean;
   codePreview: string | null;
+  resendLeft: number;
   username: string;
   setUsername: (value: string) => void;
   rememberMe: boolean;
@@ -35,6 +36,7 @@ export function WalletProfileForm({
   emailLoading,
   emailVerified,
   codePreview,
+  resendLeft,
   username,
   setUsername,
   rememberMe,
@@ -79,16 +81,24 @@ export function WalletProfileForm({
         <div className="flex items-center gap-2">
           <button
             onClick={requestRegisterOtp}
-            disabled={!/.+@.+\..+/.test(email) || emailLoading}
+            disabled={!/.+@.+\..+/.test(email) || emailLoading || resendLeft > 0}
             className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 px-3 py-2 disabled:opacity-60 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
           >
             {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {tWalletModal("profile.sendOtpWithValidity")}
+            {resendLeft > 0 ? ` (${resendLeft}s)` : ""}
           </button>
           {emailVerified && (
             <span className="text-sm text-green-600">{tWalletModal("profile.verifiedTag")}</span>
           )}
         </div>
+        {resendLeft > 0 && (
+          <div className="text-xs text-gray-600">
+            {tWalletModal("profile.resendHintPrefix")}
+            {resendLeft}
+            {tWalletModal("profile.resendHintSuffix")}
+          </div>
+        )}
         {otpRequested && (
           <div className="space-y-2">
             <input

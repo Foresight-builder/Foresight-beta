@@ -1054,6 +1054,8 @@
       "verifiedTag": "已验证",
       "verifyEmail": "验证邮箱",
       "otpTip": "验证码有效期 15 分钟，失败 3 次将锁定 1 小时。",
+      "resendHintPrefix": "",
+      "resendHintSuffix": "秒后可重新发送",
       "rememberMe": "记住我",
       "submit": "保存并继续",
       "later": "稍后再说",

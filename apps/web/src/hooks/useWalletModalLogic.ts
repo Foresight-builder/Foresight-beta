@@ -70,6 +70,36 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const [mounted, setMounted] = useState(false);
   const verifiedEmailRef = React.useRef<string | null>(null);
 
+  const clearResendTimer = React.useCallback(() => {
+    if (resendTimerRef.current !== null) {
+      window.clearInterval(resendTimerRef.current);
+      resendTimerRef.current = null;
+    }
+  }, []);
+
+  const startResendCountdown = React.useCallback(
+    (seconds: number) => {
+      if (seconds <= 0) {
+        setResendLeft(0);
+        return;
+      }
+      clearResendTimer();
+      setResendLeft(seconds);
+      const id = window.setInterval(() => {
+        setResendLeft((prev) => {
+          if (prev <= 1) {
+            window.clearInterval(id);
+            resendTimerRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      resendTimerRef.current = id;
+    },
+    [clearResendTimer]
+  );
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -87,7 +117,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      clearResendTimer();
+      return;
+    }
     if (!user) {
       setSelectedWallet(null);
       setEmail("");
@@ -106,9 +139,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setEmailVerified(false);
       setResendLeft(0);
       setCodePreview(null);
+      clearResendTimer();
       setWalletStep("select");
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, clearResendTimer]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -185,8 +219,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setOtpRequested(false);
       setOtp("");
       setCodePreview(null);
+      clearResendTimer();
+      setResendLeft(0);
     },
-    [setOtpRequested]
+    [setOtpRequested, clearResendTimer]
   );
 
   const installMap: Record<string, { name: string; url: string }> = {
@@ -391,6 +427,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
   const requestRegisterOtp = async () => {
     if (!account || !/.+@.+\..+/.test(email)) return;
+    setProfileError(null);
     setEmailLoading(true);
     try {
       const addr = String(account || "").toLowerCase();
@@ -407,8 +444,30 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       } else {
         setCodePreview(null);
       }
+      startResendCountdown(60);
     } catch (error: any) {
       handleApiError(error, "walletModal.errors.otpSendFailed");
+      const raw = error as any;
+      const inner =
+        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
+          ? raw.error
+          : null;
+      const details = inner && typeof inner.details === "object" ? inner.details : null;
+      if (details && typeof details === "object") {
+        const reason = String((details as any).reason || "");
+        if (reason === "GLOBAL_MIN_INTERVAL") {
+          startResendCountdown(60);
+        } else if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
+          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
+          startResendCountdown(seconds);
+        } else if (
+          (reason === "EMAIL_TOO_FREQUENT" || reason === "IP_RATE_LIMIT") &&
+          typeof (details as any).windowMinutes === "number"
+        ) {
+          const seconds = Math.max(60, Math.round((details as any).windowMinutes * 60));
+          startResendCountdown(seconds);
+        }
+      }
       setProfileError(String(error?.message || tWalletModal("errors.otpSendFailed")));
     } finally {
       setEmailLoading(false);
@@ -417,6 +476,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
   const verifyRegisterOtp = async () => {
     if (!account || !email || otp.length !== 6) return;
+    setProfileError(null);
     setEmailLoading(true);
     try {
       const addr = String(account || "").toLowerCase();
@@ -426,8 +486,28 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       });
       setEmailVerified(true);
       verifiedEmailRef.current = email.trim().toLowerCase();
+      setOtpRequested(false);
+      setOtp("");
+      setCodePreview(null);
+      clearResendTimer();
+      setResendLeft(0);
     } catch (error: any) {
       handleApiError(error, "walletModal.errors.otpVerifyFailed");
+      const raw = error as any;
+      const inner =
+        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
+          ? raw.error
+          : null;
+      const details = inner && typeof inner.details === "object" ? inner.details : null;
+      if (details && typeof details === "object") {
+        const reason = String((details as any).reason || "");
+        if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
+          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
+          startResendCountdown(seconds);
+        } else if (reason === "OTP_TOO_MANY_ATTEMPTS") {
+          startResendCountdown(60 * 60);
+        }
+      }
       setProfileError(String(error?.message || tWalletModal("errors.otpVerifyFailed")));
     } finally {
       setEmailLoading(false);

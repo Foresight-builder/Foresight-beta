@@ -98,10 +98,11 @@ export function WalletEmailSection({
             pattern="[0-9]*"
             maxLength={6}
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\\D/g, ""))}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
             className="tracking-widest text-center text-lg w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
             placeholder="••••••"
           />
+          <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
           {authError && <div className="text-sm text-red-600">{authError}</div>}
           <div className="flex items-center gap-2">
             <button
