@@ -935,8 +935,9 @@ async function addGaslessQuotaUsage(userAddress: string, costUsd: number): Promi
     new Date(now).setUTCHours(23, 59, 59, 999) - new Date(now).getTimezoneOffset() * 60000;
   const ttlSeconds = Math.max(60, Math.floor((endOfDay - now) / 1000));
   try {
-    await redis.incrByFloat(key, costUsd);
-    await redis.expire(key, ttlSeconds);
+    const raw = await redis.get(key);
+    const next = (raw ? Number(raw) || 0 : 0) + costUsd;
+    await redis.set(key, String(next), ttlSeconds);
   } catch {}
   const cacheKey = userAddress.toLowerCase();
   const cached = microCacheGet(gaslessQuotaMicroCache, cacheKey);
@@ -972,7 +973,7 @@ async function saveTradeIntent(record: TradeIntentRecord): Promise<void> {
     Math.floor((Number(process.env.RELAYER_INTENT_TTL_MS || "86400000") || 86400000) / 1000)
   );
   try {
-    await redis.set(getIntentRedisKey(record.id), JSON.stringify(record), { EX: ttlSeconds });
+    await redis.set(getIntentRedisKey(record.id), JSON.stringify(record), ttlSeconds);
   } catch {}
   microCacheSet(intentStatusMicroCache, record.id, 5000, record, 5000);
 }
