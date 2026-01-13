@@ -24,6 +24,7 @@ export type PredictionOutcome = {
 export type PredictionStats = {
   totalAmount?: number;
   participantCount?: number;
+  commentCount?: number;
 };
 
 export type Prediction = {

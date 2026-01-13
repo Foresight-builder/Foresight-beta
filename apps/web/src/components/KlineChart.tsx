@@ -6,6 +6,8 @@ import {
   UTCTimestamp,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
+  AreaSeries,
 } from "lightweight-charts";
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useTrades, type TradeData } from "@/hooks/useMarketWebSocket";
@@ -17,6 +19,7 @@ interface KlineChartProps {
   outcomeIndex: number;
   resolution?: string;
   marketKey?: string; // 🚀 新增：用于 WebSocket 订阅
+  chartType?: "candlestick" | "line" | "area"; // 🚀 新增：图表类型
 }
 
 async function safeJson<T = any>(res: Response): Promise<T> {
@@ -64,6 +67,7 @@ export default function KlineChart({
   outcomeIndex,
   resolution = "15m",
   marketKey,
+  chartType = "candlestick",
 }: KlineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -106,20 +110,51 @@ export default function KlineChart({
     });
 
     try {
-      const candlestickSeries = chart.addSeries(CandlestickSeries, {
-        upColor: "#26a69a",
-        downColor: "#ef5350",
-        borderVisible: false,
-        wickUpColor: "#26a69a",
-        wickDownColor: "#ef5350",
-      });
-      seriesRef.current = candlestickSeries;
+      // 根据 chartType 创建不同类型的系列
+      let series;
+
+      switch (chartType) {
+        case "line":
+          series = chart.addSeries(LineSeries, {
+            color: "#a855f7",
+            lineWidth: 2,
+            crosshairMarkerVisible: true,
+            crosshairMarkerRadius: 6,
+            crosshairMarkerBorderColor: "#a855f7",
+            crosshairMarkerBackgroundColor: "#ffffff",
+          });
+          break;
+
+        case "area":
+          series = chart.addSeries(AreaSeries, {
+            topColor: "rgba(168, 85, 247, 0.2)",
+            bottomColor: "rgba(168, 85, 247, 0)",
+            lineColor: "#a855f7",
+            lineWidth: 2,
+          });
+          break;
+
+        case "candlestick":
+        default:
+          series = chart.addSeries(CandlestickSeries, {
+            upColor: "#26a69a",
+            downColor: "#ef5350",
+            borderVisible: false,
+            wickUpColor: "#26a69a",
+            wickDownColor: "#ef5350",
+          });
+          break;
+      }
+
+      seriesRef.current = series;
       chart.priceScale("right").applyOptions({
         scaleMargins: {
           top: 0.1,
           bottom: 0.25,
         },
       });
+
+      // 成交量系列
       const volumeSeries = chart.addSeries(HistogramSeries, {
         color: "#a855f7",
         priceFormat: { type: "volume" },
@@ -133,7 +168,7 @@ export default function KlineChart({
         },
       });
     } catch (e) {
-      console.error("Failed to create candlestick series:", e);
+      console.error("Failed to create chart series:", e);
     }
 
     chartRef.current = chart;
@@ -175,7 +210,7 @@ export default function KlineChart({
         chartRef.current = null;
       }
     };
-  }, []);
+  }, [chartType]);
 
   // 🚀 实时更新最后一根 K 线
   const updateLastCandle = useCallback(

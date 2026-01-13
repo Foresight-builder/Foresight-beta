@@ -2,10 +2,6 @@ import type { Metadata } from "next";
 import React, { Suspense } from "react";
 import "./globals.css";
 import "./nprogress.css";
-import zhCN from "../../messages/zh-CN.json";
-import en from "../../messages/en.json";
-import es from "../../messages/es.json";
-import ko from "../../messages/ko.json";
 import { defaultLocale, type Locale } from "../i18n-config";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -18,17 +14,34 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProgressBar from "@/components/ProgressBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import WebVitalsReporter from "@/components/WebVitalsReporter";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { getServerLocale } from "@/lib/i18n-server";
 import { buildLanguageAlternates } from "@/lib/seo";
+import { OnboardingLayout } from "./OnboardingLayout";
+import { Roboto } from "next/font/google";
 
-type SeoMessages = (typeof zhCN)["seo"];
+// 动态加载语言文件，只加载当前语言
+async function loadLanguageFile(locale: Locale): Promise<any> {
+  const langMap = {
+    "zh-CN": () => import("../../messages/zh-CN.json"),
+    en: () => import("../../messages/en.json"),
+    es: () => import("../../messages/es.json"),
+    ko: () => import("../../messages/ko.json"),
+  };
 
-const seoMessages: Record<Locale, SeoMessages> = {
-  "zh-CN": zhCN.seo,
-  en: en.seo as SeoMessages,
-  es: es.seo as SeoMessages,
-  ko: ko.seo as SeoMessages,
-};
+  const loader = langMap[locale] || langMap[defaultLocale];
+  const langModule = await loader();
+  return langModule.default;
+}
+
+// 优化字体加载配置
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"], // 移除不常用的300权重，减少字体文件大小
+  display: "swap", // 使用 swap 模式确保文本可见性
+  variable: "--font-roboto",
+  preload: true, // 预加载常用权重，提高首屏字体渲染速度
+});
 
 const openGraphLocaleByLocale: Record<Locale, string> = {
   "zh-CN": "zh_CN",
@@ -39,7 +52,8 @@ const openGraphLocaleByLocale: Record<Locale, string> = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
-  const seo = seoMessages[locale] || seoMessages[defaultLocale];
+  const langFile = await loadLanguageFile(locale);
+  const seo = (langFile as any).seo || {};
   const root = (seo as any).root || {};
 
   const titleDefault =
@@ -127,8 +141,8 @@ export default async function RootLayout({
   const locale = await getServerLocale();
 
   return (
-    <html lang={locale}>
-      <body className="overflow-x-hidden">
+    <html lang={locale} className={roboto.variable}>
+      <body className="overflow-x-hidden font-sans">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -163,6 +177,7 @@ export default async function RootLayout({
           <ProgressBar />
         </Suspense>
         <WebVitalsReporter />
+        <ServiceWorkerRegister />
         <ErrorBoundary level="page">
           <ReactQueryProvider>
             <AuthProvider>
@@ -170,26 +185,28 @@ export default async function RootLayout({
                 <UserProfileProvider>
                   <ToastProvider />
                   <ErrorBoundary level="section">
-                    <div className="flex min-h-screen flex-col">
-                      <ErrorBoundary level="component">
-                        <TopNavBar />
-                      </ErrorBoundary>
-                      <div className="flex flex-1 relative">
+                    <OnboardingLayout locale={locale}>
+                      <div className="flex min-h-screen flex-col">
                         <ErrorBoundary level="component">
-                          <Sidebar />
+                          <TopNavBar />
                         </ErrorBoundary>
-                        <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
-                          <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
-                          <div className="relative z-10">
-                            <ErrorBoundary level="section">{children}</ErrorBoundary>
+                        <div className="flex flex-1 relative">
+                          <ErrorBoundary level="component">
+                            <Sidebar />
+                          </ErrorBoundary>
+                          <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
+                            <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
+                            <div className="relative z-10">
+                              <ErrorBoundary level="section">{children}</ErrorBoundary>
+                            </div>
                           </div>
                         </div>
+                        {/* 移动端底部导航栏 */}
+                        <ErrorBoundary level="component">
+                          <MobileBottomNav />
+                        </ErrorBoundary>
                       </div>
-                      {/* 移动端底部导航栏 */}
-                      <ErrorBoundary level="component">
-                        <MobileBottomNav />
-                      </ErrorBoundary>
-                    </div>
+                    </OnboardingLayout>
                   </ErrorBoundary>
                 </UserProfileProvider>
               </WalletProvider>

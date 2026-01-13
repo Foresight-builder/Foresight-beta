@@ -67,61 +67,87 @@ const nextConfig: NextConfig = {
     return [{ source: "/", destination: "/trending", permanent: true }];
   },
 
-  // 安全 Headers
+  // 安全 Headers - 优化版本
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
+
+    // 生产环境使用更严格的 CSP，开发环境允许更多便利
     const scriptSrc = isProd
       ? "script-src 'self' https://vercel.live https://*.sentry.io"
       : "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.sentry.io";
+
     return [
       {
         source: "/:path*",
         headers: [
+          // 启用 DNS 预取，提升性能
           {
             key: "X-DNS-Prefetch-Control",
             value: "on",
           },
+
+          // 严格的 HTTPS 策略
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+
+          // 防止点击劫持
           {
             key: "X-Frame-Options",
             value: "SAMEORIGIN",
           },
+
+          // 防止 MIME 类型嗅探
           {
             key: "X-Content-Type-Options",
             value: "nosniff",
           },
+
+          // 现代浏览器已默认启用 XSS 保护，保持此头以兼容旧浏览器
           {
             key: "X-XSS-Protection",
             value: "1; mode=block",
           },
+
+          // 严格的 Referrer 策略
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
           },
+
+          // 优化权限策略，禁用所有不必要的权限
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value:
+              "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), midi=(), xr-spatial-tracking=(), accelerometer=(), gyroscope=(), magnetometer=(), screen-wake-lock=()",
           },
+
+          // 优化 Content-Security-Policy
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               scriptSrc,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https: http:",
+              // 生产环境移除 http:，只允许 https:
+              `img-src 'self' data: blob: ${isProd ? "https:" : "https: http:"}`,
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https: wss: http://localhost:* ws://localhost:*",
+              // 优化 connect-src，生产环境移除 localhost
+              `connect-src 'self' https: wss: ${!isProd ? "http://localhost:* ws://localhost:*" : ""}`,
               "frame-src 'self' https://vercel.live",
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
               "frame-ancestors 'self'",
-              "upgrade-insecure-requests",
-            ].join("; "),
+              // 生产环境强制 HTTPS
+              isProd ? "upgrade-insecure-requests" : "",
+              // 阻止不安全的 WebSocket 连接
+              "block-all-mixed-content",
+            ]
+              .filter(Boolean)
+              .join("; "),
           },
         ],
       },
@@ -148,6 +174,16 @@ const nextConfig: NextConfig = {
 
   // Webpack 优化
   webpack: (config, { dev, isServer }) => {
+    // 解决 "self is not defined" 错误 - 简化版本
+    if (isServer) {
+      // 避免在服务器端打包客户端特定代码
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // 将 Supabase 相关模块指向空文件，避免在服务器端执行
+        "@supabase/supabase-js$": path.join(__dirname, "src/lib/supabase-server-shim.js"),
+      };
+    }
+
     // 🚀 生产环境优化
     if (!dev) {
       // 优化 chunk 分割策略

@@ -7,6 +7,7 @@ import type { LeaderboardUser } from "../data";
 import { formatVolume } from "../data";
 import { Sparkline } from "./Sparkline";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
+import { LazyAvatar } from "@/components/ui/LazyImage";
 
 function getRankStyles(rank: number) {
   switch (rank) {
@@ -72,10 +73,11 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
           <div
             className={`p-2.5 rounded-full border-[4px] relative z-10 bg-white ${styles.avatar}`}
           >
-            <img
+            <LazyAvatar
               src={user.avatar}
               alt={displayName}
-              className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-50 object-cover"
+              size={96} // 24rem = 96px
+              className="bg-gray-50"
             />
           </div>
 
@@ -165,10 +167,11 @@ export function RankItem({ user, index }: { user: LeaderboardUser; index: number
 
       <UserHoverCard user={user} position="right">
         <div className="relative">
-          <img
+          <LazyAvatar
             src={user.avatar}
             alt={displayName}
-            className="w-12 h-12 rounded-full bg-gray-100 border-2 border-white shadow-sm group-hover:scale-110 transition-transform"
+            size={48} // 12rem = 48px
+            className="bg-gray-100 border-2 border-white shadow-sm group-hover:scale-110 transition-transform"
           />
           {index < 3 && (
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">

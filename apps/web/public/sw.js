@@ -12,6 +12,7 @@ const PRECACHE_URLS = [
   "/trending",
   "/leaderboard",
   "/forum",
+  "/offline",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
@@ -110,7 +111,7 @@ self.addEventListener("fetch", (event) => {
 
           // 返回离线页面
           if (request.destination === "document") {
-            return caches.match("/");
+            return caches.match("/offline");
           }
 
           return new Response("Network error", {

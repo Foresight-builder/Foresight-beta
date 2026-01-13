@@ -291,3 +291,37 @@ export function getGaslessConfig(): { ok: boolean; config: GaslessConfig; error?
     config: { enabled, signerPrivateKeyConfigured, ...(paymasterUrl ? { paymasterUrl } : {}) },
   };
 }
+
+/**
+ * 生成随机API密钥
+ * @returns 长度为64的随机API密钥
+ */
+export function generateApiKey(): string {
+  const crypto = require("crypto");
+  return crypto.randomBytes(32).toString("hex");
+}
+
+/**
+ * 对API密钥进行哈希处理
+ * @param apiKey - 原始API密钥
+ * @returns 哈希后的API密钥
+ */
+export async function hashApiKey(apiKey: string): Promise<string> {
+  const crypto = require("crypto");
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = await crypto.promises.scrypt(apiKey, salt, 64);
+  return `${salt}:${hash.toString("hex")}`;
+}
+
+/**
+ * 比较API密钥与哈希值
+ * @param apiKey - 原始API密钥
+ * @param hashedKey - 哈希后的API密钥
+ * @returns 是否匹配
+ */
+export async function compareApiKey(apiKey: string, hashedKey: string): Promise<boolean> {
+  const crypto = require("crypto");
+  const [salt, keyHash] = hashedKey.split(":");
+  const hash = await crypto.promises.scrypt(apiKey, salt, 64);
+  return crypto.timingSafeEqual(Buffer.from(keyHash, "hex"), hash);
+}

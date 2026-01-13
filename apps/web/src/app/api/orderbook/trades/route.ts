@@ -4,7 +4,8 @@ import { ApiResponses } from "@/lib/apiResponse";
 import { logApiError, logApiEvent } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
-export const revalidate = 5; // 5 seconds cache
+// 这个路由使用了动态服务器功能（request.headers），不能静态渲染
+// 移除 revalidate 配置，确保路由被正确标记为动态
 
 export async function GET(req: NextRequest) {
   try {

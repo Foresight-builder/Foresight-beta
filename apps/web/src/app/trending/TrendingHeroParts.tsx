@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
+import LazyImage from "@/components/ui/LazyImage";
 import { getFallbackEventImage } from "@/features/trending/trendingModel";
 import { formatInteger } from "@/lib/format";
 
@@ -272,15 +273,14 @@ export function HeroPreviewCard({
         }}
       >
         <div className="relative w-full h-full rounded-[1.5rem] overflow-hidden">
-          <img
+          <LazyImage
             src={activeImage}
             alt={activeTitle}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = getFallbackEventImage(activeTitle);
-            }}
+            fallbackSrc={getFallbackEventImage(activeTitle)}
+            rootMargin={100}
+            fadeIn={true}
+            showLoadingAnimation={false}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
 

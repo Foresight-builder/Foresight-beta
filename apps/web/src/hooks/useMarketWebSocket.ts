@@ -38,6 +38,10 @@ export interface StatsData {
   askDepth: string;
   lastTradePrice: string | null;
   volume24h: string;
+  high24h: string | null;
+  low24h: string | null;
+  avg24h: string | null;
+  trades24h: string;
 }
 
 type WebSocketMessage = {
@@ -392,6 +396,10 @@ export function useOrderBookStats(
           askDepth: data.askDepth,
           lastTradePrice: data.lastTradePrice,
           volume24h: data.volume24h,
+          high24h: data.high24h || null,
+          low24h: data.low24h || null,
+          avg24h: data.avg24h || null,
+          trades24h: data.trades24h || "0",
         });
       }
     };
