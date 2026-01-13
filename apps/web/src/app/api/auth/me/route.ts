@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { ApiResponses } from "@/lib/apiResponse";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,6 +10,21 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return ApiResponses.unauthorized("Not authenticated");
     }
+
+    try {
+      const address =
+        typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
+      const sid = typeof (session as any)?.sid === "string" ? String((session as any).sid) : "";
+      if (supabaseAdmin && address && sid) {
+        await (supabaseAdmin as any)
+          .from("user_sessions")
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq("wallet_address", address)
+          .eq("session_id", sid)
+          .is("revoked_at", null)
+          .catch(() => {});
+      }
+    } catch {}
 
     return NextResponse.json({
       authenticated: true,

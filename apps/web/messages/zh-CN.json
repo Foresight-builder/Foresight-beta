@@ -1625,7 +1625,8 @@
         "predictions": "我的预测",
         "makerEarnings": "做市收益",
         "history": "浏览历史",
-        "following": "我的关注"
+        "following": "我的关注",
+        "security": "账号与安全"
       },
       "stats": {
         "predictions": "预测",
@@ -1635,6 +1636,30 @@
       },
       "settings": "设置",
       "disconnect": "断开连接"
+    },
+    "security": {
+      "emailChangeTitle": "修改邮箱",
+      "emailChangeNeedVerified": "请先完成邮箱验证后再修改邮箱。",
+      "currentEmail": "当前邮箱",
+      "newEmail": "新邮箱",
+      "newEmailPlaceholder": "new@example.com",
+      "otpPlaceholder": "123456",
+      "emailChangeVerifyOld": "发送当前邮箱验证码",
+      "emailChangeConfirmOld": "确认当前邮箱验证码",
+      "emailChangeSendNew": "发送新邮箱验证码",
+      "emailChangeConfirmNew": "确认新邮箱验证码",
+      "sessionsTitle": "登录设备",
+      "revokeAll": "退出所有设备",
+      "noSessions": "暂无登录设备记录",
+      "unknownMethod": "未知方式",
+      "currentSession": "当前设备",
+      "createdAt": "创建时间",
+      "lastSeenAt": "最近活跃",
+      "ip": "IP",
+      "device": "设备",
+      "revoke": "退出",
+      "auditTitle": "最近登录记录",
+      "noAudit": "暂无登录记录"
     },
     "overview": {
       "cards": {

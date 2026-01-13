@@ -12,8 +12,14 @@ interface AuthContextValue {
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
   // 可选：直接发送魔法链接（不输入验证码）
   sendMagicLink: (
-    email: string
-  ) => Promise<{ expiresInSec: number; codePreview?: string; magicLinkPreview?: string }>;
+    email: string,
+    redirect?: string
+  ) => Promise<{
+    expiresInSec: number;
+    resendAfterSec?: number;
+    codePreview?: string;
+    magicLinkPreview?: string;
+  }>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -133,17 +139,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendMagicLink = async (email: string) => {
+  const sendMagicLink = async (email: string, redirect?: string) => {
     setError(null);
     try {
       return await fetchApiJson<{
         expiresInSec: number;
+        resendAfterSec?: number;
         codePreview?: string;
         magicLinkPreview?: string;
       }>("/api/email-magic-link/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, redirect }),
       });
     } catch (e: any) {
       const msg =

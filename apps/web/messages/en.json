@@ -1621,7 +1621,8 @@
         "predictions": "My predictions",
         "makerEarnings": "Maker earnings",
         "history": "Browsing history",
-        "following": "Following"
+        "following": "Following",
+        "security": "Account & Security"
       },
       "stats": {
         "predictions": "Preds",
@@ -1631,6 +1632,30 @@
       },
       "settings": "Settings",
       "disconnect": "Disconnect"
+    },
+    "security": {
+      "emailChangeTitle": "Change email",
+      "emailChangeNeedVerified": "Verify your email before changing it.",
+      "currentEmail": "Current email",
+      "newEmail": "New email",
+      "newEmailPlaceholder": "new@example.com",
+      "otpPlaceholder": "123456",
+      "emailChangeVerifyOld": "Send code to current email",
+      "emailChangeConfirmOld": "Confirm current email code",
+      "emailChangeSendNew": "Send code to new email",
+      "emailChangeConfirmNew": "Confirm new email code",
+      "sessionsTitle": "Devices",
+      "revokeAll": "Sign out all devices",
+      "noSessions": "No active sessions",
+      "unknownMethod": "Unknown",
+      "currentSession": "This device",
+      "createdAt": "Created",
+      "lastSeenAt": "Last active",
+      "ip": "IP",
+      "device": "Device",
+      "revoke": "Sign out",
+      "auditTitle": "Recent sign-ins",
+      "noAudit": "No sign-in history"
     },
     "overview": {
       "cards": {

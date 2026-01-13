@@ -12,6 +12,7 @@ import {
   Users,
   Zap,
   Heart,
+  Shield,
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
@@ -20,7 +21,7 @@ import { formatAddress, normalizeAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "@/lib/i18n";
 import type { UserProfile } from "@/lib/supabase";
 import type {
@@ -104,6 +105,16 @@ export function ProfilePageView({
   const [resendLeft, setResendLeft] = useState(0);
   const resendTimerRef = useRef<number | null>(null);
 
+  const [emailChangeStep, setEmailChangeStep] = useState<
+    "idle" | "old_sent" | "old_verified" | "new_sent"
+  >("idle");
+  const [emailChangeNewEmail, setEmailChangeNewEmail] = useState<string>("");
+  const [emailChangeOldCode, setEmailChangeOldCode] = useState<string>("");
+  const [emailChangeNewCode, setEmailChangeNewCode] = useState<string>("");
+  const [emailChangeCodePreview, setEmailChangeCodePreview] = useState<string | null>(null);
+  const [emailChangeResendLeft, setEmailChangeResendLeft] = useState(0);
+  const emailChangeTimerRef = useRef<number | null>(null);
+
   const clearResendTimer = () => {
     if (resendTimerRef.current !== null) {
       window.clearInterval(resendTimerRef.current);
@@ -131,6 +142,33 @@ export function ProfilePageView({
     resendTimerRef.current = id;
   };
 
+  const clearEmailChangeTimer = () => {
+    if (emailChangeTimerRef.current !== null) {
+      window.clearInterval(emailChangeTimerRef.current);
+      emailChangeTimerRef.current = null;
+    }
+  };
+
+  const startEmailChangeCountdown = (seconds: number) => {
+    if (seconds <= 0) {
+      setEmailChangeResendLeft(0);
+      return;
+    }
+    clearEmailChangeTimer();
+    setEmailChangeResendLeft(seconds);
+    const id = window.setInterval(() => {
+      setEmailChangeResendLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(id);
+          emailChangeTimerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    emailChangeTimerRef.current = id;
+  };
+
   useEffect(() => {
     const existing = String(profileInfo?.email || "")
       .trim()
@@ -140,11 +178,25 @@ export function ProfilePageView({
       setOtpRequested(false);
       setOtpInput("");
       setCodePreview(null);
+      setEmailChangeStep("idle");
+      setEmailChangeNewEmail("");
+      setEmailChangeOldCode("");
+      setEmailChangeNewCode("");
+      setEmailChangeCodePreview(null);
+      clearEmailChangeTimer();
+      setEmailChangeResendLeft(0);
       return;
     }
     setOtpRequested(false);
     setOtpInput("");
     setCodePreview(null);
+    setEmailChangeStep("idle");
+    setEmailChangeNewEmail("");
+    setEmailChangeOldCode("");
+    setEmailChangeNewCode("");
+    setEmailChangeCodePreview(null);
+    clearEmailChangeTimer();
+    setEmailChangeResendLeft(0);
   }, [profileInfo?.email]);
 
   const countsQuery = useUserFollowCounts(account || null);
@@ -158,7 +210,7 @@ export function ProfilePageView({
       const addr = String(accountNorm || "").toLowerCase();
       return fetcher<{ expiresInSec?: number; codePreview?: string }>("/api/email-otp/request", {
         method: "POST",
-        body: JSON.stringify({ walletAddress: addr, email }),
+        body: JSON.stringify({ walletAddress: addr, email, mode: "bind" }),
       });
     },
     onSuccess: (data) => {
@@ -208,7 +260,7 @@ export function ProfilePageView({
       const addr = String(accountNorm || "").toLowerCase();
       return fetcher<{ ok: boolean }>("/api/email-otp/verify", {
         method: "POST",
-        body: JSON.stringify({ walletAddress: addr, email, code }),
+        body: JSON.stringify({ walletAddress: addr, email, code, mode: "bind" }),
       });
     },
     onSuccess: async () => {
@@ -244,6 +296,8 @@ export function ProfilePageView({
     return () => {
       clearResendTimer();
       setResendLeft(0);
+      clearEmailChangeTimer();
+      setEmailChangeResendLeft(0);
     };
   }, []);
 
@@ -340,7 +394,117 @@ export function ProfilePageView({
   const isFollowLoading = followMutation.isPending || followStatusQuery.isFetching;
 
   const currentEmail = String(profileInfo?.email || "").trim();
+  const currentEmailLower = String(currentEmail || "")
+    .trim()
+    .toLowerCase();
   const emailVerified = !!currentEmail;
+
+  const requestEmailChangeOldOtpMutation = useMutation({
+    mutationFn: async () => {
+      const addr = String(accountNorm || "").toLowerCase();
+      return fetcher<{ expiresInSec?: number; codePreview?: string }>("/api/email-otp/request", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: addr, email: currentEmailLower, mode: "change_old" }),
+      });
+    },
+    onSuccess: (data) => {
+      setEmailChangeStep("old_sent");
+      setEmailChangeOldCode("");
+      setEmailChangeNewCode("");
+      if (data?.codePreview) {
+        setEmailChangeOldCode(String(data.codePreview || ""));
+        setEmailChangeCodePreview(String(data.codePreview || ""));
+      } else {
+        setEmailChangeCodePreview(null);
+      }
+      toast.success(tWalletModal("profile.sendOtpWithValidity"));
+      startEmailChangeCountdown(60);
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.otpSendFailed");
+    },
+  });
+
+  const verifyEmailChangeOldOtpMutation = useMutation({
+    mutationFn: async () => {
+      const addr = String(accountNorm || "").toLowerCase();
+      const code = String(emailChangeOldCode || "").trim();
+      return fetcher<{ ok: boolean; stage?: string }>("/api/email-otp/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          walletAddress: addr,
+          email: currentEmailLower,
+          code,
+          mode: "change_old",
+        }),
+      });
+    },
+    onSuccess: () => {
+      setEmailChangeStep("old_verified");
+      setEmailChangeOldCode("");
+      setEmailChangeNewCode("");
+      setEmailChangeCodePreview(null);
+      clearEmailChangeTimer();
+      setEmailChangeResendLeft(0);
+      toast.success(tCommon("success"));
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.unknown");
+    },
+  });
+
+  const requestEmailChangeNewOtpMutation = useMutation({
+    mutationFn: async () => {
+      const email = String(emailChangeNewEmail || "")
+        .trim()
+        .toLowerCase();
+      const addr = String(accountNorm || "").toLowerCase();
+      return fetcher<{ expiresInSec?: number; codePreview?: string }>("/api/email-otp/request", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: addr, email, mode: "change_new" }),
+      });
+    },
+    onSuccess: (data) => {
+      setEmailChangeStep("new_sent");
+      setEmailChangeNewCode("");
+      if (data?.codePreview) {
+        setEmailChangeNewCode(String(data.codePreview || ""));
+        setEmailChangeCodePreview(String(data.codePreview || ""));
+      } else {
+        setEmailChangeCodePreview(null);
+      }
+      toast.success(tWalletModal("profile.sendOtpWithValidity"));
+      startEmailChangeCountdown(60);
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.otpSendFailed");
+    },
+  });
+
+  const verifyEmailChangeNewOtpMutation = useMutation({
+    mutationFn: async () => {
+      const email = String(emailChangeNewEmail || "")
+        .trim()
+        .toLowerCase();
+      const addr = String(accountNorm || "").toLowerCase();
+      const code = String(emailChangeNewCode || "").trim();
+      return fetcher<{ ok: boolean }>("/api/email-otp/verify", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: addr, email, code, mode: "change_new" }),
+      });
+    },
+    onSuccess: () => {
+      toast.success(tCommon("success"));
+      clearEmailChangeTimer();
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.unknown");
+    },
+  });
+
   const canRequestOtp =
     isOwnProfile &&
     !!accountNorm &&
@@ -358,6 +522,55 @@ export function ProfilePageView({
     !requestEmailOtpMutation.isPending &&
     !verifyEmailOtpMutation.isPending;
 
+  const canRequestEmailChangeOld =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    emailVerified &&
+    emailChangeResendLeft === 0 &&
+    emailChangeStep === "idle" &&
+    !requestEmailChangeOldOtpMutation.isPending &&
+    !verifyEmailChangeOldOtpMutation.isPending &&
+    !requestEmailChangeNewOtpMutation.isPending &&
+    !verifyEmailChangeNewOtpMutation.isPending;
+
+  const canVerifyEmailChangeOld =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    emailVerified &&
+    emailChangeStep === "old_sent" &&
+    /^\d{6}$/.test(String(emailChangeOldCode || "").trim()) &&
+    !requestEmailChangeOldOtpMutation.isPending &&
+    !verifyEmailChangeOldOtpMutation.isPending &&
+    !requestEmailChangeNewOtpMutation.isPending &&
+    !verifyEmailChangeNewOtpMutation.isPending;
+
+  const canRequestEmailChangeNew =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    emailVerified &&
+    emailChangeResendLeft === 0 &&
+    emailChangeStep === "old_verified" &&
+    /.+@.+\..+/.test(String(emailChangeNewEmail || "").trim()) &&
+    !requestEmailChangeOldOtpMutation.isPending &&
+    !verifyEmailChangeOldOtpMutation.isPending &&
+    !requestEmailChangeNewOtpMutation.isPending &&
+    !verifyEmailChangeNewOtpMutation.isPending;
+
+  const canVerifyEmailChangeNew =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    emailVerified &&
+    emailChangeStep === "new_sent" &&
+    /^\d{6}$/.test(String(emailChangeNewCode || "").trim()) &&
+    !requestEmailChangeOldOtpMutation.isPending &&
+    !verifyEmailChangeOldOtpMutation.isPending &&
+    !requestEmailChangeNewOtpMutation.isPending &&
+    !verifyEmailChangeNewOtpMutation.isPending;
+
   const handleFollowToggle = async () => {
     if (!account) return;
     if (!myAccount) {
@@ -365,6 +578,71 @@ export function ProfilePageView({
       return;
     }
     await followMutation.mutateAsync();
+  };
+
+  const sessionsQuery = useQuery({
+    queryKey: ["auth", "sessions", userId || "anon"],
+    queryFn: async () =>
+      fetcher<{ sessions: any[]; currentSessionId?: string }>("/api/auth/sessions", {
+        method: "GET",
+      }),
+    enabled: isOwnProfile && !!userId && activeTab === "security",
+    staleTime: 10_000,
+  });
+
+  const auditQuery = useQuery({
+    queryKey: ["auth", "audit", userId || "anon"],
+    queryFn: async () =>
+      fetcher<{ events: any[] }>("/api/auth/audit", {
+        method: "GET",
+      }),
+    enabled: isOwnProfile && !!userId && activeTab === "security",
+    staleTime: 10_000,
+  });
+
+  const revokeSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) =>
+      fetcher<{ ok: boolean }>("/api/auth/sessions", {
+        method: "POST",
+        body: JSON.stringify({ sessionId }),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
+      toast.success(tCommon("success"));
+      try {
+        await auth?.refreshSession?.();
+      } catch {}
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.unknown");
+    },
+  });
+
+  const revokeAllSessionsMutation = useMutation({
+    mutationFn: async () =>
+      fetcher<{ ok: boolean }>("/api/auth/sessions", {
+        method: "DELETE",
+      }),
+    onSuccess: async () => {
+      toast.success(tCommon("success"));
+      try {
+        await auth?.refreshSession?.();
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.unknown");
+    },
+  });
+
+  const formatTs = (raw: unknown) => {
+    const s = typeof raw === "string" ? raw : "";
+    if (!s) return "";
+    const d = new Date(s);
+    if (!Number.isFinite(d.getTime())) return "";
+    return d.toLocaleString();
   };
   return (
     <GradientPage className="lg:h-screen lg:overflow-hidden pt-20 pb-4 lg:pt-0 lg:pb-0">
@@ -697,6 +975,319 @@ export function ProfilePageView({
                     {activeTab === "followers" && account && <FollowersTab address={account} />}
                     {activeTab === "makerEarnings" && (
                       <MakerEarningsTab address={account} isOwnProfile={isOwnProfile} />
+                    )}
+                    {activeTab === "security" && isOwnProfile && (
+                      <div className="space-y-6 lg:h-full lg:overflow-auto pb-10">
+                        <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Shield className="w-5 h-5 text-purple-600" />
+                            <div className="text-lg font-black text-gray-900">
+                              {tProfile("security.emailChangeTitle")}
+                            </div>
+                          </div>
+
+                          {!emailVerified ? (
+                            <div className="text-sm font-semibold text-gray-600">
+                              {tProfile("security.emailChangeNeedVerified")}
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="text-xs text-gray-600 font-semibold break-all">
+                                {tProfile("security.currentEmail")}: {currentEmailLower || "-"}
+                              </div>
+
+                              {emailChangeStep === "idle" && (
+                                <button
+                                  type="button"
+                                  disabled={!canRequestEmailChangeOld}
+                                  onClick={async () => {
+                                    await requestEmailChangeOldOtpMutation.mutateAsync();
+                                  }}
+                                  className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
+                                >
+                                  {requestEmailChangeOldOtpMutation.isPending
+                                    ? tCommon("loading")
+                                    : `${tProfile("security.emailChangeVerifyOld")}${emailChangeResendLeft > 0 ? ` (${emailChangeResendLeft}s)` : ""}`}
+                                </button>
+                              )}
+
+                              {emailChangeStep === "old_sent" && (
+                                <div className="space-y-2">
+                                  <input
+                                    value={emailChangeOldCode}
+                                    onChange={(e) =>
+                                      setEmailChangeOldCode(
+                                        e.target.value.replace(/[^\d]/g, "").slice(0, 6)
+                                      )
+                                    }
+                                    placeholder={tProfile("security.otpPlaceholder")}
+                                    inputMode="numeric"
+                                    className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!canVerifyEmailChangeOld}
+                                      onClick={async () => {
+                                        await verifyEmailChangeOldOtpMutation.mutateAsync();
+                                      }}
+                                      className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-white/90 border border-purple-100 text-purple-700 hover:border-purple-200 hover:bg-white"
+                                    >
+                                      {verifyEmailChangeOldOtpMutation.isPending
+                                        ? tCommon("loading")
+                                        : tProfile("security.emailChangeConfirmOld")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEmailChangeStep("idle");
+                                        setEmailChangeOldCode("");
+                                        setEmailChangeNewCode("");
+                                        setEmailChangeCodePreview(null);
+                                        clearEmailChangeTimer();
+                                        setEmailChangeResendLeft(0);
+                                      }}
+                                      className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 bg-white/80 border border-purple-100 text-gray-700 hover:border-purple-200 hover:bg-white"
+                                    >
+                                      {tCommon("cancel")}
+                                    </button>
+                                  </div>
+                                  {!!emailChangeCodePreview && (
+                                    <div className="text-xs text-gray-600 font-semibold">
+                                      {tWalletModal("devCodePreviewPrefix")}{" "}
+                                      {emailChangeCodePreview}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {emailChangeStep === "old_verified" && (
+                                <div className="space-y-2">
+                                  <input
+                                    value={emailChangeNewEmail}
+                                    onChange={(e) => {
+                                      setEmailChangeNewEmail(e.target.value);
+                                      setEmailChangeNewCode("");
+                                      setEmailChangeCodePreview(null);
+                                    }}
+                                    placeholder={tProfile("security.newEmailPlaceholder")}
+                                    className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={!canRequestEmailChangeNew}
+                                    onClick={async () => {
+                                      await requestEmailChangeNewOtpMutation.mutateAsync();
+                                    }}
+                                    className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
+                                  >
+                                    {requestEmailChangeNewOtpMutation.isPending
+                                      ? tCommon("loading")
+                                      : `${tProfile("security.emailChangeSendNew")}${emailChangeResendLeft > 0 ? ` (${emailChangeResendLeft}s)` : ""}`}
+                                  </button>
+                                </div>
+                              )}
+
+                              {emailChangeStep === "new_sent" && (
+                                <div className="space-y-2">
+                                  <div className="text-xs text-gray-600 font-semibold break-all">
+                                    {tProfile("security.newEmail")}:{" "}
+                                    {String(emailChangeNewEmail || "")
+                                      .trim()
+                                      .toLowerCase() || "-"}
+                                  </div>
+                                  <input
+                                    value={emailChangeNewCode}
+                                    onChange={(e) =>
+                                      setEmailChangeNewCode(
+                                        e.target.value.replace(/[^\d]/g, "").slice(0, 6)
+                                      )
+                                    }
+                                    placeholder={tProfile("security.otpPlaceholder")}
+                                    inputMode="numeric"
+                                    className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!canVerifyEmailChangeNew}
+                                      onClick={async () => {
+                                        await verifyEmailChangeNewOtpMutation.mutateAsync();
+                                      }}
+                                      className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-white/90 border border-purple-100 text-purple-700 hover:border-purple-200 hover:bg-white"
+                                    >
+                                      {verifyEmailChangeNewOtpMutation.isPending
+                                        ? tCommon("loading")
+                                        : tProfile("security.emailChangeConfirmNew")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEmailChangeStep("idle");
+                                        setEmailChangeNewEmail("");
+                                        setEmailChangeOldCode("");
+                                        setEmailChangeNewCode("");
+                                        setEmailChangeCodePreview(null);
+                                        clearEmailChangeTimer();
+                                        setEmailChangeResendLeft(0);
+                                      }}
+                                      className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 bg-white/80 border border-purple-100 text-gray-700 hover:border-purple-200 hover:bg-white"
+                                    >
+                                      {tCommon("cancel")}
+                                    </button>
+                                  </div>
+                                  {!!emailChangeCodePreview && (
+                                    <div className="text-xs text-gray-600 font-semibold">
+                                      {tWalletModal("devCodePreviewPrefix")}{" "}
+                                      {emailChangeCodePreview}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6">
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2">
+                              <Shield className="w-5 h-5 text-purple-600" />
+                              <div className="text-lg font-black text-gray-900">
+                                {tProfile("security.sessionsTitle")}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={revokeAllSessionsMutation.isPending}
+                              onClick={async () => {
+                                await revokeAllSessionsMutation.mutateAsync();
+                              }}
+                              className="h-10 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-white/90 border border-purple-100 text-purple-700 hover:border-purple-200 hover:bg-white"
+                            >
+                              {revokeAllSessionsMutation.isPending
+                                ? tCommon("loading")
+                                : tProfile("security.revokeAll")}
+                            </button>
+                          </div>
+
+                          {sessionsQuery.isFetching ? (
+                            <div className="text-sm font-semibold text-gray-600">
+                              {tCommon("loading")}
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {(sessionsQuery.data?.sessions || []).length === 0 ? (
+                                <div className="text-sm font-semibold text-gray-600">
+                                  {tProfile("security.noSessions")}
+                                </div>
+                              ) : (
+                                (sessionsQuery.data?.sessions || []).map((s: any) => {
+                                  const sid = String(s?.sessionId || "");
+                                  const currentSessionId = String(
+                                    sessionsQuery.data?.currentSessionId || ""
+                                  );
+                                  const isCurrent =
+                                    !!sid && !!currentSessionId && sid === currentSessionId;
+                                  return (
+                                    <div
+                                      key={sid || Math.random()}
+                                      className="bg-white/80 border border-purple-100 rounded-2xl p-4 flex items-start justify-between gap-3"
+                                    >
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <div className="text-sm font-black text-gray-900">
+                                            {s?.authMethod
+                                              ? String(s.authMethod)
+                                              : tProfile("security.unknownMethod")}
+                                          </div>
+                                          {isCurrent && (
+                                            <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                                              {tProfile("security.currentSession")}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-gray-600 font-semibold break-all">
+                                          {tProfile("security.createdAt")}:{" "}
+                                          {formatTs(s?.createdAt) || "-"}
+                                        </div>
+                                        <div className="text-xs text-gray-600 font-semibold break-all">
+                                          {tProfile("security.lastSeenAt")}:{" "}
+                                          {formatTs(s?.lastSeenAt) || "-"}
+                                        </div>
+                                        <div className="text-xs text-gray-600 font-semibold break-all">
+                                          {tProfile("security.ip")}:{" "}
+                                          {s?.ipPrefix ? String(s.ipPrefix) : "-"}
+                                        </div>
+                                        <div className="text-xs text-gray-600 font-semibold break-all">
+                                          {tProfile("security.device")}:{" "}
+                                          {s?.userAgent ? String(s.userAgent) : "-"}
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={revokeSessionMutation.isPending || isCurrent}
+                                        onClick={async () => {
+                                          if (!sid) return;
+                                          await revokeSessionMutation.mutateAsync(sid);
+                                        }}
+                                        className="h-10 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
+                                      >
+                                        {tProfile("security.revoke")}
+                                      </button>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Shield className="w-5 h-5 text-purple-600" />
+                            <div className="text-lg font-black text-gray-900">
+                              {tProfile("security.auditTitle")}
+                            </div>
+                          </div>
+                          {auditQuery.isFetching ? (
+                            <div className="text-sm font-semibold text-gray-600">
+                              {tCommon("loading")}
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {(auditQuery.data?.events || []).length === 0 ? (
+                                <div className="text-sm font-semibold text-gray-600">
+                                  {tProfile("security.noAudit")}
+                                </div>
+                              ) : (
+                                (auditQuery.data?.events || []).map((e: any) => (
+                                  <div
+                                    key={String(e?.id || Math.random())}
+                                    className="bg-white/80 border border-purple-100 rounded-2xl p-4"
+                                  >
+                                    <div className="text-sm font-black text-gray-900">
+                                      {e?.method
+                                        ? String(e.method)
+                                        : tProfile("security.unknownMethod")}
+                                    </div>
+                                    <div className="text-xs text-gray-600 font-semibold">
+                                      {formatTs(e?.createdAt) || "-"}
+                                    </div>
+                                    <div className="text-xs text-gray-600 font-semibold break-all">
+                                      {tProfile("security.ip")}:{" "}
+                                      {e?.ipPrefix ? String(e.ipPrefix) : "-"}
+                                    </div>
+                                    <div className="text-xs text-gray-600 font-semibold break-all">
+                                      {tProfile("security.device")}:{" "}
+                                      {e?.userAgent ? String(e.userAgent) : "-"}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </>
                 )}

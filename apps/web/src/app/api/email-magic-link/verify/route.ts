@@ -2,7 +2,14 @@ import { NextRequest } from "next/server";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { logApiError, parseRequestBody, normalizeAddress } from "@/lib/serverUtils";
+import {
+  getRequestId,
+  logApiError,
+  logApiEvent,
+  normalizeAddress,
+  parseRequestBody,
+} from "@/lib/serverUtils";
+import { getIP } from "@/lib/rateLimit";
 import { createSession } from "@/lib/session";
 
 function resolveMagicSecret() {
@@ -35,15 +42,40 @@ export async function POST(req: NextRequest) {
   try {
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Supabase not configured");
+    const reqId = getRequestId(req);
+    const ip = getIP(req);
 
     const payload = await parseRequestBody(req);
     const token = String(payload?.token || "").trim();
     if (!token || token.length < 10 || token.length > 512) {
+      try {
+        await logApiEvent("email_login_token_verify_failed", {
+          reason: "TOKEN_INVALID_FORMAT",
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return ApiResponses.invalidParameters("登录链接无效或已过期");
     }
 
     const tokenHash = hashMagicToken(token, resolveMagicSecret());
     const nowIso = new Date().toISOString();
+    try {
+      const { data: stale, error: staleErr } = await client
+        .from("email_login_tokens")
+        .select("id")
+        .lt("expires_at", nowIso)
+        .limit(200);
+      const list = Array.isArray(stale) ? stale : [];
+      if (!staleErr && list.length) {
+        await client
+          .from("email_login_tokens")
+          .delete()
+          .in(
+            "id",
+            list.map((r: any) => Number(r?.id)).filter((id: any) => Number.isFinite(id))
+          );
+      }
+    } catch {}
     const { data: updated, error: updateErr } = await client
       .from("email_login_tokens")
       .update({ used_at: nowIso })
@@ -53,11 +85,26 @@ export async function POST(req: NextRequest) {
       .select("email")
       .limit(1);
 
-    if (updateErr) return ApiResponses.databaseError("Failed to verify token", updateErr.message);
+    if (updateErr) {
+      try {
+        await logApiEvent("email_login_token_verify_failed", {
+          reason: "DB_ERROR",
+          requestId: reqId || undefined,
+        });
+      } catch {}
+      return ApiResponses.databaseError("Failed to verify token", updateErr.message);
+    }
     const row = Array.isArray(updated) ? updated[0] : null;
     const email = typeof row?.email === "string" ? String(row.email).trim().toLowerCase() : "";
-    if (!email || !isValidEmail(email))
+    if (!email || !isValidEmail(email)) {
+      try {
+        await logApiEvent("email_login_token_verify_failed", {
+          reason: "TOKEN_NOT_FOUND_OR_EXPIRED",
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return ApiResponses.invalidParameters("登录链接无效或已过期");
+    }
 
     let sessionAddress = "";
     const { secretString } = (() => {
@@ -109,7 +156,25 @@ export async function POST(req: NextRequest) {
     }
 
     const res = successResponse({ ok: true, address: sessionAddress }, "验证成功");
-    await createSession(res, sessionAddress);
+    await createSession(res, sessionAddress, undefined, { req, authMethod: "email_magic_link" });
+    try {
+      await logApiEvent("email_login_token_verified", {
+        addr: sessionAddress ? sessionAddress.slice(0, 8) : "",
+        emailDomain: email.split("@")[1] || "",
+        requestId: reqId || undefined,
+        ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+      });
+    } catch {}
+    try {
+      await client.from("email_login_tokens").delete().eq("token_hash", tokenHash);
+    } catch {}
+    try {
+      await client
+        .from("email_otps")
+        .delete()
+        .eq("wallet_address", sessionAddress)
+        .eq("email", email);
+    } catch {}
     return res;
   } catch (e: unknown) {
     logApiError("POST /api/email-magic-link/verify", e);

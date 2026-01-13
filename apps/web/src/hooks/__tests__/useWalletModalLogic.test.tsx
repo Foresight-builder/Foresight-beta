@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useWalletModalLogic } from "../useWalletModalLogic";
 
+const routerPushMock = vi.hoisted(() => vi.fn());
+
 const connectWalletMock = vi.hoisted(() => vi.fn());
 const connectWalletWithResultMock = vi.hoisted(() => vi.fn());
 const siweLoginMock = vi.hoisted(() => vi.fn());
@@ -46,6 +48,10 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/contexts/UserProfileContext", () => ({
   useUserProfileOptional: () => null,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn(), prefetch: vi.fn() }),
 }));
 
 vi.mock("@/lib/i18n", () => ({
@@ -95,18 +101,19 @@ describe("useWalletModalLogic 邮箱登录流程", () => {
       await result.current.handleRequestOtp();
     });
 
-    expect(requestEmailOtpMock).not.toHaveBeenCalled();
+    expect(sendMagicLinkMock).not.toHaveBeenCalled();
     expect(result.current.emailLoading).toBe(false);
     expect(result.current.otpRequested).toBe(false);
   });
 
-  it("在邮箱有效时会调用 requestEmailOtp 并设置 otpRequested", async () => {
-    requestEmailOtpMock.mockResolvedValueOnce(undefined);
+  it("在邮箱有效时 handleRequestOtp 会跳转到登录落地页", async () => {
+    sendMagicLinkMock.mockResolvedValueOnce({ expiresInSec: 600, codePreview: "123456" });
+    const onClose = vi.fn();
 
     const { result } = renderHook(() =>
       useWalletModalLogic({
         isOpen: true,
-        onClose: vi.fn(),
+        onClose,
       })
     );
 
@@ -120,19 +127,23 @@ describe("useWalletModalLogic 邮箱登录流程", () => {
       await result.current.handleRequestOtp();
     });
 
-    expect(requestEmailOtpMock).toHaveBeenCalledTimes(1);
-    expect(requestEmailOtpMock).toHaveBeenCalledWith("user@example.com");
-    expect(result.current.otpRequested).toBe(true);
+    expect(sendMagicLinkMock).toHaveBeenCalledTimes(1);
+    expect(sendMagicLinkMock).toHaveBeenCalledWith("user@example.com", expect.any(String));
+    expect(routerPushMock).toHaveBeenCalled();
+    expect(String(routerPushMock.mock.calls[0]?.[0] || "")).toContain("/login/callback?");
+    expect(onClose).toHaveBeenCalled();
+    expect(result.current.otpRequested).toBe(false);
     expect(result.current.emailLoading).toBe(false);
   });
 
-  it("点击发送魔法链接会切换到 OTP 模式", async () => {
+  it("点击发送魔法链接会跳转到登录落地页", async () => {
     sendMagicLinkMock.mockResolvedValueOnce({ expiresInSec: 600, codePreview: "123456" });
+    const onClose = vi.fn();
 
     const { result } = renderHook(() =>
       useWalletModalLogic({
         isOpen: true,
-        onClose: vi.fn(),
+        onClose,
       })
     );
 
@@ -147,9 +158,10 @@ describe("useWalletModalLogic 邮箱登录流程", () => {
     });
 
     expect(sendMagicLinkMock).toHaveBeenCalledTimes(1);
-    expect(sendMagicLinkMock).toHaveBeenCalledWith("magic@example.com");
-    expect(result.current.otpRequested).toBe(true);
-    expect(result.current.otp).toBe("123456");
+    expect(sendMagicLinkMock).toHaveBeenCalledWith("magic@example.com", expect.any(String));
+    expect(routerPushMock).toHaveBeenCalled();
+    expect(String(routerPushMock.mock.calls[0]?.[0] || "")).toContain("/login/callback?");
+    expect(onClose).toHaveBeenCalled();
     expect(result.current.emailLoading).toBe(false);
   });
 });

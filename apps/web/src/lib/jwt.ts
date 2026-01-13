@@ -16,6 +16,8 @@ export interface JWTPayload {
   address: string;
   chainId?: number;
   issuedAt: number;
+  sid?: string;
+  tokenType?: "session" | "refresh" | "email_change";
   [key: string]: unknown;
 }
 
@@ -28,12 +30,20 @@ export interface JWTPayload {
 export async function createToken(
   address: string,
   chainId?: number,
-  expiresIn: number = 7 * 24 * 60 * 60 // 7 天
+  expiresIn: number = 7 * 24 * 60 * 60,
+  options?: {
+    sessionId?: string;
+    tokenType?: "session" | "refresh" | "email_change";
+    extra?: Record<string, unknown>;
+  }
 ): Promise<string> {
   const payload: JWTPayload = {
+    ...(options?.extra ? options.extra : {}),
     address: address.toLowerCase(),
     chainId,
     issuedAt: Math.floor(Date.now() / 1000),
+    ...(options?.sessionId ? { sid: options.sessionId } : {}),
+    ...(options?.tokenType ? { tokenType: options.tokenType } : {}),
   };
 
   const token = await new SignJWT(payload)
@@ -79,9 +89,16 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
  * @param address 用户地址
  * @param chainId 链 ID
  */
-export async function createRefreshToken(address: string, chainId?: number): Promise<string> {
+export async function createRefreshToken(
+  address: string,
+  chainId?: number,
+  options?: { sessionId?: string }
+): Promise<string> {
   // 刷新 token 有效期 30 天
-  return createToken(address, chainId, 30 * 24 * 60 * 60);
+  return createToken(address, chainId, 30 * 24 * 60 * 60, {
+    tokenType: "refresh",
+    sessionId: options?.sessionId,
+  });
 }
 
 /**

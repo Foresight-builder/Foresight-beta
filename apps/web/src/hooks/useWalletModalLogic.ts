@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
@@ -28,6 +29,7 @@ export interface UseWalletModalOptions {
 }
 
 export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) {
+  const router = useRouter();
   const {
     connectWalletWithResult,
     availableWallets,
@@ -342,15 +344,31 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
   const canRequest = /.+@.+\..+/.test(email);
 
-  const handleRequestOtp = async () => {
+  const sendLoginEmailAndGo = async () => {
     if (!canRequest || !auth) return;
     setEmailLoading(true);
     try {
-      await auth.requestEmailOtp(email);
-      setOtpRequested(true);
-      setCodePreview(null);
+      const redirect =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}${window.location.hash}`
+          : "/";
+      const data = await auth.sendMagicLink(email, redirect);
+      const params = new URLSearchParams();
+      params.set("email", email.trim().toLowerCase());
+      if (redirect) {
+        params.set("redirect", redirect);
+      }
+      if (data?.codePreview) {
+        params.set("codePreview", String(data.codePreview));
+      }
+      router.push(`/login/callback?${params.toString()}`);
+      onClose();
     } catch {}
     setEmailLoading(false);
+  };
+
+  const handleRequestOtp = async () => {
+    await sendLoginEmailAndGo();
   };
 
   const handleVerifyOtp = async () => {
@@ -364,23 +382,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   };
 
   const handleSendMagicLink = async () => {
-    if (!canRequest || !auth) return;
-    setEmailLoading(true);
-    try {
-      const data = await auth.sendMagicLink(email);
-      setOtpRequested(true);
-      const previewCode =
-        data && typeof (data as any).codePreview === "string"
-          ? String((data as any).codePreview)
-          : "";
-      if (previewCode) {
-        setOtp(previewCode);
-        setCodePreview(previewCode);
-      } else {
-        setCodePreview(null);
-      }
-    } catch {}
-    setEmailLoading(false);
+    await sendLoginEmailAndGo();
   };
 
   const canSubmitProfile =

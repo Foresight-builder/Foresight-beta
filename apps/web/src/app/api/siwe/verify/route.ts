@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ success: true, address });
 
     const { createSession } = await import("@/lib/session");
-    await createSession(res, address, chainId);
+    await createSession(res, address, chainId, { req, authMethod: "siwe" });
     try {
       console.info(
         JSON.stringify({

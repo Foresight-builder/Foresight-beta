@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "dotenv -e ../../.env.local -e ./.env.local -- next dev",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "next build",

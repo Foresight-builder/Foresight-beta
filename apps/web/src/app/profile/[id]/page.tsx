@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, use } from "react";
-import { Coins, Heart, History, TrendingUp } from "lucide-react";
+import { Coins, Heart, History, TrendingUp, Shield } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "@/lib/i18n";
@@ -46,6 +46,9 @@ export default function UserProfilePage({ params }: Props) {
     { id: "makerEarnings", label: tProfile("sidebar.tabs.makerEarnings"), icon: Coins },
     { id: "history", label: tProfile("sidebar.tabs.history"), icon: History },
     { id: "following", label: tProfile("sidebar.tabs.following"), icon: Heart },
+    ...(isOwnProfile
+      ? [{ id: "security" as const, label: tProfile("sidebar.tabs.security"), icon: Shield }]
+      : []),
   ];
 
   return (

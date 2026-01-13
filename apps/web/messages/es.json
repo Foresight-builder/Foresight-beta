@@ -1621,7 +1621,8 @@
         "predictions": "Mis predicciones",
         "makerEarnings": "Ganancias de maker",
         "history": "Historial de navegación",
-        "following": "Siguiendo"
+        "following": "Siguiendo",
+        "security": "Cuenta y seguridad"
       },
       "stats": {
         "predictions": "Preds",
@@ -1631,6 +1632,30 @@
       },
       "settings": "Configuración",
       "disconnect": "Desconectar"
+    },
+    "security": {
+      "emailChangeTitle": "Cambiar correo",
+      "emailChangeNeedVerified": "Verifica tu correo antes de cambiarlo.",
+      "currentEmail": "Correo actual",
+      "newEmail": "Nuevo correo",
+      "newEmailPlaceholder": "nuevo@ejemplo.com",
+      "otpPlaceholder": "123456",
+      "emailChangeVerifyOld": "Enviar código al correo actual",
+      "emailChangeConfirmOld": "Confirmar código del correo actual",
+      "emailChangeSendNew": "Enviar código al nuevo correo",
+      "emailChangeConfirmNew": "Confirmar código del nuevo correo",
+      "sessionsTitle": "Dispositivos",
+      "revokeAll": "Cerrar sesión en todos",
+      "noSessions": "Sin sesiones activas",
+      "unknownMethod": "Desconocido",
+      "currentSession": "Este dispositivo",
+      "createdAt": "Creado",
+      "lastSeenAt": "Última actividad",
+      "ip": "IP",
+      "device": "Dispositivo",
+      "revoke": "Cerrar sesión",
+      "auditTitle": "Inicios de sesión recientes",
+      "noAudit": "Sin historial de inicios"
     },
     "overview": {
       "cards": {

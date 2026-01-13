@@ -15,6 +15,9 @@ import { ApiErrorCode } from "@/types/api";
 import { sendMailSMTP } from "@/lib/emailService";
 import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
+import { verifyToken } from "@/lib/jwt";
+
+const EMAIL_CHANGE_COOKIE_NAME = "fs_email_change";
 
 function isValidEthAddress(addr: string) {
   return /^0x[a-f0-9]{40}$/.test(normalizeAddress(String(addr || "")));
@@ -25,6 +28,35 @@ function deriveDeterministicAddressFromEmail(email: string, secretString: string
     .update(`email-login:${email}:${secretString}`, "utf8")
     .digest("hex");
   return normalizeAddress(`0x${h.slice(0, 40)}`);
+}
+
+const SQL_CREATE_EMAIL_OTPS_TABLE = `
+CREATE TABLE IF NOT EXISTS public.email_otps (
+  wallet_address TEXT NOT NULL,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  last_sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_window_start_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_in_window INTEGER NOT NULL DEFAULT 0,
+  fail_count INTEGER NOT NULL DEFAULT 0,
+  lock_until TIMESTAMPTZ,
+  created_ip TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (wallet_address, email)
+);
+
+ALTER TABLE public.email_otps ENABLE ROW LEVEL SECURITY;
+`.trim();
+
+function isMissingEmailOtpsTable(error?: { message?: string | null; code?: string | null }) {
+  const msg = String(error?.message || "").toLowerCase();
+  if (!msg) return false;
+  return (
+    (msg.includes("relation") && msg.includes("email_otps") && msg.includes("does not exist")) ||
+    (msg.includes("could not find the table") && msg.includes("email_otps"))
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -39,8 +71,11 @@ export async function POST(req: NextRequest) {
     const walletAddressRaw = String(payload?.walletAddress || "");
     const walletAddress = normalizeAddress(walletAddressRaw);
     const requestedMode = typeof payload?.mode === "string" ? String(payload.mode) : "";
-    const mode: "login" | "bind" =
-      requestedMode === "login" || requestedMode === "bind"
+    const mode: "login" | "bind" | "change_old" | "change_new" =
+      requestedMode === "login" ||
+      requestedMode === "bind" ||
+      requestedMode === "change_old" ||
+      requestedMode === "change_new"
         ? (requestedMode as any)
         : isValidEthAddress(walletAddress)
           ? "bind"
@@ -49,7 +84,7 @@ export async function POST(req: NextRequest) {
     const walletKey =
       mode === "login" ? deriveDeterministicAddressFromEmail(email, secretString) : walletAddress;
 
-    if (mode === "bind") {
+    if (mode === "bind" || mode === "change_old" || mode === "change_new") {
       const sessAddr = await getSessionAddress(req);
       if (!sessAddr || sessAddr !== walletAddress) {
         return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
@@ -62,30 +97,80 @@ export async function POST(req: NextRequest) {
       return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
+    if (mode === "change_old" || mode === "change_new") {
+      const { data: prof, error: profErr } = await client
+        .from("user_profiles")
+        .select("email")
+        .eq("wallet_address", walletAddress)
+        .maybeSingle();
+      if (profErr) {
+        return ApiResponses.databaseError("Failed to load user profile", profErr.message);
+      }
+      const currentEmail = String((prof as any)?.email || "")
+        .trim()
+        .toLowerCase();
+      if (!currentEmail) {
+        return errorResponse("请先完成邮箱验证", ApiErrorCode.INVALID_PARAMETERS, 400);
+      }
+
+      if (mode === "change_old") {
+        if (email !== currentEmail) {
+          return errorResponse("邮箱不匹配", ApiErrorCode.FORBIDDEN, 403);
+        }
+      }
+
+      if (mode === "change_new") {
+        const raw = req.cookies.get(EMAIL_CHANGE_COOKIE_NAME)?.value || "";
+        const cookiePayload = raw ? await verifyToken(raw) : null;
+        const cookieAddr = typeof cookiePayload?.address === "string" ? cookiePayload.address : "";
+        const tokenType =
+          typeof (cookiePayload as any)?.tokenType === "string"
+            ? String((cookiePayload as any).tokenType)
+            : "";
+        const oldEmail =
+          typeof (cookiePayload as any)?.ecOldEmail === "string"
+            ? String((cookiePayload as any).ecOldEmail)
+            : "";
+        const stage =
+          typeof (cookiePayload as any)?.ecStage === "string"
+            ? String((cookiePayload as any).ecStage)
+            : "";
+
+        if (!cookiePayload || tokenType !== "email_change" || stage !== "old_verified") {
+          return errorResponse("请先验证当前邮箱", ApiErrorCode.INVALID_PARAMETERS, 400);
+        }
+        if (!cookieAddr || cookieAddr.toLowerCase() !== walletAddress.toLowerCase()) {
+          return errorResponse("请先验证当前邮箱", ApiErrorCode.INVALID_PARAMETERS, 400);
+        }
+        if (!oldEmail || oldEmail.toLowerCase() !== currentEmail.toLowerCase()) {
+          return errorResponse("请先验证当前邮箱", ApiErrorCode.INVALID_PARAMETERS, 400);
+        }
+        if (email === currentEmail) {
+          return errorResponse("新邮箱不能与当前邮箱相同", ApiErrorCode.INVALID_PARAMETERS, 400);
+        }
+      }
+    }
+
     const ip = getIP(req);
     const reqId = getRequestId(req);
     const rlKey = `${walletKey || "unknown"}:${ip || "unknown"}`;
     const rl = await checkRateLimit(rlKey, RateLimits.strict, "email-otp-request");
     if (!rl.success) {
+      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       try {
-        console.info(
-          JSON.stringify({
-            evt: "email_otp_rate_limited",
-            addr: walletKey ? walletKey.slice(0, 8) : "",
-            ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
-            resetAt: rl.resetAt,
-          })
-        );
-        await logApiEvent("email_otp_rate_limited", {
+        await logApiEvent("email_login_rate_limited", {
+          reason: "GLOBAL_RL_UPSTASH",
           addr: walletKey ? walletKey.slice(0, 8) : "",
-          ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+          emailDomain: email.split("@")[1] || "",
           resetAt: rl.resetAt,
+          waitSeconds: waitSec,
           requestId: reqId || undefined,
         });
       } catch {}
-      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429, {
         reason: "GLOBAL_RL_UPSTASH",
+        resetAt: rl.resetAt,
+        waitSeconds: waitSec,
       });
     }
 
@@ -99,6 +184,13 @@ export async function POST(req: NextRequest) {
       .eq("wallet_address", walletKey);
 
     if (fetchAllErr) {
+      if (isMissingEmailOtpsTable(fetchAllErr)) {
+        return ApiResponses.databaseError("邮箱验证码未初始化：缺少 email_otps 表", {
+          setupRequired: true,
+          sql: SQL_CREATE_EMAIL_OTPS_TABLE,
+          detail: fetchAllErr.message,
+        });
+      }
       return ApiResponses.databaseError("Failed to fetch wallet otps", fetchAllErr.message);
     }
 
@@ -121,8 +213,18 @@ export async function POST(req: NextRequest) {
 
     if (globalLastSentMs && nowMs - globalLastSentMs < minIntervalMs) {
       const waitSec = Math.ceil((minIntervalMs - (nowMs - globalLastSentMs)) / 1000);
+      try {
+        await logApiEvent("email_login_rate_limited", {
+          reason: "GLOBAL_MIN_INTERVAL",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
+          emailDomain: email.split("@")[1] || "",
+          waitSeconds: waitSec,
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429, {
         reason: "GLOBAL_MIN_INTERVAL",
+        waitSeconds: waitSec,
       });
     }
 
@@ -134,6 +236,13 @@ export async function POST(req: NextRequest) {
         .select("last_sent_at, created_ip")
         .eq("created_ip", ip);
       if (ipErr) {
+        if (isMissingEmailOtpsTable(ipErr)) {
+          return ApiResponses.databaseError("邮箱验证码未初始化：缺少 email_otps 表", {
+            setupRequired: true,
+            sql: SQL_CREATE_EMAIL_OTPS_TABLE,
+            detail: ipErr.message,
+          });
+        }
         return ApiResponses.databaseError("Failed to check ip rate limit", ipErr.message);
       }
       const rows = Array.isArray(ipRows) ? ipRows : [];
@@ -145,6 +254,15 @@ export async function POST(req: NextRequest) {
         }
       }
       if (ipCount >= maxIpRequests) {
+        try {
+          await logApiEvent("email_login_rate_limited", {
+            reason: "IP_RATE_LIMIT",
+            addr: walletKey ? walletKey.slice(0, 8) : "",
+            emailDomain: email.split("@")[1] || "",
+            windowMinutes: ipWindowMs / 60000,
+            requestId: reqId || undefined,
+          });
+        } catch {}
         return errorResponse("当前 IP 请求过于频繁，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
           reason: "IP_RATE_LIMIT",
           windowMinutes: ipWindowMs / 60000,
@@ -172,12 +290,27 @@ export async function POST(req: NextRequest) {
       .eq("email", email)
       .maybeSingle();
     if (fetchErr) {
+      if (isMissingEmailOtpsTable(fetchErr)) {
+        return ApiResponses.databaseError("邮箱验证码未初始化：缺少 email_otps 表", {
+          setupRequired: true,
+          sql: SQL_CREATE_EMAIL_OTPS_TABLE,
+          detail: fetchErr.message,
+        });
+      }
       return ApiResponses.databaseError("Failed to fetch otp", fetchErr.message);
     }
 
     const rec = (existing || null) as Database["public"]["Tables"]["email_otps"]["Row"] | null;
 
     if (!rec && activeEmailsInWindow >= maxEmailsInWindow) {
+      try {
+        await logApiEvent("email_login_rate_limited", {
+          reason: "TOO_MANY_DISTINCT_EMAILS",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
+          emailDomain: email.split("@")[1] || "",
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return errorResponse("近期请求的邮箱数量过多，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
         reason: "TOO_MANY_DISTINCT_EMAILS",
       });
@@ -185,6 +318,15 @@ export async function POST(req: NextRequest) {
 
     if (rec?.lock_until && new Date(rec.lock_until).getTime() > nowMs) {
       const waitMin = Math.ceil((new Date(rec.lock_until).getTime() - nowMs) / 60000);
+      try {
+        await logApiEvent("email_login_locked", {
+          reason: "EMAIL_LOCKED",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
+          emailDomain: email.split("@")[1] || "",
+          waitMinutes: waitMin,
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return errorResponse(
         `该邮箱已被锁定，请 ${waitMin} 分钟后重试`,
         ApiErrorCode.RATE_LIMIT,
@@ -207,6 +349,15 @@ export async function POST(req: NextRequest) {
     const nextWindowStartAt = windowReset ? now : new Date(sentWindowStartAtMs);
     const nextSentInWindow = (windowReset ? 0 : sentInWindow) + 1;
     if (nextSentInWindow > maxInWindow) {
+      try {
+        await logApiEvent("email_login_rate_limited", {
+          reason: "EMAIL_TOO_FREQUENT",
+          addr: walletKey ? walletKey.slice(0, 8) : "",
+          emailDomain: email.split("@")[1] || "",
+          windowMinutes: rateWindowMs / 60000,
+          requestId: reqId || undefined,
+        });
+      } catch {}
       return errorResponse("该邮箱请求过于频繁，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
         reason: "EMAIL_TOO_FREQUENT",
         windowMinutes: rateWindowMs / 60000,
@@ -233,21 +384,22 @@ export async function POST(req: NextRequest) {
       .from("email_otps")
       .upsert(otpRow, { onConflict: "wallet_address,email" });
     if (upsertErr) {
+      if (isMissingEmailOtpsTable(upsertErr)) {
+        return ApiResponses.databaseError("邮箱验证码未初始化：缺少 email_otps 表", {
+          setupRequired: true,
+          sql: SQL_CREATE_EMAIL_OTPS_TABLE,
+          detail: upsertErr.message,
+        });
+      }
       return ApiResponses.databaseError("Failed to store otp", upsertErr.message);
     }
 
     try {
       await sendMailSMTP(email, code);
       try {
-        console.info(
-          JSON.stringify({
-            evt: "email_otp_sent",
-            addr: walletKey ? walletKey.slice(0, 8) : "",
-            emailDomain: email.split("@")[1] || "",
-            ts: Date.now(),
-          })
-        );
-        await logApiEvent("email_otp_sent", {
+        await logApiEvent("email_login_requested", {
+          channel: "otp",
+          mode,
           addr: walletKey ? walletKey.slice(0, 8) : "",
           emailDomain: email.split("@")[1] || "",
           requestId: reqId || undefined,
@@ -288,15 +440,10 @@ export async function POST(req: NextRequest) {
       }
       if (isDev) {
         try {
-          console.info(
-            JSON.stringify({
-              evt: "email_otp_dev_preview",
-              addr: walletKey ? walletKey.slice(0, 8) : "",
-              emailDomain: email.split("@")[1] || "",
-              ts: Date.now(),
-            })
-          );
-          await logApiEvent("email_otp_dev_preview", {
+          await logApiEvent("email_login_requested", {
+            channel: "otp",
+            mode,
+            hasSmtp: false,
             addr: walletKey ? walletKey.slice(0, 8) : "",
             emailDomain: email.split("@")[1] || "",
             requestId: reqId || undefined,
