@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
     const metric = await request.json();
 
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Database not configured");
     }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     const metricName =
       metricNameRaw && /^[a-zA-Z0-9._:-]{1,64}$/.test(metricNameRaw) ? metricNameRaw : "";
 
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Database not configured");
     }

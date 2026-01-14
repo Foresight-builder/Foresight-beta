@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import {
   getSessionAddress,
   isAdminAddress,
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (eventId === null || eventId <= 0) {
       return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
     }
-    const client = getClient() as any;
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

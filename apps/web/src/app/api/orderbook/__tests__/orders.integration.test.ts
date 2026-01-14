@@ -14,7 +14,7 @@ import {
 } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const fakeQuery = {
     eq: () => fakeQuery,
     order: async () => ({ data: [], error: null }),
@@ -29,7 +29,6 @@ vi.mock("@/lib/supabase", () => {
   };
 
   return {
-    getClient: () => fakeClient,
     supabaseAdmin: fakeClient,
   };
 });

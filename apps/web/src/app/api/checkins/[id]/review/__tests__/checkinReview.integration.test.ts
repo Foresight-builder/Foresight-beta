@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { POST as reviewCheckin } from "../route";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const checkin = {
     id: 1,
     flag_id: 10,
@@ -91,11 +91,8 @@ vi.mock("@/lib/supabase", () => {
     },
   };
 
-  const getClient = () => client;
-
   return {
-    supabase: client,
-    getClient,
+    supabaseAdmin: client,
   };
 });
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import {
   getSessionAddress,
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     if (proposalId === null) {
       return ApiResponses.invalidParameters("proposalId 必填");
     }
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (rawUserId && normalizeAddress(rawUserId) !== sessionWallet) {
       return ApiResponses.forbidden("userId mismatch");
     }
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

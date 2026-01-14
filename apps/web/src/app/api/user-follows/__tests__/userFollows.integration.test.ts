@@ -5,9 +5,8 @@ describe("user-follows API", () => {
   describe("GET /api/user-follows", () => {
     it("returns empty follows when client is not configured", async () => {
       vi.resetModules();
-      vi.doMock("@/lib/supabase", () => ({
+      vi.doMock("@/lib/supabase.server", () => ({
         supabaseAdmin: null,
-        getClient: () => null,
       }));
 
       const { GET } = await import("../route");
@@ -29,9 +28,8 @@ describe("user-follows API", () => {
   describe("GET /api/user-follows/counts", () => {
     it("returns INTERNAL_ERROR when supabase is not configured", async () => {
       vi.resetModules();
-      vi.doMock("@/lib/supabase", () => ({
+      vi.doMock("@/lib/supabase.server", () => ({
         supabaseAdmin: null,
-        getClient: () => null,
       }));
 
       const { GET } = await import("../counts/route");
@@ -51,9 +49,8 @@ describe("user-follows API", () => {
 
     it("returns 400 when address is invalid", async () => {
       vi.resetModules();
-      vi.doMock("@/lib/supabase", () => ({
+      vi.doMock("@/lib/supabase.server", () => ({
         supabaseAdmin: {},
-        getClient: () => null,
       }));
 
       const { GET } = await import("../counts/route");
@@ -73,7 +70,7 @@ describe("user-follows API", () => {
   describe("GET /api/user-follows/followers-users", () => {
     it("returns empty users list when there are no followers", async () => {
       vi.resetModules();
-      vi.doMock("@/lib/supabase", () => ({
+      vi.doMock("@/lib/supabase.server", () => ({
         supabaseAdmin: {
           from: (table: string) => {
             if (table === "user_follows") {
@@ -88,7 +85,6 @@ describe("user-follows API", () => {
             throw new Error(`Unexpected table: ${table}`);
           },
         },
-        getClient: () => null,
       }));
 
       const { GET } = await import("../followers-users/route");
@@ -111,7 +107,7 @@ describe("user-follows API", () => {
   describe("GET /api/user-follows/user", () => {
     it("returns followed=false when there is no follow row", async () => {
       vi.resetModules();
-      vi.doMock("@/lib/supabase", () => ({
+      vi.doMock("@/lib/supabase.server", () => ({
         supabaseAdmin: {
           from: (table: string) => {
             if (table === "user_follows") {
@@ -128,7 +124,6 @@ describe("user-follows API", () => {
             throw new Error(`Unexpected table: ${table}`);
           },
         },
-        getClient: () => null,
       }));
 
       const { GET } = await import("../user/route");

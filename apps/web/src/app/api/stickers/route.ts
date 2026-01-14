@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ stickers: [] });
     }
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) return NextResponse.json({ stickers: [] });
 
     // Use user_emojis table
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       return ApiResponses.forbidden("Forbidden");
     }
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("No DB");
 
     const { error } = await (client.from("user_emojis") as any).insert({

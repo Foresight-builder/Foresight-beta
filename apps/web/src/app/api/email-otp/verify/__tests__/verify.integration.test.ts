@@ -95,7 +95,7 @@ describe("POST /api/email-otp/verify", () => {
   });
 
   it("returns 401 when session address mismatch", async () => {
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {},
     }));
     const { POST } = await import("../route");
@@ -136,7 +136,7 @@ describe("POST /api/email-otp/verify", () => {
     });
 
     const { fromMock } = makeSupabaseMock();
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {
         from: fromMock,
       },
@@ -189,7 +189,7 @@ describe("POST /api/email-otp/verify", () => {
     });
 
     const { fromMock, upsertProfileMock } = makeSupabaseMock();
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {
         from: fromMock,
       },

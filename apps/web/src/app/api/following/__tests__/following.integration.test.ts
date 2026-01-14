@@ -3,7 +3,7 @@ import { ApiErrorCode } from "@/types/api";
 
 describe("GET /api/following", () => {
   it("returns INTERNAL_ERROR when supabase is not configured", async () => {
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: null,
     }));
     const { GET } = await import("../route");
@@ -20,7 +20,7 @@ describe("GET /api/following", () => {
   });
 
   it("returns 400 when address is invalid", async () => {
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {},
     }));
     const { GET } = await import("../route");
@@ -37,7 +37,7 @@ describe("GET /api/following", () => {
   });
 
   it("returns empty array when user follows nothing", async () => {
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {
         from: (table: string) => {
           if (table === "event_follows") {

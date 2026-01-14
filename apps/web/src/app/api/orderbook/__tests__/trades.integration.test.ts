@@ -3,7 +3,7 @@ import { GET as getTrades } from "../trades/route";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   let queryResult: { data: any; error: any } = { data: [], error: null };
 
   const eqMock = vi.fn();
@@ -35,8 +35,9 @@ vi.mock("@/lib/supabase", () => {
   };
 
   return {
-    getClient: () => client,
-    supabaseAdmin: client,
+    get supabaseAdmin() {
+      return client;
+    },
     __setClient: (next: any) => {
       client = next;
     },
@@ -60,7 +61,7 @@ let fromMock: any;
 
 describe("GET /api/orderbook/trades", () => {
   beforeAll(async () => {
-    const mod = (await import("@/lib/supabase")) as any;
+    const mod = (await import("@/lib/supabase.server")) as any;
     setClient = mod.__setClient;
     setQueryResult = mod.__setQueryResult;
     const mocks = mod.__getMocks();

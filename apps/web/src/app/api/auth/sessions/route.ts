@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiResponses, errorResponse, successResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSession, clearSession } from "@/lib/session";
 import { parseRequestBody } from "@/lib/serverUtils";
 

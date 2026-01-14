@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 import { CardListSkeleton } from "@/components/skeletons";
 import { getPredictionsList } from "../api/predictions/_lib/getPredictionsList";
 import TrendingClient from "./TrendingClient";
@@ -100,11 +100,10 @@ function buildTrendingJsonLd(predictions: Prediction[], locale: Locale) {
 }
 
 async function getPredictions(): Promise<Prediction[]> {
-  const client = getClient();
-  if (!client) return [];
+  if (!supabaseAnon) return [];
 
   try {
-    const { items } = await getPredictionsList(client as any, {
+    const { items } = await getPredictionsList(supabaseAnon as any, {
       includeOutcomes: false,
       limit: 100,
     });

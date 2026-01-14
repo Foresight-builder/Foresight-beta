@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import {
   getErrorMessage,
@@ -324,7 +324,7 @@ export async function handleUserFollowsUserGet(req: NextRequest) {
 
 export async function handleUserFollowsGet(req: NextRequest) {
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

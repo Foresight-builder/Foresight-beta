@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { NextRequest } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import {
   normalizeAddress,

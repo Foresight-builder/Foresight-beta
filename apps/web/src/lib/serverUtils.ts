@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { normalizeAddress } from "./address";
 import { getSession } from "./session";
-import { getClient } from "./supabase";
+import { supabaseAdmin } from "./supabase.server";
 
 export { normalizeAddress } from "./address";
 
@@ -132,9 +132,8 @@ export async function logApiEvent(event: string, properties?: Record<string, unk
       console.info(JSON.stringify({ evt: event, ...((properties as any) || {}) }));
       return;
     }
-    const client = getClient();
-    if (!client) return;
-    await (client as any)
+    if (!supabaseAdmin) return;
+    await (supabaseAdmin as any)
       .from("analytics_events")
       .insert({
         event_name: event,

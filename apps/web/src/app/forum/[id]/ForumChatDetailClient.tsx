@@ -10,7 +10,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations, t, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
-import type { Database } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
 type ForumChatDetailClientProps = {
   eventId: number;

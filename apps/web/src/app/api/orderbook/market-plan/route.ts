@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
@@ -41,7 +41,7 @@ function isMissingMarketKeyColumn(
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
@@ -66,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let proposalPages: MetadataRoute.Sitemap = [];
 
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (client) {
       const { data: predictions } = await (client as any)
         .from("predictions")

@@ -1,16 +1,11 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import type { UserProfile } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { useUserProfileInfo } from "@/hooks/useQueries";
+
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
 interface UserProfileContextValue {
   profile: UserProfile | null;

@@ -1,6 +1,6 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "@/lib/supabase.server";
 import { getPredictionsList } from "./_lib/getPredictionsList";
 import { buildPaginationMeta, buildCursorPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
@@ -22,9 +22,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const includeOutcomes = (searchParams.get("includeOutcomes") || "0") !== "0";
 
-    // 在缺少服务密钥时使用匿名客户端降级读取
-    const client = getClient();
-    if (!client) {
+    if (!supabaseAnon) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
 
@@ -32,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // 游标分页模式
     if (paging.mode === "cursor") {
-      const { items, total } = await getPredictionsList(client, {
+      const { items, total } = await getPredictionsList(supabaseAnon, {
         category,
         status,
         search: search || undefined,
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 传统分页模式
-    const { items, total } = await getPredictionsList(client, {
+    const { items, total } = await getPredictionsList(supabaseAnon, {
       category,
       status,
       search: search || undefined,
@@ -96,13 +94,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
-    const client = getClient();
-    if (!client) {
+    if (!supabaseAdmin) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
 
-    const { newPrediction } = await createPredictionFromRequest(request, client);
+    const { newPrediction } = await createPredictionFromRequest(request, supabaseAdmin);
 
     return NextResponse.json(
       {

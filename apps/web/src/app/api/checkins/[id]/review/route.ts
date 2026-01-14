@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiResponses } from "@/lib/apiResponse";
-import { supabase, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 401 }
       );
 
-    const client = (supabase || getClient()) as any;
+    const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const { data: rawChk, error: chkErr } = await client

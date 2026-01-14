@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "@/lib/supabase.server";
 import { getErrorMessage, normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { requireAdmin } from "./admin";
 import { computeProbabilities, fetchPredictionStats, toPredictionStatsResponse } from "./stats";
@@ -18,7 +18,7 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
       return ApiResponses.invalidParameters("Invalid prediction id");
     }
 
-    const client = getClient() as any;
+    const client = (supabaseAnon || supabaseAdmin) as any;
     if (!client) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
@@ -108,7 +108,7 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
     }
     const body = await request.json().catch(() => ({}));
 
-    const client = getClient() as any;
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
@@ -165,7 +165,7 @@ export async function handleDeletePrediction(request: NextRequest, id: string) {
     if (!predictionId) {
       return ApiResponses.invalidParameters("Invalid prediction id");
     }
-    const client = getClient() as any;
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase client is not configured");
     }

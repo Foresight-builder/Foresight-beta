@@ -1,4 +1,4 @@
-import type { Database } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
 export type PredictionRow = Database["public"]["Tables"]["predictions"]["Row"];
 export type EventFollowRow = Database["public"]["Tables"]["event_follows"]["Row"];

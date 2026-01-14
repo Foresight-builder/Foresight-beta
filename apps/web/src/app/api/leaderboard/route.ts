@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { isAdminSession } from "../admin/performance/_lib/auth";
 
@@ -60,27 +60,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const client = getClient("leaderboard-api");
-    if (!client) {
+    if (!supabaseAnon) {
       return ApiResponses.internalError("Database not configured");
     }
 
     // 首先尝试从 user_trading_stats 表获取数据（已预计算）
     let leaderboard: LeaderboardEntry[] = [];
 
-    const statsResult = await fetchFromStatsTable(client, range, limit);
+    const statsResult = await fetchFromStatsTable(supabaseAnon, range, limit);
 
     if (statsResult.success && statsResult.data.length > 0) {
       leaderboard = statsResult.data;
     } else {
       // 回退到直接从 trades 表聚合
-      leaderboard = await fetchFromTradesTable(client, range, limit);
+      leaderboard = await fetchFromTradesTable(supabaseAnon, range, limit);
     }
 
     // 获取用户资料
     if (leaderboard.length > 0) {
       const addresses = leaderboard.map((u) => u.wallet_address);
-      const { data: profiles } = await client
+      const { data: profiles } = await supabaseAnon
         .from("user_profiles")
         .select("wallet_address, username")
         .in("wallet_address", addresses);
@@ -373,19 +372,18 @@ async function fetchFromTradesTable(
 // 手动刷新统计表的端点
 export async function POST(req: NextRequest) {
   try {
-    const client = getClient("leaderboard-refresh");
-    if (!client) {
+    if (!supabaseAdmin) {
       return ApiResponses.internalError("Database not configured");
     }
 
-    const admin = await isAdminSession(client as any, req);
+    const admin = await isAdminSession(supabaseAdmin as any, req);
     if (!admin.ok) {
       if (admin.reason === "unauthorized") return ApiResponses.unauthorized("未授权");
       return ApiResponses.forbidden("权限不足");
     }
 
     // 调用刷新函数
-    const { error } = await client.rpc("refresh_user_trading_stats");
+    const { error } = await supabaseAdmin.rpc("refresh_user_trading_stats");
 
     if (error) {
       console.error("Failed to refresh stats:", error);

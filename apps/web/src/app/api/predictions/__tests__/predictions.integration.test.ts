@@ -7,7 +7,7 @@ let predictionOutcomesInsertError: unknown = null;
 let sessionAddressValue: string = "0x1234567890abcdef1234567890abcdef12345678";
 let lastPredictionInsertPayload: any = null;
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const client = {
     from: (table: string) => {
       if (table === "user_profiles") {
@@ -84,11 +84,9 @@ vi.mock("@/lib/supabase", () => {
     },
   };
 
-  const getClient = () => client;
-  const supabase = client;
   return {
-    getClient,
-    supabase,
+    supabaseAdmin: client,
+    supabaseAnon: client,
   };
 });
 

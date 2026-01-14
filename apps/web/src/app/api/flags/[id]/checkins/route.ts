@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { logApiError, getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     const rawOffset = Number(searchParams.get("offset") || 0);
     const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
-    const client = supabase || getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const f = await client

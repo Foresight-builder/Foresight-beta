@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
@@ -30,7 +30,7 @@ async function ensureAdmin(req: NextRequest, client: DbClient): Promise<EnsureAd
 }
 
 export async function GET(req: NextRequest) {
-  const client = getClient() as DbClient | null;
+  const client = supabaseAdmin as DbClient | null;
   if (!client) {
     return ApiResponses.internalError("Supabase not configured");
   }
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const client = getClient() as DbClient | null;
+  const client = supabaseAdmin as DbClient | null;
   if (!client) {
     return ApiResponses.internalError("Supabase not configured");
   }

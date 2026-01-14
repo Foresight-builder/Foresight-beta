@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       }
       return ApiResponses.internalError("no_client");
     }
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

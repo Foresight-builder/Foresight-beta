@@ -10,7 +10,7 @@ vi.mock("../../../predictions/_lib/createPrediction", () => {
   };
 });
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const existingThread = {
     id: 1,
     review_status: "pending_review",
@@ -42,7 +42,6 @@ vi.mock("@/lib/supabase", () => {
   };
 
   return {
-    getClient: () => client,
     supabaseAdmin: client,
   };
 });

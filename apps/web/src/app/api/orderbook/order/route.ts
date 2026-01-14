@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 import { logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getClient();
-    if (!client) {
+    if (!supabaseAnon) {
       return ApiResponses.internalError("Supabase not configured");
     }
     const url = new URL(req.url);
@@ -15,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (!Number.isFinite(id)) {
       return ApiResponses.badRequest("invalid id");
     }
-    const { data, error } = await client
+    const { data, error } = await supabaseAnon
       .from("orders")
       .select(
         "id, verifying_contract, chain_id, maker_address, maker_salt, outcome_index, is_buy, price, amount, remaining, expiry, signature, status, created_at"

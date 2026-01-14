@@ -1,5 +1,5 @@
 import PredictionDetailClient from "./PredictionDetailClient";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 import { Metadata, ResolvingMetadata } from "next";
 import zhCN from "../../../../messages/zh-CN.json";
 import en from "../../../../messages/en.json";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 async function getPrediction(id: string) {
-  const client = getClient();
+  const client = supabaseAnon as any;
   if (!client) return null;
 
   const { data } = await (client as any).from("predictions").select("*").eq("id", id).single();
@@ -124,7 +124,7 @@ function buildPredictionJsonLd(
 }
 
 async function getRelatedProposalId(predictionId: number): Promise<number | null> {
-  const client = getClient();
+  const client = supabaseAnon as any;
   if (!client) return null;
 
   const { data, error } = await (client as any)

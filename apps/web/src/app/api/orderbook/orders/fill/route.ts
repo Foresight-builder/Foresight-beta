@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { ethers } from "ethers";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       return ApiResponses.internalError("Internal token not configured");
     }
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

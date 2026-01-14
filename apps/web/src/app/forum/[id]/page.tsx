@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import ForumChatDetailClient from "./ForumChatDetailClient";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
 async function getPredictionForChat(id: number) {
-  const client = getClient();
+  const client = supabaseAnon as any;
   if (!client) return null;
 
   const { data, error } = await client

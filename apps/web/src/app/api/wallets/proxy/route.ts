@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { ethers } from "ethers";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import {
   getSessionAddress,
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("Proxy wallet 未启用");
     }
 
-    const client = getClient() as any;
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

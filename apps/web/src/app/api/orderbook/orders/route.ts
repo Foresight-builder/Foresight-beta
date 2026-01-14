@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { successResponse, ApiResponses, proxyJsonResponse } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
@@ -14,7 +14,7 @@ type DbClient = SupabaseClient<Database>;
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getClient();
+    const client: DbClient | null = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const client: DbClient | null = supabaseAdmin || getClient();
+    const client: DbClient | null = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

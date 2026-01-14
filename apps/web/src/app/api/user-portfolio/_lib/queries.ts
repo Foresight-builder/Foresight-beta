@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import type { BetRow, PredictionMeta, PredictionStats } from "./types";
 
 type DbClient = SupabaseClient<Database>;

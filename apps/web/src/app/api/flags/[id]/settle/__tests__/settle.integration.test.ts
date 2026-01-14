@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { POST as settleFlag } from "../route";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const flag = {
     id: 1,
     user_id: "0xabc0000000000000000000000000000000000000",
@@ -86,11 +86,8 @@ vi.mock("@/lib/supabase", () => {
     },
   };
 
-  const getClient = () => client;
-
   return {
-    getClient,
-    supabase: client,
+    supabaseAdmin: client,
   };
 });
 

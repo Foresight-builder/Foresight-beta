@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const viewer = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized("未登录或会话失效");
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase 未配置");
 
     const { data: existing, error: existError } = await (client as any)
@@ -58,7 +58,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const viewer = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized("未登录或会话失效");
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase 未配置");
 
     const { data: existing, error: existError } = await (client as any)

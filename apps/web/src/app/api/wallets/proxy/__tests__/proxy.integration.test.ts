@@ -93,11 +93,10 @@ describe("POST /api/wallets/proxy", () => {
       };
     });
 
-    vi.doMock("@/lib/supabase", () => ({
-      getClient: () =>
-        ({
-          from: fromMock,
-        }) as any,
+    vi.doMock("@/lib/supabase.server", () => ({
+      supabaseAdmin: {
+        from: fromMock,
+      },
     }));
 
     const { POST } = await import("../route");

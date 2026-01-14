@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
@@ -15,7 +15,7 @@ function isEvmAddress(value: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const client = supabase || getClient();
+    const client = supabaseAdmin;
     if (!client) return NextResponse.json({ flags: [] }, { status: 200 });
 
     const sessionViewer = await getSessionAddress(req);
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req);
-    const client = (supabase || getClient()) as any;
+    const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const ownerId = await getSessionAddress(req);

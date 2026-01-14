@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
 
     if (process.env.NODE_ENV === "production") {
-      const client = getClient();
+      const client = supabaseAdmin;
       if (client) {
         await (client as any)
           .from("analytics_events")

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { ethers } from "ethers";
 import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

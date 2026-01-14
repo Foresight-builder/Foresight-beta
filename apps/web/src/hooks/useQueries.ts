@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tansta
 import { normalizeAddress } from "@/lib/address";
 import type { ApiResponse } from "@/types/api";
 import type { Prediction as TrendingPrediction } from "@/features/trending/trendingModel";
-import type { UserProfile } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import type {
   PortfolioStats,
   ProfileHistoryItem,
@@ -16,6 +16,8 @@ import type {
   UserFollowStatusResponse,
   UserFollowToggleResponse,
 } from "@/app/api/user-follows/_lib/types";
+
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
 /**
  * Query Keys 常量

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     if (!limitResult.success) {
       return ApiResponses.rateLimit("Too many candles requests");
     }
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

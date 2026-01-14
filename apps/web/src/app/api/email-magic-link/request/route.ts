@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createHash, randomBytes } from "crypto";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";

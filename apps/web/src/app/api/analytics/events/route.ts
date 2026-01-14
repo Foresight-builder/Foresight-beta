@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       console.log("Custom Event:", event, properties);
 
       // 可以发送到分析服务或记录到数据库
-      const client = getClient();
+      const client = supabaseAdmin as any;
       if (client) {
         await (client as any)
           .from("analytics_events")
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     if (!rl.success) {
       return ApiResponses.rateLimit("Too many requests");
     }
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Database not configured");
     }

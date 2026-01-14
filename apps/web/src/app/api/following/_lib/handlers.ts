@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 import { parseWalletAddressQuery } from "./validators";

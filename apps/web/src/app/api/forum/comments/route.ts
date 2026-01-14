@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     if (textLengthWithoutSpaces(content) < 2) {
       return ApiResponses.invalidParameters("Comment is too short");
     }
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase is not configured");
     }

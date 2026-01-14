@@ -1,5 +1,5 @@
 import ProposalDetailClient from "./ProposalDetailClient";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 import { Metadata, ResolvingMetadata } from "next";
 
@@ -22,7 +22,7 @@ async function getProposalThread(id: string): Promise<ThreadRow | null> {
   const idNum = normalizePositiveId(id);
   if (!isValidPositiveId(idNum)) return null;
 
-  const client = getClient();
+  const client = supabaseAnon as any;
   if (!client) return null;
 
   const { data, error } = await (client as any)

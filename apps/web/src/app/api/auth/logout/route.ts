@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSession } from "@/lib/session";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 
 export async function POST(req: NextRequest) {
   try {

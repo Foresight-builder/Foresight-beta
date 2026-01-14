@@ -1,6 +1,6 @@
 // 图片上传API路由
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";

@@ -1,4 +1,4 @@
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { normalizeAddress } from "@/lib/serverUtils";
 import { groupBets, buildPortfolioResponse } from "./compute";
@@ -14,7 +14,7 @@ export async function handleUserPortfolioGet(req: Request) {
       return ApiResponses.badRequest("Wallet address is required");
     }
 
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       if (process.env.NODE_ENV !== "production") {
         const empty = buildPortfolioResponse({

@@ -4,7 +4,7 @@ import { createMockNextRequest } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
 import { getReviewerSession } from "@/lib/reviewAuth";
 
-vi.mock("@/lib/supabase", () => {
+vi.mock("@/lib/supabase.server", () => {
   const items = [
     { id: 1, review_status: "pending_review", event_id: 0 },
     { id: 2, review_status: "pending_review", event_id: 0 },
@@ -29,10 +29,7 @@ vi.mock("@/lib/supabase", () => {
     }),
   };
 
-  const getClient = () => client;
-
   return {
-    getClient,
     supabaseAdmin: client,
   };
 });

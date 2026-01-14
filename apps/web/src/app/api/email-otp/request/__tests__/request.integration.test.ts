@@ -125,7 +125,7 @@ describe("POST /api/email-otp/request", () => {
   });
 
   it("returns 401 when session address mismatch", async () => {
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {},
     }));
     const { POST } = await import("../route");
@@ -152,7 +152,7 @@ describe("POST /api/email-otp/request", () => {
 
   it("returns codePreview and keeps otp row in development when SMTP fails", async () => {
     const { fromMock } = makeSupabaseMock();
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {
         from: fromMock,
       },
@@ -196,7 +196,7 @@ describe("POST /api/email-otp/request", () => {
 
   it("deletes otp row and returns error in production when SMTP fails", async () => {
     const { fromMock } = makeSupabaseMock();
-    vi.doMock("@/lib/supabase", () => ({
+    vi.doMock("@/lib/supabase.server", () => ({
       supabaseAdmin: {
         from: fromMock,
       },

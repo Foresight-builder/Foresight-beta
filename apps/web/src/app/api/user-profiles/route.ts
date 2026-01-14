@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import {
   normalizeAddress,
   getSessionAddress,
@@ -26,13 +26,8 @@ function isValidUsername(name: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const client = (supabaseAdmin || supabase) as any;
-    if (!client) {
-      return successResponse<{ profile: any | null; profiles: any[] }>(
-        { profile: null, profiles: [] },
-        "Supabase client not initialized"
-      );
-    }
+    const client = supabaseAdmin as any;
+    if (!client) return ApiResponses.internalError("Missing service key");
     const sess = await getSessionAddress(req);
     const viewer = normalizeAddress(String(sess || ""));
     const viewerIsAdmin = !!viewer && (isAdminAddress(viewer) || false);

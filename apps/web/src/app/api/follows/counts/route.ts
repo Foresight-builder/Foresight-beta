@@ -1,4 +1,4 @@
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     }
     const limitedIds = ids.slice(0, 50); // 简单限制一次查询数量，避免过多并发
 
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

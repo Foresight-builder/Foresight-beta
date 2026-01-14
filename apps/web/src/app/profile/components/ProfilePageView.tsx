@@ -23,7 +23,7 @@ import { useAuthOptional } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "@/lib/i18n";
-import type { UserProfile } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import type {
   PortfolioStats,
   ProfileHistoryItem,
@@ -46,6 +46,8 @@ import {
   useUserFollowCounts,
   useUserFollowStatus,
 } from "@/hooks/useQueries";
+
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
 export type ProfilePageViewProps = {
   account: string | null;

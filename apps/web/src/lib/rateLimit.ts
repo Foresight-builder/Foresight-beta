@@ -26,6 +26,43 @@ interface RateLimitEntry {
 // 内存存储（开发环境）
 const store = new Map<string, RateLimitEntry>();
 
+const upstashUrl = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
+const upstashToken = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+
+function canUseUpstash(): boolean {
+  return Boolean(upstashUrl && upstashToken);
+}
+
+async function upstashPipeline(commands: Array<Array<string | number>>): Promise<unknown> {
+  const url = new URL("pipeline", upstashUrl).toString();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${upstashToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+
+async function upstashIncrWithExpire(key: string, ttlMs: number): Promise<number | null> {
+  try {
+    const incrRes = await upstashPipeline([["INCR", key]]);
+    const countRaw = Array.isArray(incrRes) ? (incrRes[0] as any)?.result : null;
+    const count = typeof countRaw === "number" ? countRaw : Number(countRaw);
+    if (!Number.isFinite(count)) return null;
+    if (count === 1) {
+      await upstashPipeline([["PEXPIRE", key, Math.max(1, Math.floor(ttlMs))]]);
+    }
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 检查请求是否超出限流
  * @param identifier 标识符（通常是 IP 地址或用户 ID）
@@ -38,14 +75,26 @@ export async function checkRateLimit(
   namespace: string = "default"
 ): Promise<{ success: boolean; remaining: number; resetAt: number }> {
   const now = Date.now();
-  const key = `ratelimit:${namespace}:${identifier}`;
+  const baseKey = `ratelimit:${namespace}:${identifier}`;
 
-  const entry = store.get(key);
+  if (canUseUpstash()) {
+    const intervalMs = Math.max(1, Math.floor(config.interval));
+    const windowStart = Math.floor(now / intervalMs) * intervalMs;
+    const resetAt = windowStart + intervalMs;
+    const windowKey = `${baseKey}:${windowStart}`;
+    const count = await upstashIncrWithExpire(windowKey, intervalMs + 1000);
+    if (count !== null) {
+      const remaining = Math.max(0, config.limit - count);
+      return { success: count <= config.limit, remaining, resetAt };
+    }
+  }
+
+  const entry = store.get(baseKey);
 
   // 如果没有记录或已过期，创建新记录
   if (!entry || entry.resetAt < now) {
     const resetAt = now + config.interval;
-    store.set(key, { count: 1, resetAt });
+    store.set(baseKey, { count: 1, resetAt });
     return {
       success: true,
       remaining: config.limit - 1,

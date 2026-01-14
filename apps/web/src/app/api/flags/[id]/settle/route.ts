@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
     await parseRequestBody(req as any);
 
-    const client = getClient() as any;
+    const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const settler_id = await getSessionAddress(req);

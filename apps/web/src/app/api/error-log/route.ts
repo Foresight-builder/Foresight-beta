@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     // 在生产环境记录到数据库
     if (process.env.NODE_ENV === "production") {
-      const client = getClient();
+      const client = supabaseAdmin as any;
 
       if (client) {
         // 记录到错误日志表（需要先创建此表）

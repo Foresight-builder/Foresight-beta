@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import {
   getSessionAddress,
@@ -10,7 +10,7 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase not configured");
     const url = new URL(req.url);
     const idStr = url.searchParams.get("id") || "";
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase not configured");
 
     const viewer = normalizeAddress(await getSessionAddress(req));

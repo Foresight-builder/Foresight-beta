@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = (supabaseAdmin || getClient()) as any;
+    const client = supabaseAdmin as any;
     if (!client) return NextResponse.json({ data: [] });
 
     const { data, error } = await client.from("emojis").select("*").order("id");

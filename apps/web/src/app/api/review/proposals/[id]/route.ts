@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { getSessionAddress, logApiError, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!action) {
       return ApiResponses.invalidParameters("action_required");
     }
-    const client = getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

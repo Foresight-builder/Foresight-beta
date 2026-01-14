@@ -1,6 +1,6 @@
 // 分类API路由 - 处理GET请求（仅使用 Supabase）
 import { NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "@/lib/supabase.server";
 import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
@@ -10,7 +10,7 @@ export const revalidate = 3600; // 1小时缓存
 export async function GET() {
   try {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
-    const client = getClient();
+    const client = (supabaseAdmin || supabaseAnon) as any;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

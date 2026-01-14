@@ -1,4 +1,4 @@
-import { getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { errorResponse, successResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";
 import type { NextRequest } from "next/server";
@@ -11,7 +11,7 @@ export async function handleAdminPerformanceGet(req: NextRequest) {
     const period = searchParams.get("period") || "7d";
     const metric = searchParams.get("metric");
 
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return errorResponse("数据库连接失败", ApiErrorCode.DATABASE_ERROR, 500);
     }
@@ -82,7 +82,7 @@ export async function handleAdminPerformancePost(req: NextRequest) {
     const body = await req.json();
     const { type, data } = body;
 
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return errorResponse("数据库连接失败", ApiErrorCode.DATABASE_ERROR, 500);
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import {
   getSessionAddress,
   normalizeAddress,
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     return ApiResponses.invalidParameters("eventId 必填且必须为非负整数");
   }
   try {
-    const client = getClient();
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     if (textLengthWithoutSpaces(title) < 5) {
       return ApiResponses.invalidParameters("标题过短，请补充关键信息");
     }
-    const client = (supabaseAdmin || getClient()) as any;
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }

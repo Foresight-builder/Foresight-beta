@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
-import { getClient, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, proxyJsonResponse, successResponse } from "@/lib/apiResponse";
 import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
 import { marketAbi } from "@/app/prediction/[id]/_lib/abis";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     const iface = new ethers.Interface(marketAbi);
-    const client = supabaseAdmin || getClient();
+    const client = supabaseAdmin as any;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }

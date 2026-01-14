@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import { createToken, verifyToken, createRefreshToken, type JWTPayload } from "./jwt";
-import { supabaseAdmin } from "./supabase";
+import { supabaseAdmin } from "./supabase.server";
 
 const SESSION_COOKIE_NAME = "fs_session";
 const REFRESH_COOKIE_NAME = "fs_refresh";

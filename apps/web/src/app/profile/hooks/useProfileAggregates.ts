@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { useUserPortfolio, useUserProfileInfo, useUserHistory } from "@/hooks/useQueries";
 import type { AuthUser } from "@/contexts/AuthContext";
-import type { UserProfile } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import type { PortfolioStats, ProfileHistoryItem, ProfilePosition } from "../types";
+
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
 /**
  * 🚀 优化后的 Profile 数据聚合 Hook

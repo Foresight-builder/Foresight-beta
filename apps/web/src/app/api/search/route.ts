@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { getClient } from "@/lib/supabase";
+import { supabaseAnon } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
@@ -73,8 +73,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = getClient();
-    if (!supabase) {
+    if (!supabaseAnon) {
       return NextResponse.json(
         {
           error: "Database connection failed",
@@ -88,7 +87,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = `%${trimmed}%`;
 
     const [predictionsRes, proposalsRes, usersRes] = await Promise.all([
-      supabase
+      supabaseAnon
         .from("predictions")
         .select("id, title, description, category, status")
         .or(
@@ -97,14 +96,14 @@ export async function GET(request: NextRequest) {
         .eq("status", "active")
         .limit(20)
         .order("created_at", { ascending: false }),
-      supabase
+      supabaseAnon
         .from("forum_threads")
         .select("id, event_id, title, content, category")
         .eq("event_id", 0)
         .or(`title.ilike.${searchTerm},content.ilike.${searchTerm}`)
         .limit(20)
         .order("created_at", { ascending: false }),
-      supabase
+      supabaseAnon
         .from("user_profiles")
         .select("wallet_address, username")
         .or(`username.ilike.${searchTerm},wallet_address.ilike.${searchTerm}`)
@@ -241,8 +240,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ suggestions: [] });
     }
 
-    const supabase = getClient();
-    if (!supabase) {
+    if (!supabaseAnon) {
       return NextResponse.json({ suggestions: [] });
     }
 
@@ -250,7 +248,7 @@ export async function POST(request: NextRequest) {
     const searchTerm = `%${trimmed}%`;
     type TitleOnly = Pick<Database["public"]["Tables"]["predictions"]["Row"], "title">;
 
-    const { data } = (await supabase
+    const { data } = (await supabaseAnon
       .from("predictions")
       .select("title")
       .ilike("title", searchTerm)

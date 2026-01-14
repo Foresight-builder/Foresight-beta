@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
 export async function GET(req: NextRequest) {

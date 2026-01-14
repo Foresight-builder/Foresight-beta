@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import type { PredictionRow } from "./types";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { normalizeCategory } from "@/features/trending/trendingModel";

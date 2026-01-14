@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { compareApiKey } from "@/lib/serverUtils";
 import { validateApiKeyScopes } from "@/app/api/api-keys/validate";

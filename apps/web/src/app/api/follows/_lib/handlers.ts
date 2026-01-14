@@ -1,5 +1,5 @@
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import {
   getSessionAddress,
