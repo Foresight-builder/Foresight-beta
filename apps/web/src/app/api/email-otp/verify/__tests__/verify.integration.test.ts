@@ -89,7 +89,8 @@ describe("POST /api/email-otp/verify", () => {
   };
 
   beforeEach(() => {
-    process.env.JWT_SECRET = "test-secret";
+    vi.stubEnv("JWT_SECRET", "test-secret");
+    vi.stubEnv("NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED", "true");
     otpStore.clear();
     vi.clearAllMocks();
   });

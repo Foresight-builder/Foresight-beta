@@ -122,6 +122,7 @@ describe("POST /api/email-otp/request", () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.stubEnv("JWT_SECRET", "test-secret");
+    vi.stubEnv("NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED", "true");
   });
 
   it("returns 401 when session address mismatch", async () => {

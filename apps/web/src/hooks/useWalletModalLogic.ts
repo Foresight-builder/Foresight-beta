@@ -71,6 +71,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const [walletStep, setWalletStep] = useState<WalletStep>("select");
   const [mounted, setMounted] = useState(false);
   const verifiedEmailRef = React.useRef<string | null>(null);
+  const [isNewUserFlow, setIsNewUserFlow] = useState(false);
 
   const clearResendTimer = React.useCallback(() => {
     if (resendTimerRef.current !== null) {
@@ -143,6 +144,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setCodePreview(null);
       clearResendTimer();
       setWalletStep("select");
+      setIsNewUserFlow(false);
     }
   }, [isOpen, user, clearResendTimer]);
 
@@ -182,6 +184,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   useEffect(() => {
     if (!isOpen) return;
     if (!showProfileForm) return;
+    if (isNewUserFlow) return; // 新用户流程，跳过自动获取（保留空用户名让用户填）
     const addr = normalizedAccount || "";
     if (!addr) return;
     setProfileLoading(true);
@@ -375,7 +378,21 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     if (!email || !otp || !auth) return;
     setEmailLoading(true);
     try {
-      await auth.verifyEmailOtp(email, otp);
+      const res = await auth.verifyEmailOtp(email, otp);
+      if (res && typeof res === "object" && "isNewUser" in res && res.isNewUser) {
+        setIsNewUserFlow(true);
+        setShowProfileForm(true);
+        setWalletStep("profile");
+        // 获取生成的默认用户名（通过 refreshSession 更新后的 user）
+        // 但由于 react 状态更新可能是异步的，这里 auth.user 可能还不是最新的
+        // 我们可以假设后端生成了用户名，让用户确认或修改
+        // 或者清空 username 让用户自己填
+        // 这里选择让用户自己填，因为是 "要求输入用户名"
+        setUsername("");
+        setEmailVerified(true);
+        setEmailLoading(false);
+        return;
+      }
       onClose();
     } catch {}
     setEmailLoading(false);
@@ -396,7 +413,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     setProfileError(null);
     setProfileLoading(true);
     try {
-      const addr = String(account || "").toLowerCase();
+      const addr = String(account || user?.id || "").toLowerCase();
 
       const errors: string[] = [];
       if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {

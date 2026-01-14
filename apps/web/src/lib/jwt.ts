@@ -17,7 +17,7 @@ export interface JWTPayload {
   chainId?: number;
   issuedAt: number;
   sid?: string;
-  tokenType?: "session" | "refresh" | "email_change";
+  tokenType?: "session" | "refresh" | "email_change" | "stepup" | "owner_migration";
   [key: string]: unknown;
 }
 
@@ -33,7 +33,7 @@ export async function createToken(
   expiresIn: number = 7 * 24 * 60 * 60,
   options?: {
     sessionId?: string;
-    tokenType?: "session" | "refresh" | "email_change";
+    tokenType?: "session" | "refresh" | "email_change" | "stepup" | "owner_migration";
     extra?: Record<string, unknown>;
   }
 ): Promise<string> {

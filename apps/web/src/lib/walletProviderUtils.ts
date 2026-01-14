@@ -1,8 +1,15 @@
 "use client";
 
+import { getConfiguredRpcUrl } from "./runtimeConfig";
+
 export function getFallbackRpcUrl(chainIdNum?: number): string | null {
   const env = process.env || ({} as any);
   const id = Number(chainIdNum || 1);
+  if (id === 137 || id === 80002 || id === 11155111) {
+    try {
+      return getConfiguredRpcUrl(id);
+    } catch {}
+  }
   switch (id) {
     case 1:
       return (
@@ -19,7 +26,7 @@ export function getFallbackRpcUrl(chainIdNum?: number): string | null {
       return (
         env.NEXT_PUBLIC_RPC_POLYGON_AMOY ||
         env.NEXT_PUBLIC_RPC_URL ||
-        "https://rpc-amoy.polygon.technology"
+        "https://rpc-amoy.polygon.technology/"
       );
     case 56:
       return (

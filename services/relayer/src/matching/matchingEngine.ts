@@ -48,6 +48,69 @@ const CANCEL_TYPES = {
   ],
 };
 
+function pickFirstNonEmptyString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (s) return s;
+  }
+  return undefined;
+}
+
+function getConfiguredRpcUrl(chainId: number): string {
+  const generic = pickFirstNonEmptyString(process.env.RPC_URL, process.env.NEXT_PUBLIC_RPC_URL);
+  if (generic) return generic;
+
+  if (chainId === 80002) {
+    return (
+      pickFirstNonEmptyString(
+        process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY,
+        "https://rpc-amoy.polygon.technology/"
+      ) || "https://rpc-amoy.polygon.technology/"
+    );
+  }
+  if (chainId === 137) {
+    return (
+      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_POLYGON, "https://polygon-rpc.com") ||
+      "https://polygon-rpc.com"
+    );
+  }
+  if (chainId === 11155111) {
+    return (
+      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_SEPOLIA, "https://rpc.sepolia.org") ||
+      "https://rpc.sepolia.org"
+    );
+  }
+
+  return "http://127.0.0.1:8545";
+}
+
+const providerByChainId = new Map<number, ethers.JsonRpcProvider>();
+
+function getRpcProvider(chainId: number): ethers.JsonRpcProvider {
+  const cached = providerByChainId.get(chainId);
+  if (cached) return cached;
+  const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainId));
+  providerByChainId.set(chainId, provider);
+  return provider;
+}
+
+async function isValidErc1271Signature(args: {
+  maker: string;
+  digest: string;
+  signature: string;
+  chainId: number;
+}) {
+  const maker = args.maker.toLowerCase();
+  const provider = getRpcProvider(args.chainId);
+  const erc1271 = new ethers.Contract(
+    maker,
+    ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
+    provider
+  );
+  const magic = await erc1271.isValidSignature(args.digest, args.signature);
+  return String(magic).toLowerCase() === "0x1626ba7e";
+}
+
 /**
  * 订单撮合引擎
  */
@@ -709,7 +772,8 @@ export class MatchingEngine extends EventEmitter {
     verifyingContract: string,
     maker: string,
     salt: string,
-    signature: string
+    signature: string,
+    ownerEoa?: string
   ): Promise<{ success: boolean; error?: string; errorCode?: OrderErrorCode }> {
     try {
       if (!marketKey || marketKey.trim().length === 0) {
@@ -741,19 +805,32 @@ export class MatchingEngine extends EventEmitter {
         return { success: false, error: "Invalid salt", errorCode: "INVALID_SALT" };
       }
       return await this.withBookLock(marketKey, outcomeIndex, async () => {
-        const recovered = ethers.verifyTypedData(
-          {
-            name: "Foresight Market",
-            version: "1",
-            chainId,
-            verifyingContract: verifyingContract.toLowerCase(),
-          },
-          CANCEL_TYPES,
-          { maker: maker.toLowerCase(), salt: BigInt(salt) },
-          signature
-        );
-        if (recovered.toLowerCase() !== maker.toLowerCase()) {
+        const domain = {
+          name: "Foresight Market",
+          version: "1",
+          chainId,
+          verifyingContract: verifyingContract.toLowerCase(),
+        };
+        const value = { maker: maker.toLowerCase(), salt: BigInt(salt) };
+        let recovered: string;
+        try {
+          recovered = ethers.verifyTypedData(domain, CANCEL_TYPES, value, signature);
+        } catch {
           return { success: false, error: "Invalid signature", errorCode: "INVALID_SIGNATURE" };
+        }
+        const expected = [ownerEoa, maker]
+          .filter((v): v is string => !!v)
+          .map((v) => v.toLowerCase());
+        if (!expected.includes(recovered.toLowerCase())) {
+          const digest = ethers.TypedDataEncoder.hash(domain, CANCEL_TYPES, value);
+          try {
+            const ok = await isValidErc1271Signature({ maker, digest, signature, chainId });
+            if (!ok) {
+              return { success: false, error: "Invalid signature", errorCode: "INVALID_SIGNATURE" };
+            }
+          } catch {
+            return { success: false, error: "Invalid signature", errorCode: "INVALID_SIGNATURE" };
+          }
         }
 
         const orderId = `${maker.toLowerCase()}-${salt}`;
@@ -1056,7 +1133,22 @@ export class MatchingEngine extends EventEmitter {
       };
 
       const recovered = ethers.verifyTypedData(domain, ORDER_TYPES, orderData, input.signature);
-      return recovered.toLowerCase() === input.maker.toLowerCase();
+      const expected = [input.ownerEoa, input.maker]
+        .filter((v): v is string => !!v)
+        .map((v) => v.toLowerCase());
+      if (expected.includes(recovered.toLowerCase())) return true;
+
+      const digest = ethers.TypedDataEncoder.hash(domain, ORDER_TYPES, orderData);
+      try {
+        return await isValidErc1271Signature({
+          maker: input.maker,
+          digest,
+          signature: input.signature,
+          chainId: input.chainId,
+        });
+      } catch {
+        return false;
+      }
     } catch {
       return false;
     }
@@ -1857,6 +1949,7 @@ export class MatchingEngine extends EventEmitter {
 export interface OrderInput {
   marketKey: string;
   maker: string;
+  ownerEoa?: string;
   outcomeIndex: number;
   isBuy: boolean;
   price: bigint;

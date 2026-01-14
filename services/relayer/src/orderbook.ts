@@ -29,6 +29,10 @@ export const InputSchemaPlace = z.object({
   market_key: z.string().optional(),
   eventId: z.number().int().positive().optional(),
   event_id: z.number().int().positive().optional(),
+  owner_eoa: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .optional(),
 });
 
 export const InputSchemaCancelSalt = z.object({
@@ -37,6 +41,10 @@ export const InputSchemaCancelSalt = z.object({
   maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   salt: asBigInt("salt"),
   signature: SignatureSchema,
+  owner_eoa: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .optional(),
 });
 
 function normalizeAddr(a: string) {
@@ -63,8 +71,76 @@ const Types = {
   ],
 };
 
-const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+function pickFirstNonEmptyString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (s) return s;
+  }
+  return undefined;
+}
+
+function getConfiguredChainId(): number {
+  const raw = String(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID || "").trim();
+  const n = raw ? Number(raw) : NaN;
+  if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  return 80002;
+}
+
+function getConfiguredRpcUrl(chainId?: number): string {
+  const id = chainId ?? getConfiguredChainId();
+
+  const generic = pickFirstNonEmptyString(process.env.RPC_URL, process.env.NEXT_PUBLIC_RPC_URL);
+  if (generic) return generic;
+
+  if (id === 80002) {
+    return (
+      pickFirstNonEmptyString(
+        process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY,
+        "https://rpc-amoy.polygon.technology/"
+      ) || "https://rpc-amoy.polygon.technology/"
+    );
+  }
+  if (id === 137) {
+    return (
+      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_POLYGON, "https://polygon-rpc.com") ||
+      "https://polygon-rpc.com"
+    );
+  }
+  if (id === 11155111) {
+    return (
+      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_SEPOLIA, "https://rpc.sepolia.org") ||
+      "https://rpc.sepolia.org"
+    );
+  }
+
+  return "http://127.0.0.1:8545";
+}
+
+const rpcUrl = getConfiguredRpcUrl();
 const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+
+async function verifyEip712OrErc1271(args: {
+  expectedSigner?: string;
+  maker: string;
+  domain: any;
+  types: any;
+  value: any;
+  signature: string;
+}) {
+  const recovered = ethers.verifyTypedData(args.domain, args.types, args.value, args.signature);
+  if (args.expectedSigner && normalizeAddr(recovered) === normalizeAddr(args.expectedSigner))
+    return;
+  if (normalizeAddr(recovered) === normalizeAddr(args.maker)) return;
+
+  const digest = ethers.TypedDataEncoder.hash(args.domain, args.types, args.value);
+  const erc1271 = new ethers.Contract(
+    normalizeAddr(args.maker),
+    ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
+    rpcProvider
+  );
+  const magic = await erc1271.isValidSignature(digest, args.signature);
+  if (String(magic).toLowerCase() !== "0x1626ba7e") throw new Error("Invalid signature");
+}
 
 const clobIface = new ethers.Interface([
   "event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt)",
@@ -79,6 +155,10 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
   const order = parsed.order;
   const sig = parsed.signature;
   const maker = normalizeAddr(order.maker);
+  const ownerEoa =
+    (parsed as any).owner_eoa && typeof (parsed as any).owner_eoa === "string"
+      ? normalizeAddr(String((parsed as any).owner_eoa))
+      : undefined;
   const vc = normalizeAddr(parsed.verifyingContract);
   const chainId = parsed.chainId;
 
@@ -99,10 +179,12 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
   const derivedMk = eid ? `${chainId}:${eid}` : "";
   const marketKey = (mkRaw && mkRaw.trim()) || (derivedMk && derivedMk.trim()) || undefined;
 
-  const recovered = ethers.verifyTypedData(
-    domainFor(chainId, vc),
-    { Order: [...Types.Order] },
-    {
+  await verifyEip712OrErc1271({
+    expectedSigner: ownerEoa,
+    maker,
+    domain: domainFor(chainId, vc),
+    types: { Order: [...Types.Order] },
+    value: {
       maker: maker,
       outcomeIndex: order.outcomeIndex,
       isBuy: order.isBuy,
@@ -111,9 +193,8 @@ export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) 
       salt: order.salt,
       expiry: order.expiry ?? 0n,
     },
-    sig
-  );
-  if (normalizeAddr(recovered) !== maker) throw new Error("Invalid signature");
+    signature: sig,
+  });
 
   const nowSec = BigInt(Math.floor(Date.now() / 1000));
   const expSec = order.expiry ?? 0n;
@@ -170,17 +251,19 @@ export async function cancelSalt(input: z.infer<typeof InputSchemaCancelSalt>) {
   const vc = normalizeAddr(parsed.verifyingContract);
   const chainId = parsed.chainId;
   const sig = parsed.signature;
+  const ownerEoa =
+    (parsed as any).owner_eoa && typeof (parsed as any).owner_eoa === "string"
+      ? normalizeAddr(String((parsed as any).owner_eoa))
+      : undefined;
 
-  const recovered = ethers.verifyTypedData(
-    domainFor(chainId, vc),
-    { CancelSaltRequest: [...Types.CancelSaltRequest] },
-    {
-      maker,
-      salt: parsed.salt,
-    },
-    sig
-  );
-  if (normalizeAddr(recovered) !== maker) throw new Error("Invalid signature");
+  await verifyEip712OrErc1271({
+    expectedSigner: ownerEoa,
+    maker,
+    domain: domainFor(chainId, vc),
+    types: { CancelSaltRequest: [...Types.CancelSaltRequest] },
+    value: { maker, salt: parsed.salt },
+    signature: sig,
+  });
 
   const { error } = await supabaseAdmin
     .from("orders")

@@ -10,7 +10,9 @@ import {
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { getIP } from "@/lib/rateLimit";
-import { createSession } from "@/lib/session";
+import { createSession, markDeviceVerified, setStepUpCookie } from "@/lib/session";
+import { getFeatureFlags } from "@/lib/runtimeConfig";
+import { resolveEmailOtpSecret } from "@/lib/otpUtils";
 
 function resolveMagicSecret() {
   const raw = (process.env.MAGIC_LINK_SECRET || process.env.JWT_SECRET || "").trim();
@@ -40,6 +42,9 @@ function deriveDeterministicAddressFromEmail(email: string, secretString: string
 
 export async function POST(req: NextRequest) {
   try {
+    if (!getFeatureFlags().embedded_auth_enabled) {
+      return ApiResponses.forbidden("邮箱登录已关闭");
+    }
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Supabase not configured");
     const reqId = getRequestId(req);
@@ -106,14 +111,6 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidParameters("登录链接无效或已过期");
     }
 
-    let sessionAddress = "";
-    const { secretString } = (() => {
-      const raw = (process.env.JWT_SECRET || "").trim();
-      if (raw) return { secretString: raw };
-      if (process.env.NODE_ENV === "production") throw new Error("Missing JWT_SECRET");
-      return { secretString: "your-secret-key-change-in-production" };
-    })();
-
     const { data: existingList, error: existingErr } = await client
       .from("user_profiles")
       .select("wallet_address,email,proxy_wallet_type")
@@ -125,38 +122,23 @@ export async function POST(req: NextRequest) {
     }
 
     const list = Array.isArray(existingList) ? existingList : [];
-    const preferred =
-      list.find((r: any) => !String(r?.proxy_wallet_type || "").trim()) ||
-      list.find(
-        (r: any) =>
-          String(r?.proxy_wallet_type || "")
-            .trim()
-            .toLowerCase() === "email"
-      ) ||
-      list[0];
-
-    if (preferred?.wallet_address && isValidEthAddress(preferred.wallet_address)) {
-      sessionAddress = normalizeAddress(preferred.wallet_address);
-    } else {
-      sessionAddress = deriveDeterministicAddressFromEmail(email, secretString);
-      const nowIso2 = new Date().toISOString();
-      const { error: upsertErr } = await client.from("user_profiles").upsert(
-        {
-          wallet_address: sessionAddress,
-          email,
-          proxy_wallet_address: email,
-          proxy_wallet_type: "email",
-          updated_at: nowIso2,
-        },
-        { onConflict: "wallet_address" }
-      );
-      if (upsertErr) {
-        return ApiResponses.databaseError("Failed to bind email", upsertErr.message);
-      }
+    const owner = list.find((r: any) => {
+      const t = String(r?.proxy_wallet_type || "")
+        .trim()
+        .toLowerCase();
+      if (t === "email") return false;
+      const wa = String(r?.wallet_address || "");
+      return !!wa && isValidEthAddress(wa);
+    });
+    if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
+      return ApiResponses.notFound("该邮箱尚未绑定钱包，请先使用钱包登录并绑定邮箱");
     }
+    const sessionAddress = normalizeAddress(owner.wallet_address);
 
     const res = successResponse({ ok: true, address: sessionAddress }, "验证成功");
     await createSession(res, sessionAddress, undefined, { req, authMethod: "email_magic_link" });
+    await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+    await markDeviceVerified(req, sessionAddress);
     try {
       await logApiEvent("email_login_token_verified", {
         addr: sessionAddress ? sessionAddress.slice(0, 8) : "",
@@ -169,11 +151,11 @@ export async function POST(req: NextRequest) {
       await client.from("email_login_tokens").delete().eq("token_hash", tokenHash);
     } catch {}
     try {
-      await client
-        .from("email_otps")
-        .delete()
-        .eq("wallet_address", sessionAddress)
-        .eq("email", email);
+      const walletKey = deriveDeterministicAddressFromEmail(
+        email,
+        resolveEmailOtpSecret().secretString
+      );
+      await client.from("email_otps").delete().eq("wallet_address", walletKey).eq("email", email);
     } catch {}
     return res;
   } catch (e: unknown) {

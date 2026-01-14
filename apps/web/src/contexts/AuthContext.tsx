@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useTranslations } from "@/lib/i18n";
+import { getFeatureFlags } from "@/lib/runtimeConfig";
 
 interface AuthContextValue {
   user: { id: string; email: string | null; user_metadata?: any } | null;
@@ -9,7 +10,7 @@ interface AuthContextValue {
   // 发送邮箱 OTP / 魔法链接
   requestEmailOtp: (email: string) => Promise<void>;
   // 验证邮箱 OTP（6 位验证码）
-  verifyEmailOtp: (email: string, token: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ isNewUser?: boolean } | void>;
   // 可选：直接发送魔法链接（不输入验证码）
   sendMagicLink: (
     email: string,
@@ -46,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const tWalletModal = useTranslations("walletModal");
+  const tGlobal = useTranslations();
+  const embeddedAuthEnabled = getFeatureFlags().embedded_auth_enabled;
 
   const refreshSession = async () => {
     try {
@@ -103,6 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
+      if (!embeddedAuthEnabled) {
+        const msg = tGlobal("errors.http.503.description");
+        setError(msg);
+        throw new Error(msg);
+      }
       await fetchApiJson<{ expiresInSec: number; codePreview?: string }>("/api/email-otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,14 +129,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyEmailOtp = async (email: string, token: string) => {
     setError(null);
     try {
-      const data = await fetchApiJson<{ ok: boolean; address?: string }>("/api/email-otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: token, mode: "login" }),
-      });
+      if (!embeddedAuthEnabled) {
+        const msg = tGlobal("errors.http.503.description");
+        setError(msg);
+        throw new Error(msg);
+      }
+      const data = await fetchApiJson<{ ok: boolean; address?: string; isNewUser?: boolean }>(
+        "/api/email-otp/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code: token, mode: "login" }),
+        }
+      );
       const address = typeof data?.address === "string" ? String(data.address) : "";
       setUser(address ? { id: address, email: email.trim().toLowerCase() } : null);
       await refreshSession();
+      return data;
     } catch (e: any) {
       const msg =
         typeof e?.message === "string" && e.message
@@ -142,6 +159,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendMagicLink = async (email: string, redirect?: string) => {
     setError(null);
     try {
+      if (!embeddedAuthEnabled) {
+        const msg = tGlobal("errors.http.503.description");
+        setError(msg);
+        throw new Error(msg);
+      }
       return await fetchApiJson<{
         expiresInSec: number;
         resendAfterSec?: number;

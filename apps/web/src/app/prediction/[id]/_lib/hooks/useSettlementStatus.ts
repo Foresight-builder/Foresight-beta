@@ -4,6 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { marketAbi, oracleAdapterAbi } from "../abis";
 import { createBrowserProvider } from "../wallet";
 import type { MarketInfo } from "../marketTypes";
+import { getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 
 export type SettlementStatus = {
   marketState: number; // 0: TRADING, 1: RESOLVED, 2: INVALID
@@ -37,15 +38,10 @@ function estimateAvgBlockTimeSeconds(chainId: number) {
 }
 
 function getRpcUrl(chainId: number) {
-  switch (chainId) {
-    case 80002:
-      return process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY || "https://rpc-amoy.polygon.technology/";
-    case 137:
-      return process.env.NEXT_PUBLIC_RPC_POLYGON || "https://polygon-rpc.com";
-    case 11155111:
-      return process.env.NEXT_PUBLIC_RPC_SEPOLIA || "https://rpc.sepolia.org";
-    default:
-      return null;
+  try {
+    return getConfiguredRpcUrl(chainId);
+  } catch {
+    return null;
   }
 }
 

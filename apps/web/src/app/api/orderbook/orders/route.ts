@@ -6,8 +6,9 @@ import type { Database } from "@/lib/database.types";
 import { successResponse, ApiResponses, proxyJsonResponse } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
-import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, getSessionAddress, logApiError, logApiEvent } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+import { getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 
 type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
 type DbClient = SupabaseClient<Database>;
@@ -85,6 +86,8 @@ export async function POST(req: NextRequest) {
       return ApiResponses.rateLimit("Too many requests from this IP");
     }
 
+    const ownerEoa = await getSessionAddress(req);
+
     const rawBody = await req.text();
     const body = (() => {
       try {
@@ -93,6 +96,9 @@ export async function POST(req: NextRequest) {
         return {};
       }
     })();
+    if (ownerEoa && !body?.owner_eoa && !body?.ownerEoa) {
+      (body as any).owner_eoa = ownerEoa;
+    }
 
     const relayerBase = getRelayerBaseUrl();
     if (relayerBase) {
@@ -100,7 +106,7 @@ export async function POST(req: NextRequest) {
       const relayerRes = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: rawBody || "{}",
+        body: JSON.stringify(body || {}),
       });
       try {
         await logApiEvent(relayerRes.ok ? "order_create_proxy_ok" : "order_create_proxy_fail", {
@@ -204,7 +210,11 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest(paramsValidation.error || "Invalid order parameters");
     }
 
-    const signatureValidation = await verifyOrderSignature(orderData, signature, chainIdNum, vc);
+    const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainIdNum));
+    const signatureValidation = await verifyOrderSignature(orderData, signature, chainIdNum, vc, {
+      provider,
+      ownerEoa: ownerEoa || undefined,
+    });
     if (!signatureValidation.valid) {
       console.warn("Order validation failed: signature", signatureValidation.error);
       try {

@@ -113,8 +113,12 @@ describe("POST /api/wallets/proxy", () => {
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(json.data).toBeDefined();
-    expect(typeof json.data.address).toBe("string");
-    expect(json.data.address.startsWith("0x")).toBe(true);
+    expect(json.data.chain_id).toBe(80002);
+    expect(json.data.owner_eoa).toBe("0xabc0000000000000000000000000000000000000");
+    expect(typeof json.data.smart_account_address).toBe("string");
+    expect(json.data.smart_account_address.startsWith("0x")).toBe(true);
+    expect(json.data.deployment_status).toBe("unknown");
+    expect(json.data.address).toBe(json.data.smart_account_address);
     expect(json.data.type).toBe("proxy");
     expect(fromMock).toHaveBeenCalledWith("user_profiles");
   });

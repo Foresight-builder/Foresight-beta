@@ -1,6 +1,7 @@
 "use client";
 import { ethers } from "ethers";
 import { t } from "./i18n";
+import { getConfiguredRpcUrl } from "./runtimeConfig";
 
 export async function switchNetwork(provider: any, chainId: number): Promise<void> {
   if (!provider) {
@@ -22,9 +23,7 @@ export async function switchNetwork(provider: any, chainId: number): Promise<voi
           chainId: "0x13882",
           chainName: "Polygon Amoy Testnet",
           nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-          rpcUrls: [
-            process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY || "https://rpc-amoy.polygon.technology/",
-          ],
+          rpcUrls: [getConfiguredRpcUrl(80002)],
           blockExplorerUrls: ["https://amoy.polygonscan.com/"],
         };
       } else if (chainId === 137) {
@@ -32,7 +31,7 @@ export async function switchNetwork(provider: any, chainId: number): Promise<voi
           chainId: "0x89",
           chainName: "Polygon Mainnet",
           nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-          rpcUrls: [process.env.NEXT_PUBLIC_RPC_POLYGON || "https://polygon-rpc.com"],
+          rpcUrls: [getConfiguredRpcUrl(137)],
           blockExplorerUrls: ["https://polygonscan.com/"],
         };
       } else if (chainId === 11155111) {
@@ -40,7 +39,7 @@ export async function switchNetwork(provider: any, chainId: number): Promise<voi
           chainId: "0xaa36a7",
           chainName: "Sepolia",
           nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-          rpcUrls: [process.env.NEXT_PUBLIC_RPC_SEPOLIA || "https://rpc.sepolia.org"],
+          rpcUrls: [getConfiguredRpcUrl(11155111)],
           blockExplorerUrls: ["https://sepolia.etherscan.io"],
         };
       }

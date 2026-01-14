@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { POST as postOrders } from "@/app/api/orderbook/orders/route";
-import { POST as postCancelSalt } from "@/app/api/orderbook/cancel-salt/route";
+import { NextRequest } from "next/server";
 import { ApiErrorCode } from "@/types/api";
 
-function makePostRequest(url: string, body: unknown): Request {
-  return new Request(url, {
+function makePostRequest(url: string, body: unknown, ip?: string): NextRequest {
+  return new NextRequest(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-forwarded-for": ip || "203.0.113.10" },
     body: JSON.stringify(body),
   });
 }
@@ -34,6 +33,7 @@ describe("orderbook api relayer proxy", () => {
   beforeEach(() => {
     envSnap = snapshotEnv();
     fetchOriginal = globalThis.fetch;
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -52,9 +52,14 @@ describe("orderbook api relayer proxy", () => {
       });
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+    const { POST: postOrders } = await import("@/app/api/orderbook/orders/route");
 
     const res = await postOrders(
-      makePostRequest("http://localhost/api/orderbook/orders", { hello: "world" }) as any
+      makePostRequest(
+        "http://localhost/api/orderbook/orders",
+        { hello: "world" },
+        "203.0.113.11"
+      ) as any
     );
     const json = await res.json();
 
@@ -74,9 +79,14 @@ describe("orderbook api relayer proxy", () => {
       });
     });
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+    const { POST: postCancelSalt } = await import("@/app/api/orderbook/cancel-salt/route");
 
     const res = await postCancelSalt(
-      makePostRequest("http://localhost/api/orderbook/cancel-salt", { hello: "world" }) as any
+      makePostRequest(
+        "http://localhost/api/orderbook/cancel-salt",
+        { hello: "world" },
+        "203.0.113.12"
+      ) as any
     );
     const json = await res.json();
 
@@ -93,6 +103,7 @@ describe("orderbook api relayer proxy", () => {
     delete process.env.RELAYER_URL;
     delete process.env.NEXT_PUBLIC_RELAYER_URL;
 
+    const { POST: postOrders } = await import("@/app/api/orderbook/orders/route");
     const res = await postOrders(
       makePostRequest("http://localhost/api/orderbook/orders", {}) as any
     );

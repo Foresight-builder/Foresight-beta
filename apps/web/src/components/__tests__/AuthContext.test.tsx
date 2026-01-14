@@ -30,6 +30,7 @@ function renderWithAuthProvider() {
 describe("AuthContext 邮箱登录逻辑", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED", "true");
     document.cookie = "fs_remember=1";
     vi.stubGlobal(
       "fetch",

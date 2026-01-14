@@ -13,6 +13,7 @@ import {
 } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { genCode, hashEmailOtpCode, isValidEmail, resolveEmailOtpSecret } from "@/lib/otpUtils";
+import { getFeatureFlags } from "@/lib/runtimeConfig";
 
 const SQL_CREATE_EMAIL_OTPS_TABLE = `
 CREATE TABLE IF NOT EXISTS public.email_otps (
@@ -258,6 +259,9 @@ function deriveDeterministicAddressFromEmail(email: string, secretString: string
 
 export async function POST(req: NextRequest) {
   try {
+    if (!getFeatureFlags().embedded_auth_enabled) {
+      return ApiResponses.forbidden("邮箱登录已关闭");
+    }
     const payload = await parseRequestBody(req);
     const email = String(payload?.email || "")
       .trim()
@@ -288,6 +292,32 @@ export async function POST(req: NextRequest) {
 
     if (!walletKey || !isValidEthAddress(walletKey)) {
       return ApiResponses.internalError("无法生成登录标识");
+    }
+
+    const { data: existingList, error: existingErr } = await client
+      .from("user_profiles")
+      .select("wallet_address,proxy_wallet_type")
+      .eq("email", email)
+      .limit(10);
+    if (existingErr) {
+      return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
+    }
+    const list = Array.isArray(existingList) ? existingList : [];
+    const owner = list.find((r: any) => {
+      const t = String(r?.proxy_wallet_type || "")
+        .trim()
+        .toLowerCase();
+      if (t === "email") return false;
+      const wa = String(r?.wallet_address || "");
+      return !!wa && isValidEthAddress(wa);
+    });
+    if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
+      return errorResponse(
+        "该邮箱尚未绑定钱包，请先使用钱包登录并绑定邮箱",
+        ApiErrorCode.NOT_FOUND,
+        404,
+        { reason: "EMAIL_NOT_BOUND" }
+      );
     }
 
     const rlKey = `${walletKey || "unknown"}:${ip || "unknown"}`;

@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";
-import { createSession } from "@/lib/session";
+import { createSession, markDeviceVerified, setStepUpCookie } from "@/lib/session";
 import { hashEmailOtpCode, isValidEmail, resolveEmailOtpSecret } from "@/lib/otpUtils";
 import { createToken, verifyToken } from "@/lib/jwt";
 import {
@@ -16,6 +16,7 @@ import {
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { getIP } from "@/lib/rateLimit";
+import { getFeatureFlags } from "@/lib/runtimeConfig";
 
 const EMAIL_CHANGE_COOKIE_NAME = "fs_email_change";
 
@@ -61,6 +62,9 @@ function isMissingEmailOtpsTable(error?: { message?: string | null; code?: strin
 
 export async function POST(req: NextRequest) {
   try {
+    if (!getFeatureFlags().embedded_auth_enabled) {
+      return ApiResponses.forbidden("邮箱登录已关闭");
+    }
     const payload = await parseRequestBody(req);
 
     const email = String(payload?.email || "")
@@ -275,6 +279,8 @@ export async function POST(req: NextRequest) {
           path: "/",
           maxAge: 15 * 60,
         });
+        await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_old" });
+        await markDeviceVerified(req, walletAddress);
         return res;
       }
 
@@ -347,6 +353,8 @@ export async function POST(req: NextRequest) {
         path: "/",
         maxAge: 0,
       });
+      await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_new" });
+      await markDeviceVerified(req, walletAddress);
       return res;
     }
 
@@ -362,35 +370,63 @@ export async function POST(req: NextRequest) {
       }
 
       const list = Array.isArray(existingList) ? existingList : [];
-      const preferred =
-        list.find((r: any) => !String(r?.proxy_wallet_type || "").trim()) ||
-        list.find(
-          (r: any) =>
-            String(r?.proxy_wallet_type || "")
-              .trim()
-              .toLowerCase() === "email"
-        ) ||
-        list[0];
+      const owner = list.find((r: any) => {
+        const t = String(r?.proxy_wallet_type || "")
+          .trim()
+          .toLowerCase();
+        if (t === "email") return false;
+        const wa = String(r?.wallet_address || "");
+        return !!wa && isValidEthAddress(wa);
+      });
 
-      if (preferred?.wallet_address && isValidEthAddress(preferred.wallet_address)) {
-        sessionAddress = normalizeAddress(preferred.wallet_address);
-      } else {
-        sessionAddress = deriveDeterministicAddressFromEmail(email, secretString);
-        const nowIso = new Date().toISOString();
-        const { error: upsertErr } = await client.from("user_profiles").upsert(
+      if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
+        // 新用户自动注册逻辑
+        const newWalletAddress = deriveDeterministicAddressFromEmail(email, secretString);
+
+        // 生成默认用户名
+        const randomSuffix = Math.floor(Math.random() * 1000000)
+          .toString()
+          .padStart(6, "0");
+        const defaultUsername = `User_${randomSuffix}`;
+
+        const { error: createErr } = await client.from("user_profiles").upsert(
           {
-            wallet_address: sessionAddress,
+            wallet_address: newWalletAddress,
             email,
-            proxy_wallet_address: email,
+            username: defaultUsername,
             proxy_wallet_type: "email",
-            updated_at: nowIso,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           } as Database["public"]["Tables"]["user_profiles"]["Insert"],
           { onConflict: "wallet_address" }
         );
-        if (upsertErr) {
-          return ApiResponses.databaseError("Failed to bind email", upsertErr.message);
+
+        if (createErr) {
+          return ApiResponses.databaseError("Failed to create user profile", createErr.message);
         }
+
+        sessionAddress = newWalletAddress;
+
+        // 标记为新用户，以便前端引导设置用户名
+        const res = successResponse(
+          { ok: true, address: sessionAddress, isNewUser: true },
+          "验证成功"
+        );
+        await createSession(res, sessionAddress, undefined, { req, authMethod: "email_otp" });
+        await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+        await markDeviceVerified(req, sessionAddress);
+
+        try {
+          await logApiEvent("email_login_new_user_created", {
+            addr: sessionAddress.slice(0, 8),
+            emailDomain: email.split("@")[1] || "",
+            requestId: reqId || undefined,
+          });
+        } catch {}
+
+        return res;
       }
+      sessionAddress = normalizeAddress(owner.wallet_address);
     } else {
       const { error: upsertErr } = await client.from("user_profiles").upsert(
         {
@@ -408,6 +444,10 @@ export async function POST(req: NextRequest) {
     if (mode === "login") {
       await createSession(res, sessionAddress, undefined, { req, authMethod: "email_otp" });
     }
+    await setStepUpCookie(res, sessionAddress, undefined, {
+      purpose: mode === "login" ? "login" : "bind",
+    });
+    await markDeviceVerified(req, sessionAddress);
     try {
       if (mode === "login") {
         await logApiEvent("email_login_code_verified", {

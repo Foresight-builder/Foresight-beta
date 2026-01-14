@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import type { TypedDataField } from "ethers";
+import type { Provider, TypedDataField } from "ethers";
 import { ORDER_TYPES, type EIP712Order, type EIP712Domain } from "@/types/market";
 
 /**
@@ -26,28 +26,44 @@ export async function verifyOrderSignature(
   order: EIP712Order,
   signature: string,
   chainId: number,
-  verifyingContract: string
+  verifyingContract: string,
+  options?: { provider?: Provider; ownerEoa?: string }
 ): Promise<{ valid: boolean; recoveredAddress?: string; error?: string }> {
   try {
-    // 规范化地址
     const normalizedMaker = order.maker.toLowerCase();
+    const normalizedOwner = options?.ownerEoa ? options.ownerEoa.toLowerCase() : "";
+    const expectedSigner = normalizedOwner || normalizedMaker;
     const normalizedContract = verifyingContract.toLowerCase();
 
-    // 创建 domain
     const domain = createOrderDomain(chainId, normalizedContract);
     const orderTypesMutable: Record<string, TypedDataField[]> = {
       Order: ORDER_TYPES.Order.map((field) => ({ ...field })),
     };
     const recoveredAddress = ethers.verifyTypedData(domain, orderTypesMutable, order, signature);
 
-    // 检查恢复的地址是否与 maker 匹配
-    const valid = recoveredAddress.toLowerCase() === normalizedMaker;
+    const recoveredNorm = recoveredAddress.toLowerCase();
+    const valid = recoveredNorm === expectedSigner;
 
     if (!valid) {
+      const provider = options?.provider;
+      if (provider) {
+        try {
+          const digest = ethers.TypedDataEncoder.hash(domain, orderTypesMutable, order);
+          const erc1271 = new ethers.Contract(
+            normalizedMaker,
+            ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
+            provider
+          );
+          const magic = await erc1271.isValidSignature(digest, signature);
+          if (String(magic).toLowerCase() === "0x1626ba7e") {
+            return { valid: true, recoveredAddress };
+          }
+        } catch {}
+      }
       return {
         valid: false,
         recoveredAddress,
-        error: `Signature address mismatch: expected ${normalizedMaker}, got ${recoveredAddress.toLowerCase()}`,
+        error: `Signature address mismatch: expected ${expectedSigner}, got ${recoveredNorm}`,
       };
     }
 

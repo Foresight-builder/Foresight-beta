@@ -4,9 +4,9 @@ import { ethers } from "ethers";
 import { t, formatTranslation } from "./i18n";
 
 const nonceCache = {
-  value: null as string | null,
+  value: null as { nonce: string; message: string } | null,
   expiresAt: 0,
-  inFlight: null as Promise<string> | null,
+  inFlight: null as Promise<{ nonce: string; message: string }> | null,
 };
 
 function waitMs(ms: number) {
@@ -32,7 +32,7 @@ function getRetryAfterMs(res: Response): number | null {
   return null;
 }
 
-async function fetchNonce(): Promise<string> {
+async function fetchNonce(): Promise<{ nonce: string; message: string }> {
   const now = Date.now();
   if (nonceCache.value && nonceCache.expiresAt > now) {
     return nonceCache.value;
@@ -45,14 +45,15 @@ async function fetchNonce(): Promise<string> {
   nonceCache.inFlight = (async () => {
     const maxAttempts = 3;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const res = await fetch("/api/siwe/nonce", { method: "GET" });
+      const res = await fetch("/api/auth/challenge/nonce", { method: "GET" });
       if (res.ok) {
         const json = await res.json().catch(() => null);
-        const nonce: string = json?.nonce;
-        if (nonce) {
-          nonceCache.value = nonce;
+        const nonce = typeof json?.nonce === "string" ? String(json.nonce) : "";
+        const message = typeof json?.message === "string" ? String(json.message) : "";
+        if (nonce && message) {
+          nonceCache.value = { nonce, message };
           nonceCache.expiresAt = Date.now() + 30_000;
-          return nonce;
+          return { nonce, message };
         }
         throw { status: res.status };
       }
@@ -99,8 +100,11 @@ export function useSiweAuth(params: Params) {
       if (!address) return { success: false, error: t("errors.wallet.connectFirst") };
 
       let nonce: string;
+      let messageToSign: string;
       try {
-        nonce = await fetchNonce();
+        const res = await fetchNonce();
+        nonce = res.nonce;
+        messageToSign = res.message;
       } catch (e: any) {
         const status = typeof e?.status === "number" ? e.status : undefined;
         if (status === 429) {
@@ -117,25 +121,11 @@ export function useSiweAuth(params: Params) {
         return { success: false, error: t("errors.wallet.nonceInvalid") };
       }
 
-      const { SiweMessage } = await import("siwe");
       const chainIdNum = Number(net?.chainId?.toString?.() || params.chainIdHex || "1");
-
-      const statement = "Sign in to Foresight";
-
-      const message = new SiweMessage({
-        domain: typeof window !== "undefined" ? window.location.host : "localhost",
-        address,
-        statement,
-        uri: typeof window !== "undefined" ? window.location.origin : "http://localhost",
-        version: "1",
-        chainId: Number.isFinite(chainIdNum) ? chainIdNum : 1,
-        nonce,
-      });
-      const prepared = message.prepareMessage();
 
       let signature: string;
       try {
-        signature = await signer.signMessage(prepared);
+        signature = await signer.signMessage(messageToSign);
       } catch (signErr: any) {
         if (signErr?.code === 4001 || signErr?.code === "ACTION_REJECTED") {
           return { success: false, error: t("errors.wallet.signatureRejected") };
@@ -144,7 +134,7 @@ export function useSiweAuth(params: Params) {
           try {
             signature = await (rawProvider as any).request({
               method: "personal_sign",
-              params: [prepared, address],
+              params: [messageToSign, address],
             });
           } catch (fallbackErr: any) {
             if (fallbackErr?.code === 4001 || fallbackErr?.code === "ACTION_REJECTED") {
@@ -153,7 +143,7 @@ export function useSiweAuth(params: Params) {
             try {
               signature = await (rawProvider as any).request({
                 method: "personal_sign",
-                params: [address, prepared],
+                params: [address, messageToSign],
               });
             } catch {
               return { success: false, error: t("errors.wallet.signatureFailed") };
@@ -167,14 +157,14 @@ export function useSiweAuth(params: Params) {
       let verifyRes: Response | null = null;
       let verifyJson: any = null;
       try {
-        verifyRes = await fetch("/api/siwe/verify", {
+        verifyRes = await fetch("/api/auth/challenge/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: prepared,
+            address,
             signature,
-            domain: typeof window !== "undefined" ? window.location.host : undefined,
-            uri: typeof window !== "undefined" ? window.location.origin : undefined,
+            nonce,
+            chainId: Number.isFinite(chainIdNum) ? chainIdNum : undefined,
           }),
         });
         verifyJson = await verifyRes.json().catch(() => null);
@@ -190,7 +180,11 @@ export function useSiweAuth(params: Params) {
       if (!verifyRes.ok || !verifyJson?.success) {
         return {
           success: false,
-          error: verifyJson?.message || verifyJson?.detail || t("errors.wallet.verifyFailed"),
+          error:
+            verifyJson?.error?.message ||
+            verifyJson?.message ||
+            verifyJson?.detail ||
+            t("errors.wallet.verifyFailed"),
         };
       }
 

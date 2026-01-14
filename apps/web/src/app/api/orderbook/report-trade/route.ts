@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, proxyJsonResponse, successResponse } from "@/lib/apiResponse";
 import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
+import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import { marketAbi } from "@/app/prediction/[id]/_lib/abis";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
@@ -53,9 +54,16 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidParameters("Missing chainId or txHash");
     }
 
-    // TODO: Support multiple chains via config
-    const rpcUrl =
-      process.env.NEXT_PUBLIC_POLYGON_RPC_URL || "https://rpc-amoy.polygon.technology/";
+    const runtime = getRuntimeConfig();
+    const chainIdNum = Number(chainId);
+    if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
+      return ApiResponses.badRequest("Invalid chainId");
+    }
+    if (chainIdNum !== runtime.chainId) {
+      return ApiResponses.badRequest("chainId mismatch");
+    }
+
+    const rpcUrl = runtime.rpcUrl;
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // Wait for receipt (it should be mined already as client sends this after wait)

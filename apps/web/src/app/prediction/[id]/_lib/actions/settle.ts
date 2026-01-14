@@ -14,6 +14,21 @@ const MARKET_ABI = [
   "function state() external view returns (uint8)",
 ];
 
+async function trySubmitAaCalls(input: {
+  chainId: number;
+  calls: Array<{ to: string; data: string; value?: string }>;
+}) {
+  const res = await fetch("/api/aa/userop/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const json = await res.json().catch(() => null);
+  if (res.ok && json?.success) return json;
+  const msg = json?.error?.message || json?.message || "AA submit failed";
+  throw new Error(String(msg));
+}
+
 export async function assertOutcomeAction(args: {
   market: MarketInfo;
   outcomeIndex: number;
@@ -58,6 +73,23 @@ export async function assertOutcomeAction(args: {
     );
     const marketId = await marketIdContract.marketId();
 
+    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
+      .trim()
+      .toLowerCase();
+    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+      try {
+        const oracleIface = new ethers.Interface(ORACLE_ADAPTER_ABI);
+        const data = oracleIface.encodeFunctionData("requestOutcome", [
+          marketId,
+          outcomeIndex,
+          claimBytes,
+        ]);
+        await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: oracleAddress, data }] });
+        setMsg(t("settlement.assertFlow.success"));
+        return;
+      } catch {}
+    }
+
     const tx = await oracleContract.requestOutcome(marketId, outcomeIndex, claimBytes);
     await tx.wait();
 
@@ -101,6 +133,19 @@ export async function settleAdapterAction(args: {
 
     setMsg(t("settlement.settleFlow.settling"));
 
+    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
+      .trim()
+      .toLowerCase();
+    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+      try {
+        const oracleIface = new ethers.Interface(ORACLE_ADAPTER_ABI);
+        const data = oracleIface.encodeFunctionData("settleOutcome", [marketId]);
+        await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: oracleAddress, data }] });
+        setMsg(t("settlement.settleFlow.success"));
+        return;
+      } catch {}
+    }
+
     const tx = await oracleContract.settleOutcome(marketId);
     await tx.wait();
 
@@ -135,6 +180,19 @@ export async function resolveMarketAction(args: {
     const marketContract = new ethers.Contract(market.market, MARKET_ABI, signer);
 
     setMsg(t("settlement.resolveFlow.resolving"));
+
+    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
+      .trim()
+      .toLowerCase();
+    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+      try {
+        const marketIface = new ethers.Interface(MARKET_ABI);
+        const data = marketIface.encodeFunctionData("resolve", []);
+        await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: market.market, data }] });
+        setMsg(t("settlement.resolveFlow.success"));
+        return;
+      } catch {}
+    }
 
     const tx = await marketContract.resolve();
     await tx.wait();

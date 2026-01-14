@@ -139,10 +139,22 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
 
 export async function proxyJsonResponse(
   res: Response,
-  options?: { successMessage?: string; errorMessage?: string }
+  options?: {
+    successMessage?: string;
+    errorMessage?: string;
+    onResult?: (args: {
+      ok: boolean;
+      status: number;
+      json: unknown;
+      headers: Headers;
+    }) => void | Promise<void>;
+  }
 ) {
   const contentType = res.headers.get("content-type") || "";
   const json = contentType.includes("application/json") ? await res.json().catch(() => null) : null;
+  try {
+    await options?.onResult?.({ ok: res.ok, status: res.status, json, headers: res.headers });
+  } catch {}
 
   if (res.ok) {
     return successResponse(json, options?.successMessage);

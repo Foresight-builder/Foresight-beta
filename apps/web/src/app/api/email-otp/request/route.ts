@@ -16,6 +16,7 @@ import { sendMailSMTP } from "@/lib/emailService";
 import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
 import { verifyToken } from "@/lib/jwt";
+import { getFeatureFlags } from "@/lib/runtimeConfig";
 
 const EMAIL_CHANGE_COOKIE_NAME = "fs_email_change";
 
@@ -61,6 +62,9 @@ function isMissingEmailOtpsTable(error?: { message?: string | null; code?: strin
 
 export async function POST(req: NextRequest) {
   try {
+    if (!getFeatureFlags().embedded_auth_enabled) {
+      return ApiResponses.forbidden("邮箱登录已关闭");
+    }
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Missing service key");
     const payload = await parseRequestBody(req);
@@ -83,6 +87,34 @@ export async function POST(req: NextRequest) {
     const secretString = resolveEmailOtpSecret().secretString;
     const walletKey =
       mode === "login" ? deriveDeterministicAddressFromEmail(email, secretString) : walletAddress;
+
+    if (mode === "login") {
+      const { data: existingList, error: existingErr } = await client
+        .from("user_profiles")
+        .select("wallet_address,proxy_wallet_type")
+        .eq("email", email)
+        .limit(10);
+      if (existingErr) {
+        return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
+      }
+      const list = Array.isArray(existingList) ? existingList : [];
+      const owner = list.find((r: any) => {
+        const t = String(r?.proxy_wallet_type || "")
+          .trim()
+          .toLowerCase();
+        if (t === "email") return false;
+        const wa = String(r?.wallet_address || "");
+        return !!wa && isValidEthAddress(wa);
+      });
+      if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
+        return errorResponse(
+          "该邮箱尚未绑定钱包，请先使用钱包登录并绑定邮箱",
+          ApiErrorCode.NOT_FOUND,
+          404,
+          { reason: "EMAIL_NOT_BOUND" }
+        );
+      }
+    }
 
     if (mode === "bind" || mode === "change_old" || mode === "change_new") {
       const sessAddr = await getSessionAddress(req);

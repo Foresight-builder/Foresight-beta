@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { normalizeAddress } from "./address";
 import { getSession } from "./session";
+import { getFeatureFlags } from "./runtimeConfig";
 import { supabaseAdmin } from "./supabase.server";
 
 export { normalizeAddress } from "./address";
@@ -153,7 +154,7 @@ export function getRequestId(req: Request): string {
   }
 }
 
-export type ProxyWalletType = "safe" | "proxy";
+export type ProxyWalletType = "safe" | "safe4337" | "proxy";
 
 export type ProxyWalletConfig = {
   type: ProxyWalletType;
@@ -200,7 +201,7 @@ export function getProxyWalletConfig(): {
     .trim()
     .toLowerCase();
   if (!rawType) return { ok: true, config: undefined };
-  if (rawType !== "safe" && rawType !== "proxy") {
+  if (rawType !== "safe" && rawType !== "safe4337" && rawType !== "proxy") {
     return { ok: false, error: "Invalid NEXT_PUBLIC_PROXY_WALLET_TYPE" };
   }
 
@@ -214,14 +215,14 @@ export function getProxyWalletConfig(): {
   );
 
   const config: ProxyWalletConfig = {
-    type: rawType,
+    type: rawType as ProxyWalletType,
     ...(proxyWalletFactoryAddress ? { proxyWalletFactoryAddress } : {}),
     ...(safeFactoryAddress ? { safeFactoryAddress } : {}),
     ...(safeSingletonAddress ? { safeSingletonAddress } : {}),
     ...(safeFallbackHandlerAddress ? { safeFallbackHandlerAddress } : {}),
   };
 
-  if (rawType === "safe") {
+  if (rawType === "safe" || rawType === "safe4337") {
     if (!config.safeFactoryAddress || !config.safeSingletonAddress) {
       return {
         ok: false,
@@ -240,7 +241,9 @@ export function getProxyWalletConfig(): {
 }
 
 export function getGaslessConfig(): { ok: boolean; config: GaslessConfig; error?: string } {
-  const enabled = parseBoolEnv(process.env.GASLESS_ENABLED) ?? false;
+  const flags = getFeatureFlags();
+  let enabled = parseBoolEnv(process.env.GASLESS_ENABLED) ?? false;
+  if (!flags.aa_enabled) enabled = false;
   const paymasterUrlRaw = String(process.env.RELAYER_GASLESS_PAYMASTER_URL || "").trim();
   let paymasterUrl: string | undefined;
   if (paymasterUrlRaw) {

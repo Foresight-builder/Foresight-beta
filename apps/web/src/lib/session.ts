@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createToken, verifyToken, createRefreshToken, type JWTPayload } from "./jwt";
 import { supabaseAdmin } from "./supabase.server";
 
 const SESSION_COOKIE_NAME = "fs_session";
 const REFRESH_COOKIE_NAME = "fs_refresh";
+const STEPUP_COOKIE_NAME = "fs_stepup";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -13,6 +14,36 @@ const COOKIE_OPTIONS = {
   sameSite: "lax" as const,
   path: "/",
 };
+
+function computeDeviceId(req?: NextRequest): string | null {
+  try {
+    if (!req) return null;
+    const ua = String(req.headers.get("user-agent") || "").slice(0, 512);
+    const al = String(req.headers.get("accept-language") || "").slice(0, 256);
+    const chUa = String(req.headers.get("sec-ch-ua") || "").slice(0, 256);
+    const chPlatform = String(req.headers.get("sec-ch-ua-platform") || "").slice(0, 128);
+    const chMobile = String(req.headers.get("sec-ch-ua-mobile") || "").slice(0, 32);
+    const seed = [ua, al, chUa, chPlatform, chMobile].join("|");
+    if (!seed.trim()) return null;
+    const h = createHash("sha256").update(seed, "utf8").digest("hex");
+    return `d_${h.slice(0, 32)}`;
+  } catch {
+    return null;
+  }
+}
+
+function getIpPrefixFromRequest(req?: NextRequest): string | null {
+  try {
+    if (!req) return null;
+    const ipRaw = String(req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for") || "");
+    const ip = String(ipRaw || "")
+      .split(",")[0]
+      .trim();
+    return ip ? ip.split(".").slice(0, 2).join(".") + ".*.*" : null;
+  } catch {
+    return null;
+  }
+}
 
 function isMissingRelation(err: unknown) {
   const msg = String((err as any)?.message || "").toLowerCase();
@@ -78,16 +109,52 @@ export async function createSession(
       options?.req && typeof options.req.headers?.get === "function"
         ? String(options.req.headers.get("user-agent") || "").slice(0, 512)
         : "";
-    const ipRaw =
-      options?.req && typeof options.req.headers?.get === "function"
-        ? String(
-            options.req.headers.get("x-real-ip") || options.req.headers.get("x-forwarded-for") || ""
+    const ipPrefix = getIpPrefixFromRequest(options?.req);
+    const deviceId = computeDeviceId(options?.req);
+
+    let riskScore: number | null = null;
+    let riskReason: string | null = null;
+    if (deviceId) {
+      try {
+        const { data: deviceRow, error: deviceErr } = await client
+          .from("user_devices")
+          .select("verified_at")
+          .eq("wallet_address", String(address || "").toLowerCase())
+          .eq("device_id", deviceId)
+          .maybeSingle();
+        if (!deviceErr) {
+          if (!deviceRow) {
+            riskScore = 80;
+            riskReason = "new_device";
+          } else if (!(deviceRow as any)?.verified_at) {
+            riskScore = 50;
+            riskReason = "device_unverified";
+          } else {
+            riskScore = 0;
+            riskReason = "device_verified";
+          }
+        }
+      } catch {}
+    }
+
+    if (deviceId) {
+      try {
+        await client
+          .from("user_devices")
+          .upsert(
+            {
+              wallet_address: String(address || "").toLowerCase(),
+              device_id: deviceId,
+              first_seen_at: nowIso,
+              last_seen_at: nowIso,
+              last_ip_prefix: ipPrefix,
+              last_user_agent: ua || null,
+            },
+            { onConflict: "wallet_address,device_id" }
           )
-        : "";
-    const ip = String(ipRaw || "")
-      .split(",")[0]
-      .trim();
-    const ipPrefix = ip ? ip.split(".").slice(0, 2).join(".") + ".*.*" : null;
+          .catch(() => {});
+      } catch {}
+    }
 
     await client.from("user_sessions").upsert(
       {
@@ -97,6 +164,7 @@ export async function createSession(
         auth_method: options?.authMethod ? String(options.authMethod).slice(0, 32) : null,
         ip_prefix: ipPrefix,
         user_agent: ua || null,
+        device_id: deviceId,
         last_seen_at: nowIso,
         created_at: nowIso,
         revoked_at: null,
@@ -111,10 +179,95 @@ export async function createSession(
         method: options?.authMethod ? String(options.authMethod).slice(0, 32) : "unknown",
         ip_prefix: ipPrefix,
         user_agent: ua || null,
+        device_id: deviceId,
+        risk_score: riskScore,
+        risk_reason: riskReason,
         created_at: nowIso,
       })
       .catch(() => {});
   } catch {}
+}
+
+export async function hasValidStepUp(req: NextRequest, expectedAddress?: string): Promise<boolean> {
+  try {
+    const raw = req.cookies.get(STEPUP_COOKIE_NAME)?.value || "";
+    if (!raw) return false;
+    const payload = await verifyToken(raw);
+    if (!payload) return false;
+    if (payload.tokenType !== "stepup") return false;
+    if (expectedAddress) {
+      const addr = String(payload.address || "").toLowerCase();
+      if (addr !== String(expectedAddress || "").toLowerCase()) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setStepUpCookie(
+  response: NextResponse,
+  address: string,
+  chainId?: number,
+  options?: { expiresInSeconds?: number; purpose?: string }
+): Promise<void> {
+  const token = await createToken(address, chainId, options?.expiresInSeconds ?? 15 * 60, {
+    tokenType: "stepup",
+    extra: options?.purpose ? { purpose: options.purpose } : undefined,
+  });
+  response.cookies.set(STEPUP_COOKIE_NAME, token, {
+    ...COOKIE_OPTIONS,
+    maxAge: options?.expiresInSeconds ?? 15 * 60,
+  });
+}
+
+export async function markDeviceVerified(req: NextRequest, address: string): Promise<void> {
+  try {
+    const client = supabaseAdmin as any;
+    if (!client) return;
+    const deviceId = computeDeviceId(req);
+    if (!deviceId) return;
+    const nowIso = new Date().toISOString();
+    const ipPrefix = getIpPrefixFromRequest(req);
+    const ua = String(req.headers.get("user-agent") || "").slice(0, 512);
+    await client
+      .from("user_devices")
+      .upsert(
+        {
+          wallet_address: String(address || "").toLowerCase(),
+          device_id: deviceId,
+          first_seen_at: nowIso,
+          last_seen_at: nowIso,
+          verified_at: nowIso,
+          last_ip_prefix: ipPrefix,
+          last_user_agent: ua || null,
+        },
+        { onConflict: "wallet_address,device_id" }
+      )
+      .catch(() => {});
+  } catch {}
+}
+
+export async function isTrustedDevice(req: NextRequest, address: string): Promise<boolean> {
+  try {
+    const client = supabaseAdmin as any;
+    if (!client) return false;
+    const deviceId = computeDeviceId(req);
+    if (!deviceId) return false;
+    const { data, error } = await client
+      .from("user_devices")
+      .select("verified_at")
+      .eq("wallet_address", String(address || "").toLowerCase())
+      .eq("device_id", deviceId)
+      .maybeSingle();
+    if (error) {
+      if (isMissingRelation(error)) return false;
+      return false;
+    }
+    return !!(data as any)?.verified_at;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -213,6 +366,11 @@ export function clearSession(response: NextResponse): void {
   });
 
   response.cookies.set(REFRESH_COOKIE_NAME, "", {
+    ...COOKIE_OPTIONS,
+    maxAge: 0,
+  });
+
+  response.cookies.set(STEPUP_COOKIE_NAME, "", {
     ...COOKIE_OPTIONS,
     maxAge: 0,
   });

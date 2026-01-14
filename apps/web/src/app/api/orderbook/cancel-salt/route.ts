@@ -3,8 +3,10 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { ethers } from "ethers";
 import { ApiResponses, successResponse, proxyJsonResponse } from "@/lib/apiResponse";
-import { getRelayerBaseUrl, logApiError } from "@/lib/serverUtils";
+import { getRelayerBaseUrl, getSessionAddress, logApiError } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+
+import { getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,15 +17,27 @@ export async function POST(req: NextRequest) {
       return ApiResponses.rateLimit("Too many requests from this IP");
     }
 
+    const ownerEoa = await getSessionAddress(req);
+
     const rawBody = await req.text();
 
     const relayerBase = getRelayerBaseUrl();
     if (relayerBase) {
+      const bodyForProxy = (() => {
+        try {
+          return rawBody ? JSON.parse(rawBody) : {};
+        } catch {
+          return {};
+        }
+      })();
+      if (ownerEoa && !bodyForProxy?.owner_eoa && !bodyForProxy?.ownerEoa) {
+        bodyForProxy.owner_eoa = ownerEoa;
+      }
       const url = new URL("/orderbook/cancel-salt", relayerBase);
       const relayerRes = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: rawBody || "{}",
+        body: JSON.stringify(bodyForProxy || {}),
       });
       return proxyJsonResponse(relayerRes, {
         successMessage: "ok",
@@ -91,8 +105,26 @@ export async function POST(req: NextRequest) {
     };
     try {
       const recoveredAddress = ethers.verifyTypedData(domain, types, { maker, salt }, signature);
-      if (recoveredAddress.toLowerCase() !== String(maker).toLowerCase()) {
-        return ApiResponses.invalidSignature("Invalid signature");
+      const expectedSigner = (ownerEoa || String(maker)).toLowerCase();
+      if (recoveredAddress.toLowerCase() !== expectedSigner) {
+        const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainIdNum));
+        try {
+          const digest = ethers.TypedDataEncoder.hash(domain, types as any, {
+            maker,
+            salt: BigInt(String(salt)),
+          });
+          const erc1271 = new ethers.Contract(
+            String(maker),
+            ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
+            provider
+          );
+          const magic = await erc1271.isValidSignature(digest, signature);
+          if (String(magic).toLowerCase() !== "0x1626ba7e") {
+            return ApiResponses.invalidSignature("Invalid signature");
+          }
+        } catch {
+          return ApiResponses.invalidSignature("Invalid signature");
+        }
       }
     } catch {
       return ApiResponses.invalidSignature("Invalid signature");

@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { getChainAddresses, getConfiguredChainId, getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 import {
   isAdminProfile,
   assertPositiveNumber,
@@ -60,18 +61,13 @@ async function loadDefaultDeployment(): Promise<DefaultDeployment | null> {
 }
 
 function resolveChainId(): number {
-  const raw = (process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID || "").trim();
-  if (raw) {
-    const chainId = Number(raw);
-    if (Number.isFinite(chainId) && chainId > 0) return chainId;
-    const err = new Error("Invalid CHAIN_ID");
+  try {
+    return getConfiguredChainId();
+  } catch (e: any) {
+    const err = new Error(String(e?.message || "Missing CHAIN_ID"));
     (err as any).status = 500;
     throw err;
   }
-  if (process.env.NODE_ENV !== "production") return 80002;
-  const err = new Error("Missing CHAIN_ID");
-  (err as any).status = 500;
-  throw err;
 }
 
 function parseResolutionTimeSeconds(deadline: unknown): number {
@@ -112,20 +108,13 @@ function assertBytes32(value: string, label: string) {
 }
 
 function resolveRpcUrl(chainId: number): string {
-  const env = process.env;
-  const fromGeneric = (env.RPC_URL || env.NEXT_PUBLIC_RPC_URL || "").trim();
-  if (fromGeneric) return fromGeneric;
-  if (chainId === 80002) {
-    return (
-      (env.NEXT_PUBLIC_RPC_POLYGON_AMOY || "").trim() || "https://rpc-amoy.polygon.technology/"
-    );
+  try {
+    return getConfiguredRpcUrl(chainId);
+  } catch (e: any) {
+    const err = new Error(String(e?.message || "RPC_URL is not configured"));
+    (err as any).status = 500;
+    throw err;
   }
-  if (chainId === 137) {
-    return (env.NEXT_PUBLIC_RPC_POLYGON || "").trim() || "https://polygon-rpc.com";
-  }
-  const err = new Error("RPC_URL is not configured");
-  (err as any).status = 500;
-  throw err;
 }
 
 async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
@@ -153,10 +142,12 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
   }
 
   const dep = await loadDefaultDeployment();
+  const chainAddresses = getChainAddresses(chainId);
   const marketFactory = String(
     process.env.MARKET_FACTORY_ADDRESS ||
       process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS ||
       dep?.marketFactory ||
+      chainAddresses.marketFactory ||
       ""
   ).trim();
   if (!marketFactory) {
@@ -168,9 +159,12 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
 
   const collateralToken = String(
     (chainId === 80002
-      ? process.env.USDC_ADDRESS_AMOY || process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY
+      ? process.env.USDC_ADDRESS_AMOY ||
+        process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
+        chainAddresses.usdc
       : process.env.COLLATERAL_TOKEN_ADDRESS || process.env.NEXT_PUBLIC_USDC_ADDRESS) ||
       dep?.collateral ||
+      chainAddresses.usdc ||
       ""
   ).trim();
   if (!collateralToken) {
@@ -184,6 +178,7 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
     process.env.OUTCOME1155_ADDRESS ||
       process.env.NEXT_PUBLIC_OUTCOME_TOKEN_ADDRESS ||
       dep?.outcome1155 ||
+      chainAddresses.outcomeToken1155 ||
       ""
   ).trim();
   if (!outcome1155) {
@@ -195,8 +190,11 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
 
   const oracle = String(
     process.env.ORACLE_ADDRESS ||
+      process.env.UMA_ADAPTER_ADDRESS ||
       process.env.NEXT_PUBLIC_DEFAULT_ORACLE_ADDRESS ||
       dep?.defaultOracle ||
+      process.env.NEXT_PUBLIC_UMA_ADAPTER_ADDRESS ||
+      chainAddresses.umaAdapter ||
       ""
   ).trim();
   if (!oracle) {
@@ -247,9 +245,12 @@ async function createMarketOnchain(args: {
   const mock = (process.env.MOCK_ONCHAIN_MARKET_ADDRESS || "").trim();
   if (mock) {
     const chainId = resolveChainId();
+    const chainAddresses = getChainAddresses(chainId);
     const collateralToken =
       (chainId === 80002
-        ? process.env.USDC_ADDRESS_AMOY || process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY
+        ? process.env.USDC_ADDRESS_AMOY ||
+          process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
+          chainAddresses.usdc
         : process.env.COLLATERAL_TOKEN_ADDRESS || process.env.NEXT_PUBLIC_USDC_ADDRESS) || "";
     return {
       chainId,

@@ -85,6 +85,14 @@ function maybeNonEmptyString(v: unknown): string | undefined {
   return s.length > 0 ? s : undefined;
 }
 
+function pickFirstNonEmptyString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (s) return s;
+  }
+  return undefined;
+}
+
 function maybeUrl(v: unknown): string | undefined {
   const s = maybeNonEmptyString(v);
   if (!s) return undefined;
@@ -143,7 +151,9 @@ const EnvSchema = z.object({
   BUNDLER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
   OPERATOR_PRIVATE_KEY: EthPrivateKeySchema.optional(),
   RELAYER_GASLESS_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
+  AA_ENABLED: BoolSchema.optional(),
   GASLESS_ENABLED: BoolSchema.optional(),
+  EMBEDDED_AUTH_ENABLED: BoolSchema.optional(),
   RELAYER_GASLESS_PAYMASTER_URL: z.string().url().optional(),
   RPC_URL: z.string().url().optional(),
   CHAIN_ID: z
@@ -166,12 +176,30 @@ const EnvSchema = z.object({
       z.number().int().positive()
     )
     .optional(),
-  NEXT_PUBLIC_PROXY_WALLET_TYPE: z.enum(["safe", "proxy"]).optional(),
+  NEXT_PUBLIC_PROXY_WALLET_TYPE: z.enum(["safe", "safe4337", "proxy"]).optional(),
   PROXY_WALLET_FACTORY_ADDRESS: EthAddressSchema.optional(),
   SAFE_FACTORY_ADDRESS: EthAddressSchema.optional(),
   SAFE_SINGLETON_ADDRESS: EthAddressSchema.optional(),
   SAFE_FALLBACK_HANDLER_ADDRESS: EthAddressSchema.optional(),
 });
+
+const DEFAULT_RPC_URLS: Record<number, string> = {
+  80002: "https://rpc-amoy.polygon.technology/",
+  137: "https://polygon-rpc.com",
+  11155111: "https://rpc.sepolia.org",
+};
+
+const preChainId = (() => {
+  const s = maybeIntString(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID);
+  if (!s) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Missing CHAIN_ID");
+    }
+    return 80002;
+  }
+  const n = s ? Number(s) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 80002;
+})();
 
 const rawEnv = {
   BUNDLER_PRIVATE_KEY: maybeEthPrivateKey(
@@ -181,10 +209,28 @@ const rawEnv = {
   RELAYER_GASLESS_SIGNER_PRIVATE_KEY: maybeEthPrivateKey(
     process.env.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
   ),
-  GASLESS_ENABLED: maybeBoolString(process.env.GASLESS_ENABLED),
+  AA_ENABLED: maybeBoolString(
+    process.env.AA_ENABLED || process.env.NEXT_PUBLIC_AA_ENABLED || process.env.aa_enabled
+  ),
+  GASLESS_ENABLED: maybeBoolString(
+    process.env.GASLESS_ENABLED || process.env.AA_ENABLED || process.env.NEXT_PUBLIC_AA_ENABLED
+  ),
+  EMBEDDED_AUTH_ENABLED: maybeBoolString(
+    process.env.EMBEDDED_AUTH_ENABLED ||
+      process.env.NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED ||
+      process.env.embedded_auth_enabled
+  ),
   RELAYER_GASLESS_PAYMASTER_URL: maybeUrl(process.env.RELAYER_GASLESS_PAYMASTER_URL),
-  RPC_URL: maybeUrl(process.env.RPC_URL),
-  CHAIN_ID: maybeIntString(process.env.CHAIN_ID),
+  RPC_URL: maybeUrl(
+    pickFirstNonEmptyString(
+      process.env.RPC_URL,
+      process.env.NEXT_PUBLIC_RPC_URL,
+      preChainId === 80002 ? process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY : undefined,
+      preChainId === 137 ? process.env.NEXT_PUBLIC_RPC_POLYGON : undefined,
+      preChainId === 11155111 ? process.env.NEXT_PUBLIC_RPC_SEPOLIA : undefined
+    )
+  ),
+  CHAIN_ID: maybeIntString(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID),
   RELAYER_LEADER_PROXY_URL: maybeUrl(process.env.RELAYER_LEADER_PROXY_URL),
   RELAYER_LEADER_URL: maybeUrl(process.env.RELAYER_LEADER_URL),
   RELAYER_PORT: maybeIntString(process.env.RELAYER_PORT),
@@ -193,7 +239,7 @@ const rawEnv = {
     const t = String(process.env.NEXT_PUBLIC_PROXY_WALLET_TYPE || "")
       .trim()
       .toLowerCase();
-    return t === "safe" || t === "proxy" ? (t as any) : undefined;
+    return t === "safe" || t === "safe4337" || t === "proxy" ? (t as any) : undefined;
   })(),
   PROXY_WALLET_FACTORY_ADDRESS: maybeEthAddress(process.env.PROXY_WALLET_FACTORY_ADDRESS),
   SAFE_FACTORY_ADDRESS: maybeEthAddress(process.env.SAFE_FACTORY_ADDRESS),
@@ -211,11 +257,20 @@ export const OPERATOR_PRIVATE_KEY = parsed.success ? parsed.data.OPERATOR_PRIVAT
 export const RELAYER_GASLESS_SIGNER_PRIVATE_KEY = parsed.success
   ? parsed.data.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
   : undefined;
-export const GASLESS_ENABLED = parsed.success ? (parsed.data.GASLESS_ENABLED ?? false) : false;
+export const AA_ENABLED = parsed.success ? (parsed.data.AA_ENABLED ?? false) : false;
+export const EMBEDDED_AUTH_ENABLED = parsed.success
+  ? (parsed.data.EMBEDDED_AUTH_ENABLED ?? false)
+  : false;
+export const GASLESS_ENABLED = (() => {
+  if (!parsed.success) return false;
+  const aa = Boolean(parsed.data.AA_ENABLED ?? false);
+  const gasless = Boolean(parsed.data.GASLESS_ENABLED ?? parsed.data.AA_ENABLED ?? false);
+  return aa && gasless;
+})();
 export const RELAYER_GASLESS_PAYMASTER_URL = parsed.success
   ? parsed.data.RELAYER_GASLESS_PAYMASTER_URL
   : undefined;
-export const CHAIN_ID = parsed.success ? parsed.data.CHAIN_ID : undefined;
+export const CHAIN_ID = parsed.success ? (parsed.data.CHAIN_ID ?? 80002) : 80002;
 export const RELAYER_LEADER_PROXY_URL = parsed.success
   ? parsed.data.RELAYER_LEADER_PROXY_URL
   : undefined;
@@ -233,8 +288,8 @@ export const SAFE_SINGLETON_ADDRESS = parsed.success
 export const SAFE_FALLBACK_HANDLER_ADDRESS = parsed.success
   ? parsed.data.SAFE_FALLBACK_HANDLER_ADDRESS
   : undefined;
-export const RPC_URL =
-  (parsed.success ? parsed.data.RPC_URL : undefined) || "http://127.0.0.1:8545";
+const DEFAULT_RPC_URL = DEFAULT_RPC_URLS[CHAIN_ID] || "http://127.0.0.1:8545";
+export const RPC_URL = (parsed.success ? parsed.data.RPC_URL : undefined) || DEFAULT_RPC_URL;
 export const RELAYER_PORT =
   (parsed.success ? (parsed.data.RELAYER_PORT ?? parsed.data.PORT) : undefined) ?? 3000;
 import express from "express";
@@ -1854,6 +1909,8 @@ const CancelV2Schema = z
     verifying_contract_address: z.string().optional(),
     contract: z.string().optional(),
     contractAddress: z.string().optional(),
+    ownerEoa: z.string().optional(),
+    owner_eoa: z.string().optional(),
     maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
     salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
     signature: HexDataSchema,
@@ -1873,6 +1930,7 @@ const CancelV2Schema = z
       v.contract ||
       v.contractAddress ||
       "",
+    ownerEoa: v.ownerEoa || v.owner_eoa,
     maker: v.maker,
     salt: v.salt,
     signature: v.signature,
@@ -1917,7 +1975,8 @@ app.post(
         parsed.verifyingContract,
         parsed.maker,
         parsed.salt,
-        parsed.signature
+        parsed.signature,
+        parsed.ownerEoa || undefined
       );
       if (!result.success) {
         const responseBody = sendApiError(req, res, 400, {
@@ -2390,7 +2449,7 @@ app.post(
 
       // 从环境变量获取 Operator 配置
       const operatorKey = process.env.OPERATOR_PRIVATE_KEY || process.env.BUNDLER_PRIVATE_KEY;
-      const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+      const rpcUrl = RPC_URL;
 
       if (!operatorKey) {
         return sendApiError(req, res, 500, {
@@ -3118,8 +3177,7 @@ if (process.env.NODE_ENV !== "test") {
     // 🚀 Phase 2: 初始化集群管理器 (需要 Redis)
     const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
     const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
-    const shouldInitReconciler =
-      reconciliationEnabled && !!process.env.RPC_URL && !!process.env.MARKET_ADDRESS;
+    const shouldInitReconciler = reconciliationEnabled && !!RPC_URL && !!process.env.MARKET_ADDRESS;
     let reconcilerStarted = false;
 
     const startReconciler = async () => {
@@ -3127,9 +3185,9 @@ if (process.env.NODE_ENV !== "test") {
       if (reconcilerStarted) return;
       try {
         await initChainReconciler({
-          rpcUrl: process.env.RPC_URL!,
+          rpcUrl: RPC_URL,
           marketAddress: process.env.MARKET_ADDRESS!,
-          chainId: Math.max(1, readIntEnv("CHAIN_ID", 80002)),
+          chainId: CHAIN_ID,
           intervalMs: Math.max(1000, readIntEnv("RECONCILIATION_INTERVAL_MS", 300000)),
           autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
         });
