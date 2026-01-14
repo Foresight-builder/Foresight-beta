@@ -19,6 +19,8 @@ export type TradeTabContentProps = {
   prediction: any;
   tTrading: (key: string) => string;
   tCommon: (key: string) => string;
+  tAuth: (key: string) => string;
+  tWallet: (key: string) => string;
   orderMode: "limit" | "best";
   setOrderMode: (m: "limit" | "best") => void;
   tif: "GTC" | "IOC" | "FOK";
@@ -64,6 +66,8 @@ export function TradeTabContent({
   prediction,
   tTrading,
   tCommon,
+  tAuth,
+  tWallet,
   orderMode,
   setOrderMode,
   tif,
@@ -218,6 +222,9 @@ export function TradeTabContent({
         currentOutcomeLabel={currentOutcomeLabel}
         orderMsg={orderMsg}
         tTrading={tTrading}
+        tCommon={tCommon}
+        tAuth={tAuth}
+        tWallet={tWallet}
       />
       {tradeSide === "sell" && (
         <MintRedeemPanel
@@ -1120,6 +1127,9 @@ type TradeSubmitSectionProps = {
   currentOutcomeLabel: string;
   orderMsg: string | null;
   tTrading: (key: string) => string;
+  tCommon: (key: string) => string;
+  tAuth: (key: string) => string;
+  tWallet: (key: string) => string;
 };
 
 function TradeSubmitSection({
@@ -1130,6 +1140,9 @@ function TradeSubmitSection({
   currentOutcomeLabel,
   orderMsg,
   tTrading,
+  tCommon,
+  tAuth,
+  tWallet,
 }: TradeSubmitSectionProps) {
   const positiveMessages = new Set([
     tTrading("orderFlow.filled"),
@@ -1142,6 +1155,64 @@ function TradeSubmitSection({
     tTrading("orderFlow.matchingInProgress"),
   ]);
   const isPositiveMsg = !!orderMsg && positiveMessages.has(orderMsg);
+  const walletRequiredMsg = tTrading("orderFlow.walletRequired");
+  const walletNotReadyMsg = tTrading("orderFlow.walletNotReady");
+  const sellNoBalanceMsg = tTrading("orderFlow.sellNoBalance");
+  const fetchPlanFailedMsg = tTrading("orderFlow.fetchPlanFailed");
+  const rpcTimeoutMsg = tTrading("orderFlow.rpcTimeout");
+  const tradeFailedMsg = tTrading("orderFlow.tradeFailed");
+  const insufficientFundsMsg = tTrading("orderFlow.insufficientFunds");
+  const invalidAmountMsg = tTrading("orderFlow.invalidAmount");
+  const invalidAmountPrecisionMsg = tTrading("orderFlow.invalidAmountPrecision");
+  const invalidPriceMsg = tTrading("orderFlow.invalidPrice");
+  const slippageTooHighMsg = tTrading("orderFlow.slippageTooHigh");
+  const insufficientLiquidityMsg = tTrading("orderFlow.insufficientLiquidity");
+  const noFillableOrdersMsg = tTrading("orderFlow.noFillableOrders");
+
+  const switchNetworkMsg = String(tTrading("orderFlow.switchNetwork") || "").replace(
+    "{chainId}",
+    String(market?.chain_id ?? "")
+  );
+
+  const needsWallet =
+    !!orderMsg && (orderMsg === walletRequiredMsg || orderMsg === walletNotReadyMsg);
+  const needsSwitchNetwork =
+    !!orderMsg &&
+    (orderMsg === switchNetworkMsg ||
+      (String(market?.chain_id || "") &&
+        orderMsg.includes("Chain ID") &&
+        orderMsg.includes(String(market?.chain_id || ""))));
+  const needsMint = !!orderMsg && orderMsg.includes(sellNoBalanceMsg);
+  const nonRetryMessages = new Set([
+    walletRequiredMsg,
+    walletNotReadyMsg,
+    switchNetworkMsg,
+    sellNoBalanceMsg,
+    insufficientFundsMsg,
+    invalidAmountMsg,
+    invalidAmountPrecisionMsg,
+    invalidPriceMsg,
+    slippageTooHighMsg,
+    insufficientLiquidityMsg,
+    noFillableOrdersMsg,
+  ]);
+  const shouldOfferRetry = !!orderMsg && !isPositiveMsg && !nonRetryMessages.has(orderMsg);
+
+  const openWalletModal = () => {
+    window.dispatchEvent(new CustomEvent("fs:open-wallet-modal"));
+  };
+
+  const requestSwitchNetwork = () => {
+    const chainIdNum = Number(market?.chain_id);
+    if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) return;
+    window.dispatchEvent(new CustomEvent("fs:switch-network", { detail: { chainId: chainIdNum } }));
+  };
+
+  const scrollToMint = () => {
+    const el = document.getElementById("mint-redeem-panel");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="space-y-3">
@@ -1162,15 +1233,62 @@ function TradeSubmitSection({
           : `${tradeSide === "buy" ? tTrading("buy") : tTrading("sell")} ${currentOutcomeLabel}`}
       </button>
       {orderMsg && (
-        <div
-          className={`text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 ${
-            isPositiveMsg
-              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-              : "bg-rose-50 text-rose-600 border border-rose-100"
-          }`}
-        >
-          <Info className="w-3.5 h-3.5" />
-          {orderMsg}
+        <div className="space-y-2">
+          <div
+            className={`text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 ${
+              isPositiveMsg
+                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : "bg-rose-50 text-rose-600 border border-rose-100"
+            }`}
+          >
+            <Info className="w-3.5 h-3.5" />
+            {orderMsg}
+          </div>
+
+          {!isPositiveMsg &&
+            (needsWallet || needsSwitchNetwork || needsMint || shouldOfferRetry) && (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {needsWallet && (
+                  <button
+                    type="button"
+                    onClick={openWalletModal}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    {tAuth("connectWallet")}
+                  </button>
+                )}
+                {needsSwitchNetwork && (
+                  <button
+                    type="button"
+                    onClick={requestSwitchNetwork}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    {tWallet("switchNetwork")}
+                  </button>
+                )}
+                {needsMint && (
+                  <button
+                    type="button"
+                    onClick={scrollToMint}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                    {tTrading("mintPanel.mint")}
+                  </button>
+                )}
+                {shouldOfferRetry && (
+                  <button
+                    type="button"
+                    onClick={submitOrder}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                  >
+                    {tCommon("retry")}
+                  </button>
+                )}
+              </div>
+            )}
         </div>
       )}
     </div>
@@ -1193,7 +1311,7 @@ function MintRedeemPanel({
   tTrading,
 }: MintRedeemPanelProps) {
   return (
-    <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
+    <div id="mint-redeem-panel" className="border-t border-dashed border-gray-200 pt-4 mt-2">
       <div className="bg-purple-50/50 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-purple-800 uppercase tracking-wider">

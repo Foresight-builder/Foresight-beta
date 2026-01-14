@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { MarketInfo } from "../_lib/marketTypes";
 import { useSettlementStatus } from "../_lib/hooks/useSettlementStatus";
@@ -21,11 +21,58 @@ export function SettlementPanel({ market, outcomes }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assertOutcomeIndex, setAssertOutcomeIndex] = useState(0);
   const [assertClaim, setAssertClaim] = useState("");
+  const [claimMode, setClaimMode] = useState<"template" | "custom">("template");
+  const [claimTemplateId, setClaimTemplateId] = useState<string>("simple");
+  const [evidence, setEvidence] = useState<string>("");
+  const [activeStep, setActiveStep] = useState<"assert" | "oracle" | "resolve">("assert");
 
   const now = Math.floor(Date.now() / 1000);
   const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000";
   const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
   const assertionId = status?.assertionId;
+
+  const outcomeLabel = useMemo(() => {
+    const o = outcomes?.[assertOutcomeIndex];
+    return String(o?.label || `Outcome ${assertOutcomeIndex}`);
+  }, [assertOutcomeIndex, outcomes]);
+
+  const claimTemplates = useMemo(() => {
+    const marketAddress = String(market.market || "");
+    const chainId = String(market.chain_id || "");
+    const safeEvidence = evidence.trim();
+    const ev = safeEvidence ? ` Evidence: ${safeEvidence}` : "";
+
+    return [
+      {
+        id: "simple",
+        label: "Simple",
+        build: () =>
+          `I assert that the correct outcome for market ${marketAddress} on chain ${chainId} is "${outcomeLabel}".${ev}`,
+      },
+      {
+        id: "with_source",
+        label: "With source link",
+        build: () =>
+          `I assert outcome "${outcomeLabel}" for market ${marketAddress} on chain ${chainId}. Source: ${safeEvidence || "[paste link]"}`.trim(),
+      },
+      {
+        id: "with_timestamp",
+        label: "With timestamp",
+        build: () =>
+          `I assert outcome "${outcomeLabel}" for market ${marketAddress} on chain ${chainId} as of ${new Date().toISOString()}.${ev}`,
+      },
+    ];
+  }, [evidence, market.chain_id, market.market, outcomeLabel]);
+
+  const selectedTemplate = useMemo(() => {
+    return claimTemplates.find((t) => t.id === claimTemplateId) || claimTemplates[0];
+  }, [claimTemplateId, claimTemplates]);
+
+  useEffect(() => {
+    if (claimMode !== "template") return;
+    const next = selectedTemplate?.build?.() || "";
+    setAssertClaim(next);
+  }, [claimMode, selectedTemplate]);
 
   const umaUrl = useMemo(() => {
     if (!assertionId || assertionId === ZERO_HASH) return null;
@@ -39,28 +86,29 @@ export function SettlementPanel({ market, outcomes }: Props) {
     }
   }, [assertionId, market.chain_id]);
 
-  if (!status && loading)
-    return (
-      <div className="p-4 flex justify-center">
-        <Loader2 className="animate-spin text-slate-400" />
-      </div>
-    );
-  if (!status) return null;
-
-  const isExpired = now >= status.resolutionTime;
-  const hasAssertion = status.assertionId && status.assertionId !== ZERO_HASH;
+  const statusValue = status as any;
+  const resolutionTimeNum = Number(statusValue?.resolutionTime || 0);
+  const isExpired = !!statusValue && now >= resolutionTimeNum;
+  const hasAssertion =
+    !!statusValue && statusValue?.assertionId && statusValue?.assertionId !== ZERO_HASH;
+  const oracleStatusNum = Number(statusValue?.oracleStatus ?? -1);
+  const marketStateNum = Number(statusValue?.marketState ?? -1);
 
   const isDisputed =
-    status.umaDisputer != null &&
-    status.umaDisputer !== "" &&
-    status.umaDisputer.toLowerCase() !== ZERO_ADDRESS;
-  const isUmaSettled = status.umaAssertionSettled === true;
-  const isDisputePending = status.oracleStatus === 1 && isDisputed && !isUmaSettled;
+    !!statusValue &&
+    statusValue?.umaDisputer != null &&
+    statusValue?.umaDisputer !== "" &&
+    String(statusValue?.umaDisputer).toLowerCase() !== ZERO_ADDRESS;
+  const isUmaSettled = statusValue?.umaAssertionSettled === true;
+  const isDisputePending = oracleStatusNum === 1 && isDisputed && !isUmaSettled;
 
   const timeLeft =
-    status.challengeEndTime != null ? Math.max(0, status.challengeEndTime - now) : null;
+    statusValue?.challengeEndTime != null
+      ? Math.max(0, Number(statusValue.challengeEndTime) - now)
+      : null;
   const canSettle =
-    !isDisputePending && (status.challengeEndTime != null ? now >= status.challengeEndTime : true);
+    !isDisputePending &&
+    (statusValue?.challengeEndTime != null ? now >= Number(statusValue.challengeEndTime) : true);
 
   const formatDuration = (seconds: number) => {
     const s = Math.max(0, Math.floor(seconds));
@@ -77,6 +125,34 @@ export function SettlementPanel({ market, outcomes }: Props) {
     return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
   };
 
+  const recommendedStep: "assert" | "oracle" | "resolve" = (() => {
+    if (marketStateNum === 0 && isExpired && oracleStatusNum === 0) return "assert";
+    if (oracleStatusNum === 1) return "oracle";
+    if (marketStateNum === 0 && (oracleStatusNum === 2 || oracleStatusNum === 3)) {
+      return "resolve";
+    }
+    return "oracle";
+  })();
+
+  useEffect(() => {
+    if (!statusValue) return;
+    setActiveStep((prev) => {
+      if (prev === recommendedStep) return prev;
+      if (recommendedStep === "resolve") return "resolve";
+      if (recommendedStep === "oracle" && prev === "assert") return "oracle";
+      if (recommendedStep === "assert") return "assert";
+      return prev;
+    });
+  }, [recommendedStep, statusValue]);
+
+  if (!status && loading)
+    return (
+      <div className="p-4 flex justify-center">
+        <Loader2 className="animate-spin text-slate-400" />
+      </div>
+    );
+  if (!status) return null;
+
   // Actions
   const handleAssert = async () => {
     if (!account || !provider) return;
@@ -91,7 +167,6 @@ export function SettlementPanel({ market, outcomes }: Props) {
         switchNetwork,
         setMsg,
       });
-      setMsg(null);
     } catch (e: any) {
       console.error(e);
       setMsg(e.reason || e.message || "Transaction failed");
@@ -111,7 +186,6 @@ export function SettlementPanel({ market, outcomes }: Props) {
         switchNetwork,
         setMsg,
       });
-      setMsg(null);
     } catch (e: any) {
       console.error(e);
       setMsg(e.reason || e.message || "Transaction failed");
@@ -131,7 +205,6 @@ export function SettlementPanel({ market, outcomes }: Props) {
         switchNetwork,
         setMsg,
       });
-      setMsg(null);
     } catch (e: any) {
       console.error(e);
       setMsg(e.reason || e.message || "Transaction failed");
@@ -214,12 +287,49 @@ export function SettlementPanel({ market, outcomes }: Props) {
       {/* Logic for buttons */}
       <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
         {/* 1. Assert Outcome */}
-        {status.marketState === 0 && isExpired && status.oracleStatus === 0 && (
+        {status.marketState === 0 && isExpired && oracleStatusNum === 0 && (
           <div className="space-y-3">
             <p className="text-sm text-slate-600 dark:text-slate-400">
               The market has expired. You can now assert the outcome to start the settlement
               process.
             </p>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveStep("assert")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "assert"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                1. Assert
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("oracle")}
+                disabled={!hasAssertion}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                  activeStep === "oracle"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                2. Oracle
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("resolve")}
+                disabled
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                  activeStep === "resolve"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                3. Resolve
+              </button>
+            </div>
             <div className="flex gap-2 flex-col sm:flex-row">
               <select
                 className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -234,15 +344,53 @@ export function SettlementPanel({ market, outcomes }: Props) {
               </select>
               <input
                 type="text"
-                placeholder="Supporting evidence (url, text)"
+                placeholder="Evidence (url, text)"
                 className="flex-[2] rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
-                value={assertClaim}
-                onChange={(e) => setAssertClaim(e.target.value)}
+                value={evidence}
+                onChange={(e) => {
+                  setEvidence(e.target.value);
+                  setClaimMode("template");
+                }}
               />
             </div>
+            <div className="flex gap-2 flex-col sm:flex-row">
+              <select
+                className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={claimTemplateId}
+                onChange={(e) => {
+                  setClaimMode("template");
+                  setClaimTemplateId(e.target.value);
+                }}
+              >
+                {claimTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setClaimMode("template");
+                  setAssertClaim(selectedTemplate?.build?.() || "");
+                }}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Regenerate
+              </button>
+            </div>
+            <textarea
+              rows={4}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={assertClaim}
+              onChange={(e) => {
+                setClaimMode("custom");
+                setAssertClaim(e.target.value);
+              }}
+            />
             <button
               onClick={handleAssert}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !account || !provider || !assertClaim.trim()}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               Assert Outcome
@@ -251,8 +399,44 @@ export function SettlementPanel({ market, outcomes }: Props) {
         )}
 
         {/* 2. Settle Oracle */}
-        {status.oracleStatus === 1 && (
+        {oracleStatusNum === 1 && (
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveStep("assert")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "assert"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                1. Assert
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("oracle")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "oracle"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                2. Oracle
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("resolve")}
+                disabled
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                  activeStep === "resolve"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                3. Resolve
+              </button>
+            </div>
             {isDisputePending ? (
               <div className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/20 p-3 text-sm text-rose-900 dark:text-rose-200 flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 mt-0.5" />
@@ -320,7 +504,7 @@ export function SettlementPanel({ market, outcomes }: Props) {
 
             <button
               onClick={handleSettleOracle}
-              disabled={isSubmitting || !canSettle}
+              disabled={isSubmitting || !canSettle || !account || !provider}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               {isDisputePending ? "Waiting for UMA resolution" : "Settle Oracle"}
@@ -337,15 +521,50 @@ export function SettlementPanel({ market, outcomes }: Props) {
         )}
 
         {/* 3. Resolve Market */}
-        {status.marketState === 0 && (status.oracleStatus === 2 || status.oracleStatus === 3) && (
+        {status.marketState === 0 && (oracleStatusNum === 2 || oracleStatusNum === 3) && (
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveStep("assert")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "assert"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                1. Assert
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("oracle")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "oracle"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                2. Oracle
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveStep("resolve")}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activeStep === "resolve"
+                    ? "border-indigo-500 text-slate-900 dark:text-slate-100 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                3. Resolve
+              </button>
+            </div>
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Oracle has finalized the outcome. You can now resolve the market to enable
               redemptions.
             </p>
             <button
               onClick={handleResolveMarket}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !account || !provider}
               className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               Resolve Market

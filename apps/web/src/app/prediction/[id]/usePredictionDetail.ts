@@ -327,16 +327,80 @@ export function usePredictionDetail() {
     });
   };
 
+  const createUserError = useCallback((message: string) => {
+    const err: any = new Error(message);
+    err.__fsUser = true;
+    return err;
+  }, []);
+
+  const getErrorMeta = useCallback((e: any) => {
+    const code =
+      typeof e?.code === "string"
+        ? String(e.code)
+        : typeof e?.error?.code === "string"
+          ? String(e.error.code)
+          : "";
+
+    const candidates = [
+      typeof e?.shortMessage === "string" ? e.shortMessage : "",
+      typeof e?.reason === "string" ? e.reason : "",
+      typeof e?.info?.error?.message === "string" ? e.info.error.message : "",
+      typeof e?.error?.message === "string" ? e.error.message : "",
+      typeof e?.message === "string" ? e.message : "",
+    ]
+      .map((s) => String(s || "").trim())
+      .filter(Boolean);
+
+    const rawMessage = candidates[0] || "";
+    const isUser = !!e?.__fsUser;
+
+    return { code, rawMessage, isUser };
+  }, []);
+
   const handleOrderError = useCallback(
     (e: any) => {
-      let msg = e?.message || tTrading("orderFlow.tradeFailed");
+      const meta = getErrorMeta(e);
+      const lower = meta.rawMessage.toLowerCase();
+
+      const looksRejected =
+        meta.code === "ACTION_REJECTED" ||
+        lower.includes("user rejected") ||
+        lower.includes("user denied") ||
+        lower.includes("rejected the request") ||
+        lower.includes("request rejected") ||
+        lower.includes("denied");
+
+      const looksInsufficientFunds =
+        meta.code === "INSUFFICIENT_FUNDS" ||
+        lower.includes("insufficient funds") ||
+        lower.includes("insufficient balance") ||
+        lower.includes("insufficient") ||
+        lower.includes("balance too low");
+
+      const looksTimeout =
+        meta.code === "TIMEOUT" ||
+        meta.code === "NETWORK_ERROR" ||
+        lower.includes("timeout") ||
+        lower.includes("timed out") ||
+        lower.includes("failed to fetch") ||
+        lower.includes("network error");
+
+      let msg =
+        meta.rawMessage ||
+        (looksRejected
+          ? tTrading("orderFlow.userRejected")
+          : looksInsufficientFunds
+            ? tTrading("orderFlow.insufficientFunds")
+            : looksTimeout
+              ? tTrading("orderFlow.rpcTimeout")
+              : tTrading("orderFlow.tradeFailed"));
+
       if (tradeSide === "sell") {
-        const lower = msg.toLowerCase();
         const looksLikeNoBalance =
-          lower.includes("insufficient") ||
-          lower.includes("balance") ||
+          looksInsufficientFunds ||
           lower.includes("no tokens") ||
-          lower.includes("not enough");
+          lower.includes("not enough") ||
+          lower.includes("balance");
         if (looksLikeNoBalance) {
           msg = tTrading("orderFlow.sellNoBalance");
         } else {
@@ -344,9 +408,20 @@ export function usePredictionDetail() {
         }
       }
       setOrderMsg(msg);
+
+      if (looksRejected) {
+        toast.info(msg);
+        return;
+      }
+
+      if (meta.isUser) {
+        toast.warning(msg);
+        return;
+      }
+
       toast.error(tTrading("toast.orderFailedTitle"), msg || tTrading("toast.orderFailedDesc"));
     },
-    [tTrading, tradeSide]
+    [getErrorMeta, tTrading, tradeSide]
   );
 
   const submitOrder = async () => {
@@ -355,18 +430,20 @@ export function usePredictionDetail() {
     setOrderMsg(null);
 
     try {
-      if (!market) throw new Error(tTrading("orderFlow.marketNotLoaded"));
-      if (!account) throw new Error(tTrading("orderFlow.walletRequired"));
-      if (!walletProvider) throw new Error(tTrading("orderFlow.walletNotReady"));
+      if (!market) throw createUserError(tTrading("orderFlow.marketNotLoaded"));
+      if (!account) throw createUserError(tTrading("orderFlow.walletRequired"));
+      if (!walletProvider) throw createUserError(tTrading("orderFlow.walletNotReady"));
 
       const amountVal = parseFloat(amountInput);
-      if (isNaN(amountVal) || amountVal <= 0) throw new Error(tTrading("orderFlow.invalidAmount"));
+      if (isNaN(amountVal) || amountVal <= 0) {
+        throw createUserError(tTrading("orderFlow.invalidAmount"));
+      }
       // shares are 1e18
       const amountBN = parseUnitsByDecimals(amountInput, 18);
-      if (amountBN <= 0n) throw new Error(tTrading("orderFlow.invalidAmount"));
+      if (amountBN <= 0n) throw createUserError(tTrading("orderFlow.invalidAmount"));
       // enforce max 6 decimals on shares (so on-chain USDC conversions are exact)
       if (amountBN % 1_000_000_000_000n !== 0n) {
-        throw new Error(tTrading("orderFlow.invalidAmountPrecision"));
+        throw createUserError(tTrading("orderFlow.invalidAmountPrecision"));
       }
 
       let priceBN: bigint | null = null;
@@ -374,7 +451,7 @@ export function usePredictionDetail() {
       if (orderMode === "limit") {
         priceFloat = parseFloat(priceInput);
         if (isNaN(priceFloat) || priceFloat <= 0 || priceFloat >= 1) {
-          throw new Error(tTrading("orderFlow.invalidPrice"));
+          throw createUserError(tTrading("orderFlow.invalidPrice"));
         }
       }
 
@@ -382,7 +459,7 @@ export function usePredictionDetail() {
       try {
         await ensureNetwork(provider, market.chain_id, switchNetwork);
       } catch (e: any) {
-        throw new Error(
+        throw createUserError(
           formatTranslation(tTrading("orderFlow.switchNetwork"), {
             chainId: market.chain_id,
           })
@@ -414,7 +491,7 @@ export function usePredictionDetail() {
         }
         const plan = planJson.data as any;
         const filledBN = BigInt(String(plan.filledAmount || "0"));
-        if (filledBN === 0n) throw new Error(tTrading("orderFlow.insufficientLiquidity"));
+        if (filledBN === 0n) throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
 
         const totalCostBN = BigInt(String(plan.total || "0"));
         const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
@@ -445,7 +522,7 @@ export function usePredictionDetail() {
 
         const slippagePercent = (slippageBpsNum || 0) / 100;
         if (slippagePercent > maxSlippage) {
-          throw new Error(tTrading("orderFlow.slippageTooHigh"));
+          throw createUserError(tTrading("orderFlow.slippageTooHigh"));
         }
 
         const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
@@ -514,7 +591,9 @@ export function usePredictionDetail() {
                 fillArr.push(fillAmount);
               }
 
-              if (ordersArr.length === 0) throw new Error(tTrading("orderFlow.noFillableOrders"));
+              if (ordersArr.length === 0) {
+                throw createUserError(tTrading("orderFlow.noFillableOrders"));
+              }
               setOrderMsg(
                 formatTranslation(tTrading("orderFlow.matchingInProgress"), {
                   count: ordersArr.length,

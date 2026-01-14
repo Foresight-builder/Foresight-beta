@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { verifyToken } from "./jwt";
 import { normalizeAddress } from "./address";
+import { getSession } from "./session";
 import { getClient } from "./supabase";
 
 export { normalizeAddress } from "./address";
@@ -27,67 +27,9 @@ export type LogItem = {
 };
 
 export async function getSessionAddress(req: NextRequest) {
-  const sessionToken = req.cookies.get("fs_session")?.value || "";
-  if (sessionToken) {
-    const payload = await verifyToken(sessionToken);
-    if (payload?.address) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
-      if (sid) {
-        try {
-          const client = getClient();
-          if (client) {
-            const { data, error } = await (client as any)
-              .from("user_sessions")
-              .select("revoked_at")
-              .eq("wallet_address", String(payload.address).toLowerCase())
-              .eq("session_id", sid)
-              .maybeSingle();
-            if (error) {
-              const msg = String((error as any)?.message || "").toLowerCase();
-              if (!(msg.includes("relation") && msg.includes("does not exist"))) {
-                return "";
-              }
-            } else if (data && (data as any).revoked_at) {
-              return "";
-            }
-          }
-        } catch {}
-      }
-      return normalizeAddress(String(payload.address));
-    }
-  }
-
-  const refreshToken = req.cookies.get("fs_refresh")?.value || "";
-  if (refreshToken) {
-    const payload = await verifyToken(refreshToken);
-    if (payload?.address) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
-      if (sid) {
-        try {
-          const client = getClient();
-          if (client) {
-            const { data, error } = await (client as any)
-              .from("user_sessions")
-              .select("revoked_at")
-              .eq("wallet_address", String(payload.address).toLowerCase())
-              .eq("session_id", sid)
-              .maybeSingle();
-            if (error) {
-              const msg = String((error as any)?.message || "").toLowerCase();
-              if (!(msg.includes("relation") && msg.includes("does not exist"))) {
-                return "";
-              }
-            } else if (data && (data as any).revoked_at) {
-              return "";
-            }
-          }
-        } catch {}
-      }
-      return normalizeAddress(String(payload.address));
-    }
-  }
-
-  return "";
+  const session = await getSession(req);
+  const address = typeof session?.address === "string" ? normalizeAddress(session.address) : "";
+  return address || "";
 }
 
 export function getEmailOtpShared() {

@@ -82,6 +82,30 @@ export function useTopNavBarLogic() {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+
+    const openWalletModal = () => {
+      setWalletModalOpen(true);
+      setMenuOpen(false);
+      setWalletSelectorOpen(false);
+    };
+
+    const switchToChain = (ev: Event) => {
+      const detail = (ev as CustomEvent)?.detail as any;
+      const chainIdNum = Number(detail?.chainId);
+      if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) return;
+      void switchNetwork(chainIdNum);
+    };
+
+    window.addEventListener("fs:open-wallet-modal", openWalletModal);
+    window.addEventListener("fs:switch-network", switchToChain as EventListener);
+    return () => {
+      window.removeEventListener("fs:open-wallet-modal", openWalletModal);
+      window.removeEventListener("fs:switch-network", switchToChain as EventListener);
+    };
+  }, [mounted, switchNetwork]);
+
+  useEffect(() => {
     const prev = prevUserIdRef.current;
     const curr = user?.id ?? null;
     if (walletModalOpen && !prev && curr) {

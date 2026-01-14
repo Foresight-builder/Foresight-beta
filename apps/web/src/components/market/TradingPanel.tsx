@@ -124,6 +124,8 @@ export function TradingPanel(props: TradingPanelProps) {
   const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "history">("trade");
   const tTrading = useTranslations("trading");
   const tCommon = useTranslations("common");
+  const tAuth = useTranslations("auth");
+  const tWallet = useTranslations("wallet");
 
   const decodePrice = (p: string) => {
     try {
@@ -379,6 +381,8 @@ export function TradingPanel(props: TradingPanelProps) {
             prediction={prediction}
             tTrading={tTrading}
             tCommon={tCommon}
+            tAuth={tAuth}
+            tWallet={tWallet}
             orderMode={orderMode}
             setOrderMode={setOrderMode}
             tif={tif}

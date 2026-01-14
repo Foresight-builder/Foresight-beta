@@ -165,6 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setError(null);
     try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    try {
       await fetch("/api/siwe/logout", { method: "POST" });
     } catch {}
     setUser(null);

@@ -197,9 +197,6 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
           onClick={async () => {
             await signOut();
             await disconnectWallet();
-            try {
-              await fetch("/api/siwe/logout", { method: "GET" });
-            } catch {}
           }}
           className="px-3 py-1.5 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200"
         >
