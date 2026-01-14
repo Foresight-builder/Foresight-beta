@@ -26,6 +26,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     // ═══════════════════════════════════════════════════════════════════════
 
     bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     uint256 private constant MAX_FEE_BPS = 10000;
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -73,6 +74,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     bool public enforceOracleAllowlist;
     bool public requireContractCollateral;
     bool public requireContractOracle;
+    bool public paused;
 
     // ═══════════════════════════════════════════════════════════════════════
     // EVENTS
@@ -95,6 +97,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     event OracleAllowlistUpdated(address indexed oracle, bool allowed);
     event AllowlistEnforcementUpdated(bool enforceCollateral, bool enforceOracle);
     event ContractRequirementUpdated(bool requireCollateralContract, bool requireOracleContract);
+    event Paused(address indexed account);
+    event Unpaused(address indexed account);
 
     // ═══════════════════════════════════════════════════════════════════════
     // ERRORS
@@ -108,10 +112,29 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     error OracleNotAllowed();
     error NotAContract();
     error OracleRegistrationFailed();
+    error MarketPaused();
+    error NotPaused();
+    error NotAuthorized();
 
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZER
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenNotPaused() {
+        if (paused) revert MarketPaused();
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPaused() {
+        if (!paused) revert NotPaused();
+        _;
+    }
 
     function initialize(address admin, address _umaOracle) public initializer {
         __AccessControl_init();
@@ -121,7 +144,50 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         if (_umaOracle == address(0)) revert ZeroAddress();
         
         _grantRole(ADMIN_ROLE, admin);
+        _grantRole(EMERGENCY_ROLE, admin); // Initially grant emergency role to admin
         umaOracle = _umaOracle;
+        paused = false;
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     * Requirements:
+     * - The caller must have the EMERGENCY_ROLE or ADMIN_ROLE.
+     */
+    function pause() external {
+        if (!hasRole(EMERGENCY_ROLE, msg.sender) && !hasRole(ADMIN_ROLE, msg.sender)) {
+            revert NotAuthorized();
+        }
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Requirements:
+     * - The caller must have the ADMIN_ROLE.
+     */
+    function unpause() external onlyRole(ADMIN_ROLE) whenPaused {
+        _unpause();
+    }
+
+    /**
+     * @dev Internal function to pause the contract.
+     */
+    function _pause() internal {
+        if (!paused) {
+            paused = true;
+            emit Paused(msg.sender);
+        }
+    }
+
+    /**
+     * @dev Internal function to unpause the contract.
+     */
+    function _unpause() internal {
+        if (paused) {
+            paused = false;
+            emit Unpaused(msg.sender);
+        }
     }
 
     function _authorizeUpgrade(address) internal override onlyRole(ADMIN_ROLE) {}
@@ -206,7 +272,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 _feeBps,
         uint256 resolutionTime,
         bytes calldata data
-    ) external returns (address market, uint256 marketId) {
+    ) external whenNotPaused returns (address market, uint256 marketId) {
         return createMarket(templateId, collateralToken, address(0), _feeBps, resolutionTime, data);
     }
 
@@ -218,7 +284,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 _feeBps,
         uint256 resolutionTime,
         bytes calldata data
-    ) public returns (address market, uint256 marketId) {
+    ) public whenNotPaused returns (address market, uint256 marketId) {
         // Cache storage reads
         Template memory t = templates[templateId];
         if (!t.exists) revert TemplateNotFound();

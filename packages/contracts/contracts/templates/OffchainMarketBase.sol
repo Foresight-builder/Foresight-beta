@@ -168,17 +168,52 @@ abstract contract OffchainMarketBase is
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ACCESS CONTROL EXTENSIONS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// @dev Checks if the caller has emergency access (EMERGENCY_ROLE, factory, or creator)
+    function _hasEmergencyAccess() internal view returns (bool) {
+        // For now, reuse onlyFactoryOrCreator logic
+        // TODO: Add EMERGENCY_ROLE support when AccessControl is added to market contracts
+        return msg.sender == factory || msg.sender == creator;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // CIRCUIT BREAKER
     // ═══════════════════════════════════════════════════════════════════════
 
-    function pause() external onlyFactoryOrCreator {
+    /**
+     * @dev Triggers stopped state.
+     * Requirements:
+     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     */
+    function pause() external {
+        if (!_hasEmergencyAccess()) revert NotAuthorized();
         paused = true;
         emit Paused(msg.sender);
     }
 
-    function unpause() external onlyFactoryOrCreator {
+    /**
+     * @dev Returns to normal state.
+     * Requirements:
+     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     */
+    function unpause() external {
+        if (!_hasEmergencyAccess()) revert NotAuthorized();
         paused = false;
         emit Unpaused(msg.sender);
+    }
+
+    /**
+     * @dev Emergency function to invalidate the market.
+     * Requirements:
+     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     */
+    function emergencyInvalidate() external {
+        if (!_hasEmergencyAccess()) revert NotAuthorized();
+        if (state != State.TRADING) revert InvalidState();
+        state = State.INVALID;
+        emit Invalidated();
     }
 
     // ═══════════════════════════════════════════════════════════════════════

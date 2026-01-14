@@ -1,0 +1,13 @@
+{
+  "network": "localhost",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "outcomeToken1155": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
+  "marketFactory": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+  "umaOracleAdapterV2": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+  "manualOracle": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
+  "lpFeeStaking": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+  "offchainBinaryTemplate": "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E",
+  "offchainMultiTemplate": "0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690",
+  "createdMarket": "0xe73bc5BD4763A3307AB5F8F126634b7E12E3dA9b",
+  "timestamp": "2026-01-14T18:07:20.705Z"
+}

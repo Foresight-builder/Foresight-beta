@@ -29,6 +29,10 @@ import {
   createOrderbookReadinessChecker,
   createWriteProxyReadinessChecker,
 } from "./monitoring/health.js";
+import {
+  initContractEventListener,
+  closeContractEventListener,
+} from "./monitoring/contractEvents.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
 import { closeRateLimiter } from "./ratelimit/index.js";
@@ -258,6 +262,11 @@ import {
   MetaTransactionHandler,
   type MetaTransactionRequest,
 } from "./settlement/metaTransaction.js";
+
+// 导入合约ABI
+import MarketFactoryABI from "./abi/MarketFactory.json" with { type: "json" };
+import OffchainMarketBaseABI from "./abi/OffchainMarketBase.json" with { type: "json" };
+import OutcomeToken1155ABI from "./abi/OutcomeToken1155.json" with { type: "json" };
 
 export const app = express();
 const trustProxyHops = Math.max(0, readIntEnv("RELAYER_TRUST_PROXY_HOPS", 0));
@@ -1052,10 +1061,62 @@ try {
   bundlerWallet = null;
 }
 
+// 初始化合约事件监听器
+async function initContractListener() {
+  try {
+    const marketFactoryAddress = process.env.MARKET_FACTORY_ADDRESS;
+    if (!marketFactoryAddress) {
+      logger.warn("MARKET_FACTORY_ADDRESS 未配置，跳过合约事件监听器初始化");
+      return;
+    }
+
+    await initContractEventListener({
+      marketFactoryAddress,
+      marketFactoryAbi: MarketFactoryABI,
+      offchainMarketAbi: OffchainMarketBaseABI,
+      outcomeTokenAbi: OutcomeToken1155ABI,
+    });
+
+    logger.info("合约事件监听器初始化成功");
+  } catch (error) {
+    logger.error("合约事件监听器初始化失败", {
+      error: String(error),
+    });
+  }
+}
+
+// 启动服务
+async function startServer() {
+  // 初始化合约事件监听器
+  await initContractListener();
+
+  // 启动HTTP服务器
+  app.listen(PORT, () => {
+    logger.info(`Relayer server listening on port ${PORT}`);
+    console.log(`🚀 Relayer server listening on http://localhost:${PORT}`);
+  });
+}
+
+// 处理优雅关闭
+process.on("SIGINT", async () => {
+  logger.info("收到 SIGINT 信号，正在关闭服务...");
+  await closeContractEventListener();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  logger.info("收到 SIGTERM 信号，正在关闭服务...");
+  await closeContractEventListener();
+  process.exit(0);
+});
+
 app.get("/", (_req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.send("Foresight Relayer is running!");
 });
+
+// 启动服务
+startServer();
 
 app.post("/", async (req, res) => {
   try {

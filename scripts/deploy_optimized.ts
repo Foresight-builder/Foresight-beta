@@ -13,7 +13,7 @@ async function main() {
   const network = await hre.ethers.provider.getNetwork();
   const chainId = Number(network.chainId);
   const env = process.env;
-  const collateralTokenAddress =
+  let collateralTokenAddress =
     env.COLLATERAL_TOKEN_ADDRESS ||
     (chainId === 137 ? env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON : "") ||
     (chainId === 80002 ? env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY : "") ||
@@ -26,16 +26,34 @@ async function main() {
     env.USDC_ADDRESS ||
     env.NEXT_PUBLIC_USDC_ADDRESS ||
     "";
-  if (!collateralTokenAddress) {
+
+  // Deploy test USDC for localhost network
+  if (!collateralTokenAddress && chainId === 1337) {
+    console.log("Deploying test USDC token for localhost...");
+    const MockERC20 = await hre.ethers.getContractFactory("MockERC20");
+    const testUSDC = await MockERC20.deploy("USD Coin", "USDC");
+    await testUSDC.waitForDeployment();
+    collateralTokenAddress = await testUSDC.getAddress();
+    console.log(`Test USDC deployed to: ${collateralTokenAddress}`);
+  } else if (!collateralTokenAddress) {
     throw new Error(
       `Missing USDC collateral address for chainId ${chainId}. Set COLLATERAL_TOKEN_ADDRESS or USDC_ADDRESS_*.`
     );
   }
 
   // UMA OOv3
-  const UMA_OO_V3_ADDRESS =
+  let UMA_OO_V3_ADDRESS =
     env.UMA_OO_V3_ADDRESS || env.UMA_OPTIMISTIC_ORACLE_ADDRESS || env.ORACLE_ADDRESS || "";
-  if (!UMA_OO_V3_ADDRESS) {
+
+  // Deploy mock UMA Oracle for localhost network
+  if (!UMA_OO_V3_ADDRESS && chainId === 1337) {
+    console.log("Deploying mock OptimisticOracleV3 for localhost...");
+    const MockOptimisticOracleV3 = await hre.ethers.getContractFactory("MockOptimisticOracleV3");
+    const mockOracle = await MockOptimisticOracleV3.deploy();
+    await mockOracle.waitForDeployment();
+    UMA_OO_V3_ADDRESS = await mockOracle.getAddress();
+    console.log(`Mock OptimisticOracleV3 deployed to: ${UMA_OO_V3_ADDRESS}`);
+  } else if (!UMA_OO_V3_ADDRESS) {
     throw new Error("Missing UMA_OO_V3_ADDRESS env (UMA Optimistic Oracle V3 address).");
   }
 
@@ -79,22 +97,60 @@ async function main() {
   const binaryMarketTemplateAddress = await binaryTemplate.getAddress();
   console.log(`OffchainBinaryMarket template deployed to: ${binaryMarketTemplateAddress}`);
 
-  // 5. Register template
-  const templateId = hre.ethers.id("OFFCHAIN_BINARY_V1");
+  // 5. Deploy OffchainMultiMarket8 template for testing multi-outcome markets
+  console.log("\nDeploying additional templates for testing...");
+  const OffchainMultiMarket8 = await hre.ethers.getContractFactory("OffchainMultiMarket8");
+  const multiTemplate = await OffchainMultiMarket8.deploy();
+  await multiTemplate.waitForDeployment();
+  const multiMarketTemplateAddress = await multiTemplate.getAddress();
+  console.log(`OffchainMultiMarket8 template deployed to: ${multiMarketTemplateAddress}`);
+
+  // 6. Deploy ManualOracle for easy testing
+  const ManualOracle = await hre.ethers.getContractFactory("ManualOracle");
+  const manualOracle = await ManualOracle.deploy(deployerAddress);
+  await manualOracle.waitForDeployment();
+  const manualOracleAddress = await manualOracle.getAddress();
+  console.log(`ManualOracle deployed to: ${manualOracleAddress}`);
+
+  // 7. Deploy LPFeeStaking for testing reward mechanisms
+  const LPFeeStaking = await hre.ethers.getContractFactory("LPFeeStaking");
+  const lpFeeStaking = await LPFeeStaking.deploy(
+    outcomeToken1155Address,
+    collateralTokenAddress,
+    deployerAddress
+  );
+  await lpFeeStaking.waitForDeployment();
+  const lpFeeStakingAddress = await lpFeeStaking.getAddress();
+  console.log(`LPFeeStaking deployed to: ${lpFeeStakingAddress}`);
+
+  // 8. Register templates
+  console.log("\nRegistering templates...");
+  // Register binary template
+  const binaryTemplateId = hre.ethers.id("OFFCHAIN_BINARY_V1");
   await marketFactory.registerTemplate(
-    templateId,
+    binaryTemplateId,
     binaryMarketTemplateAddress,
     "Offchain Binary v1"
   );
-  console.log(`OffchainBinaryMarket template registered with ID: ${templateId}`);
+  console.log(`OffchainBinaryMarket template registered with ID: ${binaryTemplateId}`);
 
-  // 6. Create a new OffchainBinaryMarket instance (fee=0 per requirement)
+  // Register multi-outcome template
+  const multiTemplateId = hre.ethers.id("OFFCHAIN_MULTI_8_V1");
+  await marketFactory.registerTemplate(
+    multiTemplateId,
+    multiMarketTemplateAddress,
+    "Offchain Multi 8 v1"
+  );
+  console.log(`OffchainMultiMarket8 template registered with ID: ${multiTemplateId}`);
+
+  // 9. Create a new OffchainBinaryMarket instance (fee=0 per requirement)
   const feeBps = 0;
   const resolutionTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
   const data = hre.ethers.AbiCoder.defaultAbiCoder().encode(["address"], [outcomeToken1155Address]);
 
-  const tx = await marketFactory.createMarket(
-    templateId,
+  // Call createMarket with explicit arguments to avoid overload ambiguity
+  const tx = await marketFactory["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+    binaryTemplateId,
     collateralTokenAddress,
     umaAdapterAddress,
     feeBps,
@@ -114,26 +170,36 @@ async function main() {
   const marketAddress = parsed ? (parsed.args.market ?? parsed.args[1]) : undefined;
   console.log(`New OffchainBinaryMarket created at: ${marketAddress}`);
 
-  // 7. Grant MINTER_ROLE to the new market
+  // 10. Grant MINTER_ROLE to the new market
   if (marketAddress) {
     await outcomeToken1155.grantMinter(marketAddress);
     console.log(`MINTER_ROLE granted to market: ${marketAddress}`);
   }
 
-  // Save deployment info
+  // Save deployment info with all test contracts
   const deploymentInfo = {
     network: hre.network.name,
     deployer: deployerAddress,
     outcomeToken1155: outcomeToken1155Address,
     marketFactory: marketFactoryAddress,
     umaOracleAdapterV2: umaAdapterAddress,
+    manualOracle: manualOracleAddress,
+    lpFeeStaking: lpFeeStakingAddress,
     offchainBinaryTemplate: binaryMarketTemplateAddress,
+    offchainMultiTemplate: multiMarketTemplateAddress,
     createdMarket: marketAddress,
     timestamp: new Date().toISOString(),
   };
 
   fs.writeFileSync("deployment_optimized.json", JSON.stringify(deploymentInfo, null, 2));
-  console.log("Optimized deployment information saved to deployment_optimized.json");
+  console.log("\nOptimized deployment information saved to deployment_optimized.json");
+  console.log("\n✅ All test contracts deployed successfully!");
+  console.log("\nTesting contracts deployed:");
+  console.log(`- ManualOracle: ${manualOracleAddress} (for easy outcome testing)`);
+  console.log(
+    `- OffchainMultiMarket8 template: ${multiMarketTemplateAddress} (for multi-outcome markets)`
+  );
+  console.log(`- LPFeeStaking: ${lpFeeStakingAddress} (for reward mechanism testing)`);
 }
 
 main().catch((error) => {
