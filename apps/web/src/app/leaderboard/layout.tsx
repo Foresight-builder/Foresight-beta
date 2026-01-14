@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
+import fr from "../../../messages/fr.json";
 import ko from "../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
@@ -14,6 +15,7 @@ const leaderboardMessages: Record<Locale, LeaderboardMessages> = {
   "zh-CN": zhCN.leaderboard,
   en: en.leaderboard,
   es: es.leaderboard as unknown as LeaderboardMessages,
+  fr: fr.leaderboard as unknown as LeaderboardMessages,
   ko: ko.leaderboard as unknown as LeaderboardMessages,
 };
 

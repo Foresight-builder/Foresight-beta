@@ -38,7 +38,7 @@ describe("Internationalization (i18n)", () => {
   describe("getCurrentLocale", () => {
     it("should return default locale when no preference saved", () => {
       const locale = i18n.getCurrentLocale();
-      expect(["zh-CN", "en", "es"]).toContain(locale);
+      expect(["zh-CN", "en", "es", "fr", "ko"]).toContain(locale);
     });
 
     it("should return saved locale preference", () => {
@@ -50,7 +50,7 @@ describe("Internationalization (i18n)", () => {
     it("should fallback to a valid locale for invalid preference", () => {
       localStorage.setItem("preferred-language", "invalid");
       const locale = i18n.getCurrentLocale();
-      expect(["zh-CN", "en", "es"]).toContain(locale);
+      expect(["zh-CN", "en", "es", "fr", "ko"]).toContain(locale);
     });
   });
 
@@ -71,6 +71,12 @@ describe("Internationalization (i18n)", () => {
       const translations = i18n.getTranslation("es");
       expect(translations.common.appName).toBe("Foresight");
       expect(translations.auth.login).toBe("Iniciar sesión");
+    });
+
+    it("should return French translations when specified", () => {
+      const translations = i18n.getTranslation("fr");
+      expect(translations.common.appName).toBe("Foresight");
+      expect(translations.auth.login).toBe("Se connecter");
     });
 
     it("should return Chinese for invalid locale", () => {

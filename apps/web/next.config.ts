@@ -174,16 +174,6 @@ const nextConfig: NextConfig = {
 
   // Webpack 优化
   webpack: (config, { dev, isServer }) => {
-    // 解决 "self is not defined" 错误 - 简化版本
-    if (isServer) {
-      // 避免在服务器端打包客户端特定代码
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // 将 Supabase 相关模块指向空文件，避免在服务器端执行
-        "@supabase/supabase-js$": path.join(__dirname, "src/lib/supabase-server-shim.js"),
-      };
-    }
-
     // 🚀 生产环境优化
     if (!dev) {
       // 优化 chunk 分割策略

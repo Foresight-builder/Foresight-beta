@@ -26,6 +26,8 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
     // 记录慢请求
     if (duration > 1000) {
       logger.warn("Slow API request", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
         method,
         path,
         duration,
@@ -70,7 +72,7 @@ function normalizePath(path: string): string {
   return (
     basePath
       .replace(/0x[a-fA-F0-9]+/g, ":address")
-      .replace(/\d+/g, ":id")
+      .replace(/\/\d+(?=\/|$)/g, "/:id")
       .replace(/\/+$/, "") || "/"
   );
 }
@@ -110,6 +112,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
     logger.info("Request completed", {
       requestId,
+      apiKeyId: (req as any).apiKeyId || null,
       method: req.method,
       path: normalizePath(req.path),
       status: res.statusCode,

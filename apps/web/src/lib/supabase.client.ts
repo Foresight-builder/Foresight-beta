@@ -2,6 +2,7 @@
  * Supabase Client 客户端专用
  * 仅在浏览器环境中使用
  */
+import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
@@ -15,9 +16,6 @@ let cachedSupabase: SupabaseClient<Database> | null = null;
 export function getBrowserClient(): SupabaseClient<Database> | null {
   // 在浏览器环境中安全创建客户端
   if (typeof window !== "undefined" && !cachedSupabase && supabaseUrl && supabaseAnonKey) {
-    // 动态导入，避免构建时错误
-    const { createClient } = require("@supabase/supabase-js");
-    // 移除类型参数，改为在赋值时进行类型转换
     cachedSupabase = createClient(
       supabaseUrl,
       supabaseAnonKey

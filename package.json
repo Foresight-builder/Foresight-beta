@@ -41,7 +41,7 @@
     "typecheck": "npm run typecheck -w apps/web",
     "test": "npm run test:web",
     "check:web": "npm run lint && npm run typecheck && npm run test",
-    "check:relayer": "npm test -w services/relayer",
+    "check:relayer": "npm run typecheck -w services/relayer && npm test -w services/relayer",
     "check:contracts": "npm run hardhat:test",
     "seed:proposals:api": "node scripts/seed-proposals-via-api.js",
     "check:all": "npm run check:web && npm run check:relayer && npm run check:contracts",

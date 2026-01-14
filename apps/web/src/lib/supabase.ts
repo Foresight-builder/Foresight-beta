@@ -47,24 +47,30 @@ export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 const isServer = typeof window === "undefined";
 
 // 动态导入客户端或服务器端实现
-let serverClient: SupabaseClient<Database> | null = null;
 let browserClient: SupabaseClient<Database> | null = null;
+let serverClient: SupabaseClient<Database> | null = null;
 
 // 初始化函数，仅在需要时调用
-async function initServerClient() {
-  if (!serverClient) {
-    const { getServerClient: getServerClientImpl } = await import("./supabase.server");
-    serverClient = getServerClientImpl();
-  }
-  return serverClient;
-}
-
 async function initBrowserClient() {
   if (!browserClient) {
     const { getBrowserClient: getBrowserClientImpl } = await import("./supabase.client");
     browserClient = getBrowserClientImpl();
   }
   return browserClient;
+}
+
+function initServerClientSync(): SupabaseClient<Database> | null {
+  if (serverClient) return serverClient;
+  try {
+    const { getServerClient, supabaseAdmin } = require("./supabase.server");
+    serverClient = (supabaseAdmin ||
+      (typeof getServerClient === "function"
+        ? getServerClient()
+        : null)) as SupabaseClient<Database> | null;
+    return serverClient;
+  } catch (error) {
+    return null;
+  }
 }
 
 // 保持原有API兼容性 - 同步获取客户端
@@ -76,10 +82,9 @@ let cachedClient: SupabaseClient<Database> | null = null;
 export function getClient(_id?: string): SupabaseClient<Database> | null {
   if (cachedClient) return cachedClient;
 
-  // 对于服务器端，我们无法同步获取客户端，返回null
-  // 调用方需要使用async/await版本
   if (isServer) {
-    return null;
+    cachedClient = initServerClientSync();
+    return cachedClient;
   }
 
   // 对于客户端，我们可以同步初始化
@@ -97,23 +102,11 @@ export async function getClientAsync(_id?: string): Promise<SupabaseClient<Datab
   if (cachedClient) return cachedClient;
 
   if (isServer) {
-    cachedClient = await initServerClient();
+    cachedClient = initServerClientSync();
   } else {
     cachedClient = await initBrowserClient();
   }
   return cachedClient;
-}
-
-// 服务端专用函数（同步）
-export function getServerClient(): SupabaseClient<Database> | null {
-  // 服务器端无法同步获取客户端，返回null
-  // 调用方需要使用异步版本
-  return null;
-}
-
-// 服务端专用函数（异步，推荐使用）
-export async function getServerClientAsync(): Promise<SupabaseClient<Database> | null> {
-  return await initServerClient();
 }
 
 // 客户端专用函数（同步）
@@ -146,14 +139,6 @@ export const supabase: SupabaseClient<Database> | null = isServer
       }
     })();
 
-// 导出的服务端客户端实例（仅在服务器端环境中可用）
 export const supabaseAdmin: SupabaseClient<Database> | null = isServer
-  ? (() => {
-      try {
-        const { supabaseAdmin: client } = require("./supabase.server");
-        return client;
-      } catch (error) {
-        return null;
-      }
-    })()
+  ? initServerClientSync()
   : null;

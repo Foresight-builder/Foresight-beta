@@ -88,6 +88,32 @@ const onboardingMessages: Record<Locale, any> = {
     footer: "¡Disfruta tu tiempo en Foresight!",
     cta: "Empezar a Explorar",
   },
+  fr: {
+    title: "Bienvenue sur Foresight",
+    subtitle: "Guide pour les nouveaux utilisateurs",
+    step1: {
+      title: "Parcourir les prédictions tendance",
+      desc: "Consultez les événements de prédiction les plus populaires sur la page d’accueil pour comprendre les tendances du marché.",
+    },
+    step2: {
+      title: "Rechercher des événements",
+      desc: "Utilisez la recherche pour trouver des événements de prédiction qui vous intéressent.",
+    },
+    step3: {
+      title: "Suivre des événements",
+      desc: "Suivez les événements qui vous intéressent pour recevoir des mises à jour rapidement.",
+    },
+    step4: {
+      title: "Participer aux discussions",
+      desc: "Participez aux discussions sur les événements dans le forum et partagez votre point de vue.",
+    },
+    step5: {
+      title: "Connecter un wallet pour commencer",
+      desc: "Connectez votre wallet crypto et commencez à participer au trading de prédictions.",
+    },
+    footer: "Passez un bon moment sur Foresight !",
+    cta: "Commencer à explorer",
+  },
   ko: {
     title: "Foresight에 오신 것을 환영합니다",
     subtitle: "새 사용자 가이드",

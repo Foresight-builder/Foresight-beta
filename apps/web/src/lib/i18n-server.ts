@@ -36,6 +36,7 @@ async function detectFromAcceptLanguage(): Promise<Locale | null> {
       if (part.lang.startsWith("zh")) return "zh-CN";
       if (part.lang.startsWith("en")) return "en";
       if (part.lang.startsWith("es")) return "es";
+      if (part.lang.startsWith("fr")) return "fr";
       if (part.lang.startsWith("ko")) return "ko";
     }
   } catch {}

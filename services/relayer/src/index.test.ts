@@ -63,6 +63,82 @@ describe("Relayer basic routes", () => {
   });
 });
 
+describe("V2 orders validation", () => {
+  it("should reject non-hex signatures", async () => {
+    const server = await startServer(app);
+    try {
+      const response = await fetch(`${server.baseUrl}/v2/orders`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          marketKey: "1:test",
+          maker: "0x0000000000000000000000000000000000000001",
+          outcomeIndex: 0,
+          isBuy: true,
+          price: "1",
+          amount: "1000000000000000000",
+          salt: "1",
+          expiry: 0,
+          signature: "not-hex",
+          chainId: 1,
+          verifyingContract: "0x0000000000000000000000000000000000000002",
+        }),
+      });
+      expect(response.status).toBe(400);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.errorCode).toBe("VALIDATION_ERROR");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("should return cached error for same idempotency key", async () => {
+    const server = await startServer(app);
+    try {
+      const body = {
+        marketKey: "1:test",
+        maker: "0x0000000000000000000000000000000000000001",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: "1",
+        amount: "1000000000000000000",
+        salt: "1",
+        expiry: 0,
+        signature: "not-hex",
+        chainId: 1,
+        verifyingContract: "0x0000000000000000000000000000000000000002",
+      };
+
+      const headers = {
+        "content-type": "application/json",
+        "x-request-id": "test-req-idem-1",
+        "x-idempotency-key": "test-idem-1",
+      };
+
+      const r1 = await fetch(`${server.baseUrl}/v2/orders`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      expect(r1.status).toBe(400);
+      const j1 = await r1.json();
+
+      const r2 = await fetch(`${server.baseUrl}/v2/orders`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      expect(r2.status).toBe(400);
+      const j2 = await r2.json();
+
+      expect(j2).toEqual(j1);
+    } finally {
+      await server.close();
+    }
+  });
+});
+
 describe("Readiness checks", () => {
   it("should mark follower without proxy URL as not ready", async () => {
     const checker = createWriteProxyReadinessChecker({

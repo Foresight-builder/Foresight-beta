@@ -4,15 +4,41 @@ import { useState, useEffect, useCallback } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
+import fr from "../../messages/fr.json";
 import ko from "../../messages/ko.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
 
 type Messages = typeof zhCN;
 
+function mergeMessages(base: unknown, overrides: unknown): unknown {
+  if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) return base;
+  if (!base || typeof base !== "object" || Array.isArray(base)) return overrides;
+
+  const result: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(overrides as Record<string, unknown>)) {
+    const baseValue = (base as Record<string, unknown>)[key];
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      baseValue &&
+      typeof baseValue === "object" &&
+      !Array.isArray(baseValue)
+    ) {
+      result[key] = mergeMessages(baseValue, value);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
 const messages: Record<Locale, Messages> = {
   "zh-CN": zhCN,
   en: en as unknown as Messages,
   es: es as unknown as Messages,
+  fr: mergeMessages(en, fr) as Messages,
   ko: ko as unknown as Messages,
 };
 
@@ -53,6 +79,9 @@ export function getCurrentLocale(): Locale {
       }
       if (lower.startsWith("es")) {
         return "es";
+      }
+      if (lower.startsWith("fr")) {
+        return "fr";
       }
       if (lower.startsWith("ko")) {
         return "ko";

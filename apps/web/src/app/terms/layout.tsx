@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
+import fr from "../../../messages/fr.json";
 import ko from "../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
+import { buildLanguageAlternates } from "@/lib/seo";
 
 type SeoMessages = (typeof zhCN)["seo"];
 
@@ -13,6 +15,7 @@ const seoMessages: Record<Locale, SeoMessages> = {
   "zh-CN": zhCN.seo,
   en: en.seo as SeoMessages,
   es: es.seo as SeoMessages,
+  fr: fr.seo as SeoMessages,
   ko: ko.seo as SeoMessages,
 };
 
@@ -40,14 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: {
-      canonical: "/terms",
-      languages: {
-        "zh-CN": "/terms",
-        "en-US": "/terms",
-        "es-ES": "/terms",
-      },
-    },
+    alternates: buildLanguageAlternates("/terms"),
     openGraph: {
       title: openGraphTitle,
       description: openGraphDescription,

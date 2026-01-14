@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { MouseEvent } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toggleFollowPrediction } from "@/lib/follows";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase.client";
 import {
   createSmartClickEffect,
   createHeartParticles,

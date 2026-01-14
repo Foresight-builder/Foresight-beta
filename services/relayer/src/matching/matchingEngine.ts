@@ -710,27 +710,35 @@ export class MatchingEngine extends EventEmitter {
     maker: string,
     salt: string,
     signature: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; errorCode?: OrderErrorCode }> {
     try {
       if (!marketKey || marketKey.trim().length === 0) {
-        return { success: false, error: "Invalid marketKey" };
+        return { success: false, error: "Invalid marketKey", errorCode: "INVALID_MARKET_KEY" };
       }
       if (!Number.isInteger(outcomeIndex) || outcomeIndex < 0) {
-        return { success: false, error: "Invalid outcomeIndex" };
+        return {
+          success: false,
+          error: "Invalid outcomeIndex",
+          errorCode: "INVALID_OUTCOME_INDEX",
+        };
       }
       if (!Number.isInteger(chainId) || chainId <= 0) {
-        return { success: false, error: "Invalid chainId" };
+        return { success: false, error: "Invalid chainId", errorCode: "INVALID_CHAIN_ID" };
       }
       if (!ethers.isAddress(verifyingContract)) {
-        return { success: false, error: "Invalid verifying contract address" };
+        return {
+          success: false,
+          error: "Invalid verifying contract address",
+          errorCode: "INVALID_VERIFYING_CONTRACT",
+        };
       }
       if (!ethers.isAddress(maker)) {
-        return { success: false, error: "Invalid maker address" };
+        return { success: false, error: "Invalid maker address", errorCode: "INVALID_MAKER" };
       }
       try {
         BigInt(salt);
       } catch {
-        return { success: false, error: "Invalid salt" };
+        return { success: false, error: "Invalid salt", errorCode: "INVALID_SALT" };
       }
       return await this.withBookLock(marketKey, outcomeIndex, async () => {
         const recovered = ethers.verifyTypedData(
@@ -745,7 +753,7 @@ export class MatchingEngine extends EventEmitter {
           signature
         );
         if (recovered.toLowerCase() !== maker.toLowerCase()) {
-          return { success: false, error: "Invalid signature" };
+          return { success: false, error: "Invalid signature", errorCode: "INVALID_SIGNATURE" };
         }
 
         const orderId = `${maker.toLowerCase()}-${salt}`;

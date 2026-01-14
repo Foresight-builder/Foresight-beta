@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { getServerClient as getClient } from "@/lib/supabase.server";
 import {
   getErrorMessage,
   getGaslessConfig,

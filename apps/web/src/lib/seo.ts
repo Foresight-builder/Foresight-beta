@@ -5,6 +5,7 @@ const hrefLangByLocale: Record<Locale, string> = {
   "zh-CN": "zh-CN",
   en: "en-US",
   es: "es-ES",
+  fr: "fr-FR",
   ko: "ko-KR",
 };
 

@@ -260,6 +260,8 @@ import {
 } from "./settlement/metaTransaction.js";
 
 export const app = express();
+const trustProxyHops = Math.max(0, readIntEnv("RELAYER_TRUST_PROXY_HOPS", 0));
+if (trustProxyHops > 0) app.set("trust proxy", trustProxyHops);
 
 // 🚀 初始化撮合引擎和 WebSocket 服务器
 const matchingEngine = new MatchingEngine({
@@ -564,7 +566,10 @@ function requireApiKey(scope: string, action: string) {
       apiAuthFailuresTotal.inc({ path: req.path, reason: "missing" });
       apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: "missing" });
       adminActionsTotal.inc({ action, result: "denied" });
-      return res.status(401).json({ success: false, message: "API key required" });
+      return sendApiError(req, res, 401, {
+        message: "API key required",
+        errorCode: "API_KEY_REQUIRED",
+      });
     }
     const entry = await resolveApiKey(raw);
     if (!entry) {
@@ -576,13 +581,19 @@ function requireApiKey(scope: string, action: string) {
         key_id: buildApiKeyIdFromHash(buildApiKeyHash(raw)),
       });
       adminActionsTotal.inc({ action, result: "denied" });
-      return res.status(401).json({ success: false, message: "API key invalid" });
+      return sendApiError(req, res, 401, {
+        message: "API key invalid",
+        errorCode: "API_KEY_INVALID",
+      });
     }
     if (!hasScope(entry.scopes, scope)) {
       apiAuthFailuresTotal.inc({ path: req.path, reason: "forbidden" });
       apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: entry.keyId });
       adminActionsTotal.inc({ action, result: "denied" });
-      return res.status(403).json({ success: false, message: "API key forbidden" });
+      return sendApiError(req, res, 403, {
+        message: "API key forbidden",
+        errorCode: "API_KEY_FORBIDDEN",
+      });
     }
     (req as any).apiKeyId = entry.keyId;
     (req as any).apiKeyScopes = Array.from(entry.scopes);
@@ -887,13 +898,21 @@ function sendApiError(
   payload: { message: string; detail?: any; errorCode?: string | null }
 ) {
   const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
-  return res.status(status).json({
+  const body = {
     success: false,
     message: payload.message,
     ...(typeof payload.detail !== "undefined" ? { detail: payload.detail } : {}),
     ...(typeof payload.errorCode !== "undefined" ? { errorCode: payload.errorCode } : {}),
     ...(requestId ? { requestId } : {}),
-  });
+  };
+  res.status(status).json(body);
+  return body;
+}
+
+function setIdempotencyIfPresent(idemKey: string | null, status: number, body: any): void {
+  if (!idemKey) return;
+  if (status >= 500) return;
+  void setIdempotencyEntry(idemKey, status, body);
 }
 
 function getGaslessQuotaKey(userAddress: string): string {
@@ -1094,6 +1113,11 @@ const HexAddressSchema = z
   .regex(/^0x[0-9a-fA-F]{40}$/)
   .transform((v) => v.toLowerCase());
 
+const HexDataSchema = z
+  .string()
+  .trim()
+  .regex(/^0x[0-9a-fA-F]+$/);
+
 const BigIntFromNumberishSchema = z.preprocess((v) => {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") {
@@ -1128,7 +1152,7 @@ const GaslessOrderSchema = z.object({
     salt: BigIntFromNumberishSchema,
     expiry: BigIntFromNumberishSchema,
   }),
-  orderSignature: z.string().min(1),
+  orderSignature: HexDataSchema,
   permit: z
     .object({
       owner: HexAddressSchema,
@@ -1136,7 +1160,7 @@ const GaslessOrderSchema = z.object({
       value: BigIntFromNumberishSchema,
       nonce: BigIntFromNumberishSchema,
       deadline: BigIntFromNumberishSchema,
-      signature: z.string().min(1),
+      signature: HexDataSchema,
     })
     .optional(),
   meta: z
@@ -1188,26 +1212,32 @@ app.post(
         parsed = GaslessOrderSchema.parse(req.body || {});
       } catch (e: any) {
         if (e instanceof z.ZodError) {
-          return sendApiError(req, res, 400, {
+          const responseBody = sendApiError(req, res, 400, {
             message: "gasless order validation failed",
             detail: e.flatten(),
             errorCode: "VALIDATION_ERROR",
           });
+          setIdempotencyIfPresent(idemKey, 400, responseBody);
+          return;
         }
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: "gasless order validation failed",
           detail: String(e?.message || e),
           errorCode: "VALIDATION_ERROR",
         });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
       }
 
       const userAddress = parsed.userAddress.toLowerCase();
       const quota = await getGaslessQuotaUsage(userAddress);
       if (quota.remaining <= 0) {
-        return sendApiError(req, res, 429, {
+        const responseBody = sendApiError(req, res, 429, {
           message: "Gasless quota exceeded",
           errorCode: "GASLESS_QUOTA_EXCEEDED",
         });
+        setIdempotencyIfPresent(idemKey, 429, responseBody);
+        return;
       }
 
       const intentCostUsd =
@@ -1215,19 +1245,23 @@ app.post(
           ? parsed.meta.maxCostUsd
           : Number(process.env.RELAYER_GASLESS_DEFAULT_COST_USD || "0.1");
       if (Number.isFinite(intentCostUsd) && intentCostUsd > 0 && quota.remaining < intentCostUsd) {
-        return sendApiError(req, res, 429, {
+        const responseBody = sendApiError(req, res, 429, {
           message: "Gasless quota insufficient for intent",
           errorCode: "GASLESS_QUOTA_EXCEEDED",
         });
+        setIdempotencyIfPresent(idemKey, 429, responseBody);
+        return;
       }
 
       const marketKey = parsed.marketKey;
       const marketKeyParts = marketKey.split(":");
       if (marketKeyParts.length < 2) {
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: "Invalid marketKey",
           errorCode: "INVALID_MARKET_KEY",
         });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
       }
 
       const redis = getRedisClient();
@@ -1242,18 +1276,22 @@ app.post(
       const riskKeyIp = `risk:blacklist:ip:${getClientIp(req)}`;
       const [userFlag, ipFlag] = await Promise.all([redis.get(riskKeyUser), redis.get(riskKeyIp)]);
       if (userFlag === "1" || ipFlag === "1") {
-        return sendApiError(req, res, 403, {
+        const responseBody = sendApiError(req, res, 403, {
           message: "Gasless blocked by risk control",
           errorCode: "GASLESS_BLOCKED",
         });
+        setIdempotencyIfPresent(idemKey, 403, responseBody);
+        return;
       }
 
       const marketKeyPrefix = `${parsed.chainId}:`;
       if (!marketKey.startsWith(marketKeyPrefix)) {
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: "marketKey does not match chainId",
           errorCode: "INVALID_MARKET_KEY",
         });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
       }
 
       const fillAmount = parsed.fillAmount;
@@ -1340,10 +1378,12 @@ app.post(
           error: result.error || "Gasless order failed",
         };
         await saveTradeIntent(failedIntent);
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: result.error || "Gasless order failed",
           errorCode: "GASLESS_FAILED",
         });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
       }
 
       const confirmingIntent: TradeIntentRecord = {
@@ -1417,8 +1457,12 @@ app.post(
   requireApiKey("orders", "orderbook_orders"),
   async (req, res) => {
     try {
-      if (!supabaseAdmin)
-        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (!supabaseAdmin) {
+        return sendApiError(req, res, 500, {
+          message: "Supabase not configured",
+          errorCode: "SUPABASE_NOT_CONFIGURED",
+        });
+      }
       if (clusterIsActive) {
         const cluster = getClusterManager();
         if (!cluster.isLeader()) {
@@ -1465,10 +1509,10 @@ const OrderInputSchema = z.object({
   amount: BigIntFromNumberishSchema,
   salt: z.string().min(1),
   expiry: z.number().int().min(0),
-  signature: z.string().min(1),
+  signature: HexDataSchema,
   chainId: z.number().int().positive(),
   verifyingContract: HexAddressSchema,
-  tif: z.enum(["GTC", "IOC", "FOK"]).optional(),
+  tif: z.enum(["GTC", "IOC", "FOK", "FAK", "GTD"]).optional(),
   postOnly: z.boolean().optional(),
   clientOrderId: z.string().min(1).max(128).optional(),
 });
@@ -1609,27 +1653,33 @@ app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async 
       orderInput = parseV2OrderInput(req.body);
     } catch (e: any) {
       if (e instanceof z.ZodError) {
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: "order validation failed",
           detail: e.flatten(),
           errorCode: "VALIDATION_ERROR",
         });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
       }
-      return sendApiError(req, res, 400, {
+      const responseBody = sendApiError(req, res, 400, {
         message: "order validation failed",
         detail: String(e?.message || e),
         errorCode: "VALIDATION_ERROR",
       });
+      setIdempotencyIfPresent(idemKey, 400, responseBody);
+      return;
     }
 
     // 提交到撮合引擎
     const result = await matchingEngine.submitOrder(orderInput);
 
     if (!result.success) {
-      return sendApiError(req, res, 400, {
+      const responseBody = sendApiError(req, res, 400, {
         message: result.error || "Order submission failed",
         errorCode: result.errorCode || null,
       });
+      setIdempotencyIfPresent(idemKey, 400, responseBody);
+      return;
     }
 
     const filledAmount = result.matches.reduce<bigint>((acc, m) => acc + m.matchedAmount, 0n);
@@ -1637,7 +1687,7 @@ app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async 
     let status: string;
     if (orderInput.tif === "FOK") {
       status = filledAmount === orderInput.amount ? "filled" : "canceled";
-    } else if (orderInput.tif === "IOC") {
+    } else if (orderInput.tif === "IOC" || orderInput.tif === "FAK") {
       if (filledAmount === 0n) {
         status = "canceled";
       } else if (filledAmount < orderInput.amount) {
@@ -1724,7 +1774,7 @@ const CancelV2Schema = z
     contractAddress: z.string().optional(),
     maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
     salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
-    signature: z.string().regex(/^0x[0-9a-fA-F]+$/),
+    signature: HexDataSchema,
   })
   .refine((v) => typeof v.outcomeIndex === "number" || typeof v.outcome_index === "number", {
     message: "outcomeIndex is required",
@@ -1788,11 +1838,10 @@ app.post(
         parsed.signature
       );
       if (!result.success) {
-        const responseBody = {
-          success: false,
+        const responseBody = sendApiError(req, res, 400, {
           message: result.error || "Cancel failed",
-        };
-        res.status(400).json(responseBody);
+          errorCode: result.errorCode || "CANCEL_FAILED",
+        });
         if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
         return;
       }
@@ -1810,15 +1859,23 @@ app.post(
       if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
     } catch (e: any) {
       if (e instanceof z.ZodError) {
-        return sendApiError(req, res, 400, {
+        const responseBody = sendApiError(req, res, 400, {
           message: "cancel validation failed",
           detail: e.flatten(),
+          errorCode: "VALIDATION_ERROR",
         });
+        const idemKey = getIdempotencyKey(req, "/v2/cancel-salt");
+        if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
+        return;
       }
-      return sendApiError(req, res, 400, {
+      const responseBody = sendApiError(req, res, 400, {
         message: "Cancel failed",
         detail: String(e?.message || e),
+        errorCode: "CANCEL_FAILED",
       });
+      const idemKey = getIdempotencyKey(req, "/v2/cancel-salt");
+      if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
+      return;
     }
   }
 );
@@ -2425,8 +2482,12 @@ app.post(
   requireApiKey("orders", "orderbook_cancel_salt"),
   async (req, res) => {
     try {
-      if (!supabaseAdmin)
-        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (!supabaseAdmin) {
+        return sendApiError(req, res, 500, {
+          message: "Supabase not configured",
+          errorCode: "SUPABASE_NOT_CONFIGURED",
+        });
+      }
       if (clusterIsActive) {
         const cluster = getClusterManager();
         if (!cluster.isLeader()) {
@@ -2463,6 +2524,7 @@ app.post(
       return sendApiError(req, res, 400, {
         message: "cancel salt failed",
         detail: String(e?.message || e),
+        errorCode: "BAD_REQUEST",
       });
     }
   }
@@ -2561,8 +2623,12 @@ const TradeReportSchema = z.object({
 
 app.get("/orderbook/depth", async (req, res) => {
   try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (!supabaseAdmin) {
+      return sendApiError(req, res, 500, {
+        message: "Supabase not configured",
+        errorCode: "SUPABASE_NOT_CONFIGURED",
+      });
+    }
     const parsed = DepthQuerySchema.parse({
       contract: req.query.contract,
       chainId: req.query.chainId,
@@ -2591,22 +2657,28 @@ app.get("/orderbook/depth", async (req, res) => {
     res.json({ success: true, data });
   } catch (e: any) {
     if (e instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: "depth query validation failed",
         detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
       });
     }
-    res
-      .status(400)
-      .json({ success: false, message: "depth query failed", detail: String(e?.message || e) });
+    return sendApiError(req, res, 400, {
+      message: "depth query failed",
+      detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
+    });
   }
 });
 
 app.get("/orderbook/queue", async (req, res) => {
   try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (!supabaseAdmin) {
+      return sendApiError(req, res, 500, {
+        message: "Supabase not configured",
+        errorCode: "SUPABASE_NOT_CONFIGURED",
+      });
+    }
     const parsed = QueueQuerySchema.parse({
       contract: req.query.contract,
       chainId: req.query.chainId,
@@ -2639,15 +2711,17 @@ app.get("/orderbook/queue", async (req, res) => {
     res.json({ success: true, data });
   } catch (e: any) {
     if (e instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: "queue query validation failed",
         detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
       });
     }
-    res
-      .status(400)
-      .json({ success: false, message: "queue query failed", detail: String(e?.message || e) });
+    return sendApiError(req, res, 400, {
+      message: "queue query failed",
+      detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
+    });
   }
 });
 
@@ -2657,8 +2731,12 @@ app.post(
   requireApiKey("report_trade", "orderbook_report_trade"),
   async (req, res) => {
     try {
-      if (!supabaseAdmin)
-        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (!supabaseAdmin) {
+        return sendApiError(req, res, 500, {
+          message: "Supabase not configured",
+          errorCode: "SUPABASE_NOT_CONFIGURED",
+        });
+      }
       if (clusterIsActive) {
         const cluster = getClusterManager();
         if (!cluster.isLeader()) {
@@ -2698,6 +2776,7 @@ app.post(
       return sendApiError(req, res, 400, {
         message: "trade report failed",
         detail: String(e?.message || e),
+        errorCode: "BAD_REQUEST",
       });
     }
   }
@@ -2705,8 +2784,12 @@ app.post(
 
 app.get("/orderbook/candles", async (req, res) => {
   try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (!supabaseAdmin) {
+      return sendApiError(req, res, 500, {
+        message: "Supabase not configured",
+        errorCode: "SUPABASE_NOT_CONFIGURED",
+      });
+    }
     const parsed = CandlesQuerySchema.parse({
       market: req.query.market,
       chainId: req.query.chainId,
@@ -2725,16 +2808,16 @@ app.get("/orderbook/candles", async (req, res) => {
     res.json({ success: true, data });
   } catch (e: any) {
     if (e instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: "candles query validation failed",
         detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
       });
     }
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "candles query failed",
       detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
     });
   }
 });

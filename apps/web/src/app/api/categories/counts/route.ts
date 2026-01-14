@@ -1,6 +1,6 @@
 // 分类热点数量API路由 - 获取每个分类的预测事件数量
 import { NextResponse } from "next/server";
-import { getClient } from "@/lib/supabase";
+import { getServerClient as getClient } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getErrorMessage, logApiError } from "@/lib/serverUtils";
 

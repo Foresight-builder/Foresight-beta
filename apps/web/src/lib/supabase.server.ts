@@ -2,6 +2,7 @@
  * Supabase Client 服务器端专用
  * 仅在Node.js环境中使用
  */
+import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
@@ -15,9 +16,6 @@ let cachedSupabaseAdmin: SupabaseClient<Database> | null = null;
 
 export function getServerClient(): SupabaseClient<Database> | null {
   if (!cachedSupabaseAdmin && supabaseUrl && supabaseServiceRoleKey) {
-    // 动态导入，避免构建时错误
-    const { createClient } = require("@supabase/supabase-js");
-    // 移除类型参数，改为在赋值时进行类型转换
     cachedSupabaseAdmin = createClient(
       supabaseUrl,
       supabaseServiceRoleKey

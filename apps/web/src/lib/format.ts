@@ -19,6 +19,9 @@ function normalizeLocale(locale: LocaleInput): string {
   if (lower === "es" || lower.startsWith("es-")) {
     return "es";
   }
+  if (lower === "fr" || lower.startsWith("fr-")) {
+    return "fr";
+  }
   if (lower === "ko" || lower.startsWith("ko-")) {
     return "ko";
   }

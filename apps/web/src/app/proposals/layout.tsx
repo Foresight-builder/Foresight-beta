@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
+import fr from "../../../messages/fr.json";
 import ko from "../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
@@ -14,6 +15,7 @@ const proposalsMessages: Record<Locale, ProposalsMessages> = {
   "zh-CN": zhCN.proposals,
   en: en.proposals as unknown as ProposalsMessages,
   es: es.proposals as unknown as ProposalsMessages,
+  fr: fr.proposals as unknown as ProposalsMessages,
   ko: ko.proposals as unknown as ProposalsMessages,
 };
 

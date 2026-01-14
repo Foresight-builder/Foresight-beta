@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>下一代去中心化预测市场协议</strong><br/>
-  <em>Polymarket 级别的交易体验 × UMA 预言机去中心化结算 × Web3 原生架构</em>
+  <em>专业级交易体验 × UMA 预言机去中心化结算 × Web3 原生架构</em>
 </p>
 
 <p align="center">
@@ -29,18 +29,6 @@
 ---
 
 ## 🌟 为什么选择 Foresight？
-
-### 对标 Polymarket，超越 Polymarket
-
-| 特性           | Polymarket          | Foresight                   |
-| -------------- | ------------------- | --------------------------- |
-| **订单簿架构** | 链下撮合 + 链上结算 | ✅ 相同架构                 |
-| **结算机制**   | UMA 乐观预言机      | ✅ UMA Optimistic Oracle V3 |
-| **市场类型**   | 二元市场为主        | ✅ 二元 + 多元（最多8选项） |
-| **抵押代币**   | USDC                | ✅ USDC                     |
-| **治理模式**   | 多签 + Timelock     | ✅ Gnosis Safe + Timelock   |
-| **开源程度**   | 部分开源            | ✅ 完全开源                 |
-| **部署网络**   | Polygon             | ✅ Polygon（支持多链扩展）  |
 
 ### 核心优势
 
@@ -140,6 +128,8 @@
 
 - 🇨🇳 简体中文
 - 🇺🇸 English
+- 🇫🇷 Français
+- 🇰🇷 한국어
 - 🇪🇸 Español
 
 ---

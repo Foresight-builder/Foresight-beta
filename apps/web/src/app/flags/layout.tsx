@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
+import fr from "../../../messages/fr.json";
 import ko from "../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
@@ -14,6 +15,7 @@ const flagsMessages: Record<Locale, FlagsMessages> = {
   "zh-CN": zhCN.flags,
   en: en.flags as unknown as FlagsMessages,
   es: es.flags as unknown as FlagsMessages,
+  fr: fr.flags as unknown as FlagsMessages,
   ko: ko.flags as unknown as FlagsMessages,
 };
 

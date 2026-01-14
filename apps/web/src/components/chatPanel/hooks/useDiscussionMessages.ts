@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase.client";
 import type { ChatMessageView } from "../types";
 
 // 二分查找插入位置，避免每次排序整个数组

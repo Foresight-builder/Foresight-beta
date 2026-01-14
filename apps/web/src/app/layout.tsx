@@ -26,6 +26,7 @@ async function loadLanguageFile(locale: Locale): Promise<any> {
     "zh-CN": () => import("../../messages/zh-CN.json"),
     en: () => import("../../messages/en.json"),
     es: () => import("../../messages/es.json"),
+    fr: () => import("../../messages/fr.json"),
     ko: () => import("../../messages/ko.json"),
   };
 
@@ -47,6 +48,7 @@ const openGraphLocaleByLocale: Record<Locale, string> = {
   "zh-CN": "zh_CN",
   en: "en_US",
   es: "es_ES",
+  fr: "fr_FR",
   ko: "ko_KR",
 };
 
@@ -90,7 +92,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       locale: openGraphLocaleByLocale[locale] || openGraphLocaleByLocale[defaultLocale],
-      alternateLocale: ["en_US", "es_ES"],
+      alternateLocale: ["en_US", "es_ES", "fr_FR", "ko_KR"],
       url: "/trending",
       title: openGraphTitle,
       description: openGraphDescription,

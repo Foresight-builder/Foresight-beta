@@ -1,6 +1,6 @@
 // 预测事件API路由 - 处理GET和POST请求
 import { NextRequest, NextResponse } from "next/server";
-import { getClient, supabase } from "@/lib/supabase";
+import { getClient } from "@/lib/supabase";
 import { getPredictionsList } from "./_lib/getPredictionsList";
 import { buildPaginationMeta, buildCursorPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
-    const client = getClient() || supabase;
+    const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase client is not configured");
     }

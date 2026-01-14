@@ -8,6 +8,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
     "start": "node dist/index.js",
     "start:dev": "LOG_FORMAT=text LOG_LEVEL=debug node dist/index.js",
     "start:prod": "LOG_FORMAT=json LOG_LEVEL=info node dist/index.js"

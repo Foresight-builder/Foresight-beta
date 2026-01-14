@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase.client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type RealtimePayload = {
@@ -76,4 +76,3 @@ export function useRealtimePredictions(options: UseRealtimePredictionsOptions = 
     isConnected,
   };
 }
-

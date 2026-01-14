@@ -4,6 +4,7 @@ import { Metadata, ResolvingMetadata } from "next";
 import zhCN from "../../../../messages/zh-CN.json";
 import en from "../../../../messages/en.json";
 import es from "../../../../messages/es.json";
+import fr from "../../../../messages/fr.json";
 import ko from "../../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
@@ -31,6 +32,7 @@ const seoMessages: Record<Locale, SeoMessages> = {
   "zh-CN": zhCN.seo.prediction,
   en: en.seo.prediction as SeoMessages,
   es: es.seo.prediction as SeoMessages,
+  fr: fr.seo.prediction as SeoMessages,
   ko: ko.seo.prediction as SeoMessages,
 };
 
@@ -38,6 +40,7 @@ const openGraphLocaleByLocale: Record<Locale, string> = {
   "zh-CN": "zh_CN",
   en: "en_US",
   es: "es_ES",
+  fr: "fr_FR",
   ko: "ko_KR",
 };
 
