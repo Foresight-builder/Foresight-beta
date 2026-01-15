@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { getSessionAddress, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
+import {
+  getSessionAddress,
+  normalizeAddress,
+  parseRequestBody,
+  isAdminAddress,
+} from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 
@@ -27,7 +32,8 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       .maybeSingle();
     if (existError) return ApiResponses.databaseError("查询失败", existError.message);
     if (!existing) return ApiResponses.notFound("未找到对象");
-    if (normalizeAddress(String(existing.user_id || "")) !== viewer) {
+    const isOwner = normalizeAddress(String(existing.user_id || "")) === viewer;
+    if (!isOwner && !isAdminAddress(viewer)) {
       return ApiResponses.forbidden("无权限");
     }
 
@@ -68,7 +74,8 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
       .maybeSingle();
     if (existError) return ApiResponses.databaseError("查询失败", existError.message);
     if (!existing) return ApiResponses.notFound("未找到对象");
-    if (normalizeAddress(String(existing.user_id || "")) !== viewer) {
+    const isOwner = normalizeAddress(String(existing.user_id || "")) === viewer;
+    if (!isOwner && !isAdminAddress(viewer)) {
       return ApiResponses.forbidden("无权限");
     }
 

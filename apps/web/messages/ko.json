@@ -649,16 +649,35 @@
     },
     "message": {
       "opBadge": "OP",
-      "reply": "답글"
+      "reply": "답글",
+      "more": "더보기",
+      "muted": "숨김",
+      "mute": "이 사용자 숨기기",
+      "unmute": "숨김 해제",
+      "reportSpam": "신고: 스팸",
+      "reportAbuse": "신고: 욕설/괴롭힘",
+      "reportMisinfo": "신고: 허위 정보",
+      "delete": "메시지 삭제",
+      "deleteConfirm": "이 메시지를 삭제할까요?",
+      "deleted": "메시지가 삭제되었습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "reported": "신고되었습니다",
+      "reportFailed": "신고에 실패했습니다"
     },
     "topics": {
       "sectionTitle": "주제 구분",
       "chat": "채팅",
       "debate": "토론",
+      "forum": "포럼",
       "all": "전체",
       "market": "이벤트 이야기",
       "meta": "규칙·메커니즘",
       "offtopic": "가벼운 잡담"
+    },
+    "forum": {
+      "readOnlyHint": "포럼은 여기서 읽기 전용입니다. 글을 쓰려면 채팅/토론으로 전환하세요.",
+      "switchToChat": "채팅으로 전환",
+      "switchToDebate": "토론으로 전환"
     },
     "debate": {
       "toggle": "토론 모드",

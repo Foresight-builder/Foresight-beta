@@ -463,16 +463,35 @@
     },
     "message": {
       "opBadge": "楼主",
-      "reply": "回复"
+      "reply": "回复",
+      "more": "更多操作",
+      "muted": "已屏蔽",
+      "mute": "屏蔽此用户",
+      "unmute": "取消屏蔽",
+      "reportSpam": "举报：垃圾信息",
+      "reportAbuse": "举报：辱骂/骚扰",
+      "reportMisinfo": "举报：虚假信息",
+      "delete": "删除这条消息",
+      "deleteConfirm": "确认删除这条消息？",
+      "deleted": "消息已删除",
+      "deleteFailed": "删除失败",
+      "reported": "已举报",
+      "reportFailed": "举报失败"
     },
     "topics": {
       "sectionTitle": "话题分区",
       "chat": "聊天",
       "debate": "辩论",
+      "forum": "论坛",
       "all": "全部",
       "market": "围绕事件本身",
       "meta": "规则与玩法",
       "offtopic": "轻松闲聊"
+    },
+    "forum": {
+      "readOnlyHint": "论坛内容只读；如需发言请切换到聊天/辩论。",
+      "switchToChat": "切到聊天",
+      "switchToDebate": "切到辩论"
     },
     "debate": {
       "toggle": "辩论模式",

@@ -459,16 +459,35 @@
     },
     "message": {
       "opBadge": "OP",
-      "reply": "Responder"
+      "reply": "Responder",
+      "more": "Más",
+      "muted": "Silenciado",
+      "mute": "Silenciar usuario",
+      "unmute": "Quitar silencio",
+      "reportSpam": "Reportar: spam",
+      "reportAbuse": "Reportar: abuso/acoso",
+      "reportMisinfo": "Reportar: desinformación",
+      "delete": "Eliminar mensaje",
+      "deleteConfirm": "¿Eliminar este mensaje?",
+      "deleted": "Mensaje eliminado",
+      "deleteFailed": "No se pudo eliminar",
+      "reported": "Reportado",
+      "reportFailed": "No se pudo reportar"
     },
     "topics": {
       "sectionTitle": "Temas",
       "chat": "Chat",
       "debate": "Debate",
+      "forum": "Foro",
       "all": "Todos",
       "market": "Mercado",
       "meta": "Meta",
       "offtopic": "Off-topic"
+    },
+    "forum": {
+      "readOnlyHint": "El foro es de solo lectura aquí. Cambia a chat/debate para publicar.",
+      "switchToChat": "Cambiar a chat",
+      "switchToDebate": "Cambiar a debate"
     },
     "debate": {
       "toggle": "Modo debate",

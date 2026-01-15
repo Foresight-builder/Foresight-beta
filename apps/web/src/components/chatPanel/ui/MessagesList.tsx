@@ -1,8 +1,8 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import EmptyState from "@/components/EmptyState";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, MoreHorizontal } from "lucide-react";
 import { formatDate, formatTime } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import type { ChatMessageView } from "../types";
@@ -10,23 +10,49 @@ import type { ChatMessageView } from "../types";
 export type MessagesListProps = {
   mergedMessages: ChatMessageView[];
   account: string | null | undefined;
+  viewerIsAdmin?: boolean;
   displayName: (addr: string) => string;
   tChat: (key: string) => string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   listRef: React.RefObject<HTMLDivElement | null>;
   setReplyTo?: (msg: ChatMessageView | null) => void;
+  isUserMuted?: (addr: string) => boolean;
+  onMuteUser?: (addr: string) => void;
+  onUnmuteUser?: (addr: string) => void;
+  onDeleteMessage?: (msg: ChatMessageView) => void;
+  onReportMessage?: (msg: ChatMessageView, reason: string) => void;
 };
 
 export const MessagesList = memo(function MessagesList({
   mergedMessages,
   account,
+  viewerIsAdmin,
   displayName,
   tChat,
   setInput,
   listRef,
   setReplyTo: onReply, // 重命名以避免任何潜在的作用域冲突
+  isUserMuted,
+  onMuteUser,
+  onUnmuteUser,
+  onDeleteMessage,
+  onReportMessage,
 }: MessagesListProps) {
   const { locale } = useLocale();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const me = useMemo(() => String(account || "").toLowerCase(), [account]);
+  const isAdmin = !!viewerIsAdmin;
+
+  useEffect(() => {
+    const onDocClick = () => setOpenMenuId(null);
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  useEffect(() => {
+    setOpenMenuId(null);
+  }, [mergedMessages.length]);
 
   return (
     <div
@@ -60,6 +86,8 @@ export const MessagesList = memo(function MessagesList({
           !!account &&
           !!m.user_id &&
           String(account).toLowerCase() === String(m.user_id).toLowerCase();
+        const isDiscussion = /^\d+$/.test(String(m.id || ""));
+        const muted = !mine && !!isUserMuted?.(String(m.user_id || ""));
         const prev = i > 0 ? mergedMessages[i - 1] : null;
         const dateChanged =
           prev &&
@@ -71,6 +99,13 @@ export const MessagesList = memo(function MessagesList({
           prev &&
           prev.user_id === m.user_id &&
           new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60 * 1000;
+
+        const canMute = !mine && !!onMuteUser;
+        const canUnmute = !mine && !!onUnmuteUser;
+        const canReport = !mine && isDiscussion && !!onReportMessage;
+        const canDelete = isDiscussion && !!onDeleteMessage && (mine || isAdmin);
+        const menuOpen = openMenuId === String(m.id);
+        const menuAlign = mine ? "right-0" : "left-0";
 
         return (
           <React.Fragment key={m.id}>
@@ -100,9 +135,14 @@ export const MessagesList = memo(function MessagesList({
                     <span className="text-[10px] text-slate-400 dark:text-slate-500">
                       {formatTime(m.created_at, locale)}
                     </span>
+                    {muted && (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        · {tChat("message.muted")}
+                      </span>
+                    )}
                   </div>
                 )}
-                <div className="flex items-center gap-2 group/bubble">
+                <div className="flex items-center gap-2 group/bubble relative">
                   {mine && (
                     <button
                       onClick={() => onReply?.(m)}
@@ -112,6 +152,17 @@ export const MessagesList = memo(function MessagesList({
                       <MessageSquare size={14} />
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId((prev) => (prev === String(m.id) ? null : String(m.id)));
+                    }}
+                    className="opacity-0 group-hover/msg:opacity-100 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-opacity text-slate-400"
+                    title={tChat("message.more")}
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
                   <div
                     className={`rounded-2xl px-3 py-2 leading-relaxed border shadow-sm transition-all ${
                       mine
@@ -171,6 +222,99 @@ export const MessagesList = memo(function MessagesList({
                     </button>
                   )}
                 </div>
+                {menuOpen && (
+                  <div
+                    className={`absolute ${menuAlign} top-8 z-20 w-52 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)]/95 backdrop-blur-xl shadow-xl overflow-hidden`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        onReply?.(m);
+                      }}
+                    >
+                      {tChat("message.reply")}
+                    </button>
+                    {canMute && !muted && (
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          onMuteUser?.(String(m.user_id || ""));
+                        }}
+                      >
+                        {tChat("message.mute")}
+                      </button>
+                    )}
+                    {canUnmute && muted && (
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          onUnmuteUser?.(String(m.user_id || ""));
+                        }}
+                      >
+                        {tChat("message.unmute")}
+                      </button>
+                    )}
+                    {canReport && (
+                      <>
+                        <div className="h-px bg-[var(--card-border)]" />
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onReportMessage?.(m, "spam");
+                          }}
+                        >
+                          {tChat("message.reportSpam")}
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onReportMessage?.(m, "abuse");
+                          }}
+                        >
+                          {tChat("message.reportAbuse")}
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onReportMessage?.(m, "misinfo");
+                          }}
+                        >
+                          {tChat("message.reportMisinfo")}
+                        </button>
+                      </>
+                    )}
+                    {canDelete && (
+                      <>
+                        <div className="h-px bg-[var(--card-border)]" />
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-500/10 transition-colors"
+                          onClick={() => {
+                            const ok = window.confirm(tChat("message.deleteConfirm"));
+                            if (!ok) return;
+                            setOpenMenuId(null);
+                            onDeleteMessage?.(m);
+                          }}
+                        >
+                          {tChat("message.delete")}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </React.Fragment>

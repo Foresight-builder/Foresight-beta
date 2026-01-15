@@ -291,7 +291,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
 
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href={`/forum?eventId=${prediction.id}`}
+                href={`/forum/${prediction.id}`}
                 className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
               >
                 {tMarket("comments.gotoChat")}

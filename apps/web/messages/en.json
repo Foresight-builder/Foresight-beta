@@ -459,16 +459,35 @@
     },
     "message": {
       "opBadge": "OP",
-      "reply": "Reply"
+      "reply": "Reply",
+      "more": "More",
+      "muted": "Muted",
+      "mute": "Mute user",
+      "unmute": "Unmute user",
+      "reportSpam": "Report: spam",
+      "reportAbuse": "Report: abuse/harassment",
+      "reportMisinfo": "Report: misinformation",
+      "delete": "Delete message",
+      "deleteConfirm": "Delete this message?",
+      "deleted": "Message deleted",
+      "deleteFailed": "Failed to delete",
+      "reported": "Reported",
+      "reportFailed": "Failed to report"
     },
     "topics": {
       "sectionTitle": "Topics",
       "chat": "Chat",
       "debate": "Debate",
+      "forum": "Forum",
       "all": "All",
       "market": "Market",
       "meta": "Meta",
       "offtopic": "Off-topic"
+    },
+    "forum": {
+      "readOnlyHint": "Forum is read-only here. Switch to chat/debate to post.",
+      "switchToChat": "Switch to chat",
+      "switchToDebate": "Switch to debate"
     },
     "debate": {
       "toggle": "Debate mode",

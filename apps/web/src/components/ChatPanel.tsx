@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
@@ -32,7 +33,7 @@ function parseDebatePrefs(raw: string | null) {
       debateStance: ChatMessageView["debate_stance"];
       debateKind: ChatMessageView["debate_kind"];
       debateFilter: "all" | "debate" | "normal";
-      partition: "chat" | "debate";
+      partition: "chat" | "debate" | "forum";
       stanceFilter: "all" | "pro" | "con" | "uncertain";
       kindFilter: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
     }>;
@@ -41,7 +42,7 @@ function parseDebatePrefs(raw: string | null) {
       debateMode?: boolean;
       debateStance?: NonNullable<ChatMessageView["debate_stance"]>;
       debateKind?: NonNullable<ChatMessageView["debate_kind"]>;
-      partition?: "chat" | "debate";
+      partition?: "chat" | "debate" | "forum";
       stanceFilter?: "all" | "pro" | "con" | "uncertain";
       kindFilter?: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
     } = {};
@@ -64,6 +65,8 @@ function parseDebatePrefs(raw: string | null) {
     }
     if (obj.partition === "chat" || obj.partition === "debate") {
       next.partition = obj.partition;
+    } else if (obj.partition === "forum") {
+      next.partition = "forum";
     } else if (obj.debateFilter === "debate") {
       next.partition = "debate";
     } else if (obj.debateFilter === "normal" || obj.debateFilter === "all") {
@@ -108,11 +111,14 @@ export default function ChatPanel({
     requestWalletPermissions,
     multisigSign,
   } = useWallet();
+  const profileCtx = useUserProfileOptional();
+  const viewerIsAdmin = !!profileCtx?.isAdmin;
   const tChat = useTranslations("chat");
   const tCommon = useTranslations("common");
 
   const {
     messages,
+    setMessages,
     loading: discussionLoading,
     error: discussionError,
     refresh: refreshDiscussion,
@@ -131,7 +137,7 @@ export default function ChatPanel({
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
-  const [partition, setPartition] = useState<"chat" | "debate">("chat");
+  const [partition, setPartition] = useState<"chat" | "debate" | "forum">("chat");
   const [stanceFilter, setStanceFilter] = useState<"all" | "pro" | "con" | "uncertain">("all");
   const [kindFilter, setKindFilter] = useState<
     "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary"
@@ -143,6 +149,55 @@ export default function ChatPanel({
     useState<NonNullable<ChatMessageView["debate_kind"]>>("claim");
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
+
+  const [mutedUsers, setMutedUsers] = useState<Record<string, true>>({});
+
+  useEffect(() => {
+    const key = "chat:mutedUsers";
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(key);
+      const arr = raw ? (JSON.parse(raw) as unknown) : [];
+      if (!Array.isArray(arr)) return;
+      const next: Record<string, true> = {};
+      arr.forEach((x) => {
+        const a = typeof x === "string" ? x : "";
+        const k = a.trim().toLowerCase();
+        if (k) next[k] = true;
+      });
+      setMutedUsers(next);
+    } catch {}
+  }, []);
+
+  const isMuted = useCallback(
+    (addr?: string | null) => {
+      const k = String(addr || "")
+        .trim()
+        .toLowerCase();
+      if (!k) return false;
+      return !!mutedUsers[k];
+    },
+    [mutedUsers]
+  );
+
+  const setMute = useCallback((addr: string, muted: boolean) => {
+    const key = "chat:mutedUsers";
+    const k = String(addr || "")
+      .trim()
+      .toLowerCase();
+    if (!k) return;
+    setMutedUsers((prev) => {
+      const next = { ...prev };
+      if (muted) next[k] = true;
+      else delete next[k];
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(key, JSON.stringify(Object.keys(next)));
+        }
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const quickPrompts = [
     tChat("quickPrompt.reason"),
@@ -203,19 +258,38 @@ export default function ChatPanel({
 
   const filteredMessages = useMemo(
     () =>
-      mergedMessages
-        .filter((m) => {
-          const isDebate = !!(m.debate_kind || m.debate_stance);
-          return partition === "debate" ? isDebate : !isDebate;
-        })
-        .filter((m) => {
-          if (partition !== "debate") return true;
-          if (stanceFilter !== "all" && m.debate_stance !== stanceFilter) return false;
-          if (kindFilter !== "all" && m.debate_kind !== kindFilter) return false;
+      mergedMessages.filter((m) => {
+        if (account && String(m.user_id).toLowerCase() === String(account).toLowerCase()) {
           return true;
-        }),
-    [mergedMessages, partition, stanceFilter, kindFilter]
+        }
+        return !isMuted(m.user_id);
+      }),
+    [mergedMessages, account, isMuted]
   );
+
+  const discussionOnly = useMemo(() => mergeMessages(messages, []), [messages]);
+  const forumOnly = useMemo(() => mergeMessages([], forumMessages), [forumMessages]);
+
+  const displayedMessages = useMemo(() => {
+    const source = partition === "forum" ? forumOnly : discussionOnly;
+    const base = source.filter((m) => {
+      if (account && String(m.user_id).toLowerCase() === String(account).toLowerCase()) {
+        return true;
+      }
+      return !isMuted(m.user_id);
+    });
+    if (partition === "forum") return base;
+    const filtered = base.filter((m) => {
+      const isDebate = !!(m.debate_kind || m.debate_stance);
+      return partition === "debate" ? isDebate : !isDebate;
+    });
+    if (partition !== "debate") return filtered;
+    return filtered.filter((m) => {
+      if (stanceFilter !== "all" && m.debate_stance !== stanceFilter) return false;
+      if (kindFilter !== "all" && m.debate_kind !== kindFilter) return false;
+      return true;
+    });
+  }, [partition, forumOnly, discussionOnly, account, isMuted, stanceFilter, kindFilter]);
 
   const roomLabel = useMemo(() => {
     const t = String(roomTitle || "").trim();
@@ -238,6 +312,12 @@ export default function ChatPanel({
       toast.error(tCommon("error"), msg);
       return;
     }
+    if (partition === "forum") {
+      const msg = tChat("forum.readOnlyHint");
+      setSendError(msg);
+      toast.error(tCommon("error"), msg);
+      return;
+    }
     const effectiveDebateMode = partition === "debate" || debateMode;
     const contentToSend = effectiveDebateMode
       ? `${buildDebatePrefix(debateStance, debateKind)} ${input}`
@@ -245,6 +325,8 @@ export default function ChatPanel({
     setSending(true);
     setSendError(null);
     try {
+      const replyToId =
+        replyTo?.id && /^\d+$/.test(replyTo.id) ? Number(replyTo.id) : (null as any);
       const res = await fetch("/api/discussions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -253,9 +335,9 @@ export default function ChatPanel({
           content: contentToSend,
           userId: account,
           image_url: imageUrl,
-          replyToId: replyTo?.id,
-          replyToUser: replyTo?.user_id,
-          replyToContent: replyTo?.content.slice(0, 100), // 存储前100个字符作为摘要
+          replyToId,
+          replyToUser: replyTo?.user_id || null,
+          replyToContent: replyTo?.content ? replyTo.content.slice(0, 100) : null,
           topic: null,
         }),
       });
@@ -273,6 +355,70 @@ export default function ChatPanel({
       setSending(false);
     }
   };
+
+  const deleteMessage = useCallback(
+    async (msg: ChatMessageView) => {
+      if (!account) return;
+      if (!/^\d+$/.test(String(msg.id || ""))) return;
+      try {
+        const res = await fetch(`/api/discussions/${msg.id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const contentType = String(res.headers.get("content-type") || "");
+          const json = contentType.includes("application/json")
+            ? await res.json().catch(() => null)
+            : null;
+          const serverMsg = String(
+            (json as any)?.error?.message || (json as any)?.message || ""
+          ).trim();
+          throw new Error(serverMsg || "delete_failed");
+        }
+        setMessages((prev) => prev.filter((m) => String(m.id) !== String(msg.id)));
+        toast.success(tCommon("success"), tChat("message.deleted"));
+      } catch (e: any) {
+        const msg = String(e?.message || "").trim();
+        toast.error(
+          tCommon("error"),
+          msg && msg !== "delete_failed" ? msg : tChat("message.deleteFailed")
+        );
+      }
+    },
+    [account, setMessages, tCommon, tChat]
+  );
+
+  const reportMessage = useCallback(
+    async (msg: ChatMessageView, reason: string) => {
+      if (!account) return;
+      if (!/^\d+$/.test(String(msg.id || ""))) return;
+      try {
+        const res = await fetch("/api/discussions/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            discussionId: Number(msg.id),
+            reason,
+          }),
+        });
+        if (!res.ok) {
+          const contentType = String(res.headers.get("content-type") || "");
+          const json = contentType.includes("application/json")
+            ? await res.json().catch(() => null)
+            : null;
+          const serverMsg = String(
+            (json as any)?.error?.message || (json as any)?.message || ""
+          ).trim();
+          throw new Error(serverMsg || "report_failed");
+        }
+        toast.success(tCommon("success"), tChat("message.reported"));
+      } catch (e: any) {
+        const msg = String(e?.message || "").trim();
+        toast.error(
+          tCommon("error"),
+          msg && msg !== "report_failed" ? msg : tChat("message.reportFailed")
+        );
+      }
+    },
+    [account, tCommon, tChat]
+  );
 
   return (
     <div
@@ -303,6 +449,7 @@ export default function ChatPanel({
           [
             { value: "chat", labelKey: "topics.chat" },
             { value: "debate", labelKey: "topics.debate" },
+            { value: "forum", labelKey: "topics.forum" },
           ] as const
         ).map((t) => {
           const isActive = partition === t.value;
@@ -344,42 +491,72 @@ export default function ChatPanel({
         </div>
       ) : (
         <MessagesList
-          mergedMessages={filteredMessages}
+          mergedMessages={displayedMessages}
           account={account}
+          viewerIsAdmin={viewerIsAdmin}
           displayName={displayName}
           tChat={tChat}
           setInput={setInput}
           listRef={listRef}
           setReplyTo={setReplyTo}
+          isUserMuted={isMuted}
+          onMuteUser={(addr) => setMute(addr, true)}
+          onUnmuteUser={(addr) => setMute(addr, false)}
+          onDeleteMessage={deleteMessage}
+          onReportMessage={reportMessage}
         />
       )}
 
-      <ChatInputArea
-        account={account}
-        tChat={tChat}
-        connectWallet={connectWallet}
-        requestWalletPermissions={requestWalletPermissions}
-        siweLogin={siweLogin}
-        multisigSign={multisigSign}
-        quickPrompts={quickPrompts}
-        input={input}
-        setInput={setInput}
-        sendMessage={sendMessage}
-        sending={sending}
-        showEmojis={showEmojis}
-        setShowEmojis={setShowEmojis}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-        displayName={displayName}
-        error={sendError}
-        debateMode={debateMode}
-        setDebateMode={setDebateMode}
-        debateStance={debateStance}
-        setDebateStance={setDebateStance}
-        debateKind={debateKind}
-        setDebateKind={setDebateKind}
-        forceDebateMode={partition === "debate"}
-      />
+      {partition === "forum" ? (
+        <div className="p-3 border-t border-[var(--card-border)] bg-[var(--card-bg)]/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+          <div className="text-xs text-slate-600 dark:text-slate-300">
+            {tChat("forum.readOnlyHint")}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPartition("chat")}
+              className="px-3 py-1.5 rounded-full border border-[var(--card-border)] bg-[var(--card-bg)] text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10 transition-colors"
+            >
+              {tChat("forum.switchToChat")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPartition("debate")}
+              className="px-3 py-1.5 rounded-full border border-[var(--card-border)] bg-[var(--card-bg)] text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10 transition-colors"
+            >
+              {tChat("forum.switchToDebate")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <ChatInputArea
+          account={account}
+          tChat={tChat}
+          connectWallet={connectWallet}
+          requestWalletPermissions={requestWalletPermissions}
+          siweLogin={siweLogin}
+          multisigSign={multisigSign}
+          quickPrompts={quickPrompts}
+          input={input}
+          setInput={setInput}
+          sendMessage={sendMessage}
+          sending={sending}
+          showEmojis={showEmojis}
+          setShowEmojis={setShowEmojis}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          displayName={displayName}
+          error={sendError}
+          debateMode={debateMode}
+          setDebateMode={setDebateMode}
+          debateStance={debateStance}
+          setDebateStance={setDebateStance}
+          debateKind={debateKind}
+          setDebateKind={setDebateKind}
+          forceDebateMode={partition === "debate"}
+        />
+      )}
     </div>
   );
 }

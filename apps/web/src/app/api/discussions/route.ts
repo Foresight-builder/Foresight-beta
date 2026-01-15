@@ -10,6 +10,44 @@ import {
 import { normalizePositiveId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 
+function textLengthWithoutSpaces(value: string): number {
+  return value.replace(/\s+/g, "").length;
+}
+
+async function isUnderDiscussionRateLimit(client: any, walletAddress: string): Promise<boolean> {
+  const userId = walletAddress || "guest";
+  const now = new Date();
+  const threeSecondsAgo = new Date(now.getTime() - 3 * 1000).toISOString();
+  const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { count: count3s, error: err3s } = await client
+    .from("discussions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", threeSecondsAgo);
+  if (err3s) throw err3s;
+  if (typeof count3s === "number" && count3s > 0) return false;
+
+  const { count: count10m, error: err10m } = await client
+    .from("discussions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", tenMinutesAgo);
+  if (err10m) throw err10m;
+  if (typeof count10m === "number" && count10m >= 30) return false;
+
+  const { count: count24h, error: err24h } = await client
+    .from("discussions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", dayAgo);
+  if (err24h) throw err24h;
+  if (typeof count24h === "number" && count24h >= 200) return false;
+
+  return true;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -68,6 +106,52 @@ export async function POST(req: NextRequest) {
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
+
+    if (content && content.length > 4000) {
+      return ApiResponses.invalidParameters("内容过长");
+    }
+    if (content && textLengthWithoutSpaces(content) > 2000) {
+      return ApiResponses.invalidParameters("内容过长");
+    }
+
+    try {
+      const ok = await isUnderDiscussionRateLimit(client as any, sessionWallet);
+      if (!ok) return ApiResponses.rateLimit("发言过于频繁，请稍后再试");
+    } catch (e: any) {
+      logApiError("[discussions:post] rate limit check failed", e);
+      return ApiResponses.internalError(
+        "限流检查失败",
+        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      );
+    }
+
+    try {
+      const { data: lastRow, error: lastErr } = await (client as any)
+        .from("discussions")
+        .select("content,created_at,proposal_id")
+        .eq("proposal_id", proposalId)
+        .eq("user_id", sessionWallet)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastErr) throw lastErr;
+      const lastContent = String(lastRow?.content || "").trim();
+      const nextContent = String(content || "").trim();
+      const lastCreatedAt = String(lastRow?.created_at || "");
+      const lastTs = lastCreatedAt ? new Date(lastCreatedAt).getTime() : 0;
+      if (
+        lastContent &&
+        nextContent &&
+        lastContent === nextContent &&
+        Number.isFinite(lastTs) &&
+        Date.now() - lastTs < 30 * 1000
+      ) {
+        return ApiResponses.rateLimit("重复内容发送过快，请稍后再试");
+      }
+    } catch (e: any) {
+      logApiError("[discussions:post] duplicate check failed", e);
+    }
+
     const { data, error } = await client
       .from("discussions")
       .insert({
