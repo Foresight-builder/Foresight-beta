@@ -56,7 +56,9 @@ export default function TopNavBar() {
           return (
             item.type === "pending_review" ||
             item.type === "checkin_review" ||
-            item.type === "flag_checkin_reminder"
+            item.type === "flag_checkin_reminder" ||
+            item.type === "forum_report" ||
+            item.type === "discussion_report"
           );
         }
         if (nav.notificationsFilter === "challenge") {
@@ -66,7 +68,9 @@ export default function TopNavBar() {
           item.type !== "pending_review" &&
           item.type !== "checkin_review" &&
           item.type !== "witness_invite" &&
-          item.type !== "flag_checkin_reminder"
+          item.type !== "flag_checkin_reminder" &&
+          item.type !== "forum_report" &&
+          item.type !== "discussion_report"
         );
       }),
     [nav.notifications, nav.notificationsFilter]

@@ -1,36 +1,6 @@
 import { useTranslations } from "@/lib/i18n";
 import { formatInteger, formatPercent } from "@/lib/format";
-
-interface PredictionDetail {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-  deadline: string;
-  minStake: number;
-  criteria: string;
-  referenceUrl: string;
-  status: "active" | "completed" | "cancelled";
-  createdAt: string;
-  updatedAt: string;
-  stats: {
-    yesAmount: number;
-    noAmount: number;
-    totalAmount: number;
-    participantCount: number;
-    yesProbability: number;
-    noProbability: number;
-    betCount: number;
-  };
-  timeInfo: {
-    createdAgo: string;
-    deadlineIn: string;
-    isExpired: boolean;
-  };
-  type?: string;
-  outcome_count?: number;
-  outcomes?: Array<any>;
-}
+import type { PredictionDetail } from "@/app/prediction/[id]/_lib/types";
 
 interface OutcomeListProps {
   prediction: PredictionDetail;
@@ -51,6 +21,14 @@ export function OutcomeList({
   const outcomes = prediction.outcomes || [];
   const stats = prediction.stats;
 
+  const normalizeProbabilityToPercent = (value: unknown): number => {
+    const raw = typeof value === "string" ? Number(value) : (value as number);
+    if (!Number.isFinite(raw)) return 0;
+    const pct = raw > 1 ? raw : raw * 100;
+    if (!Number.isFinite(pct)) return 0;
+    return Math.max(0, Math.min(100, pct));
+  };
+
   const items =
     outcomes.length > 0
       ? outcomes
@@ -60,24 +38,22 @@ export function OutcomeList({
         ];
 
   const displayItems = items.map((outcome: any, idx: number) => {
-    let prob = 0;
+    let probPct = 0;
 
     if (outcome.probability !== undefined) {
-      prob = Number(outcome.probability);
+      probPct = normalizeProbabilityToPercent(outcome.probability);
     } else if (outcomes.length === 0 || outcomes.length === 2) {
-      if (idx === 0) prob = stats?.yesProbability || 0;
-      else prob = stats?.noProbability || 0;
+      if (idx === 0) probPct = normalizeProbabilityToPercent(stats?.yesProbability);
+      else probPct = normalizeProbabilityToPercent(stats?.noProbability);
     }
 
-    if (isNaN(prob)) prob = 0;
-
-    const buyPrice = prob;
-    const sellPrice = 100 - prob;
+    const buyPrice = probPct;
+    const sellPrice = Math.max(0, Math.min(100, 100 - probPct));
 
     return {
       outcome,
       idx,
-      prob,
+      prob: probPct,
       buyPrice,
       sellPrice,
     };
@@ -142,7 +118,7 @@ export function OutcomeList({
                       {outcome.label}
                     </span>
                     <span className="font-bold text-purple-600 flex-shrink-0">
-                      {formatPercent(prob)}%
+                      {formatPercent(prob)}
                     </span>
                   </div>
                   {/* Progress Bar */}

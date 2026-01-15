@@ -96,9 +96,9 @@ export async function POST(req: NextRequest) {
     if (parentIdRaw != null && parentId == null) {
       return ApiResponses.invalidParameters("parentId is invalid");
     }
-    if (eventId == null || eventId <= 0 || threadId == null || threadId <= 0) {
+    if (eventId == null || eventId < 0 || threadId == null || threadId <= 0) {
       return ApiResponses.invalidParameters(
-        "eventId and threadId are required and must be positive integers"
+        "eventId and threadId are required and must be valid integers"
       );
     }
     if (!content.trim()) {

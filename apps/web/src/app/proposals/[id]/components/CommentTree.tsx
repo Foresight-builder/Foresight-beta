@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { MoreHorizontal, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { CommentView } from "../useProposalDetail";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
+import { toast } from "@/lib/toast";
+import { useWallet } from "@/contexts/WalletContext";
 
 export function CommentTree({
   comments,
@@ -22,7 +24,7 @@ export function CommentTree({
   onVote: (id: number, dir: "up" | "down") => void;
   onReply: (parentId: number, text: string) => void;
   account: string | null | undefined;
-  connectWallet: () => void;
+  connectWallet: () => void | Promise<void>;
   displayName: (addr: string) => string;
   threadAuthorId?: string;
 }) {
@@ -76,7 +78,7 @@ function CommentNode({
   onVote: (id: number, dir: "up" | "down") => void;
   onReply: (parentId: number, text: string) => void;
   account: string | null | undefined;
-  connectWallet: () => void;
+  connectWallet: () => void | Promise<void>;
   displayName: (addr: string) => string;
   floor?: number;
   depth?: number;
@@ -84,10 +86,74 @@ function CommentNode({
   tProposals: (key: string) => string;
   locale: string;
 }) {
+  const { siweLogin } = useWallet();
+  const tChat = useTranslations("chat");
+  const tCommon = useTranslations("common");
   const replies = getReplies(comment.id);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const voteType = userVoteTypes[`comment:${comment.id}`];
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
+  const reportButtonRef = useRef<HTMLButtonElement | null>(null);
+  const reportMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!reportMenuOpen) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (reportButtonRef.current?.contains(target)) return;
+      if (reportMenuRef.current?.contains(target)) return;
+      setReportMenuOpen(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setReportMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [reportMenuOpen]);
+
+  const reportComment = async (reason: "spam" | "abuse" | "misinfo") => {
+    try {
+      if (!account) {
+        await Promise.resolve(connectWallet());
+      }
+      try {
+        await siweLogin();
+      } catch {}
+
+      const res = await fetch("/api/forum/report", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "comment", id: Number(comment.id), reason }),
+      });
+      if (!res.ok) {
+        const contentType = String(res.headers.get("content-type") || "");
+        const json = contentType.includes("application/json")
+          ? await res.json().catch(() => null)
+          : null;
+        const serverMsg = String((json as any)?.error?.message || (json as any)?.message || "")
+          .trim()
+          .slice(0, 160);
+        throw new Error(serverMsg || "report_failed");
+      }
+      toast.success(tCommon("success"), tChat("message.reported"));
+    } catch (e: any) {
+      const msg = String(e?.message || "").trim();
+      toast.error(
+        tCommon("error"),
+        msg && msg !== "report_failed" ? msg : tChat("message.reportFailed")
+      );
+    }
+  };
 
   return (
     <div className="flex gap-3 sm:gap-4">
@@ -113,9 +179,63 @@ function CommentNode({
                 </span>
               )}
             </div>
-            {typeof floor === "number" && depth === 0 && (
-              <span className="text-[11px] text-slate-400">#{floor}</span>
-            )}
+            <div className="flex items-center gap-2">
+              {typeof floor === "number" && depth === 0 && (
+                <span className="text-[11px] text-slate-400">#{floor}</span>
+              )}
+              {String(comment.user_id || "").toLowerCase() !==
+                String(account || "").toLowerCase() && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={reportMenuOpen}
+                    onClick={() => setReportMenuOpen((v) => !v)}
+                    ref={reportButtonRef}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                  {reportMenuOpen && (
+                    <div
+                      ref={reportMenuRef}
+                      className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-20"
+                    >
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => {
+                          setReportMenuOpen(false);
+                          reportComment("spam");
+                        }}
+                      >
+                        {tChat("message.reportSpam")}
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => {
+                          setReportMenuOpen(false);
+                          reportComment("abuse");
+                        }}
+                      >
+                        {tChat("message.reportAbuse")}
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => {
+                          setReportMenuOpen(false);
+                          reportComment("misinfo");
+                        }}
+                      >
+                        {tChat("message.reportMisinfo")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <p className="text-sm text-slate-700 leading-relaxed mb-3 break-words">

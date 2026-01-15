@@ -14,9 +14,9 @@ import { TRENDING_CATEGORIES } from "@/features/trending/trendingModel";
 const rawProposalsEventId = process.env.NEXT_PUBLIC_PROPOSALS_EVENT_ID;
 const proposalsEventIdNumber = rawProposalsEventId ? Number(rawProposalsEventId) : NaN;
 export const PROPOSALS_EVENT_ID =
-  Number.isFinite(proposalsEventIdNumber) && proposalsEventIdNumber > 0
-    ? proposalsEventIdNumber
-    : 1;
+  Number.isFinite(proposalsEventIdNumber) && proposalsEventIdNumber >= 0
+    ? Math.floor(proposalsEventIdNumber)
+    : 0;
 export const PROPOSAL_DETAIL_STALE_MS = 15000;
 export const PROPOSAL_USER_VOTES_STALE_MS = 30000;
 

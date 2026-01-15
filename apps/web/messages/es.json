@@ -823,6 +823,15 @@
       "feeTitle": "Sobre las comisiones",
       "feeBody": "Cuando operas en Foresight, la capa de casación cobra una comisión de taker del 0,4% sobre el volumen ejecutado para cubrir costes de infraestructura y seguir mejorando el producto. Todas las comisiones se muestran de forma transparente en la vista previa de la orden, sin cargos ocultos ni adicionales."
     },
+    "discipline": {
+      "kicker": "Integridad del mercado",
+      "title": "¿Ves un problema? Envía una alerta",
+      "body": "Si crees que este mercado tiene información incorrecta, reglas poco claras, manipulación u otra cuestión que requiera la atención del árbitro, envía una alerta e incluye enlaces de soporte.",
+      "cta": "Enviar alerta",
+      "hint": "Las alertas pasan por el flujo de revisión del foro y pueden escalarse al árbitro.",
+      "defaultTitle": "Alerta: {title}",
+      "defaultDesc": "Creo que este mercado puede tener los siguientes problemas:\n\n(Añade tu razonamiento y enlaces de soporte.)"
+    },
     "rules": {
       "criteriaTitle": "Criterios de resolución",
       "arbitrator": "Árbitro",

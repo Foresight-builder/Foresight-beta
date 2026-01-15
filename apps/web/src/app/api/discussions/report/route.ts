@@ -48,6 +48,13 @@ export async function POST(req: NextRequest) {
 
     const reason = normalizeReason(body?.reason);
 
+    const rlContent = await checkRateLimit(
+      `${discussionId}:${viewer}:${reason}`,
+      { interval: 30 * 1000, limit: 1 },
+      "discussion_report_content"
+    );
+    if (!rlContent.success) return ApiResponses.rateLimit("举报过于频繁，请稍后再试");
+
     const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase 未配置");
 
@@ -69,6 +76,11 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidParameters("不能举报自己的内容");
     }
 
+    const proposalId = Number(row.proposal_id || 0);
+    if (!Number.isFinite(proposalId) || proposalId <= 0) {
+      return ApiResponses.invalidParameters("proposal_id 无效");
+    }
+
     const recipients = parseAdminRecipients().filter((x) => x !== viewer);
     if (recipients.length === 0) {
       return NextResponse.json({ message: "ok" }, { status: 200 });
@@ -79,11 +91,11 @@ export async function POST(req: NextRequest) {
     const preview = String(row.content || "")
       .trim()
       .slice(0, 80);
-    const url = `/proposals/${Number(row.proposal_id || 0)}`;
+    const url = `/proposals/${proposalId}`;
 
     const payloadBase = {
       discussionId,
-      proposalId: Number(row.proposal_id || 0),
+      proposalId,
       reason,
       reporterId: viewer,
       authorId: normalizeAddress(String(row.user_id || "")),

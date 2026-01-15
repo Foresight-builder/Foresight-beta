@@ -6,7 +6,7 @@ import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketChart } from "@/components/market/MarketChart";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
-import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
+import type { PredictionDetail } from "@/app/prediction/[id]/_lib/types";
 import { useTranslations } from "@/lib/i18n";
 
 type TabKey = "trade" | "chart" | "info" | "outcomes";

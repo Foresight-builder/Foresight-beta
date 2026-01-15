@@ -823,6 +823,15 @@
       "feeTitle": "About fees",
       "feeBody": "On Foresight, day-to-day trading carries little to no extra fees. Only when a market is resolved and you redeem winning positions do we charge a 2% fee on the redeemed amount, which is used for the protocol and market-making incentives, with no hidden or additional charges."
     },
+    "discipline": {
+      "kicker": "Market integrity",
+      "title": "See an issue? File a flag",
+      "body": "If you think this market has incorrect information, unclear rules, manipulation, or anything that needs the arbitrator’s attention, file a flag and include supporting links.",
+      "cta": "File a flag",
+      "hint": "Flags go through the forum review flow and may be escalated to the arbitrator.",
+      "defaultTitle": "Flag: {title}",
+      "defaultDesc": "I think this market may have the following issue(s):\n\n(Please add your reasoning and supporting links.)"
+    },
     "rules": {
       "criteriaTitle": "Resolution criteria",
       "arbitrator": "Arbitrator",

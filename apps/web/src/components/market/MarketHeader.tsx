@@ -14,7 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
-import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
+import type { PredictionDetail } from "@/app/prediction/[id]/_lib/types";
 import Link from "next/link";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatCurrency, formatDate } from "@/lib/format";

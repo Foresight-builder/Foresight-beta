@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MessageCircle, MoreHorizontal } from "lucide-react";
 import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import type { CommentView, ThreadView } from "../useProposalDetail";
 import { CommentTree } from "./CommentTree";
 import { ChatInput } from "./chat/ChatInput";
+import { toast } from "@/lib/toast";
+import { useWallet } from "@/contexts/WalletContext";
 
 export type ProposalDiscussionSectionProps = {
   thread: ThreadView;
@@ -16,7 +18,7 @@ export type ProposalDiscussionSectionProps = {
   vote: (target: "thread" | "comment", id: number, dir: "up" | "down") => void;
   postComment: (text: string, parentId?: number) => void;
   account: string | null | undefined;
-  connectWallet: () => void;
+  connectWallet: () => void | Promise<void>;
   replyText: string;
   onReplyTextChange: (value: string) => void;
   onSubmitReply: () => void;
@@ -39,10 +41,74 @@ export function ProposalDiscussionSection({
   canResubmit,
   onResubmit,
 }: ProposalDiscussionSectionProps) {
+  const { siweLogin } = useWallet();
   const tProposals = useTranslations("proposals");
+  const tChat = useTranslations("chat");
+  const tCommon = useTranslations("common");
   const { locale } = useLocale();
 
   const [filterMode, setFilterMode] = useState<"time" | "hot" | "author">("time");
+  const [reportMenuOpen, setReportMenuOpen] = useState(false);
+  const reportButtonRef = useRef<HTMLButtonElement | null>(null);
+  const reportMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!reportMenuOpen) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (reportButtonRef.current?.contains(target)) return;
+      if (reportMenuRef.current?.contains(target)) return;
+      setReportMenuOpen(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setReportMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [reportMenuOpen]);
+
+  const reportThread = async (reason: "spam" | "abuse" | "misinfo") => {
+    try {
+      if (!account) {
+        await Promise.resolve(connectWallet());
+      }
+      try {
+        await siweLogin();
+      } catch {}
+
+      const res = await fetch("/api/forum/report", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "thread", id: Number(thread.id), reason }),
+      });
+      if (!res.ok) {
+        const contentType = String(res.headers.get("content-type") || "");
+        const json = contentType.includes("application/json")
+          ? await res.json().catch(() => null)
+          : null;
+        const serverMsg = String((json as any)?.error?.message || (json as any)?.message || "")
+          .trim()
+          .slice(0, 160);
+        throw new Error(serverMsg || "report_failed");
+      }
+      toast.success(tCommon("success"), tChat("message.reported"));
+    } catch (e: any) {
+      const msg = String(e?.message || "").trim();
+      toast.error(
+        tCommon("error"),
+        msg && msg !== "report_failed" ? msg : tChat("message.reportFailed")
+      );
+    }
+  };
 
   const comments = useMemo(() => {
     const list = (thread.comments || []) as CommentView[];
@@ -128,7 +194,7 @@ export function ProposalDiscussionSection({
             </div>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-[11px] px-3 py-1.5 rounded-full bg-slate-100/80 border border-slate-200 text-slate-500 font-medium">
             {account
               ? formatTranslation(tProposals("discussion.currentUser"), {
@@ -136,6 +202,57 @@ export function ProposalDiscussionSection({
                 })
               : tProposals("discussion.walletNotConnected")}
           </div>
+          {String(thread.user_id || "").toLowerCase() !== String(account || "").toLowerCase() && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={reportMenuOpen}
+                onClick={() => setReportMenuOpen((v) => !v)}
+                ref={reportButtonRef}
+                className="p-2 rounded-xl border border-slate-200 bg-white/80 text-slate-500 hover:text-slate-800 hover:bg-white transition-colors"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+              {reportMenuOpen && (
+                <div
+                  ref={reportMenuRef}
+                  className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-20"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      setReportMenuOpen(false);
+                      reportThread("spam");
+                    }}
+                  >
+                    {tChat("message.reportSpam")}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      setReportMenuOpen(false);
+                      reportThread("abuse");
+                    }}
+                  >
+                    {tChat("message.reportAbuse")}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                    onClick={() => {
+                      setReportMenuOpen(false);
+                      reportThread("misinfo");
+                    }}
+                  >
+                    {tChat("message.reportMisinfo")}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

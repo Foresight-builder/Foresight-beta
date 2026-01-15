@@ -10,7 +10,7 @@ import {
   MessageSquare,
   Scale,
 } from "lucide-react";
-import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
+import type { PredictionDetail } from "@/app/prediction/[id]/_lib/types";
 import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import CreateFlagModal from "@/components/CreateFlagModal";

@@ -6,7 +6,7 @@ export interface PredictionDetail {
   deadline: string;
   minStake: number;
   criteria: string;
-  referenceUrl: string;
+  referenceUrl: string | null;
   status: "active" | "completed" | "cancelled";
   createdAt: string;
   updatedAt: string;
@@ -24,7 +24,7 @@ export interface PredictionDetail {
     deadlineIn: string;
     isExpired: boolean;
   };
-  type?: string;
-  outcome_count?: number;
-  outcomes?: Array<any>;
+  type: "binary" | "multi";
+  outcome_count: number;
+  outcomes?: any[];
 }
