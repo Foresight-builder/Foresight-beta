@@ -196,7 +196,7 @@ export default async function RootLayout({
                           <ErrorBoundary level="component">
                             <Sidebar />
                           </ErrorBoundary>
-                          <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
+                          <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 pb-nav">
                             <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
                             <div className="relative z-10">
                               <ErrorBoundary level="section">{children}</ErrorBoundary>

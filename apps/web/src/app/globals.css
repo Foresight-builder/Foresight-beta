@@ -388,7 +388,7 @@ body {
 /* 底部导航栏间距补偿 */
 @media (max-width: 1024px) {
   .pb-nav {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }
 

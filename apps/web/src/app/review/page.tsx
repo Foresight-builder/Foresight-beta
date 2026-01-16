@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/format";
 import { formatAddress } from "@/lib/address";
 import GradientPage from "@/components/ui/GradientPage";
 import { toast } from "@/lib/toast";
+import { useWallet } from "@/contexts/WalletContext";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -27,21 +28,35 @@ export default function ReviewPage() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState("");
   const router = useRouter();
   const tCommon = useTranslations("common");
+  const tAuth = useTranslations("auth");
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
+  const { account, connectWallet, siweLogin } = useWallet();
 
   const loadItems = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setAuthRequired(false);
+    setForbidden(false);
     try {
       const res = await fetch("/api/review/proposals?status=pending_review", { cache: "no-store" });
-      if (res.status === 401 || res.status === 403) {
-        router.replace("/proposals");
+      if (res.status === 401) {
+        setAuthRequired(true);
+        setError(tProposals("review.loadFailed"));
+        setItems([]);
+        return;
+      }
+      if (res.status === 403) {
+        setForbidden(true);
+        setError(tProposals("review.loadFailed"));
+        setItems([]);
         return;
       }
       if (!res.ok) {
@@ -65,7 +80,7 @@ export default function ReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, selectedId, tProposals]);
+  }, [selectedId, tProposals]);
 
   useEffect(() => {
     loadItems();
@@ -131,6 +146,19 @@ export default function ReviewPage() {
     }
   };
 
+  const handleAuth = useCallback(async () => {
+    if (!account) {
+      await connectWallet();
+      return;
+    }
+    const result = await siweLogin();
+    if (!result.success) {
+      toast.error(result.error || tProposals("review.alertSubmitFailed"));
+      return;
+    }
+    await loadItems();
+  }, [account, connectWallet, loadItems, siweLogin, tProposals]);
+
   const submitAction = async (action: "approve" | "reject" | "needs_changes") => {
     if (!selected) return;
     if ((action === "reject" || action === "needs_changes") && !reason.trim()) {
@@ -170,12 +198,22 @@ export default function ReviewPage() {
             <h1 className="text-2xl font-bold text-slate-900">{tProposals("review.title")}</h1>
             <p className="text-sm text-slate-500 mt-1">{tProposals("review.subtitle")}</p>
           </div>
-          <button
-            onClick={() => router.push("/proposals")}
-            className="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-          >
-            {tProposals("review.backToProposals")}
-          </button>
+          <div className="flex items-center gap-2">
+            {authRequired && !forbidden && (
+              <button
+                onClick={handleAuth}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700"
+              >
+                {account ? tAuth("login") : tAuth("connectWallet")}
+              </button>
+            )}
+            <button
+              onClick={() => router.push("/proposals")}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              {tProposals("review.backToProposals")}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)] gap-6">

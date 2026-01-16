@@ -647,7 +647,7 @@ export function ProfilePageView({
     return d.toLocaleString();
   };
   return (
-    <GradientPage className="lg:h-screen lg:overflow-hidden pt-20 pb-4 lg:pt-0 lg:pb-0">
+    <GradientPage className="h-[100svh] supports-[height:100dvh]:h-[100dvh] overflow-y-auto mobile-scroll custom-scrollbar pt-20 pb-nav lg:h-screen lg:overflow-hidden lg:pt-0 lg:pb-0">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />

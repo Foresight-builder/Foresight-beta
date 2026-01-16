@@ -149,9 +149,6 @@ export default function MobileBottomNav() {
           );
         })}
       </div>
-
-      {/* Safe area padding for iOS */}
-      <div className="h-safe-area-inset-bottom bg-white" />
     </nav>
   );
 }
