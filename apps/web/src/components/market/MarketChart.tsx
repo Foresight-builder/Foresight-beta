@@ -23,10 +23,15 @@ interface MarketChartProps {
   } | null;
   prediction: PredictionDetail;
   tradeOutcome: number;
-  outcomes: any[];
+  outcomes: MarketOutcome[];
   setTradeOutcome: (idx: number) => void;
   marketKey?: string;
 }
+
+type MarketOutcome = {
+  label?: string;
+  color?: string;
+};
 
 function priceToProbabilityPercent(price: number | string | null | undefined): number {
   if (price == null) return 0;
@@ -89,7 +94,7 @@ export function MarketChart({
         <div className="flex items-center justify-between px-4 py-3 gap-4">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {outcomes.length > 0 ? (
-              outcomes.map((outcome: any, idx: number) => (
+              outcomes.map((outcome, idx) => (
                 <button
                   key={idx}
                   onClick={() => setTradeOutcome(idx)}
@@ -192,7 +197,7 @@ export function MarketChart({
         <div className="px-4 py-2 border-t border-gray-100 bg-white/50 backdrop-blur-sm">
           <div className="flex flex-wrap items-center gap-4 text-[11px] text-gray-500">
             {/* Last Price */}
-            {lastPrice && (
+            {lastPrice != null && (
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-400 font-semibold">
                   {tMarket("chart.lastPriceLabel")}:
@@ -205,7 +210,7 @@ export function MarketChart({
             )}
 
             {/* 24h High/Low */}
-            {high24h && low24h && (
+            {high24h != null && low24h != null && (
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-400 font-semibold">
                   {tMarket("chart.highLow24hLabel")}:
@@ -217,7 +222,7 @@ export function MarketChart({
             )}
 
             {/* 24h Average */}
-            {avg24h && (
+            {avg24h != null && (
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-400 font-semibold">{tMarket("chart.avg24hLabel")}:</span>
                 <span className="text-blue-600 font-bold">{formatNumber(Number(avg24h))}</span>
@@ -241,13 +246,13 @@ export function MarketChart({
             </div>
 
             {/* Bid/Ask Spread */}
-            {bestBid && bestAsk && (
+            {bestBid != null && bestAsk != null && (
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-400 font-semibold">{tMarket("chart.bidAskLabel")}:</span>
                 <span className="text-emerald-600 font-bold">{formatNumber(Number(bestBid))}</span>
                 <span className="text-gray-400">/</span>
                 <span className="text-rose-600 font-bold">{formatNumber(Number(bestAsk))}</span>
-                {spread && (
+                {spread != null && (
                   <span className="text-yellow-600">({formatNumber(Number(spread))} spread)</span>
                 )}
               </div>

@@ -388,18 +388,30 @@ export function useOrderBookStats(
 
     const handleStats = (data: any) => {
       if (data.type === "stats") {
+        const toNullableString = (value: unknown): string | null => {
+          if (value == null) return null;
+          if (typeof value === "string") return value;
+          if (typeof value === "number" && Number.isFinite(value)) return String(value);
+          return null;
+        };
+
+        const toStringOrDefault = (value: unknown, fallback: string): string => {
+          const v = toNullableString(value);
+          return v ?? fallback;
+        };
+
         setStats({
-          bestBid: data.bestBid,
-          bestAsk: data.bestAsk,
-          spread: data.spread,
-          bidDepth: data.bidDepth,
-          askDepth: data.askDepth,
-          lastTradePrice: data.lastTradePrice,
-          volume24h: data.volume24h,
-          high24h: data.high24h || null,
-          low24h: data.low24h || null,
-          avg24h: data.avg24h || null,
-          trades24h: data.trades24h || "0",
+          bestBid: toNullableString(data.bestBid),
+          bestAsk: toNullableString(data.bestAsk),
+          spread: toNullableString(data.spread),
+          bidDepth: toStringOrDefault(data.bidDepth, "0"),
+          askDepth: toStringOrDefault(data.askDepth, "0"),
+          lastTradePrice: toNullableString(data.lastTradePrice),
+          volume24h: toStringOrDefault(data.volume24h, "0"),
+          high24h: toNullableString(data.high24h),
+          low24h: toNullableString(data.low24h),
+          avg24h: toNullableString(data.avg24h),
+          trades24h: toStringOrDefault(data.trades24h, "0"),
         });
       }
     };
