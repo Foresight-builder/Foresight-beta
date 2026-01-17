@@ -4,6 +4,7 @@ import { ApiErrorCode } from "@/types/api";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSession, clearSession } from "@/lib/session";
 import { parseRequestBody } from "@/lib/serverUtils";
+import { checkRateLimit, RateLimits } from "@/lib/rateLimit";
 
 const SQL_CREATE_AUTH_TABLES = `
 CREATE TABLE IF NOT EXISTS public.user_sessions (
@@ -136,6 +137,13 @@ export async function POST(req: NextRequest) {
     }
     if (!supabaseAdmin) return ApiResponses.internalError("Missing service key");
 
+    const rlKey = `wallet:${address}:session_manage`;
+    const rl = await checkRateLimit(rlKey, RateLimits.strict, "session_manage");
+    if (!rl.success) {
+      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429);
+    }
+
     const body = await parseRequestBody(req);
     const target = typeof body?.sessionId === "string" ? String(body.sessionId) : "";
     if (!target) return ApiResponses.invalidParameters("sessionId is required");
@@ -185,6 +193,13 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("请重新登录以启用会话管理", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
     if (!supabaseAdmin) return ApiResponses.internalError("Missing service key");
+
+    const rlKey = `wallet:${address}:session_manage`;
+    const rl = await checkRateLimit(rlKey, RateLimits.strict, "session_manage");
+    if (!rl.success) {
+      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429);
+    }
 
     const nowIso = new Date().toISOString();
     const { error } = await (supabaseAdmin as any)

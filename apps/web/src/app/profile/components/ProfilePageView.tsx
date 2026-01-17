@@ -647,7 +647,7 @@ export function ProfilePageView({
     return d.toLocaleString();
   };
   return (
-    <GradientPage className="h-[100svh] supports-[height:100dvh]:h-[100dvh] overflow-y-auto mobile-scroll custom-scrollbar pt-20 pb-nav lg:h-screen lg:overflow-hidden lg:pt-0 lg:pb-0">
+    <GradientPage className="h-[100svh] supports-[height:100dvh]:h-[100dvh] !overflow-y-auto !overflow-x-hidden mobile-scroll custom-scrollbar pt-20 pb-nav lg:h-screen lg:!overflow-hidden lg:pt-0 lg:pb-0">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
@@ -656,7 +656,7 @@ export function ProfilePageView({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 lg:h-full lg:pt-20">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:h-[calc(100vh-5rem)] lg:overflow-hidden">
           <div className="lg:col-span-1 lg:h-full">
-            <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6 lg:h-full lg:flex lg:flex-col lg:sticky lg:top-24 overflow-hidden group">
+            <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6 lg:h-full lg:flex lg:flex-col group">
               <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-300/20 rounded-full blur-3xl group-hover:bg-purple-300/30 transition-colors duration-700" />
               <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-pink-300/20 rounded-full blur-3xl group-hover:bg-pink-300/30 transition-colors duration-700" />
 
@@ -708,120 +708,7 @@ export function ProfilePageView({
                   </span>
                 </button>
 
-                {isOwnProfile && account && (
-                  <div className="w-full mb-6 bg-white/70 border border-purple-100 rounded-2xl p-4 text-left">
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <div className="text-sm font-black text-gray-900">
-                        {tWalletModal("profile.verifyEmail")}
-                      </div>
-                      {emailVerified && (
-                        <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
-                          {tWalletModal("profile.verifiedTag")}
-                        </div>
-                      )}
-                    </div>
-
-                    {emailVerified && (
-                      <div className="text-xs text-gray-700 font-mono break-all mb-3">
-                        {currentEmail}
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-2">
-                      <input
-                        value={emailInput}
-                        onChange={(e) => {
-                          setEmailInput(e.target.value);
-                          setOtpRequested(false);
-                          setOtpInput("");
-                          setCodePreview(null);
-                          clearResendTimer();
-                          setResendLeft(0);
-                        }}
-                        placeholder="name@example.com"
-                        className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
-                      />
-
-                      <button
-                        type="button"
-                        disabled={!canRequestOtp}
-                        onClick={async () => {
-                          if (!userId) {
-                            setWalletModalOpen(true);
-                            return;
-                          }
-                          if (!/.+@.+\..+/.test(String(emailInput || "").trim())) {
-                            toast.error(tWalletModal("profile.emailInvalid"));
-                            return;
-                          }
-                          await requestEmailOtpMutation.mutateAsync();
-                        }}
-                        className="w-full h-11 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
-                      >
-                        {requestEmailOtpMutation.isPending ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            {tCommon("loading")}
-                          </span>
-                        ) : (
-                          `${tWalletModal("profile.sendOtpWithValidity")}${resendLeft > 0 ? ` (${resendLeft}s)` : ""}`
-                        )}
-                      </button>
-
-                      {otpRequested && (
-                        <>
-                          <input
-                            value={otpInput}
-                            onChange={(e) =>
-                              setOtpInput(e.target.value.replace(/[^\d]/g, "").slice(0, 6))
-                            }
-                            placeholder="123456"
-                            inputMode="numeric"
-                            className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
-                          />
-
-                          <button
-                            type="button"
-                            disabled={!canVerifyOtp}
-                            onClick={async () => {
-                              if (!userId) {
-                                setWalletModalOpen(true);
-                                return;
-                              }
-                              await verifyEmailOtpMutation.mutateAsync();
-                            }}
-                            className="w-full h-11 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-white/90 border border-purple-100 text-purple-700 hover:border-purple-200 hover:bg-white"
-                          >
-                            {verifyEmailOtpMutation.isPending ? (
-                              <span className="inline-flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                {tCommon("loading")}
-                              </span>
-                            ) : (
-                              tWalletModal("profile.verifyEmail")
-                            )}
-                          </button>
-
-                          {!!codePreview && (
-                            <div className="text-xs text-gray-600 font-semibold">
-                              {tWalletModal("devCodePreviewPrefix")} {codePreview}
-                            </div>
-                          )}
-                          <div className="text-xs text-gray-500 font-medium">
-                            {tWalletModal("profile.otpTip")}
-                          </div>
-                          {resendLeft > 0 && (
-                            <div className="text-xs text-gray-600 font-medium">
-                              {tWalletModal("profile.resendHintPrefix")}
-                              {resendLeft}
-                              {tWalletModal("profile.resendHintSuffix")}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* Email verification section removed as per request */}
 
                 {isOwnProfile && !account && (
                   <button
@@ -834,40 +721,7 @@ export function ProfilePageView({
                   </button>
                 )}
 
-                <div className="grid grid-cols-2 gap-2.5 w-full mb-8">
-                  <div className="cursor-pointer" onClick={() => setActiveTab("predictions")}>
-                    <SidebarStatCard
-                      value={positionsCount}
-                      label={tProfile("sidebar.stats.predictions")}
-                      icon={Target}
-                      color="violet"
-                    />
-                  </div>
-                  <div className="cursor-pointer" onClick={() => setActiveTab("following")}>
-                    <SidebarStatCard
-                      value={followingCount}
-                      label={tProfile("sidebar.tabs.following")}
-                      icon={Heart}
-                      color="amber"
-                    />
-                  </div>
-                  <div className="cursor-pointer" onClick={() => setActiveTab("followers")}>
-                    <SidebarStatCard
-                      value={followersCount}
-                      label={tProfile("sidebar.stats.followers")}
-                      icon={Users}
-                      color="emerald"
-                    />
-                  </div>
-                  <div className="cursor-pointer" onClick={() => setActiveTab("history")}>
-                    <SidebarStatCard
-                      value={historyCount}
-                      label={tProfile("sidebar.stats.history")}
-                      icon={Zap}
-                      color="cyan"
-                    />
-                  </div>
-                </div>
+                {/* Stats cards removed as per request to improve mobile visibility */}
 
                 {!isOwnProfile && (
                   <button

@@ -1,11 +1,12 @@
-import { createHash } from "crypto";
+import { createHash, randomInt } from "crypto";
 
 export function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email);
 }
 
 export function genCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  const num = randomInt(0, 1000000);
+  return num.toString().padStart(6, "0");
 }
 
 export function resolveEmailOtpSecret(): { secretString: string } {

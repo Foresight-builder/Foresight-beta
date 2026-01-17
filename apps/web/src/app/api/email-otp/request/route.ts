@@ -157,6 +157,18 @@ export async function POST(req: NextRequest) {
 
     const ip = getIP(req);
     const reqId = getRequestId(req);
+
+    const ipRlKey = `ip:${ip || "unknown"}`;
+    const ipRl = await checkRateLimit(ipRlKey, RateLimits.strict, "email-otp-request-ip");
+    if (!ipRl.success) {
+      const waitSec = Math.max(1, Math.ceil((ipRl.resetAt - Date.now()) / 1000));
+      return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429, {
+        reason: "IP_RL_UPSTASH",
+        resetAt: ipRl.resetAt,
+        waitSeconds: waitSec,
+      });
+    }
+
     const rlKey = `${walletKey || "unknown"}:${ip || "unknown"}`;
     const rl = await checkRateLimit(rlKey, RateLimits.strict, "email-otp-request");
     if (!rl.success) {
