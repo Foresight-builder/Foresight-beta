@@ -48,11 +48,9 @@ export function SettleModal({
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col md:flex-row border border-white h-auto max-h-[90vh]"
           >
-            {/* Left Decorative Panel */}
             <div
               className={`w-full md:w-56 bg-gradient-to-br ${theme.gradient} p-8 flex flex-col justify-between relative overflow-hidden shrink-0`}
             >
-              {/* Mesh Gradient Effect Overlay */}
               <div className="absolute inset-0 opacity-40">
                 <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-white/30 rounded-full blur-[60px] animate-pulse" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-black/10 rounded-full blur-[50px]" />
@@ -85,7 +83,6 @@ export function SettleModal({
                 </p>
               </div>
 
-              {/* Animated Floating Bubbles */}
               <motion.div
                 animate={{ y: [0, -30, 0], x: [0, 10, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -93,7 +90,6 @@ export function SettleModal({
               />
             </div>
 
-            {/* Right Content Area */}
             <div className="flex-1 flex flex-col relative h-full">
               <button
                 onClick={onClose}
@@ -133,7 +129,6 @@ export function SettleModal({
                 </div>
               </div>
 
-              {/* Footer Actions */}
               <div className="p-8 md:p-12 pt-0 flex gap-4 mt-auto">
                 <button
                   onClick={onClose}

@@ -46,7 +46,6 @@ export function FlagsHistoryModal({
   tasksIndex,
   tasksTotal,
 }: FlagsHistoryModalProps) {
-  // Determine if there are pending items to review
   const { locale } = useLocale();
   const pendingItems = items.filter((item) => item.review_status === "pending");
   const isWitnessMode =
@@ -95,7 +94,6 @@ export function FlagsHistoryModal({
     <AnimatePresence>
       {isOpen && flag && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -114,7 +112,6 @@ export function FlagsHistoryModal({
             transition={{ type: "spring", damping: 20, stiffness: 300 }}
             className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col md:flex-row border border-white h-[85vh] md:h-[600px]"
           >
-            {/* Left Decor Area */}
             <div
               className={`w-full md:w-72 p-8 flex flex-col relative overflow-hidden shrink-0 ${
                 isWitnessMode
@@ -122,7 +119,6 @@ export function FlagsHistoryModal({
                   : "bg-gradient-to-br from-purple-100 via-pink-100 to-rose-100"
               }`}
             >
-              {/* Mesh Gradient Effect Overlay */}
               <div className="absolute inset-0 opacity-40">
                 <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-white/30 rounded-full blur-[60px] animate-pulse" />
                 <div
@@ -267,9 +263,7 @@ export function FlagsHistoryModal({
               </div>
             </div>
 
-            {/* Right Content Area */}
             <div className="flex-1 flex flex-col relative h-full bg-white/50">
-              {/* Close Button */}
               <button
                 onClick={onClose}
                 className="absolute top-6 right-6 p-2.5 rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all z-20 group"

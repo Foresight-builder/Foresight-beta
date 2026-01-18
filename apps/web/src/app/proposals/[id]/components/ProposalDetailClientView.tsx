@@ -7,6 +7,7 @@ import { ErrorState, InvalidProposalFallback, LoadingState } from "./States";
 import { ProposalDiscussionSection } from "./ProposalDiscussionSection";
 import { ProposalChatShell } from "./chat/ProposalChatShell";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 // 提取动画配置为模块级常量，避免每次渲染重新创建
 const FADE_IN_ANIMATION = {
@@ -69,11 +70,11 @@ export function ProposalDetailClientView({
         <>
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdMain) }}
+            dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLdMain) }}
           />
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
+            dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLdBreadcrumb) }}
           />
         </>
       )}

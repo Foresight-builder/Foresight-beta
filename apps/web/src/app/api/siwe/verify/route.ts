@@ -12,13 +12,15 @@ export async function POST(req: NextRequest) {
     const rl = await checkRateLimit(ip || "unknown", RateLimits.moderate, "siwe-verify");
     if (!rl.success) {
       try {
-        console.info(
-          JSON.stringify({
-            evt: "siwe_verify_rate_limited",
-            ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
-            resetAt: rl.resetAt,
-          })
-        );
+        if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+          console.info(
+            JSON.stringify({
+              evt: "siwe_verify_rate_limited",
+              ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+              resetAt: rl.resetAt,
+            })
+          );
+        }
         await logApiEvent("siwe_verify_rate_limited", {
           ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
           resetAt: rl.resetAt,
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("SIWE 必填字段缺失: message 或 signature");
     }
 
-    if (!/^0x[0-9a-fA-F]+$/.test(signature) || signature.length < 10) {
+    if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
       return ApiResponses.badRequest("签名格式无效");
     }
 
@@ -97,6 +99,11 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+      const vHex = signature.slice(-2);
+      const vByte = Number.parseInt(vHex, 16);
+      if (!Number.isFinite(vByte) || ![0, 1, 27, 28].includes(vByte)) {
+        return ApiResponses.invalidSignature("签名验证失败");
+      }
       const result = await msg.verify({ signature, domain, nonce });
       if (!result?.success) {
         return ApiResponses.invalidSignature("签名验证失败");
@@ -112,14 +119,16 @@ export async function POST(req: NextRequest) {
     const { createSession } = await import("@/lib/session");
     await createSession(res, address, chainId, { req, authMethod: "siwe" });
     try {
-      console.info(
-        JSON.stringify({
-          evt: "siwe_verify_success",
-          addr: address ? String(address).slice(0, 8) : "",
-          chainId,
-          ts: Date.now(),
-        })
-      );
+      if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+        console.info(
+          JSON.stringify({
+            evt: "siwe_verify_success",
+            addr: address ? String(address).slice(0, 8) : "",
+            chainId,
+            ts: Date.now(),
+          })
+        );
+      }
       await logApiEvent("siwe_verify_success", {
         addr: address ? String(address).slice(0, 8) : "",
         chainId,

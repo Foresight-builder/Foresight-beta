@@ -5,6 +5,7 @@ import ProposalsMainContent from "./ProposalsMainContent";
 import ProposalsRightSidebar from "./ProposalsRightSidebar";
 import type { UseProposalsListReturn } from "./useProposalsList";
 import type { AuthUser } from "@/contexts/AuthContext";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 type ProposalsPageViewProps = UseProposalsListReturn & {
   account: string | null;
@@ -44,7 +45,7 @@ export default function ProposalsPageView({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
       <GradientPage className="min-h-[calc(100vh-64px)] w-full relative overflow-x-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
         <div className="fixed inset-0 pointer-events-none overflow-hidden">

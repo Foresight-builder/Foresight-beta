@@ -4,13 +4,13 @@ Phase 2 实现了高可用、集群化、读写分离和链上对账系统，使
 
 ## 🎯 Phase 2 功能概览
 
-| 功能 | 描述 | 状态 |
-|------|------|------|
-| Leader Election | 基于 Redis 的主备切换 | ✅ 完成 |
+| 功能             | 描述                     | 状态    |
+| ---------------- | ------------------------ | ------- |
+| Leader Election  | 基于 Redis 的主备切换    | ✅ 完成 |
 | WebSocket 集群化 | Redis Pub/Sub 跨节点广播 | ✅ 完成 |
-| 数据库读写分离 | 主写从读 + 健康检查 | ✅ 完成 |
-| 链上对账系统 | 定期对比链上/链下数据 | ✅ 完成 |
-| 余额检查器 | 用户余额一致性检查 | ✅ 完成 |
+| 数据库读写分离   | 主写从读 + 健康检查      | ✅ 完成 |
+| 链上对账系统     | 定期对比链上/链下数据    | ✅ 完成 |
+| 余额检查器       | 用户余额一致性检查       | ✅ 完成 |
 
 ## 🚀 快速开始
 
@@ -65,12 +65,12 @@ RECONCILIATION_AUTO_FIX=false
 
 ```bash
 # 单节点开发模式
-pnpm run start:dev
+npm run start:dev
 
 # 多节点生产模式 (需要配置不同 NODE_ID)
-NODE_ID=relayer-1 pnpm run start:prod &
-NODE_ID=relayer-2 pnpm run start:prod &
-NODE_ID=relayer-3 pnpm run start:prod &
+NODE_ID=relayer-1 npm run start:prod &
+NODE_ID=relayer-2 npm run start:prod &
+NODE_ID=relayer-3 npm run start:prod &
 ```
 
 ## 🏗️ 架构设计
@@ -95,6 +95,7 @@ NODE_ID=relayer-3 pnpm run start:prod &
 ```
 
 **工作原理:**
+
 1. 节点启动时尝试获取 Redis 分布式锁
 2. 获取成功的节点成为 Leader，处理撮合订单
 3. Leader 每 10 秒续约锁 (TTL 30 秒)
@@ -102,6 +103,7 @@ NODE_ID=relayer-3 pnpm run start:prod &
 5. Leader 崩溃后，锁自动过期，其他节点竞争接管
 
 **使用示例:**
+
 ```typescript
 import { initClusterManager, getClusterManager } from "./cluster";
 
@@ -146,24 +148,27 @@ await cluster.executeAsLeader(async () => {
 ```
 
 **工作原理:**
+
 1. 每个节点运行独立的 WebSocket 服务器
 2. 客户端连接到任意节点
 3. 广播消息通过 Redis Pub/Sub 同步到所有节点
 4. 每个节点将消息推送给本地订阅的客户端
 
 **预定义频道:**
+
 ```typescript
 const CHANNELS = {
-  WS_DEPTH: "ws:depth",      // 深度更新
-  WS_TRADES: "ws:trades",    // 成交
-  WS_STATS: "ws:stats",      // 统计
-  WS_ORDERS: "ws:orders",    // 订单状态
+  WS_DEPTH: "ws:depth", // 深度更新
+  WS_TRADES: "ws:trades", // 成交
+  WS_STATS: "ws:stats", // 统计
+  WS_ORDERS: "ws:orders", // 订单状态
   CLUSTER_EVENTS: "cluster:events",
   LEADER_EVENTS: "cluster:leader",
 };
 ```
 
 **使用示例:**
+
 ```typescript
 import { initClusteredWebSocketServer } from "./cluster";
 
@@ -207,6 +212,7 @@ console.log(`Connections: ${stats.connections}, Node: ${stats.nodeId}`);
 ```
 
 **使用示例:**
+
 ```typescript
 import { initDatabasePool, getDatabasePool } from "./database";
 import { getOrderRepository, getTradeRepository } from "./database";
@@ -264,12 +270,13 @@ const result = await pool.executeRead("custom_query", async (client) => {
 ```
 
 **使用示例:**
+
 ```typescript
 import { initChainReconciler, getChainReconciler } from "./reconciliation";
 
 // 初始化
 const reconciler = await initChainReconciler({
-  intervalMs: 300000,  // 5 分钟
+  intervalMs: 300000, // 5 分钟
   blockRange: 1000,
   autoFix: false,
 });
@@ -294,63 +301,69 @@ reconciler.resolveDiscrepancy(discrepancyId, "Manually verified");
 
 ### 集群管理
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/cluster/status` | GET | 集群状态概览 |
-| `/cluster/leader` | GET | 当前 Leader 信息 |
-| `/cluster/nodes` | GET | 所有节点列表 |
+| 端点              | 方法 | 描述             |
+| ----------------- | ---- | ---------------- |
+| `/cluster/status` | GET  | 集群状态概览     |
+| `/cluster/leader` | GET  | 当前 Leader 信息 |
+| `/cluster/nodes`  | GET  | 所有节点列表     |
 
 ### 数据库状态
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/database/status` | GET | 数据库连接状态 |
+| 端点               | 方法 | 描述           |
+| ------------------ | ---- | -------------- |
+| `/database/status` | GET  | 数据库连接状态 |
 
 ### 对账系统
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/reconciliation/status` | GET | 对账系统状态 |
-| `/reconciliation/discrepancies` | GET | 差异列表 |
-| `/reconciliation/trigger` | POST | 手动触发对账 |
-| `/reconciliation/resolve/:id` | POST | 解决差异 |
+| 端点                            | 方法 | 描述         |
+| ------------------------------- | ---- | ------------ |
+| `/reconciliation/status`        | GET  | 对账系统状态 |
+| `/reconciliation/discrepancies` | GET  | 差异列表     |
+| `/reconciliation/trigger`       | POST | 手动触发对账 |
+| `/reconciliation/resolve/:id`   | POST | 解决差异     |
 
 ### 综合管理
 
-| 端点 | 方法 | 描述 |
-|------|------|------|
-| `/admin/overview` | GET | 管理概览 (所有状态) |
+| 端点              | 方法 | 描述                |
+| ----------------- | ---- | ------------------- |
+| `/admin/overview` | GET  | 管理概览 (所有状态) |
 
 ## 📊 新增指标
 
 ### 集群指标
+
 - `foresight_leader_status` - Leader 状态 (1=leader, 0=follower)
 - `foresight_leader_election_total` - Leader 选举次数
 - `foresight_cluster_nodes_total` - 集群节点总数
 
 ### Pub/Sub 指标
+
 - `foresight_pubsub_messages_total` - Pub/Sub 消息数
 - `foresight_pubsub_subscriptions` - 订阅数
 - `foresight_pubsub_connection_status` - 连接状态
 
 ### WebSocket 集群指标
+
 - `foresight_ws_cluster_connections` - 本节点连接数
 - `foresight_ws_cluster_subscriptions` - 本节点订阅数
 - `foresight_ws_cluster_broadcast_latency_ms` - 广播延迟
 
 ### 数据库指标
+
 - `foresight_db_connections_active` - 活跃连接数
 - `foresight_db_queries_total` - 查询总数
 - `foresight_db_query_latency_ms` - 查询延迟
 - `foresight_db_replica_health` - 副本健康状态
 
 ### 对账指标
+
 - `foresight_reconciliation_runs_total` - 对账运行次数
 - `foresight_reconciliation_discrepancies_total` - 发现的差异数
 - `foresight_reconciliation_duration_seconds` - 对账耗时
 - `foresight_reconciliation_pending_items` - 待处理项
 
 ### 余额检查指标
+
 - `foresight_balance_checks_total` - 余额检查次数
 - `foresight_balance_mismatches_total` - 余额不匹配数
 - `foresight_system_total_balance` - 系统总余额
@@ -363,7 +376,7 @@ kind: Deployment
 metadata:
   name: foresight-relayer
 spec:
-  replicas: 3  # 多副本
+  replicas: 3 # 多副本
   selector:
     matchLabels:
       app: foresight-relayer
@@ -462,13 +475,13 @@ services/relayer/
 
 ```bash
 # 运行所有测试
-pnpm test
+npm test
 
 # 运行 Phase 2 相关测试
-pnpm test -- --grep "cluster|database|reconciliation"
+npm test -- --grep "cluster|database|reconciliation"
 
 # 覆盖率报告
-pnpm run test:coverage
+npm run test:coverage
 ```
 
 ## 🔜 Phase 3 展望
@@ -478,4 +491,3 @@ pnpm run test:coverage
 - [ ] 自动扩缩容 (HPA)
 - [ ] 蓝绿部署支持
 - [ ] 灾难恢复演练
-

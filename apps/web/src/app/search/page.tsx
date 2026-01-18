@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { t } from "@/lib/i18n";
 import { defaultLocale, type Locale } from "../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
-import { buildLanguageAlternates } from "@/lib/seo";
+import { buildLanguageAlternates, safeJsonLdStringify } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
@@ -47,7 +47,7 @@ export default async function SearchPage({
     <div className="min-h-[calc(100vh-64px)] w-full bg-[#f8faff] relative overflow-x-hidden font-sans p-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-black text-slate-900 mb-3">

@@ -433,16 +433,18 @@ export async function POST(req: NextRequest) {
         const user = process.env.SMTP_USER || "";
         const maskedUser = user ? user.replace(/(^.).*(?=@)/, "$1***") : "";
         const maskedUrl = smtpUrl ? smtpUrl.replace(/:\/\/([^:]+):([^@]+)@/, "://$1:***@") : "";
-        console.error("[email-otp] SMTP send error", {
-          email,
-          address: walletAddress,
-          url: maskedUrl,
-          host,
-          port,
-          secure,
-          user: maskedUser,
-          error: errMessage,
-        });
+        if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+          console.error("[email-otp] SMTP send error", {
+            email,
+            address: walletAddress,
+            url: maskedUrl,
+            host,
+            port,
+            secure,
+            user: maskedUser,
+            error: errMessage,
+          });
+        }
       } catch {}
       const isDev = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
       if (!isDev) {

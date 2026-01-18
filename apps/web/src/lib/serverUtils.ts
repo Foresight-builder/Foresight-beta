@@ -116,6 +116,7 @@ export function getErrorMessage(error: unknown) {
 
 export function logApiError(scope: string, error: unknown) {
   try {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
     console.error(scope, error);
   } catch {}
 }
@@ -129,6 +130,7 @@ export function getRelayerBaseUrl(): string | undefined {
 
 export async function logApiEvent(event: string, properties?: Record<string, unknown>) {
   try {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
     if (process.env.NODE_ENV !== "production") {
       console.info(JSON.stringify({ evt: event, ...((properties as any) || {}) }));
       return;

@@ -11,6 +11,7 @@ import fr from "../../../messages/fr.json";
 import ko from "../../../messages/ko.json";
 import { defaultLocale, locales, type Locale } from "../../i18n-config";
 import { cookies } from "next/headers";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 export const revalidate = 60;
 
@@ -124,7 +125,7 @@ export default async function Page() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
       <Suspense fallback={<CardListSkeleton count={6} />}>
         <TrendingClient initialPredictions={predictions} />

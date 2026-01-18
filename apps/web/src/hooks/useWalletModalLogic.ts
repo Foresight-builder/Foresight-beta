@@ -212,7 +212,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         setProfileLoading(false);
       }
     })();
-  }, [isOpen, showProfileForm, normalizedAccount]);
+  }, [isOpen, showProfileForm, isNewUserFlow, normalizedAccount]);
 
   const setEmailWithReset = React.useCallback(
     (value: string) => {

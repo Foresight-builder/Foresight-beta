@@ -581,7 +581,11 @@ export function useTopNavBarLogic() {
       await switchNetwork(11155111);
       updateNetworkInfo();
     } catch (e) {
-      console.error("Switch chain failed:", e);
+      if (process.env.NODE_ENV === "development") {
+        try {
+          console.error("Switch chain failed:", e);
+        } catch {}
+      }
     } finally {
       setMenuOpen(false);
     }

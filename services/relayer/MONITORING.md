@@ -8,7 +8,7 @@
 
 ```bash
 cd services/relayer
-pnpm install
+npm install
 ```
 
 ### 2. 启动监控栈
@@ -44,21 +44,21 @@ METRICS_ENABLED=true
 
 ```bash
 # 开发模式 (可读日志)
-pnpm run start:dev
+npm run start:dev
 
 # 生产模式 (JSON 日志)
-pnpm run start:prod
+npm run start:prod
 ```
 
 ## 📊 监控端点
 
-| 端点 | 描述 | 用途 |
-|------|------|------|
-| `GET /health` | 健康检查 | Kubernetes liveness probe |
-| `GET /ready` | 就绪检查 | Kubernetes readiness probe |
-| `GET /live` | 存活检查 | 快速存活确认 |
-| `GET /metrics` | Prometheus 指标 | 指标采集 |
-| `GET /version` | 版本信息 | 部署验证 |
+| 端点           | 描述            | 用途                       |
+| -------------- | --------------- | -------------------------- |
+| `GET /health`  | 健康检查        | Kubernetes liveness probe  |
+| `GET /ready`   | 就绪检查        | Kubernetes readiness probe |
+| `GET /live`    | 存活检查        | 快速存活确认               |
+| `GET /metrics` | Prometheus 指标 | 指标采集                   |
+| `GET /version` | 版本信息        | 部署验证                   |
 
 ### 健康检查响应示例
 
@@ -80,25 +80,30 @@ pnpm run start:prod
 ## 📈 关键指标
 
 ### 订单指标
+
 - `foresight_orders_total` - 订单提交总数
 - `foresight_orders_active` - 活跃订单数
 
 ### 撮合指标
+
 - `foresight_matches_total` - 撮合总数
 - `foresight_matching_latency_ms` - 撮合延迟
 - `foresight_matched_volume_total` - 成交量
 
 ### 结算指标
+
 - `foresight_settlement_batches_total` - 结算批次数
 - `foresight_settlement_pending_fills` - 待结算撮合数
 - `foresight_settlement_latency_ms` - 结算延迟
 
 ### WebSocket 指标
+
 - `foresight_ws_connections_active` - 活跃连接数
 - `foresight_ws_subscriptions_active` - 订阅数
 - `foresight_ws_messages_total` - 消息总数
 
 ### Redis 指标
+
 - `foresight_redis_connection_status` - 连接状态
 - `foresight_redis_operations_total` - 操作总数
 - `foresight_redis_operation_latency_ms` - 操作延迟
@@ -108,6 +113,7 @@ pnpm run start:prod
 ### 日志格式
 
 **JSON 格式 (生产环境)**
+
 ```json
 {
   "timestamp": "2024-12-27T10:00:00.000Z",
@@ -122,28 +128,29 @@ pnpm run start:prod
 ```
 
 **文本格式 (开发环境)**
+
 ```
 2024-12-27T10:00:00.000Z [INFO ] [matching-engine] Order submitted {"marketKey":"80002:1","orderId":"order-123"}
 ```
 
 ### 日志级别
 
-| 级别 | 用途 |
-|------|------|
+| 级别    | 用途         |
+| ------- | ------------ |
 | `debug` | 详细调试信息 |
-| `info` | 正常操作信息 |
-| `warn` | 警告信息 |
-| `error` | 错误信息 |
+| `info`  | 正常操作信息 |
+| `warn`  | 警告信息     |
+| `error` | 错误信息     |
 
 ### 专用 Logger
 
 ```typescript
-import { 
-  logger,           // 通用
-  matchingLogger,   // 撮合引擎
+import {
+  logger, // 通用
+  matchingLogger, // 撮合引擎
   settlementLogger, // 结算
-  wsLogger,         // WebSocket
-  redisLogger       // Redis
+  wsLogger, // WebSocket
+  redisLogger, // Redis
 } from "./monitoring/logger.js";
 
 // 带上下文的日志
@@ -186,6 +193,7 @@ const data = await snapshot.loadSnapshot(marketKey, outcomeIndex);
 访问地址: http://localhost:3030
 
 默认账号:
+
 - 用户名: `admin`
 - 密码: `foresight123`
 
@@ -235,13 +243,13 @@ spec:
 
 ```bash
 # 运行所有测试
-pnpm test
+npm test
 
 # 运行测试并生成覆盖率报告
-pnpm run test:coverage
+npm run test:coverage
 
 # 监听模式
-pnpm run test:watch
+npm run test:watch
 ```
 
 ## 📁 新增文件结构
@@ -284,8 +292,8 @@ services/relayer/
 ## ⚡ Phase 2 已完成
 
 Phase 2 功能已实现，详见 [PHASE2.md](./PHASE2.md):
+
 - [x] 撮合引擎主备切换 (Leader Election)
 - [x] WebSocket 集群化 (Redis Pub/Sub)
 - [x] 数据库读写分离
 - [x] 链上对账系统
-

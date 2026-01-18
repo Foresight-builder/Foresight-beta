@@ -4,14 +4,14 @@ Phase 3 实现了生产级的弹性架构，包括 API 限流、熔断器、分�
 
 ## 🎯 Phase 3 功能概览
 
-| 功能 | 描述 | 状态 |
-|------|------|------|
-| API 限流 | Redis 分布式滑动窗口限流 | ✅ 完成 |
-| 熔断器 | Circuit Breaker 模式 | ✅ 完成 |
-| 分布式事务 | Saga 模式实现 | ✅ 完成 |
-| 重试机制 | 指数退避 + 抖动 | ✅ 完成 |
-| HPA 自动扩缩容 | Kubernetes 配置 | ✅ 完成 |
-| 蓝绿部署 | 零停机部署方案 | ✅ 完成 |
+| 功能           | 描述                     | 状态    |
+| -------------- | ------------------------ | ------- |
+| API 限流       | Redis 分布式滑动窗口限流 | ✅ 完成 |
+| 熔断器         | Circuit Breaker 模式     | ✅ 完成 |
+| 分布式事务     | Saga 模式实现            | ✅ 完成 |
+| 重试机制       | 指数退避 + 抖动          | ✅ 完成 |
+| HPA 自动扩缩容 | Kubernetes 配置          | ✅ 完成 |
+| 蓝绿部署       | 零停机部署方案           | ✅ 完成 |
 
 ## 🚀 快速开始
 
@@ -24,18 +24,20 @@ import { createRateLimitMiddleware } from "./ratelimit";
 app.use(createRateLimitMiddleware());
 
 // 或自定义配置
-app.use(createRateLimitMiddleware({
-  perIp: {
-    windowMs: 60000,    // 1 分钟
-    maxRequests: 100,   // 每 IP 100 次
-  },
-  perEndpoint: {
-    "/v2/orders": {
-      windowMs: 60000,
-      maxRequests: 30,  // 下单限制更严格
+app.use(
+  createRateLimitMiddleware({
+    perIp: {
+      windowMs: 60000, // 1 分钟
+      maxRequests: 100, // 每 IP 100 次
     },
-  },
-}));
+    perEndpoint: {
+      "/v2/orders": {
+        windowMs: 60000,
+        maxRequests: 30, // 下单限制更严格
+      },
+    },
+  })
+);
 ```
 
 ### 2. 使用熔断器
@@ -44,13 +46,17 @@ app.use(createRateLimitMiddleware({
 import { withCircuitBreaker, circuitBreakerRegistry } from "./resilience";
 
 // 包装外部调用
-const result = await withCircuitBreaker("external-api", async () => {
-  return fetch("https://api.example.com/data");
-}, {
-  failureThreshold: 5,
-  openDuration: 30000,
-  timeout: 5000,
-});
+const result = await withCircuitBreaker(
+  "external-api",
+  async () => {
+    return fetch("https://api.example.com/data");
+  },
+  {
+    failureThreshold: 5,
+    openDuration: 30000,
+    timeout: 5000,
+  }
+);
 
 // 查看熔断器状态
 const stats = circuitBreakerRegistry.getAllStats();
@@ -91,9 +97,13 @@ const result = await executor.execute({
 import { retry, RETRY_STRATEGIES } from "./resilience";
 
 // 使用预设策略
-const result = await retry("blockchain-tx", async () => {
-  return sendTransaction();
-}, RETRY_STRATEGIES.blockchain);
+const result = await retry(
+  "blockchain-tx",
+  async () => {
+    return sendTransaction();
+  },
+  RETRY_STRATEGIES.blockchain
+);
 
 if (!result.success) {
   console.error("操作失败:", result.error);
@@ -140,6 +150,7 @@ const config: TieredRateLimitConfig = {
 ### 响应头
 
 被限流时返回:
+
 ```
 HTTP/1.1 429 Too Many Requests
 X-RateLimit-Limit: 100
@@ -178,13 +189,14 @@ Retry-After: 45
 ```typescript
 const breaker = new CircuitBreaker({
   name: "payment-service",
-  failureThreshold: 5,      // 连续 5 次失败触发熔断
-  successThreshold: 3,      // 半开状态 3 次成功恢复
-  openDuration: 30000,      // 熔断持续 30 秒
-  timeout: 10000,           // 操作超时 10 秒
-  errorRateThreshold: 0.5,  // 错误率 50% 触发熔断
-  minRequests: 10,          // 最少 10 个请求后计算错误率
-  fallback: (error) => {    // 降级回调
+  failureThreshold: 5, // 连续 5 次失败触发熔断
+  successThreshold: 3, // 半开状态 3 次成功恢复
+  openDuration: 30000, // 熔断持续 30 秒
+  timeout: 10000, // 操作超时 10 秒
+  errorRateThreshold: 0.5, // 错误率 50% 触发熔断
+  minRequests: 10, // 最少 10 个请求后计算错误率
+  fallback: (error) => {
+    // 降级回调
     return { cached: true };
   },
 });
@@ -209,15 +221,23 @@ const breaker = new CircuitBreaker({
 const customSaga = new SagaDefinition<MyContext>({ name: "my-saga" })
   .addStep({
     name: "step-1",
-    execute: async (ctx) => { /* 执行逻辑 */ },
-    compensate: async (ctx) => { /* 补偿逻辑 */ },
+    execute: async (ctx) => {
+      /* 执行逻辑 */
+    },
+    compensate: async (ctx) => {
+      /* 补偿逻辑 */
+    },
     retryable: true,
     maxRetries: 3,
   })
   .addStep({
     name: "step-2",
-    execute: async (ctx) => { /* ... */ },
-    compensate: async (ctx) => { /* ... */ },
+    execute: async (ctx) => {
+      /* ... */
+    },
+    compensate: async (ctx) => {
+      /* ... */
+    },
   });
 
 const executor = new SagaExecutor(customSaga);
@@ -228,12 +248,12 @@ await executor.execute(context);
 
 ### 预设策略
 
-| 策略 | 用途 | 配置 |
-|------|------|------|
-| `fast` | 幂等操作 | 3次, 100ms-1s |
-| `standard` | 通用 | 3次, 1s-10s |
-| `slow` | 外部服务 | 5次, 2s-60s |
-| `blockchain` | 链上操作 | 5次, 3s-30s |
+| 策略         | 用途     | 配置          |
+| ------------ | -------- | ------------- |
+| `fast`       | 幂等操作 | 3次, 100ms-1s |
+| `standard`   | 通用     | 3次, 1s-10s   |
+| `slow`       | 外部服务 | 5次, 2s-60s   |
+| `blockchain` | 链上操作 | 5次, 3s-30s   |
 
 ### 自定义重试条件
 
@@ -305,21 +325,25 @@ await retry("api-call", fn, {
 ## 📈 新增指标
 
 ### 限流指标
+
 - `foresight_ratelimit_requests_total` - 限流检查总数
 - `foresight_ratelimit_current_usage` - 当前使用量
 
 ### 熔断器指标
+
 - `foresight_circuit_breaker_state` - 熔断器状态
 - `foresight_circuit_breaker_calls_total` - 调用总数
 - `foresight_circuit_breaker_latency_ms` - 调用延迟
 
 ### Saga 指标
+
 - `foresight_saga_executions_total` - Saga 执行总数
 - `foresight_saga_steps_total` - 步骤执行总数
 - `foresight_saga_duration_ms` - Saga 执行时长
 - `foresight_saga_active` - 活跃 Saga 数
 
 ### 重试指标
+
 - `foresight_retry_attempts_total` - 重试次数
 - `foresight_retry_duration_ms` - 重试总时长
 
@@ -351,10 +375,10 @@ services/relayer/
 
 ```bash
 # 运行所有测试
-pnpm test
+npm test
 
 # 运行弹性测试
-pnpm test -- --grep "resilience|ratelimit"
+npm test -- --grep "resilience|ratelimit"
 
 # 负载测试限流
 ab -n 1000 -c 50 http://localhost:3000/v2/depth?marketKey=test
@@ -370,4 +394,3 @@ for i in {1..10}; do curl http://localhost:3000/v2/orders -X POST; done
 - [ ] 混沌工程测试
 - [ ] 多区域部署
 - [ ] 数据备份和恢复
-

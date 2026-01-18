@@ -16,7 +16,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import WebVitalsReporter from "@/components/WebVitalsReporter";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { getServerLocale } from "@/lib/i18n-server";
-import { buildLanguageAlternates } from "@/lib/seo";
+import { buildLanguageAlternates, safeJsonLdStringify } from "@/lib/seo";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { Roboto } from "next/font/google";
 
@@ -148,7 +148,7 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLdStringify({
               "@context": "https://schema.org",
               "@graph": [
                 {

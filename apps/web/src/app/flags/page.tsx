@@ -7,9 +7,13 @@ import { FlagItem } from "@/components/FlagCard";
 import { OFFICIAL_STICKERS, type StickerItem } from "@/components/StickerRevealModal";
 import { toast } from "@/lib/toast";
 import { useTranslations, useLocale } from "@/lib/i18n";
-import { useFlagsData } from "./useFlagsData";
-import { buildOfficialTemplates, defaultConfigFor, OfficialTemplate } from "./flagsConfig";
-import { FlagsPageView } from "./FlagsPageView";
+import { useFlagsData } from "@/features/flags/useFlagsData";
+import {
+  buildOfficialTemplates,
+  defaultConfigFor,
+  OfficialTemplate,
+} from "@/features/flags/flagsConfig";
+import { FlagsPageView } from "@/features/flags/FlagsPageView";
 
 function buildFlagsJsonLd(tFlags: (key: string) => string, locale: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";

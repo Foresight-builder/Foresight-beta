@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useUserPortfolio } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -222,7 +223,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: safeJsonLdStringify(
             buildJsonLd(
               prediction,
               tMarket("detail.defaultDescription"),
@@ -234,7 +235,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
+          __html: safeJsonLdStringify(
             buildBreadcrumbJsonLd(prediction, {
               home: tMarket("breadcrumbs.home"),
               trending: tMarket("breadcrumbs.trending"),

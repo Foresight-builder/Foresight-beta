@@ -8,6 +8,7 @@ import fr from "../../../../messages/fr.json";
 import ko from "../../../../messages/ko.json";
 import { defaultLocale, type Locale } from "../../../i18n-config";
 import { getServerLocale } from "@/lib/i18n-server";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -237,7 +238,7 @@ export default async function Page({ params }: Props) {
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
         />
       )}
       <PredictionDetailClient relatedProposalId={relatedProposalId} />

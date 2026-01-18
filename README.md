@@ -165,7 +165,7 @@ GET  /api/forum/user-votes?eventId=1
 ### 环境要求
 
 - Node.js 18+
-- pnpm 8+ (推荐) 或 npm
+- npm（推荐）
 - Git
 
 ### 安装与运行

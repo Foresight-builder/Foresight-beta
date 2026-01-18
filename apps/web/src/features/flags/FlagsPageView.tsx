@@ -9,6 +9,7 @@ import {
 } from "./components/FlagsModals";
 import { FlagsPageHeader } from "./components/FlagsPageHeader";
 import { FlagsRightSidebar } from "./components/FlagsRightSidebar";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 export type FlagsPageViewProps = {
   tFlags: (key: string) => string;
@@ -59,7 +60,7 @@ export function FlagsPageView({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
       <FlagsBackgroundLayout>
         <div className="flex-1 flex flex-col min-w-0 z-10 h-full max-w-[1600px] mx-auto w-full">

@@ -72,7 +72,11 @@ export async function verifyOrderSignature(
       recoveredAddress,
     };
   } catch (error: unknown) {
-    console.error("Order signature verification error:", error);
+    if (process.env.NODE_ENV === "development") {
+      try {
+        console.error("Order signature verification error:", error);
+      } catch {}
+    }
     return {
       valid: false,
       error: error instanceof Error ? error.message : "Signature verification failed",

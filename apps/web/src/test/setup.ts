@@ -146,7 +146,17 @@ vi.mock("next/link.js", () => ({
 
 vi.mock("next/image", () => ({
   __esModule: true,
-  default: ({ src, alt, ...rest }: any) =>
+  default: ({
+    src,
+    alt,
+    priority,
+    placeholder,
+    blurDataURL,
+    quality,
+    unoptimized,
+    fill,
+    ...rest
+  }: any) =>
     React.createElement("img", {
       src: typeof src === "string" ? src : "",
       alt,
@@ -156,7 +166,17 @@ vi.mock("next/image", () => ({
 
 vi.mock("next/image.js", () => ({
   __esModule: true,
-  default: ({ src, alt, ...rest }: any) =>
+  default: ({
+    src,
+    alt,
+    priority,
+    placeholder,
+    blurDataURL,
+    quality,
+    unoptimized,
+    fill,
+    ...rest
+  }: any) =>
     React.createElement("img", {
       src: typeof src === "string" ? src : "",
       alt,

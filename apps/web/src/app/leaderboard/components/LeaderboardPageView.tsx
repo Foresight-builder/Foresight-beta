@@ -6,6 +6,7 @@ import { LeaderboardControls, type LeaderboardControlsProps } from "./Leaderboar
 import { LeaderboardHeader } from "./LeaderboardHeader";
 import { LeaderboardMainSections } from "./LeaderboardMainSections";
 import { LeaderboardPodium } from "./LeaderboardPodium";
+import { safeJsonLdStringify } from "@/lib/seo";
 
 export type LeaderboardPageViewProps = {
   timeRange: string;
@@ -48,7 +49,7 @@ export function LeaderboardPageView({
     <GradientPage className="w-full relative overflow-hidden font-sans selection:bg-purple-200">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />

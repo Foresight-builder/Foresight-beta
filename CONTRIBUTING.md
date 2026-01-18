@@ -33,7 +33,7 @@
 ### 环境要求
 
 - Node.js 18+
-- pnpm 8+ (推荐) 或 npm
+- npm（推荐）
 - Git
 - Docker (可选，用于本地服务)
 

@@ -4,9 +4,25 @@
 
 import { describe, it, expect } from "vitest";
 import { validateAndSanitize } from "../security";
+import { safeJsonLdStringify } from "../seo";
 
 // 需要验证 security.ts 实际导出的函数 - 暂时跳过部分测试
 describe("Security Utilities", () => {
+  describe("safeJsonLdStringify", () => {
+    it("应该转义 < 以避免 </script> 注入", () => {
+      const output = safeJsonLdStringify({
+        a: '</script><script>alert("x")</script>',
+      });
+      expect(output).not.toContain("</script>");
+      expect(output).not.toContain("<script>");
+      expect(output).toContain("\\u003c/script\\u003e");
+    });
+
+    it("当 JSON.stringify 返回 undefined 时应回退为 null", () => {
+      expect(safeJsonLdStringify(undefined)).toBe("null");
+    });
+  });
+
   describe("validateAndSanitize - 文本验证", () => {
     it("应该通过有效的文本", () => {
       const result = validateAndSanitize("Hello World", {
