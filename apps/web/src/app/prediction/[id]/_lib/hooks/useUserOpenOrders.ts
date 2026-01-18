@@ -9,25 +9,40 @@ export function useUserOpenOrders(args: {
   market: MarketInfo | null;
   account: string | null | undefined;
   predictionIdRaw: string | number | undefined;
+  proxyAddress?: string | null | undefined;
 }) {
-  const { market, account, predictionIdRaw } = args;
+  const { market, account, predictionIdRaw, proxyAddress } = args;
   const [openOrders, setOpenOrders] = useState<any[]>([]);
 
   const refreshUserOrders = useCallback(async () => {
     if (!market || !account || !predictionIdRaw) return;
     try {
       const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
-      const orders = await fetchUserOpenOrdersApi(
-        market.market,
-        market.chain_id,
-        marketKey,
-        account
-      );
-      setOpenOrders(orders);
+
+      const fetchPromise = [
+        fetchUserOpenOrdersApi(market.market, market.chain_id, marketKey, account),
+      ];
+
+      if (proxyAddress) {
+        fetchPromise.push(
+          fetchUserOpenOrdersApi(market.market, market.chain_id, marketKey, proxyAddress)
+        );
+      }
+
+      const results = await Promise.all(fetchPromise);
+      const allOrders = results.flat();
+
+      // Remove duplicates just in case, though they shouldn't overlap by maker
+      const uniqueOrders = Array.from(new Map(allOrders.map((o) => [o.maker_salt, o])).values());
+
+      // Sort by creation time desc (assuming salt or created_at)
+      uniqueOrders.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+      setOpenOrders(uniqueOrders);
     } catch (e) {
       console.error("Refresh orders failed", e);
     }
-  }, [market, account, predictionIdRaw]);
+  }, [market, account, predictionIdRaw, proxyAddress]);
 
   useEffect(() => {
     if (!market || !account) return;

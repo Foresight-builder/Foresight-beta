@@ -48,11 +48,17 @@ interface PredictionSideRailProps {
   setPostOnly: (v: boolean) => void;
   setEditingOrderSalt: (salt: string | null) => void;
   setMaxSlippage: (v: number) => void;
-  submitOrder: () => Promise<void>;
+  submitOrder: (opts?: { useProxy?: boolean; proxyAddress?: string }) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   handleMint: (amount: string) => Promise<void>;
   handleRedeem: (amount: string) => Promise<void>;
   setMintInput: (val: string) => void;
+
+  // Proxy Wallet
+  useProxy?: boolean;
+  proxyBalance?: string;
+  proxyAddress?: string;
+  setUseProxy?: (val: boolean) => void;
 
   // Additional
   isMultiOutcome?: boolean;
@@ -95,6 +101,10 @@ export function PredictionSideRail({
   handleMint,
   handleRedeem,
   setMintInput,
+  useProxy,
+  proxyBalance,
+  proxyAddress,
+  setUseProxy,
   isMultiOutcome,
 }: PredictionSideRailProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("trade");
@@ -158,6 +168,9 @@ export function PredictionSideRail({
                 orderMsg,
                 marketPlanPreview: null,
                 marketPlanLoading: false,
+                useProxy,
+                proxyBalance,
+                proxyAddress,
               }}
               handlers={{
                 setTradeSide,
@@ -169,8 +182,8 @@ export function PredictionSideRail({
                 setPostOnly,
                 setEditingOrderSalt,
                 setMaxSlippage,
-                submitOrder: () => {
-                  void submitOrder();
+                submitOrder: (opts?: { useProxy?: boolean; proxyAddress?: string }) => {
+                  void submitOrder(opts);
                 },
                 cancelOrder: (orderId: string) => {
                   void cancelOrder(orderId);
@@ -182,6 +195,7 @@ export function PredictionSideRail({
                   void handleRedeem(amount);
                 },
                 setMintInput,
+                setUseProxy,
               }}
             />
           )}

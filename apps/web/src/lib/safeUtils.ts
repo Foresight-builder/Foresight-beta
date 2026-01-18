@@ -77,3 +77,95 @@ export async function computeSafeCounterfactualAddress(params: {
   const initCodeHash = ethers.keccak256(deploymentData);
   return normalizeAddress(ethers.getCreate2Address(params.factoryAddress, salt, initCodeHash));
 }
+
+export async function deploySafe(params: {
+  signer: ethers.Signer;
+  factoryAddress: string;
+  singletonAddress: string;
+  initializer: string;
+  saltNonce: bigint;
+}) {
+  const factory = new ethers.Contract(
+    params.factoryAddress,
+    [
+      "function createProxyWithNonce(address _singleton, bytes initializer, uint256 saltNonce) returns (address proxy)",
+    ],
+    params.signer
+  );
+  const tx = await factory.createProxyWithNonce(
+    params.singletonAddress,
+    params.initializer,
+    params.saltNonce
+  );
+  return tx.wait();
+}
+
+export async function executeSafeTransaction(
+  signer: ethers.Signer,
+  safeAddress: string,
+  to: string,
+  data: string,
+  value: bigint = 0n,
+  operation: number = 0 // 0 = Call, 1 = DelegateCall
+) {
+  const safe = new ethers.Contract(
+    safeAddress,
+    [
+      "function nonce() view returns (uint256)",
+      "function execTransaction(address to, uint256 value, bytes data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes signatures) payable returns (bool success)",
+      "function getTransactionHash(address to, uint256 value, bytes data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, uint256 nonce) view returns (bytes32)",
+    ],
+    signer
+  );
+
+  const nonce = await safe.nonce();
+
+  const txArgs = {
+    to,
+    value,
+    data,
+    operation,
+    safeTxGas: 0,
+    baseGas: 0,
+    gasPrice: 0,
+    gasToken: ethers.ZeroAddress,
+    refundReceiver: ethers.ZeroAddress,
+    nonce,
+  };
+
+  const safeTxHash = await safe.getTransactionHash(
+    txArgs.to,
+    txArgs.value,
+    txArgs.data,
+    txArgs.operation,
+    txArgs.safeTxGas,
+    txArgs.baseGas,
+    txArgs.gasPrice,
+    txArgs.gasToken,
+    txArgs.refundReceiver,
+    txArgs.nonce
+  );
+
+  const signature = await signer.signMessage(ethers.getBytes(safeTxHash));
+
+  // Adjust v for Safe eth_sign signature (v += 4)
+  const sig = ethers.Signature.from(signature);
+  let finalSig = signature;
+  if (sig.v === 27 || sig.v === 28) {
+    const v = sig.v + 4;
+    finalSig = ethers.concat([sig.r, sig.s, new Uint8Array([v])]);
+  }
+
+  return safe.execTransaction(
+    txArgs.to,
+    txArgs.value,
+    txArgs.data,
+    txArgs.operation,
+    txArgs.safeTxGas,
+    txArgs.baseGas,
+    txArgs.gasPrice,
+    txArgs.gasToken,
+    txArgs.refundReceiver,
+    finalSig
+  );
+}

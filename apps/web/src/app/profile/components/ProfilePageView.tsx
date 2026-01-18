@@ -13,6 +13,8 @@ import {
   Zap,
   Heart,
   Shield,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
@@ -39,6 +41,8 @@ import { FollowersTab } from "./FollowersTab";
 import { MakerEarningsTab } from "./MakerEarningsTab";
 import EmptyState from "@/components/EmptyState";
 import WalletModal from "@/components/WalletModal";
+import DepositModal from "@/components/DepositModal";
+import WithdrawModal from "@/components/WithdrawModal";
 import {
   QueryKeys,
   fetcher,
@@ -93,19 +97,15 @@ export function ProfilePageView({
   const userId = auth?.user?.id ?? null;
   const tCommon = useTranslations("common");
   const tWalletModal = useTranslations("walletModal");
+  const tWallet = useTranslations("wallet");
   const queryClient = useQueryClient();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const prevUserIdRef = useRef<string | null>(userId);
 
   const accountNorm = useMemo(() => (account ? normalizeAddress(account) : ""), [account]);
   const myAccountNorm = useMemo(() => (myAccount ? normalizeAddress(myAccount) : ""), [myAccount]);
-
-  const [emailInput, setEmailInput] = useState<string>("");
-  const [otpInput, setOtpInput] = useState<string>("");
-  const [otpRequested, setOtpRequested] = useState(false);
-  const [codePreview, setCodePreview] = useState<string | null>(null);
-  const [resendLeft, setResendLeft] = useState(0);
-  const resendTimerRef = useRef<number | null>(null);
 
   const [emailChangeStep, setEmailChangeStep] = useState<
     "idle" | "old_sent" | "old_verified" | "new_sent"
@@ -116,33 +116,6 @@ export function ProfilePageView({
   const [emailChangeCodePreview, setEmailChangeCodePreview] = useState<string | null>(null);
   const [emailChangeResendLeft, setEmailChangeResendLeft] = useState(0);
   const emailChangeTimerRef = useRef<number | null>(null);
-
-  const clearResendTimer = () => {
-    if (resendTimerRef.current !== null) {
-      window.clearInterval(resendTimerRef.current);
-      resendTimerRef.current = null;
-    }
-  };
-
-  const startResendCountdown = (seconds: number) => {
-    if (seconds <= 0) {
-      setResendLeft(0);
-      return;
-    }
-    clearResendTimer();
-    setResendLeft(seconds);
-    const id = window.setInterval(() => {
-      setResendLeft((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(id);
-          resendTimerRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    resendTimerRef.current = id;
-  };
 
   const clearEmailChangeTimer = () => {
     if (emailChangeTimerRef.current !== null) {
@@ -172,136 +145,14 @@ export function ProfilePageView({
   };
 
   useEffect(() => {
-    const existing = String(profileInfo?.email || "")
-      .trim()
-      .toLowerCase();
-    if (existing) {
-      setEmailInput(existing);
-      setOtpRequested(false);
-      setOtpInput("");
-      setCodePreview(null);
-      setEmailChangeStep("idle");
-      setEmailChangeNewEmail("");
-      setEmailChangeOldCode("");
-      setEmailChangeNewCode("");
-      setEmailChangeCodePreview(null);
-      clearEmailChangeTimer();
-      setEmailChangeResendLeft(0);
-      return;
-    }
-    setOtpRequested(false);
-    setOtpInput("");
-    setCodePreview(null);
-    setEmailChangeStep("idle");
-    setEmailChangeNewEmail("");
-    setEmailChangeOldCode("");
-    setEmailChangeNewCode("");
-    setEmailChangeCodePreview(null);
-    clearEmailChangeTimer();
-    setEmailChangeResendLeft(0);
-  }, [profileInfo?.email]);
-
-  const countsQuery = useUserFollowCounts(account || null);
-  const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
-
-  const requestEmailOtpMutation = useMutation({
-    mutationFn: async () => {
-      const email = String(emailInput || "")
-        .trim()
-        .toLowerCase();
-      const addr = String(accountNorm || "").toLowerCase();
-      return fetcher<{ expiresInSec?: number; codePreview?: string }>("/api/email-otp/request", {
-        method: "POST",
-        body: JSON.stringify({ walletAddress: addr, email, mode: "bind" }),
-      });
-    },
-    onSuccess: (data) => {
-      setOtpRequested(true);
-      setOtpInput("");
-      if (data?.codePreview) {
-        setOtpInput(String(data.codePreview || ""));
-        setCodePreview(String(data.codePreview || ""));
-      } else {
-        setCodePreview(null);
-      }
-      toast.success(tWalletModal("profile.sendOtpWithValidity"));
-      startResendCountdown(60);
-    },
-    onError: (error: unknown) => {
-      handleApiError(error, "walletModal.errors.otpSendFailed");
-      const raw = error as any;
-      const inner =
-        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
-          ? raw.error
-          : null;
-      const details = inner && typeof inner.details === "object" ? inner.details : null;
-      if (details && typeof details === "object") {
-        const reason = String((details as any).reason || "");
-        if (reason === "GLOBAL_MIN_INTERVAL") {
-          startResendCountdown(60);
-        } else if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
-          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
-          startResendCountdown(seconds);
-        } else if (
-          (reason === "EMAIL_TOO_FREQUENT" || reason === "IP_RATE_LIMIT") &&
-          typeof (details as any).windowMinutes === "number"
-        ) {
-          const seconds = Math.max(60, Math.round((details as any).windowMinutes * 60));
-          startResendCountdown(seconds);
-        }
-      }
-    },
-  });
-
-  const verifyEmailOtpMutation = useMutation({
-    mutationFn: async () => {
-      const email = String(emailInput || "")
-        .trim()
-        .toLowerCase();
-      const code = String(otpInput || "").trim();
-      const addr = String(accountNorm || "").toLowerCase();
-      return fetcher<{ ok: boolean }>("/api/email-otp/verify", {
-        method: "POST",
-        body: JSON.stringify({ walletAddress: addr, email, code, mode: "bind" }),
-      });
-    },
-    onSuccess: async () => {
-      setOtpRequested(false);
-      setOtpInput("");
-      setCodePreview(null);
-      toast.success(tCommon("success"));
-      clearResendTimer();
-      setResendLeft(0);
-      await queryClient.invalidateQueries({ queryKey: QueryKeys.userProfile(accountNorm) });
-    },
-    onError: (error: unknown) => {
-      handleApiError(error, "walletModal.errors.otpVerifyFailed");
-      const raw = error as any;
-      const inner =
-        raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
-          ? raw.error
-          : null;
-      const details = inner && typeof inner.details === "object" ? inner.details : null;
-      if (details && typeof details === "object") {
-        const reason = String((details as any).reason || "");
-        if (reason === "EMAIL_LOCKED" && typeof (details as any).waitMinutes === "number") {
-          const seconds = Math.max(60, Math.round((details as any).waitMinutes * 60));
-          startResendCountdown(seconds);
-        } else if (reason === "OTP_TOO_MANY_ATTEMPTS") {
-          startResendCountdown(60 * 60);
-        }
-      }
-    },
-  });
-
-  useEffect(() => {
     return () => {
-      clearResendTimer();
-      setResendLeft(0);
       clearEmailChangeTimer();
       setEmailChangeResendLeft(0);
     };
   }, []);
+
+  const countsQuery = useUserFollowCounts(account || null);
+  const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -507,23 +358,6 @@ export function ProfilePageView({
     },
   });
 
-  const canRequestOtp =
-    isOwnProfile &&
-    !!accountNorm &&
-    !!userId &&
-    /.+@.+\..+/.test(String(emailInput || "").trim()) &&
-    resendLeft === 0 &&
-    !requestEmailOtpMutation.isPending &&
-    !verifyEmailOtpMutation.isPending;
-  const canVerifyOtp =
-    isOwnProfile &&
-    !!accountNorm &&
-    !!userId &&
-    otpRequested &&
-    /^\d{6}$/.test(String(otpInput || "").trim()) &&
-    !requestEmailOtpMutation.isPending &&
-    !verifyEmailOtpMutation.isPending;
-
   const canRequestEmailChangeOld =
     isOwnProfile &&
     !!accountNorm &&
@@ -673,40 +507,63 @@ export function ProfilePageView({
                 <h2 className="text-2xl font-black text-gray-900 mb-1 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">
                   {username}
                 </h2>
-                <button
-                  type="button"
-                  disabled={!account}
-                  onClick={async () => {
-                    if (!account) return;
-                    try {
-                      if (navigator.clipboard && navigator.clipboard.writeText) {
-                        await navigator.clipboard.writeText(account);
-                      } else {
-                        const textarea = document.createElement("textarea");
-                        textarea.value = account;
-                        textarea.style.position = "fixed";
-                        textarea.style.opacity = "0";
-                        document.body.appendChild(textarea);
-                        textarea.focus();
-                        textarea.select();
-                        try {
-                          document.execCommand("copy");
-                        } finally {
-                          document.body.removeChild(textarea);
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <button
+                    type="button"
+                    disabled={!account}
+                    onClick={async () => {
+                      if (!account) return;
+                      try {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                          await navigator.clipboard.writeText(account);
+                        } else {
+                          const textarea = document.createElement("textarea");
+                          textarea.value = account;
+                          textarea.style.position = "fixed";
+                          textarea.style.opacity = "0";
+                          document.body.appendChild(textarea);
+                          textarea.focus();
+                          textarea.select();
+                          try {
+                            document.execCommand("copy");
+                          } finally {
+                            document.body.removeChild(textarea);
+                          }
                         }
+                        toast.success(tProfile("wallet.addressCopied"));
+                      } catch {
+                        toast.error(tProfile("wallet.copyAddress"));
                       }
-                      toast.success(tProfile("wallet.addressCopied"));
-                    } catch {
-                      toast.error(tProfile("wallet.copyAddress"));
-                    }
-                  }}
-                  className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono mb-6 shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:border-purple-200 hover:shadow-md"
-                >
-                  <Wallet className="w-3.5 h-3.5 text-purple-600" />
-                  <span className={account ? "text-purple-600" : "text-gray-400"}>
-                    {account ? formatAddress(account) : tProfile("username.walletDisconnected")}
-                  </span>
-                </button>
+                    }}
+                    className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:border-purple-200 hover:shadow-md"
+                  >
+                    <Wallet className="w-3.5 h-3.5 text-purple-600" />
+                    <span className={account ? "text-purple-600" : "text-gray-400"}>
+                      {account ? formatAddress(account) : tProfile("username.walletDisconnected")}
+                    </span>
+                  </button>
+
+                  {isOwnProfile && account && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDepositOpen(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white border border-transparent px-4 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                        <span>{tWallet("deposit")}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawOpen(true)}
+                        className="flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md hover:border-purple-300 hover:text-purple-600 transition-all active:scale-95"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                        <span>提现</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {/* Email verification section removed as per request */}
 
@@ -1153,6 +1010,12 @@ export function ProfilePageView({
         </div>
       </div>
       <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+      <DepositModal
+        open={depositOpen}
+        onClose={() => setDepositOpen(false)}
+        onRequireLogin={() => setWalletModalOpen(true)}
+      />
+      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
     </GradientPage>
   );
 }

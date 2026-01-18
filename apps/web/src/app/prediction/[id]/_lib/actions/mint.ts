@@ -8,6 +8,7 @@ import {
   parseUnitsByDecimals,
 } from "../wallet";
 import { trySubmitAaCalls, isAaEnabled } from "../aaUtils";
+import { executeSafeTransaction } from "@/lib/safeUtils";
 
 export async function mintAction(args: {
   amountStr: string;
@@ -18,6 +19,8 @@ export async function mintAction(args: {
   erc20Abi: any;
   marketAbi: any;
   setOrderMsg: (msg: string | null) => void;
+  useProxy?: boolean;
+  proxyAddress?: string;
 }) {
   const {
     amountStr,
@@ -28,6 +31,8 @@ export async function mintAction(args: {
     erc20Abi,
     marketAbi,
     setOrderMsg,
+    useProxy,
+    proxyAddress,
   } = args;
   try {
     setOrderMsg(t("trading.mintFlow.prepare"));
@@ -53,6 +58,32 @@ export async function mintAction(args: {
     }
     // USDC deposit is amount18 * 1e6 / 1e18
     const deposit6 = (amount18 * 1_000_000n) / 1_000_000_000_000_000_000n;
+
+    if (useProxy && proxyAddress) {
+      const allowance = await tokenContract.allowance(proxyAddress, market.market);
+      if (allowance < deposit6) {
+        setOrderMsg(t("trading.mintFlow.approveUsdc"));
+        const erc20Iface = new ethers.Interface(erc20Abi);
+        const approveData = erc20Iface.encodeFunctionData("approve", [
+          market.market,
+          ethers.MaxUint256,
+        ]);
+        await executeSafeTransaction(
+          signer,
+          proxyAddress,
+          String(tokenContract.target),
+          approveData
+        );
+      }
+
+      setOrderMsg(t("trading.mintFlow.minting"));
+      const marketIface = new ethers.Interface(marketAbi);
+      const mintData = marketIface.encodeFunctionData("mintCompleteSet", [amount18]);
+      await executeSafeTransaction(signer, proxyAddress, market.market, mintData);
+
+      setOrderMsg(t("trading.mintFlow.success"));
+      return;
+    }
 
     if (isAaEnabled()) {
       try {

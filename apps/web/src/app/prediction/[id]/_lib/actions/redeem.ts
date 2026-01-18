@@ -8,6 +8,7 @@ import {
   parseUnitsByDecimals,
 } from "../wallet";
 import { trySubmitAaCalls, isAaEnabled } from "../aaUtils";
+import { executeSafeTransaction } from "@/lib/safeUtils";
 
 export async function redeemAction(args: {
   amountStr: string;
@@ -19,6 +20,8 @@ export async function redeemAction(args: {
   erc1155Abi: any;
   marketAbi: any;
   setOrderMsg: (msg: string | null) => void;
+  useProxy?: boolean;
+  proxyAddress?: string;
 }) {
   const {
     amountStr,
@@ -30,6 +33,8 @@ export async function redeemAction(args: {
     erc1155Abi,
     marketAbi,
     setOrderMsg,
+    useProxy,
+    proxyAddress,
   } = args;
   try {
     setOrderMsg(t("trading.redeemFlow.prepare"));
@@ -46,6 +51,35 @@ export async function redeemAction(args: {
     const marketContract = new ethers.Contract(market.market, marketAbi, signer);
     const outcomeTokenAddress = await marketContract.outcomeToken();
     const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+
+    if (useProxy && proxyAddress) {
+      const isApproved = await outcome1155.isApprovedForAll(proxyAddress, market.market);
+      if (!isApproved) {
+        setOrderMsg(t("trading.redeemFlow.approveOutcomeToken"));
+        const erc1155Iface = new ethers.Interface(erc1155Abi);
+        const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+          market.market,
+          true,
+        ]);
+        await executeSafeTransaction(signer, proxyAddress, outcomeTokenAddress, approveData);
+      }
+
+      setOrderMsg(t("trading.redeemFlow.redeeming"));
+      const marketIface = new ethers.Interface(marketAbi);
+      const state = Number(await marketContract.state());
+      let redeemData;
+      if (state === 1) {
+        redeemData = marketIface.encodeFunctionData("redeem", [amount18]);
+      } else if (state === 2) {
+        redeemData = marketIface.encodeFunctionData("redeemCompleteSetOnInvalid", [amount18]);
+      } else {
+        throw new Error(t("trading.redeemFlow.marketNotResolved"));
+      }
+      await executeSafeTransaction(signer, proxyAddress, market.market, redeemData);
+
+      setOrderMsg(t("trading.redeemFlow.success"));
+      return;
+    }
 
     if (isAaEnabled()) {
       try {

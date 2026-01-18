@@ -3,6 +3,7 @@ export const erc20Abi = [
   "function balanceOf(address owner) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 value) returns (bool)",
+  "function transfer(address to, uint256 value) returns (bool)",
 ] as const;
 
 export const lpFeeStakingAbi = [
@@ -43,4 +44,9 @@ export const erc1155Abi = [
   "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function isApprovedForAll(address account, address operator) view returns (bool)",
   "function setApprovalForAll(address operator, bool approved) external",
+] as const;
+
+export const safeAbi = [
+  "function execTransaction(address to, uint256 value, bytes data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes signatures) payable returns (bool success)",
+  "function nonce() view returns (uint256)",
 ] as const;

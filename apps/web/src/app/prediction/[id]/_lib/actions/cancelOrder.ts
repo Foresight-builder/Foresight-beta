@@ -8,6 +8,7 @@ import type { MarketInfo } from "../marketTypes";
 export async function cancelOrderAction(args: {
   salt: string;
   account: string;
+  maker?: string;
   market: MarketInfo;
   walletProvider: any;
   predictionIdRaw: string | number;
@@ -18,6 +19,7 @@ export async function cancelOrderAction(args: {
   const {
     salt,
     account,
+    maker = account,
     market,
     walletProvider,
     predictionIdRaw,
@@ -37,7 +39,7 @@ export async function cancelOrderAction(args: {
       ],
     } as const;
     const value = {
-      maker: account,
+      maker: maker,
       salt: BigInt(salt),
     };
     const signature = await signer.signTypedData(domain as any, types as any, value as any);
@@ -53,7 +55,7 @@ export async function cancelOrderAction(args: {
         contract: market.market,
         marketKey: mk,
         salt,
-        maker: account,
+        maker: maker,
         signature,
       }),
     });

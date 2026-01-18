@@ -85,17 +85,22 @@ export async function POST(req: NextRequest) {
     const rpcUrl = getConfiguredRpcUrl(chainId);
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
+    const initializer = encodeSafeInitializer({
+      ownerEoa,
+      fallbackHandler: proxyConfig.config.safeFallbackHandlerAddress || ethers.ZeroAddress,
+    });
+    const saltNonce = resolveSaltNonce(ownerEoa, chainId);
+    const factoryAddress = proxyConfig.config.safeFactoryAddress || "";
+    const singletonAddress = proxyConfig.config.safeSingletonAddress || "";
+
     const smartAccountAddress =
       targetType === "safe" || targetType === "safe4337"
         ? await computeSafeCounterfactualAddress({
             provider,
-            factoryAddress: proxyConfig.config.safeFactoryAddress || "",
-            singletonAddress: proxyConfig.config.safeSingletonAddress || "",
-            initializer: encodeSafeInitializer({
-              ownerEoa,
-              fallbackHandler: proxyConfig.config.safeFallbackHandlerAddress || ethers.ZeroAddress,
-            }),
-            saltNonce: resolveSaltNonce(ownerEoa, chainId),
+            factoryAddress,
+            singletonAddress,
+            initializer,
+            saltNonce,
           })
         : deriveProxyWalletAddress(ownerEoa, targetType);
 
@@ -104,6 +109,16 @@ export async function POST(req: NextRequest) {
         ? await resolveDeploymentStatus(provider, smartAccountAddress)
         : "unknown";
 
+    const deploymentConfig =
+      targetType === "safe" || targetType === "safe4337"
+        ? {
+            factoryAddress,
+            singletonAddress,
+            initializer,
+            saltNonce: saltNonce.toString(),
+          }
+        : undefined;
+
     if (existingProxyAddress && existingProxyAddress === smartAccountAddress) {
       return successResponse(
         {
@@ -111,6 +126,7 @@ export async function POST(req: NextRequest) {
           owner_eoa: ownerEoa,
           smart_account_address: smartAccountAddress,
           deployment_status: deploymentStatus,
+          deployment_config: deploymentConfig,
           address: smartAccountAddress,
           type: targetType,
         },

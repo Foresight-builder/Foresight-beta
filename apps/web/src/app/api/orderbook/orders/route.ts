@@ -161,24 +161,6 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("Invalid contract address");
     }
 
-    // 2. Maker Address Rate Limit (Database check)
-    if (order?.maker && ethers.isAddress(order.maker)) {
-      const makerAddr = String(order.maker).toLowerCase();
-      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
-      const { count, error: countErr } = await client
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("maker_address", makerAddr)
-        .gt("created_at", oneMinuteAgo);
-
-      if (!countErr && count !== null && count > 20) {
-        try {
-          await logApiEvent("order_create_rate_limited_maker", { maker: makerAddr.slice(0, 8) });
-        } catch {}
-        return ApiResponses.rateLimit("Order creation rate limit exceeded for this address");
-      }
-    }
-
     const orderData: EIP712Order = {
       maker: order.maker,
       outcomeIndex: Number(order.outcomeIndex),
@@ -211,9 +193,11 @@ export async function POST(req: NextRequest) {
     }
 
     const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainIdNum));
+    // Do not pass ownerEoa to enforce EIP-1271 check if maker is a contract (Proxy Wallet)
+    // If maker is EOA, recovered address must match maker.
+    // If maker is Proxy, recovered address (Owner) will mismatch, triggering EIP-1271 check on Proxy.
     const signatureValidation = await verifyOrderSignature(orderData, signature, chainIdNum, vc, {
       provider,
-      ownerEoa: ownerEoa || undefined,
     });
     if (!signatureValidation.valid) {
       console.warn("Order validation failed: signature", signatureValidation.error);

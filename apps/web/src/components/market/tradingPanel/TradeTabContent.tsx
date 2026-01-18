@@ -43,7 +43,7 @@ export type TradeTabContentProps = {
   markValue?: number;
   unrealizedPnl?: number;
   unrealizedPct?: number;
-  submitOrder: () => void;
+  submitOrder: (opts?: { useProxy?: boolean; proxyAddress?: string }) => void;
   isSubmitting: boolean;
   market: any;
   orderMsg: string | null;
@@ -56,6 +56,10 @@ export type TradeTabContentProps = {
   fillPrice: (p: string) => void;
   marketPlanPreview: MarketPlanPreview | null;
   marketPlanLoading: boolean;
+  useProxy?: boolean;
+  proxyBalance?: string;
+  proxyAddress?: string;
+  setUseProxy?: (v: boolean) => void;
 };
 
 export function TradeTabContent({
@@ -103,6 +107,10 @@ export function TradeTabContent({
   fillPrice,
   marketPlanPreview,
   marketPlanLoading,
+  useProxy,
+  proxyBalance,
+  proxyAddress,
+  setUseProxy,
 }: TradeTabContentProps) {
   const isMarketOrder = orderMode === "best";
   let priceNum = 0;
@@ -163,6 +171,19 @@ export function TradeTabContent({
       if (!Number.isFinite(priceVal) || priceVal <= 0 || priceVal >= 1)
         return tTrading("orderFlow.invalidPrice");
     }
+
+    // Check insufficient funds
+    if (tradeSide === "buy") {
+      const effectiveBalance = useProxy && proxyBalance ? proxyBalance : balance;
+      const digits = effectiveBalance?.replace(/[^0-9.]/g, "") || "0";
+      const available = parseFloat(digits) || 0;
+      // For market orders, total is estimated cost. For limit, it's price * amount.
+      // total is already calculated in component scope
+      if (total > available) {
+        return tTrading("orderFlow.insufficientFunds");
+      }
+    }
+
     return null;
   })();
 
@@ -226,6 +247,9 @@ export function TradeTabContent({
           tTrading={tTrading}
           marketPlanPreview={marketPlanPreview}
           marketPlanLoading={marketPlanLoading}
+          useProxy={useProxy}
+          proxyBalance={proxyBalance}
+          balance={balance}
         />
         <AmountInputSection
           amountInput={amountInput}
@@ -236,6 +260,9 @@ export function TradeTabContent({
           currentShares={currentShares}
           orderMode={orderMode}
           priceInput={priceInput}
+          useProxy={useProxy}
+          proxyBalance={proxyBalance}
+          setUseProxy={setUseProxy}
         />
       </div>
       <TradeSummary
@@ -261,7 +288,7 @@ export function TradeTabContent({
       />
       <TradeSubmitSection
         tradeSide={tradeSide}
-        submitOrder={submitOrder}
+        submitOrder={() => submitOrder({ useProxy, proxyAddress })}
         isSubmitting={isSubmitting}
         market={market}
         currentOutcomeLabel={currentOutcomeLabel}
@@ -524,6 +551,9 @@ type PriceInputSectionProps = {
   tTrading: (key: string) => string;
   marketPlanPreview: MarketPlanPreview | null;
   marketPlanLoading: boolean;
+  useProxy?: boolean;
+  proxyBalance?: string;
+  balance?: string;
 };
 
 function PriceInputSection({
@@ -546,6 +576,9 @@ function PriceInputSection({
   tTrading,
   marketPlanPreview,
   marketPlanLoading,
+  useProxy,
+  proxyBalance,
+  balance,
 }: PriceInputSectionProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const limitPriceValue = parseFloat(priceInput || "0");
@@ -577,7 +610,18 @@ function PriceInputSection({
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-medium text-gray-500">
-        <span>{tTrading("price")}</span>
+        <div className="flex items-center gap-2">
+          <span>{tTrading("price")}</span>
+          {tradeSide === "buy" && (
+            <span className="text-[10px] text-gray-400 font-normal">
+              {useProxy && proxyBalance
+                ? `(Proxy: ${proxyBalance})`
+                : balance?.replace("USDC", "").trim()
+                  ? `(Bal: ${balance.replace("USDC", "").trim()})`
+                  : ""}
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setOrderMode("best")}
@@ -805,6 +849,9 @@ type AmountInputSectionProps = {
   currentShares: number;
   orderMode: "limit" | "best";
   priceInput: string;
+  useProxy?: boolean;
+  proxyBalance?: string;
+  setUseProxy?: (v: boolean) => void;
 };
 
 function AmountInputSection({
@@ -816,6 +863,9 @@ function AmountInputSection({
   currentShares,
   orderMode,
   priceInput,
+  useProxy,
+  proxyBalance,
+  setUseProxy,
 }: AmountInputSectionProps) {
   const normalizeTo6Decimals = (raw: string) => {
     const trimmed = raw.trim();
@@ -836,8 +886,11 @@ function AmountInputSection({
   const hasTooManyDecimals = decimalsCount > 6;
 
   let usdcAvailable = 0;
+  // If using proxy, use proxyBalance for checking available funds
+  const effectiveBalance = useProxy && proxyBalance ? proxyBalance : balance;
+
   if (tradeSide === "buy") {
-    const digits = balance.replace(/[^0-9.]/g, "");
+    const digits = effectiveBalance.replace(/[^0-9.]/g, "");
     if (digits) {
       const parsed = parseFloat(digits);
       if (!isNaN(parsed) && parsed > 0) {
@@ -856,10 +909,32 @@ function AmountInputSection({
         <span>
           {tTrading("amount")} ({tTrading("sharesUnit")})
         </span>
-        <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md">
-          <Wallet className="w-3 h-3" />
-          {balance}
-        </span>
+        <div className="flex items-center gap-2">
+          {setUseProxy && (
+            <label className="flex items-center gap-1 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={!!useProxy}
+                onChange={(e) => setUseProxy(e.target.checked)}
+                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-3 h-3 cursor-pointer"
+              />
+              <span className="text-[10px] text-gray-500 group-hover:text-purple-600 transition-colors">
+                Proxy Wallet
+              </span>
+            </label>
+          )}
+          <span className="flex items-center gap-1 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md">
+            <Wallet className="w-3 h-3" />
+            {tradeSide === "sell"
+              ? formatNumber(currentShares, undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 6,
+                })
+              : useProxy && proxyBalance
+                ? `USDC ${proxyBalance} (Proxy)`
+                : balance}
+          </span>
+        </div>
       </div>
       <input
         type="number"

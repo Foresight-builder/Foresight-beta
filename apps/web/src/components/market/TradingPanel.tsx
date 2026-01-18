@@ -47,6 +47,9 @@ interface TradingPanelState {
   orderMsg: string | null;
   marketPlanPreview?: MarketPlanPreview | null;
   marketPlanLoading?: boolean;
+  useProxy?: boolean;
+  proxyBalance?: string;
+  proxyAddress?: string;
 }
 
 interface TradingPanelHandlers {
@@ -59,11 +62,12 @@ interface TradingPanelHandlers {
   setPostOnly: (v: boolean) => void;
   setEditingOrderSalt: (salt: string | null) => void;
   setMaxSlippage: (v: number) => void;
-  submitOrder: () => void;
+  submitOrder: (opts?: { useProxy?: boolean; proxyAddress?: string }) => void;
   cancelOrder: (salt: string) => void;
   handleMint: (amount: string) => void;
   handleRedeem: (amount: string) => void;
   setMintInput: (v: string) => void;
+  setUseProxy?: (v: boolean) => void;
 }
 
 interface TradingPanelProps {
@@ -103,6 +107,9 @@ export function TradingPanel(props: TradingPanelProps) {
     orderMsg,
     marketPlanPreview,
     marketPlanLoading,
+    useProxy,
+    proxyBalance,
+    proxyAddress,
   } = state;
   const {
     setTradeSide,
@@ -119,6 +126,7 @@ export function TradingPanel(props: TradingPanelProps) {
     handleMint,
     handleRedeem,
     setMintInput,
+    setUseProxy,
   } = handlers;
 
   const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "history">("trade");
@@ -417,6 +425,10 @@ export function TradingPanel(props: TradingPanelProps) {
             fillPrice={fillPrice}
             marketPlanPreview={marketPlanPreview ?? null}
             marketPlanLoading={!!marketPlanLoading}
+            useProxy={useProxy}
+            proxyBalance={proxyBalance}
+            proxyAddress={proxyAddress}
+            setUseProxy={setUseProxy}
           />
         )}
 

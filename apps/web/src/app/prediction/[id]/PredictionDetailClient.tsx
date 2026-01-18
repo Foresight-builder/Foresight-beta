@@ -148,6 +148,11 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     marketConfirmMessage,
     cancelMarketConfirm,
     runMarketConfirm,
+    useProxy,
+    setUseProxy,
+    proxyAddress,
+    proxyBalance,
+    proxyShareBalance,
   } = usePredictionDetail();
 
   const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(account || undefined);
@@ -410,7 +415,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   bestBid,
                   bestAsk,
                   balance,
-                  shareBalance,
+                  shareBalance: useProxy ? proxyShareBalance : shareBalance,
                   positionStake,
                   depthBuy,
                   depthSell,
@@ -431,6 +436,9 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   orderMsg,
                   marketPlanPreview,
                   marketPlanLoading,
+                  useProxy,
+                  proxyBalance,
+                  proxyAddress,
                 }}
                 handlers={{
                   setTradeSide,
@@ -447,6 +455,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   handleMint,
                   handleRedeem,
                   setMintInput,
+                  setUseProxy,
                 }}
               />
             </div>

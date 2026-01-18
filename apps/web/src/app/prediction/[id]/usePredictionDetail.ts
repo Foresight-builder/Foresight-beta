@@ -14,6 +14,7 @@ import { normalizeAddress } from "@/lib/address";
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";
 import { safeJson } from "./_lib/http";
+import { executeSafeTransaction } from "@/lib/safeUtils";
 import {
   createBrowserProvider,
   ensureNetwork,
@@ -78,11 +79,19 @@ export function usePredictionDetail() {
 
   const [balance, setBalance] = useState<string>("0.00");
   const [usdcBalance, setUsdcBalance] = useState<string>("0.00");
+  const [rawUsdcBalance, setRawUsdcBalance] = useState<string>("0");
   const [shareBalance, setShareBalance] = useState<string>("0");
   const [mintInput, setMintInput] = useState<string>("");
   const { trades } = useTradesPolling(market, predictionIdRaw, tradeOutcome);
   const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
   const [marketPlanLoading, setMarketPlanLoading] = useState(false);
+
+  // Proxy Wallet State
+  const [useProxy, setUseProxy] = useState(false);
+  const [proxyAddress, setProxyAddress] = useState<string | undefined>(undefined);
+  const [proxyBalance, setProxyBalance] = useState<string>("0.00");
+  const [rawProxyBalance, setRawProxyBalance] = useState<string>("0");
+  const [proxyShareBalance, setProxyShareBalance] = useState<string>("0");
 
   const [marketConfirmState, setMarketConfirmState] = useState<ConfirmState>(null);
   const closeMarketConfirm = useCallback(() => setMarketConfirmState(null), []);
@@ -106,6 +115,7 @@ export function usePredictionDetail() {
     market,
     account,
     predictionIdRaw,
+    proxyAddress,
   });
 
   const { following, followersCount, followLoading, followError, toggleFollow } =
@@ -198,11 +208,102 @@ export function usePredictionDetail() {
     };
   }, [market, account, walletProvider, switchNetwork, tradeOutcome]);
 
-  // 根据买/卖切换展示的余额：买显示 USDC，卖显示可卖份额
+  // Fetch proxy wallet info
   useEffect(() => {
-    if (tradeSide === "sell") setBalance(shareBalance);
-    else setBalance(`USDC ${usdcBalance}`);
-  }, [tradeSide, usdcBalance, shareBalance]);
+    if (!account) {
+      setProxyAddress(undefined);
+      return;
+    }
+
+    const fetchProxy = async () => {
+      try {
+        const res = await fetch("/api/wallets/proxy", {
+          method: "POST",
+        });
+        const json = await safeJson(res);
+        if (json.success && json.data?.address) {
+          setProxyAddress(json.data.address);
+        }
+      } catch (e) {
+        console.error("Failed to fetch proxy wallet", e);
+      }
+    };
+
+    fetchProxy();
+  }, [account]);
+
+  // Fetch proxy balance (USDC)
+  useEffect(() => {
+    let cancelled = false;
+    if (!market || !proxyAddress || !walletProvider) return;
+
+    const run = async () => {
+      try {
+        const provider = await createBrowserProvider(walletProvider);
+        await ensureNetwork(provider, market.chain_id, switchNetwork);
+        const signer = await provider.getSigner();
+        const { tokenContract, decimals } = await getCollateralTokenContract(
+          market,
+          signer,
+          erc20Abi
+        );
+        const bal = await tokenContract.balanceOf(proxyAddress);
+        const human = Number(ethers.formatUnits(bal, decimals));
+        if (!cancelled) setProxyBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+    const timer = setInterval(run, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [market, proxyAddress, walletProvider, switchNetwork]);
+
+  // Fetch proxy share balance
+  useEffect(() => {
+    let cancelled = false;
+    if (!market || !proxyAddress || !walletProvider) return;
+
+    const run = async () => {
+      try {
+        const provider = await createBrowserProvider(walletProvider);
+        await ensureNetwork(provider, market.chain_id, switchNetwork);
+        const signer = await provider.getSigner();
+        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+        const outcomeTokenAddress = await marketContract.outcomeToken();
+        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+        const tokenId = (BigInt(market.market) << 32n) | BigInt(tradeOutcome);
+        const bal = await outcome1155.balanceOf(proxyAddress, tokenId);
+        if (!cancelled) setProxyShareBalance(BigInt(bal).toString());
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+    const timer = setInterval(run, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [market, proxyAddress, walletProvider, switchNetwork, tradeOutcome]);
+
+  // 根据买/卖切换展示的余额：买显示 USDC (or Proxy USDC)，卖显示可卖份额
+  useEffect(() => {
+    if (tradeSide === "sell") {
+      setBalance(useProxy ? proxyShareBalance : shareBalance);
+    } else {
+      if (useProxy) {
+        setBalance(`USDC ${proxyBalance} (Proxy)`);
+      } else {
+        setBalance(`USDC ${usdcBalance}`);
+      }
+    }
+  }, [tradeSide, usdcBalance, shareBalance, useProxy, proxyBalance, proxyShareBalance]);
 
   useEffect(() => {
     if (!market || !predictionIdRaw) {
@@ -289,9 +390,14 @@ export function usePredictionDetail() {
 
   const cancelOrder = async (salt: string) => {
     if (!account || !market || !walletProvider || !predictionIdRaw) return;
+
+    const order = openOrders.find((o: any) => String(o.salt) === String(salt));
+    const maker = order?.maker || account;
+
     await cancelOrderAction({
       salt,
       account,
+      maker,
       market: market as MarketInfo,
       walletProvider,
       predictionIdRaw,
@@ -312,6 +418,8 @@ export function usePredictionDetail() {
       erc20Abi,
       marketAbi,
       setOrderMsg,
+      useProxy,
+      proxyAddress,
     });
   };
 
@@ -327,6 +435,8 @@ export function usePredictionDetail() {
       erc1155Abi,
       marketAbi,
       setOrderMsg,
+      useProxy,
+      proxyAddress,
     });
   };
 
@@ -427,7 +537,10 @@ export function usePredictionDetail() {
     [getErrorMeta, tTrading, tradeSide]
   );
 
-  const submitOrder = async () => {
+  const submitOrder = async (options?: { useProxy?: boolean; proxyAddress?: string }) => {
+    const useProxyVal = options?.useProxy ?? useProxy;
+    const proxyAddressVal = options?.proxyAddress ?? proxyAddress;
+
     if (isSubmitting) return;
     setIsSubmitting(true);
     setOrderMsg(null);
@@ -745,6 +858,102 @@ export function usePredictionDetail() {
                 throw createUserError(tTrading("orderFlow.noFillableOrders"));
               }
 
+              if (useProxyVal && proxyAddressVal) {
+                const code = await provider.getCode(proxyAddressVal);
+                if (!code || code === "0x") {
+                  throw createUserError(
+                    "Proxy wallet not activated. Please deposit funds first to activate."
+                  );
+                }
+
+                if (tradeSide === "buy") {
+                  const allowance = await tokenContract.allowance(proxyAddressVal, market.market);
+                  if (allowance < totalCostBN) {
+                    setOrderMsg(tTrading("orderFlow.approving"));
+                    const erc20Iface = new ethers.Interface(erc20Abi);
+                    const approveData = erc20Iface.encodeFunctionData("approve", [
+                      market.market,
+                      ethers.MaxUint256,
+                    ]);
+                    const tx = await executeSafeTransaction(
+                      signer,
+                      proxyAddressVal,
+                      String(tokenContract.target),
+                      approveData
+                    );
+                    await tx.wait();
+                  }
+                } else {
+                  const marketContract = new ethers.Contract(market.market, marketAbi, provider);
+                  const outcomeTokenAddress = await marketContract.outcomeToken();
+                  const outcome1155 = new ethers.Contract(
+                    outcomeTokenAddress,
+                    erc1155Abi,
+                    provider
+                  );
+                  const isApproved = await outcome1155.isApprovedForAll(
+                    proxyAddressVal,
+                    market.market
+                  );
+                  if (!isApproved) {
+                    setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
+                    const erc1155Iface = new ethers.Interface(erc1155Abi);
+                    const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+                      market.market,
+                      true,
+                    ]);
+                    const tx = await executeSafeTransaction(
+                      signer,
+                      proxyAddressVal,
+                      String(outcomeTokenAddress),
+                      approveData
+                    );
+                    await tx.wait();
+                  }
+                }
+
+                setOrderMsg(
+                  formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                    count: ordersArr.length,
+                  })
+                );
+                const marketIface = new ethers.Interface(marketAbi);
+                const batchFillData = marketIface.encodeFunctionData("batchFill", [
+                  ordersArr,
+                  sigArr,
+                  fillArr,
+                ]);
+                const tx = await executeSafeTransaction(
+                  signer,
+                  proxyAddressVal,
+                  market.market,
+                  batchFillData
+                );
+                const receipt = await tx.wait();
+
+                try {
+                  await fetch(`${API_BASE}/orderbook/report-trade`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      chainId: market.chain_id,
+                      txHash: receipt.hash,
+                      contract: market.market,
+                    }),
+                  });
+                } catch {}
+
+                if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
+                else setOrderMsg(tTrading("orderFlow.filled"));
+                setAmountInput("");
+                await refreshUserOrders();
+                toast.success(
+                  tTrading("toast.orderSuccessTitle"),
+                  tTrading("toast.orderSuccessDesc")
+                );
+                return;
+              }
+
               if (isAaEnabled()) {
                 try {
                   const calls = [];
@@ -885,24 +1094,76 @@ export function usePredictionDetail() {
         // cost6 = amount18 * price6Per1e18 / 1e18
         const cost = (amountBN * priceBN) / 1_000_000_000_000_000_000n;
 
-        const allowance = await tokenContract.allowance(account, market.market);
-        if (allowance < cost) {
-          setOrderMsg(tTrading("orderFlow.approving"));
-          const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
-          await tx.wait();
-          setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+        if (useProxy && proxyAddress) {
+          const code = await provider.getCode(proxyAddress);
+          if (!code || code === "0x") {
+            throw createUserError(
+              "Proxy wallet not activated. Please deposit funds first to activate."
+            );
+          }
+          const allowance = await tokenContract.allowance(proxyAddress, market.market);
+          if (allowance < cost) {
+            setOrderMsg(tTrading("orderFlow.approving"));
+            const erc20Iface = new ethers.Interface(erc20Abi);
+            const approveData = erc20Iface.encodeFunctionData("approve", [
+              market.market,
+              ethers.MaxUint256,
+            ]);
+            const tx = await executeSafeTransaction(
+              signer,
+              proxyAddress,
+              String(tokenContract.target),
+              approveData
+            );
+            await tx.wait();
+            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+          }
+        } else {
+          const allowance = await tokenContract.allowance(account, market.market);
+          if (allowance < cost) {
+            setOrderMsg(tTrading("orderFlow.approving"));
+            const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
+            await tx.wait();
+            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+          }
         }
       } else {
         const marketContract = new ethers.Contract(market.market, marketAbi, signer);
         const outcomeTokenAddress = await marketContract.outcomeToken();
         const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
 
-        const isApproved = await outcome1155.isApprovedForAll(account, market.market);
-        if (!isApproved) {
-          setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-          const tx = await outcome1155.setApprovalForAll(market.market, true);
-          await tx.wait();
-          setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+        if (useProxy && proxyAddress) {
+          const code = await provider.getCode(proxyAddress);
+          if (!code || code === "0x") {
+            throw createUserError(
+              "Proxy wallet not activated. Please deposit funds first to activate."
+            );
+          }
+          const isApproved = await outcome1155.isApprovedForAll(proxyAddress, market.market);
+          if (!isApproved) {
+            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
+            const erc1155Iface = new ethers.Interface(erc1155Abi);
+            const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+              market.market,
+              true,
+            ]);
+            const tx = await executeSafeTransaction(
+              signer,
+              proxyAddress,
+              String(outcomeTokenAddress),
+              approveData
+            );
+            await tx.wait();
+            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+          }
+        } else {
+          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+          if (!isApproved) {
+            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
+            const tx = await outcome1155.setApprovalForAll(market.market, true);
+            await tx.wait();
+            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
+          }
         }
       }
 
@@ -921,8 +1182,10 @@ export function usePredictionDetail() {
       })();
       const expiry = Math.floor(Date.now() / 1000) + 3600 * 24;
 
+      const orderMaker = useProxyVal && proxyAddressVal ? proxyAddressVal : account;
+
       const value = {
-        maker: account,
+        maker: orderMaker,
         outcomeIndex: BigInt(tradeOutcome),
         price: priceBN,
         amount: amountBN,
@@ -938,7 +1201,7 @@ export function usePredictionDetail() {
       const tifForOrder = tif === "GTC" ? undefined : tif;
       const payload = {
         order: {
-          maker: account,
+          maker: orderMaker,
           outcomeIndex: tradeOutcome,
           isBuy: tradeSide === "buy",
           price: priceBN.toString(),
@@ -1077,5 +1340,10 @@ export function usePredictionDetail() {
     cancelMarketConfirm,
     runMarketConfirm,
     closeMarketConfirm,
+    useProxy,
+    setUseProxy,
+    proxyAddress,
+    proxyBalance,
+    proxyShareBalance,
   };
 }
