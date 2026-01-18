@@ -22,9 +22,7 @@ async function main() {
   console.log("\n=== MarketFactory Configuration ===");
   const marketFactory = await hre.ethers.getContractAt("MarketFactory", marketFactoryAddress);
 
-  // In ethers.js v6, we use .getFunction() to call functions
-  const umaOracleFunction = marketFactory.interface.getFunction("umaOracle");
-  const defaultOracle = await marketFactory.callStatic[umaOracleFunction.name]();
+  const defaultOracle = await marketFactory.umaOracle();
   console.log(`Default oracle: ${defaultOracle}`);
   console.log(`Default oracle is UMA adapter: ${defaultOracle === umaOracleAdapterAddress}`);
 

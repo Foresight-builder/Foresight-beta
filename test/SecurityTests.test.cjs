@@ -109,15 +109,35 @@ describe("Smart Contract Security Tests", function () {
   });
 
   it("should ensure proper access control for pause functions", async function () {
-    // Only admin/creator should be able to pause the market
+    await expect(market.pause()).to.be.reverted;
     await expect(
       market.connect(attacker).pause()
     ).to.be.reverted;
 
-    // Only admin/creator should be able to unpause the market
+    await expect(market.unpause()).to.be.reverted;
     await expect(
       market.connect(attacker).unpause()
     ).to.be.reverted;
+  });
+
+  it("should allow factory emergency pause but restrict unpause to admin", async function () {
+    const marketId = 1;
+
+    await (await marketFactory.pauseMarketById(marketId)).wait();
+    expect(await market.paused()).to.equal(true);
+
+    await expect(marketFactory.connect(attacker).pauseMarketById(marketId)).to.be.reverted;
+
+    await (await marketFactory.unpauseMarketById(marketId)).wait();
+    expect(await market.paused()).to.equal(false);
+
+    const emergencyRole = await marketFactory.EMERGENCY_ROLE();
+    await (await marketFactory.grantRole(emergencyRole, await attacker.getAddress())).wait();
+
+    await (await marketFactory.connect(attacker).pauseMarketById(marketId)).wait();
+    expect(await market.paused()).to.equal(true);
+
+    await expect(marketFactory.connect(attacker).unpauseMarketById(marketId)).to.be.reverted;
   });
 
   it("should prevent zero value minting", async function () {

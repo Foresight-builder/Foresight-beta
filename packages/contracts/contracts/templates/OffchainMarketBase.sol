@@ -162,20 +162,14 @@ abstract contract OffchainMarketBase is
         _;
     }
 
-    modifier onlyFactoryOrCreator() {
-        if (msg.sender != factory && msg.sender != creator) revert NotAuthorized();
+    modifier onlyFactory() {
+        if (msg.sender != factory) revert NotAuthorized();
         _;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // ACCESS CONTROL EXTENSIONS
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /// @dev Checks if the caller has emergency access (EMERGENCY_ROLE, factory, or creator)
-    function _hasEmergencyAccess() internal view returns (bool) {
-        // For now, reuse onlyFactoryOrCreator logic
-        // TODO: Add EMERGENCY_ROLE support when AccessControl is added to market contracts
-        return msg.sender == factory || msg.sender == creator;
+    modifier onlyFactoryOrCreator() {
+        if (msg.sender != factory && msg.sender != creator) revert NotAuthorized();
+        _;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -185,10 +179,9 @@ abstract contract OffchainMarketBase is
     /**
      * @dev Triggers stopped state.
      * Requirements:
-     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     * - The caller must be the factory.
      */
-    function pause() external {
-        if (!_hasEmergencyAccess()) revert NotAuthorized();
+    function pause() external onlyFactory {
         paused = true;
         emit Paused(msg.sender);
     }
@@ -196,10 +189,9 @@ abstract contract OffchainMarketBase is
     /**
      * @dev Returns to normal state.
      * Requirements:
-     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     * - The caller must be the factory.
      */
-    function unpause() external {
-        if (!_hasEmergencyAccess()) revert NotAuthorized();
+    function unpause() external onlyFactory {
         paused = false;
         emit Unpaused(msg.sender);
     }
@@ -207,10 +199,9 @@ abstract contract OffchainMarketBase is
     /**
      * @dev Emergency function to invalidate the market.
      * Requirements:
-     * - The caller must be the factory, creator, or have EMERGENCY_ROLE.
+     * - The caller must be the factory.
      */
-    function emergencyInvalidate() external {
-        if (!_hasEmergencyAccess()) revert NotAuthorized();
+    function emergencyInvalidate() external onlyFactory {
         if (state != State.TRADING) revert InvalidState();
         state = State.INVALID;
         emit Invalidated();

@@ -2,9 +2,9 @@
 /**
  * @title Governance Deployment Script
  * @notice Deploys Timelock and configures multi-sig governance (Polymarket-style)
- * 
+ *
  * Architecture:
- * 
+ *
  *   Gnosis Safe (3/5 multisig)
  *           │
  *           ▼
@@ -15,10 +15,10 @@
  *   │               │
  *   ▼               ▼
  * MarketFactory   UMAOracleAdapterV2
- * 
+ *
  * Usage:
  *   SAFE_ADDRESS=0x... TIMELOCK_DELAY=86400 npx hardhat run scripts/deploy_governance.ts --network amoy
- * 
+ *
  * Environment variables:
  *   - SAFE_ADDRESS: Pre-created Gnosis Safe address (create at https://safe.global)
  *   - TIMELOCK_DELAY: Delay in seconds (default: 86400 = 24 hours)
@@ -67,7 +67,7 @@ async function main() {
   // --- Deploy Timelock ---
   console.log("\n--- Deploying ForesightTimelock ---");
   const ForesightTimelock = await hre.ethers.getContractFactory("ForesightTimelock");
-  
+
   // Proposers: Only the Safe can propose
   const proposers = [safeAddress];
   // Executors: Anyone can execute after delay (address(0) means open)
@@ -83,11 +83,12 @@ async function main() {
   // --- Configure existing contracts (if provided) ---
   const factoryAddress = env.MARKET_FACTORY_ADDRESS;
   const umaAdapterAddress = env.UMA_ADAPTER_ADDRESS;
+  const outcomeToken1155Address = env.OUTCOME_TOKEN1155_ADDRESS;
 
   if (factoryAddress) {
     console.log("\n--- Configuring MarketFactory ---");
     const factory = await hre.ethers.getContractAt("MarketFactory", factoryAddress);
-    
+
     // Grant ADMIN_ROLE to Timelock
     const ADMIN_ROLE = await factory.DEFAULT_ADMIN_ROLE();
     const hasRole = await factory.hasRole(ADMIN_ROLE, timelockAddress);
@@ -97,15 +98,38 @@ async function main() {
       console.log("Granted ADMIN_ROLE to Timelock on MarketFactory");
     }
 
+    const EMERGENCY_ROLE = await factory.EMERGENCY_ROLE();
+    if (!(await factory.hasRole(EMERGENCY_ROLE, safeAddress))) {
+      const tx = await factory.grantRole(EMERGENCY_ROLE, safeAddress);
+      await tx.wait();
+      console.log("Granted EMERGENCY_ROLE to Safe on MarketFactory");
+    }
+
     // Note: Don't revoke deployer's role yet - do this manually after verifying everything works
     console.log("⚠️  Remember to revoke deployer's ADMIN_ROLE after verification:");
     console.log(`   factory.revokeRole(ADMIN_ROLE, "${deployerAddress}")`);
+    console.log("⚠️  Consider revoking deployer's EMERGENCY_ROLE after verification:");
+    console.log(`   factory.revokeRole(EMERGENCY_ROLE, "${deployerAddress}")`);
+  }
+
+  if (outcomeToken1155Address) {
+    console.log("\n--- Configuring OutcomeToken1155 ---");
+    const outcome1155 = await hre.ethers.getContractAt("OutcomeToken1155", outcomeToken1155Address);
+    const DEFAULT_ADMIN_ROLE = await outcome1155.DEFAULT_ADMIN_ROLE();
+
+    if (!(await outcome1155.hasRole(DEFAULT_ADMIN_ROLE, timelockAddress))) {
+      await (await outcome1155.grantRole(DEFAULT_ADMIN_ROLE, timelockAddress)).wait();
+      console.log("Granted DEFAULT_ADMIN_ROLE to Timelock on OutcomeToken1155");
+    }
+
+    console.log("⚠️  Remember to revoke deployer's DEFAULT_ADMIN_ROLE after verification:");
+    console.log(`   outcome1155.revokeRole(DEFAULT_ADMIN_ROLE, "${deployerAddress}")`);
   }
 
   if (umaAdapterAddress) {
     console.log("\n--- Configuring UMAOracleAdapterV2 ---");
     const umaAdapter = await hre.ethers.getContractAt("UMAOracleAdapterV2", umaAdapterAddress);
-    
+
     // Grant roles to Timelock/Safe
     const DEFAULT_ADMIN_ROLE = await umaAdapter.DEFAULT_ADMIN_ROLE();
     const REPORTER_ROLE = await umaAdapter.REPORTER_ROLE();
@@ -147,6 +171,7 @@ async function main() {
     configured: {
       marketFactory: factoryAddress || null,
       umaAdapter: umaAdapterAddress || null,
+      outcomeToken1155: outcomeToken1155Address || null,
     },
     timestamp: new Date().toISOString(),
   };
@@ -178,4 +203,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

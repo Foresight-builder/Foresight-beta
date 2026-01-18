@@ -8,6 +8,7 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   const deployerAddress = await deployer.getAddress();
   console.log(`Deployer: ${deployerAddress}`);
+  const env = process.env;
 
   // Load deployment info from previous deployment
   const deploymentPath = "deployment_optimized.json";
@@ -40,16 +41,27 @@ async function main() {
   const hasAdminRole = await marketFactory.hasRole(adminRole, deployerAddress);
   console.log(`Deployer has admin role: ${hasAdminRole}`);
 
-  // 3. Grant EMERGENCY_ROLE to deployer (if not already granted)
+  const emergencyController = env.EMERGENCY_ADDRESS || env.SAFE_ADDRESS || deployerAddress;
+  console.log(`Emergency controller: ${emergencyController}`);
+
+  // 3. Grant EMERGENCY_ROLE to emergency controller (if not already granted)
   const emergencyRole = await marketFactory.EMERGENCY_ROLE();
-  const hasEmergencyRole = await marketFactory.hasRole(emergencyRole, deployerAddress);
+  const hasEmergencyRole = await marketFactory.hasRole(emergencyRole, emergencyController);
 
   if (!hasEmergencyRole) {
-    console.log("Granting EMERGENCY_ROLE to deployer...");
-    await marketFactory.grantRole(emergencyRole, deployerAddress);
-    console.log("EMERGENCY_ROLE granted to deployer");
+    console.log("Granting EMERGENCY_ROLE...");
+    await (await marketFactory.grantRole(emergencyRole, emergencyController)).wait();
+    console.log("EMERGENCY_ROLE granted");
   } else {
-    console.log("Deployer already has EMERGENCY_ROLE");
+    console.log("Emergency controller already has EMERGENCY_ROLE");
+  }
+
+  if (emergencyController !== deployerAddress) {
+    const deployerHasEmergencyRole = await marketFactory.hasRole(emergencyRole, deployerAddress);
+    if (deployerHasEmergencyRole) {
+      console.log("⚠️  Consider revoking deployer's EMERGENCY_ROLE after verification:");
+      console.log(`   marketFactory.revokeRole(EMERGENCY_ROLE, "${deployerAddress}")`);
+    }
   }
 
   // 4. Configure fee settings
@@ -125,9 +137,8 @@ async function main() {
   const hasMinterRole = await outcomeToken1155.hasRole(minterRole, marketFactoryAddress);
 
   if (!hasMinterRole) {
-    console.log("Granting MINTER_ROLE to MarketFactory...");
-    await outcomeToken1155.grantMinter(marketFactoryAddress);
-    console.log("MINTER_ROLE granted to MarketFactory");
+    console.log("MarketFactory does not have MINTER_ROLE on OutcomeToken1155");
+    console.log("This is expected if markets receive MINTER_ROLE individually.");
   } else {
     console.log("MarketFactory already has MINTER_ROLE");
   }
@@ -156,7 +167,8 @@ async function main() {
     },
     permissions: {
       deployerHasAdminRole: hasAdminRole,
-      deployerHasEmergencyRole: hasEmergencyRole,
+      emergencyController: String(emergencyController),
+      emergencyControllerHasEmergencyRole: hasEmergencyRole,
       marketFactoryHasMinterRole: hasMinterRole,
     },
     settings: {

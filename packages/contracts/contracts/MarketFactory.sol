@@ -115,6 +115,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     error MarketPaused();
     error NotPaused();
     error NotAuthorized();
+    error UnknownMarket();
+    error MarketCallFailed();
 
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZER
@@ -391,6 +393,52 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         if (!okRole || roleData.length < 32) return false;
 
         return true;
+    }
+
+    function _requireEmergencyOrAdmin() private view {
+        if (!hasRole(EMERGENCY_ROLE, msg.sender) && !hasRole(ADMIN_ROLE, msg.sender)) {
+            revert NotAuthorized();
+        }
+    }
+
+    function _callMarket(address market, bytes4 selector) private {
+        if (!isMarketFromFactory[market]) revert UnknownMarket();
+        (bool ok,) = market.call(abi.encodeWithSelector(selector));
+        if (!ok) revert MarketCallFailed();
+    }
+
+    function pauseMarket(address market) external {
+        _requireEmergencyOrAdmin();
+        _callMarket(market, bytes4(keccak256("pause()")));
+    }
+
+    function pauseMarketById(uint256 marketId) external {
+        _requireEmergencyOrAdmin();
+        address market = markets[marketId].market;
+        if (market == address(0)) revert UnknownMarket();
+        _callMarket(market, bytes4(keccak256("pause()")));
+    }
+
+    function unpauseMarket(address market) external onlyRole(ADMIN_ROLE) {
+        _callMarket(market, bytes4(keccak256("unpause()")));
+    }
+
+    function unpauseMarketById(uint256 marketId) external onlyRole(ADMIN_ROLE) {
+        address market = markets[marketId].market;
+        if (market == address(0)) revert UnknownMarket();
+        _callMarket(market, bytes4(keccak256("unpause()")));
+    }
+
+    function emergencyInvalidateMarket(address market) external {
+        _requireEmergencyOrAdmin();
+        _callMarket(market, bytes4(keccak256("emergencyInvalidate()")));
+    }
+
+    function emergencyInvalidateMarketById(uint256 marketId) external {
+        _requireEmergencyOrAdmin();
+        address market = markets[marketId].market;
+        if (market == address(0)) revert UnknownMarket();
+        _callMarket(market, bytes4(keccak256("emergencyInvalidate()")));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
