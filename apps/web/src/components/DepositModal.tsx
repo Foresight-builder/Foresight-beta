@@ -133,6 +133,8 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       if (res.status === 401) {
         setProxyInfo(null);
         setProxyError("请先登录后再获取入金地址");
+        onClose();
+        onRequireLogin();
         return;
       }
       const json = await res.json();
@@ -154,7 +156,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     } finally {
       setProxyLoading(false);
     }
-  }, []);
+  }, [onClose, onRequireLogin]);
 
   const fetchBalance = useCallback(
     async (address: string) => {
@@ -206,6 +208,8 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       if (res.status === 401) {
         setHistory([]);
         setHistoryError("请先登录后查看入金记录");
+        onClose();
+        onRequireLogin();
         return;
       }
       const json = await res.json();
@@ -228,7 +232,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     } finally {
       setHistoryLoading(false);
     }
-  }, [explorerBase]);
+  }, [explorerBase, onClose, onRequireLogin]);
 
   useEffect(() => {
     if (!open) return;

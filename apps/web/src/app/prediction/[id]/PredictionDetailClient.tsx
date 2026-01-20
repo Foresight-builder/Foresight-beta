@@ -16,6 +16,7 @@ import { useUserPortfolio } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { safeJsonLdStringify } from "@/lib/seo";
+import { useAuthOptional } from "@/contexts/AuthContext";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -101,6 +102,8 @@ function buildBreadcrumbJsonLd(
 export default function PredictionDetailClient({ relatedProposalId }: PredictionDetailClientProps) {
   const tMarket = useTranslations("market");
   const tCommon = useTranslations("common");
+  const auth = useAuthOptional();
+  const userId = auth?.user?.id ?? null;
   const {
     loading,
     error,
@@ -462,7 +465,16 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   handleRedeem,
                   setMintInput,
                   setUseProxy,
-                  onDeposit: () => setDepositOpen(true),
+                  onDeposit: () => {
+                    if (!userId) {
+                      try {
+                        window.dispatchEvent(new CustomEvent("fs:open-wallet-modal"));
+                      } catch {}
+                      toast.error("Please log in to deposit.");
+                      return;
+                    }
+                    setDepositOpen(true);
+                  },
                 }}
               />
             </div>
@@ -475,7 +487,10 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
         onClose={() => setDepositOpen(false)}
         onRequireLogin={() => {
           setDepositOpen(false);
-          toast.error("Please connect your wallet to deposit.");
+          try {
+            window.dispatchEvent(new CustomEvent("fs:open-wallet-modal"));
+          } catch {}
+          toast.error("Please log in to deposit.");
         }}
       />
 

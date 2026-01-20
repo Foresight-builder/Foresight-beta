@@ -579,7 +579,13 @@ export function ProfilePageView({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setDepositOpen(true)}
+                        onClick={() => {
+                          if (!userId) {
+                            setWalletModalOpen(true);
+                            return;
+                          }
+                          setDepositOpen(true);
+                        }}
                         className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white border border-transparent px-4 py-1.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
                       >
                         <ArrowDown className="w-3.5 h-3.5" />

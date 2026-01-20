@@ -167,6 +167,11 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
                 </button>
                 <button
                   onClick={() => {
+                    if (!user) {
+                      setWalletModalOpen(true);
+                      setMenuOpen(false);
+                      return;
+                    }
                     setDepositOpen(true);
                     setMenuOpen(false);
                   }}
