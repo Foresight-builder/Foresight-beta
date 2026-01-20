@@ -12,7 +12,7 @@ import {
   Bell,
   ChevronUp,
 } from "lucide-react";
-import { normalizeCategory } from "@/features/trending/trendingModel";
+import { normalizeCategoryId } from "@/features/trending/trendingModel";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 import { TopicCardSkeletonList } from "./TopicCardSkeleton";
 import { t, useLocale } from "@/lib/i18n";
@@ -439,7 +439,8 @@ export const ForumSidebar = memo(function ForumSidebar({
               const topic = filtered[virtualItem.index];
               if (!topic) return null;
 
-              const catName = normalizeCategory(topic.category);
+              const catId = normalizeCategoryId(topic.category);
+              const catName = t(`trending.category.${catId}`);
               const isActive = selectedTopicId === topic.id;
 
               return (

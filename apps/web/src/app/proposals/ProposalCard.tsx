@@ -15,6 +15,7 @@ interface ProposalCardProps {
 function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const tProposals = useTranslations("proposals");
   const tProfile = useTranslations("profile");
+  const tTrending = useTranslations("trending");
   const { locale } = useLocale();
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
@@ -119,7 +120,9 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
             >
               <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
               <span className="truncate max-w-[96px]">
-                {proposal.category || tProposals("detailSidebar.categoryFallback")}
+                {proposal.category
+                  ? tTrending(`category.${categoryKey}`)
+                  : tProposals("detailSidebar.categoryFallback")}
               </span>
             </div>
             <span

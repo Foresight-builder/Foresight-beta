@@ -48,8 +48,10 @@ export function WalletEmailSection({
           <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <Mail className="w-6 h-6 text-green-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">验证成功</h3>
-          <p className="text-sm text-gray-600">请设置您的用户名以完成注册</p>
+          <h3 className="text-xl font-bold text-gray-900">
+            {tWalletModal("profile.verifySuccessTitle")}
+          </h3>
+          <p className="text-sm text-gray-600">{tWalletModal("profile.verifySuccessSubtitle")}</p>
         </div>
 
         <div className="space-y-3 pt-2">
@@ -72,7 +74,7 @@ export function WalletEmailSection({
             className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2.5 hover:opacity-90 transition-all font-semibold disabled:opacity-60"
           >
             {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            完成注册并登录
+            {tWalletModal("profile.completeSignupAndLogin")}
           </button>
         </div>
       </div>

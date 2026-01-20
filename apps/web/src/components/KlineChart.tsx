@@ -12,6 +12,7 @@ import {
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useTrades, type TradeData } from "@/hooks/useMarketWebSocket";
 import { formatTime } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n";
 
 interface KlineChartProps {
   market: string;
@@ -69,6 +70,7 @@ export default function KlineChart({
   marketKey,
   chartType = "candlestick",
 }: KlineChartProps) {
+  const tMarketChart = useTranslations("market.chart");
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
@@ -384,7 +386,7 @@ export default function KlineChart({
       {wsStatus === "connected" && (
         <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-green-600">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          实时
+          {tMarketChart("live")}
         </div>
       )}
     </div>

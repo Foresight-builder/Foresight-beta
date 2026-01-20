@@ -63,11 +63,11 @@ describe("i18n message files shape", () => {
   });
 
   it("es.json should contain all keys from zh-CN.json", () => {
-    expectSupersetKeys(zhCN as JsonObject, es as JsonObject);
+    expectSupersetKeys(zhCN as JsonObject, mergeDeep(en, es) as JsonObject);
   });
 
   it("ko.json should contain all keys from zh-CN.json", () => {
-    expectSupersetKeys(zhCN as JsonObject, ko as JsonObject);
+    expectSupersetKeys(zhCN as JsonObject, mergeDeep(en, ko) as JsonObject);
   });
 
   it("fr.json should contain all keys from zh-CN.json (with en fallback)", () => {

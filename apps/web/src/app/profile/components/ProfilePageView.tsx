@@ -597,7 +597,7 @@ export function ProfilePageView({
                         className="flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:shadow-md hover:border-purple-300 hover:text-purple-600 transition-all active:scale-95"
                       >
                         <ArrowUp className="w-3.5 h-3.5" />
-                        <span>提现</span>
+                        <span>{tWallet("withdraw")}</span>
                       </button>
                     </div>
                   )}

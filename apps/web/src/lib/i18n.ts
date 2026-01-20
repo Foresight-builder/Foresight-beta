@@ -37,9 +37,9 @@ function mergeMessages(base: unknown, overrides: unknown): unknown {
 const messages: Record<Locale, Messages> = {
   "zh-CN": zhCN,
   en: en as unknown as Messages,
-  es: es as unknown as Messages,
+  es: mergeMessages(en, es) as Messages,
   fr: mergeMessages(en, fr) as Messages,
-  ko: ko as unknown as Messages,
+  ko: mergeMessages(en, ko) as Messages,
 };
 
 export function getSupportedLocales(): Locale[] {
@@ -63,30 +63,6 @@ export function getCurrentLocale(): Locale {
     try {
       localStorage.removeItem("preferred-language");
     } catch {}
-  }
-
-  if (typeof navigator !== "undefined") {
-    const navLang =
-      (Array.isArray((navigator as any).languages) && (navigator as any).languages[0]) ||
-      navigator.language;
-    if (navLang) {
-      const lower = navLang.toLowerCase();
-      if (lower.startsWith("zh")) {
-        return "zh-CN";
-      }
-      if (lower.startsWith("en")) {
-        return "en";
-      }
-      if (lower.startsWith("es")) {
-        return "es";
-      }
-      if (lower.startsWith("fr")) {
-        return "fr";
-      }
-      if (lower.startsWith("ko")) {
-        return "ko";
-      }
-    }
   }
 
   return defaultLocale;

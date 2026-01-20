@@ -4,8 +4,11 @@ import React from "react";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
 import { RefreshCw, WifiOff, Home, TrendingUp, Users, Trophy } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 const OfflinePage: React.FC = () => {
+  const tOffline = useTranslations("offline");
+  const tNav = useTranslations("nav");
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 p-4">
       <motion.div
@@ -23,11 +26,9 @@ const OfflinePage: React.FC = () => {
           <WifiOff className="w-24 h-24 mx-auto text-violet-500" />
         </motion.div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">网络连接已断开</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">{tOffline("title")}</h1>
 
-        <p className="text-gray-600 mb-8">
-          您当前处于离线状态。请检查网络连接并重试，或浏览以下缓存页面。
-        </p>
+        <p className="text-gray-600 mb-8">{tOffline("description")}</p>
 
         <div className="space-y-3 mb-8">
           <Button
@@ -35,12 +36,12 @@ const OfflinePage: React.FC = () => {
             className="w-full bg-violet-600 hover:bg-violet-700 text-white"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            重新连接
+            {tOffline("actions.reconnect")}
           </Button>
         </div>
 
         <div className="border-t pt-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">缓存页面</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{tOffline("cachedPages")}</h2>
 
           <div className="grid grid-cols-2 gap-3">
             <Button
@@ -49,7 +50,7 @@ const OfflinePage: React.FC = () => {
               className="flex items-center justify-center gap-2"
             >
               <Home className="h-4 w-4" />
-              首页
+              {tNav("home")}
             </Button>
 
             <Button
@@ -58,7 +59,7 @@ const OfflinePage: React.FC = () => {
               className="flex items-center justify-center gap-2"
             >
               <TrendingUp className="h-4 w-4" />
-              热门
+              {tNav("trending")}
             </Button>
 
             <Button
@@ -67,7 +68,7 @@ const OfflinePage: React.FC = () => {
               className="flex items-center justify-center gap-2"
             >
               <Users className="h-4 w-4" />
-              论坛
+              {tNav("forum")}
             </Button>
 
             <Button
@@ -76,7 +77,7 @@ const OfflinePage: React.FC = () => {
               className="flex items-center justify-center gap-2"
             >
               <Trophy className="h-4 w-4" />
-              排行榜
+              {tNav("leaderboard")}
             </Button>
           </div>
         </div>
@@ -88,7 +89,7 @@ const OfflinePage: React.FC = () => {
         transition={{ delay: 0.8, duration: 0.5 }}
         className="mt-8 text-gray-500 text-sm"
       >
-        Foresight - 去中心化预测市场
+        {tOffline("footer")}
       </motion.p>
     </div>
   );

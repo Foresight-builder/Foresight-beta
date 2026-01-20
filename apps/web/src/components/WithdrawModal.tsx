@@ -10,6 +10,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { erc20Abi } from "@/app/prediction/[id]/_lib/abis";
 import { executeSafeTransaction } from "@/lib/safeUtils";
 import { createBrowserProvider, ensureNetwork } from "@/app/prediction/[id]/_lib/wallet";
+import { useTranslations } from "@/lib/i18n";
 
 type WithdrawModalProps = {
   open: boolean;
@@ -21,6 +22,9 @@ type ProxyWalletInfo = {
 };
 
 export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
+  const tWithdraw = useTranslations("withdrawModal");
+  const tCommon = useTranslations("common");
+
   const { account, provider: walletProvider, switchNetwork } = useWallet();
   const runtime = useMemo(() => getRuntimeConfig(), []);
   const chainId = runtime.chainId;
@@ -147,11 +151,11 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       setIsWithdrawing(true);
       const amountBN = ethers.parseUnits(amount, tokenDecimals);
       if (amountBN <= 0n) {
-        toast.error("请输入有效的提现金额");
+        toast.error(tWithdraw("errors.invalidAmount"));
         return;
       }
       if (amountBN > availableRawBalance) {
-        toast.error("可提现余额不足");
+        toast.error(tWithdraw("errors.insufficientBalance"));
         return;
       }
 
@@ -162,11 +166,11 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       const erc20Iface = new ethers.Interface(erc20Abi);
       const transferData = erc20Iface.encodeFunctionData("transfer", [account, amountBN]);
 
-      toast.info("请在钱包中确认提现交易...");
+      toast.info(tWithdraw("toast.confirmInWallet"));
 
       const tx = await executeSafeTransaction(signer, proxyAddress, usdcAddress, transferData);
 
-      toast.success("提现交易已发送", "资金将很快到达您的钱包");
+      toast.success(tWithdraw("toast.sentTitle"), tWithdraw("toast.sentDescription"));
 
       await tx.wait();
       try {
@@ -181,7 +185,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       onClose();
     } catch (e: any) {
       console.error(e);
-      toast.error("提现失败", e?.message || "未知错误");
+      toast.error(tWithdraw("errors.withdrawFailedTitle"), e?.message || tCommon("error"));
     } finally {
       setIsWithdrawing(false);
     }
@@ -201,7 +205,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     >
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="text-lg font-bold text-gray-900">提现</div>
+          <div className="text-lg font-bold text-gray-900">{tWithdraw("title")}</div>
           <button
             onClick={onClose}
             className="p-2 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-colors"
@@ -213,7 +217,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
         <div className="p-6 space-y-6">
           <div className="space-y-2">
             <div className="text-sm text-gray-500 flex justify-between">
-              <span>可提现余额</span>
+              <span>{tWithdraw("availableBalance")}</span>
               <span className="font-mono font-medium text-gray-900">
                 {balanceLoading ? "..." : balanceHuman} {tokenSymbol}
               </span>
@@ -238,9 +242,9 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
           </div>
 
           <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1">
-            <p>• 资金将从您的 Proxy Wallet 提现到当前连接的钱包。</p>
-            <p>• 提现需要您签署 Safe 交易。</p>
-            <p>• 提现交易需消耗少量 Matic/ETH 作为网络 Gas 费。</p>
+            <p>{tWithdraw("tips.line1")}</p>
+            <p>{tWithdraw("tips.line2")}</p>
+            <p>{tWithdraw("tips.line3")}</p>
           </div>
 
           <button
@@ -256,7 +260,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
             className="w-full py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
           >
             {isWithdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isWithdrawing ? "提现中..." : "确认提现"}
+            {isWithdrawing ? tWithdraw("withdrawing") : tCommon("confirm")}
           </button>
         </div>
       </div>

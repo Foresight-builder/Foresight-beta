@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Image as ImageIcon, Sparkles, Send, Plus, Trash2 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCategories } from "@/hooks/useQueries";
-import { useTranslations, t } from "@/lib/i18n";
+import { formatTranslation, useTranslations, t } from "@/lib/i18n";
 import { PROPOSALS_EVENT_ID } from "./proposalsListUtils";
 import { toast, handleApiError } from "@/lib/toast";
 
@@ -21,6 +21,7 @@ export default function CreateProposalModal({
   const { account, connectWallet, siweLogin, isAuthenticated } = useWallet();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const tProposals = useTranslations("proposals");
   const [form, setForm] = useState<{
     title: string;
     description: string;
@@ -49,7 +50,6 @@ export default function CreateProposalModal({
     imageUrls: [],
   });
   const { data: categoriesData } = useCategories();
-  const tProposals = useTranslations("proposals");
 
   const categoryNames = useMemo(() => {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
@@ -93,11 +93,11 @@ export default function CreateProposalModal({
     const actionVerb = String(form.actionVerb || "").trim();
     const actionVerbLabel =
       actionVerb === "priceReach"
-        ? "价格达到"
+        ? tProposals("create.actionVerbPriceReach")
         : actionVerb === "willWin"
-          ? "将会赢得"
+          ? tProposals("create.actionVerbWillWin")
           : actionVerb === "willHappen"
-            ? "将会发生"
+            ? tProposals("create.actionVerbWillHappen")
             : actionVerb;
     const targetValue = String(form.targetValue || "").trim();
 
@@ -139,28 +139,28 @@ export default function CreateProposalModal({
     if (title.replace(/\s+/g, "").length < 8) return tProposals("create.titlePlaceholder");
 
     const subjectName = String(form.subjectName || "").trim();
-    if (!subjectName) return "请填写主体名称";
+    if (!subjectName) return tProposals("create.errors.subjectNameRequired");
 
     const actionVerb = String(form.actionVerb || "").trim();
-    if (!actionVerb) return "请选择动作类型";
+    if (!actionVerb) return tProposals("create.errors.actionVerbRequired");
 
     const targetValue = String(form.targetValue || "").trim();
-    if (!targetValue) return "请填写目标值";
+    if (!targetValue) return tProposals("create.errors.targetValueRequired");
 
     if (!String(form.category || "").trim()) return tProposals("create.categoryLabel");
 
     const resolutionTime = String(form.resolutionTime || "").trim();
     const ms = resolutionTime ? new Date(resolutionTime).getTime() : NaN;
-    if (!Number.isFinite(ms)) return "请填写到期/结算时间";
-    if (ms <= Date.now()) return "到期/结算时间必须在未来";
+    if (!Number.isFinite(ms)) return tProposals("create.errors.resolutionTimeRequired");
+    if (ms <= Date.now()) return tProposals("create.errors.resolutionTimeInFuture");
 
-    if (normalizedOutcomes.length < 2) return "至少需要 2 个结果选项";
+    if (normalizedOutcomes.length < 2) return tProposals("create.errors.outcomesMin2");
 
     const criteria = String(form.resolutionCriteria || "").trim();
-    if (criteria.length < 20) return "请补充结算规则（至少 20 字）";
+    if (criteria.length < 20) return tProposals("create.errors.criteriaMinLength");
 
     const source = String(form.primarySourceUrl || "").trim();
-    if (!isValidHttpUrl(source)) return "请填写有效的主要来源链接（http/https）";
+    if (!isValidHttpUrl(source)) return tProposals("create.errors.primarySourceInvalid");
 
     return null;
   };
@@ -343,19 +343,19 @@ export default function CreateProposalModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    主体名称
+                    {tProposals("create.subjectNameLabel")}
                   </label>
                   <input
                     value={form.subjectName}
                     onChange={(e) => setForm({ ...form, subjectName: e.target.value })}
-                    placeholder="例如：BTC、特朗普、Apple"
+                    placeholder={tProposals("create.subjectNamePlaceholder")}
                     className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-sm font-semibold text-gray-700 placeholder:text-gray-300 transition-all shadow-sm"
                     maxLength={64}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    动作类型
+                    {tProposals("create.actionVerbLabel")}
                   </label>
                   <select
                     value={form.actionVerb}
@@ -367,19 +367,19 @@ export default function CreateProposalModal({
                     }
                     className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-sm font-semibold text-gray-700 transition-all shadow-sm"
                   >
-                    <option value="willHappen">将会发生</option>
-                    <option value="priceReach">价格达到</option>
-                    <option value="willWin">将会赢得</option>
+                    <option value="willHappen">{tProposals("create.actionVerbWillHappen")}</option>
+                    <option value="priceReach">{tProposals("create.actionVerbPriceReach")}</option>
+                    <option value="willWin">{tProposals("create.actionVerbWillWin")}</option>
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    目标值
+                    {tProposals("create.targetValueLabel")}
                   </label>
                   <input
                     value={form.targetValue}
                     onChange={(e) => setForm({ ...form, targetValue: e.target.value })}
-                    placeholder="例如：100000、胜选、通过"
+                    placeholder={tProposals("create.targetValuePlaceholder")}
                     className="w-full px-4 py-3 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-sm font-semibold text-gray-700 placeholder:text-gray-300 transition-all shadow-sm"
                     maxLength={64}
                   />
@@ -389,7 +389,7 @@ export default function CreateProposalModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    选择分类
+                    {tProposals("create.categoryLabel")}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {categoryNames.map((cat) => (
@@ -411,7 +411,7 @@ export default function CreateProposalModal({
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    到期 / 结算时间
+                    {tProposals("create.resolutionTimeLabel")}
                   </label>
                   <input
                     type="datetime-local"
@@ -425,7 +425,7 @@ export default function CreateProposalModal({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    结果选项
+                    {tProposals("create.outcomesLabel")}
                   </label>
                   <button
                     type="button"
@@ -435,7 +435,7 @@ export default function CreateProposalModal({
                     className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-lg transition-colors"
                   >
                     <Plus className="w-3 h-3" />
-                    添加选项
+                    {tProposals("create.addOption")}
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -448,7 +448,15 @@ export default function CreateProposalModal({
                           next[idx] = e.target.value;
                           setForm({ ...form, outcomes: next });
                         }}
-                        placeholder={idx === 0 ? "Yes" : idx === 1 ? "No" : `Outcome ${idx + 1}`}
+                        placeholder={
+                          idx === 0
+                            ? tProposals("create.outcomePlaceholderYes")
+                            : idx === 1
+                              ? tProposals("create.outcomePlaceholderNo")
+                              : formatTranslation(tProposals("create.outcomePlaceholderIndex"), {
+                                  index: idx + 1,
+                                })
+                        }
                         className="flex-1 px-4 py-3 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-sm font-semibold text-gray-700 placeholder:text-gray-300 transition-all shadow-sm"
                         maxLength={32}
                       />
@@ -472,7 +480,7 @@ export default function CreateProposalModal({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    主要来源链接（必填）
+                    {tProposals("create.primarySourceLabel")}
                   </label>
                   <button
                     type="button"
@@ -481,14 +489,13 @@ export default function CreateProposalModal({
                         ...prev,
                         outcomes: prev.outcomes.length ? prev.outcomes : ["Yes", "No"],
                         resolutionCriteria:
-                          prev.resolutionCriteria ||
-                          "以客观可验证来源为准；在到期时间前满足条件视为达成；如存在歧义以主要来源的正式公告为准。",
+                          prev.resolutionCriteria || tProposals("create.marketTemplateCriteria"),
                       }));
                     }}
                     className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-lg transition-colors"
                   >
                     <Sparkles className="w-3 h-3" />
-                    Use Market Template
+                    {tProposals("create.useMarketTemplate")}
                   </button>
                 </div>
                 <input
@@ -501,12 +508,12 @@ export default function CreateProposalModal({
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                  结算规则（必填）
+                  {tProposals("create.criteriaLabel")}
                 </label>
                 <textarea
                   value={form.resolutionCriteria}
                   onChange={(e) => setForm({ ...form, resolutionCriteria: e.target.value })}
-                  placeholder="清晰说明什么条件算 Yes/No，以什么来源为准…"
+                  placeholder={tProposals("create.criteriaPlaceholder")}
                   rows={4}
                   className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-base font-medium text-gray-700 placeholder:text-gray-300 resize-none transition-all shadow-sm"
                 />
@@ -514,7 +521,7 @@ export default function CreateProposalModal({
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                  详细描述（可选）
+                  {tProposals("create.descriptionLabel")}
                 </label>
                 <textarea
                   value={form.description}
@@ -528,7 +535,7 @@ export default function CreateProposalModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    补充链接（可选）
+                    {tProposals("create.extraLinksLabel")}
                   </label>
                   <button
                     type="button"
@@ -538,7 +545,7 @@ export default function CreateProposalModal({
                     className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-lg transition-colors"
                   >
                     <Plus className="w-3 h-3" />
-                    添加链接
+                    {tProposals("create.addLink")}
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -569,7 +576,9 @@ export default function CreateProposalModal({
                     </div>
                   ))}
                   {form.extraLinks.length === 0 && (
-                    <div className="text-xs text-slate-400">可添加多个补充来源或参考资料链接</div>
+                    <div className="text-xs text-slate-400">
+                      {tProposals("create.extraLinksHint")}
+                    </div>
                   )}
                 </div>
               </div>
@@ -577,20 +586,22 @@ export default function CreateProposalModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                    图片 / 媒体（可选）
+                    {tProposals("create.mediaLabel")}
                   </label>
                   <div className="text-xs text-slate-400">
                     {uploading
-                      ? "上传中…"
+                      ? tProposals("create.uploading")
                       : form.imageUrls.length
-                        ? `${form.imageUrls.length} 张`
+                        ? formatTranslation(tProposals("create.imageCount"), {
+                            count: form.imageUrls.length,
+                          })
                         : ""}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="flex-1 px-4 py-3 rounded-2xl bg-white border-2 border-gray-100 hover:border-purple-200 hover:bg-purple-50/40 transition-all cursor-pointer text-sm font-semibold text-slate-600 flex items-center justify-center gap-2">
                     <ImageIcon className="w-4 h-4" />
-                    选择图片
+                    {tProposals("create.selectImage")}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"

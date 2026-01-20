@@ -81,7 +81,7 @@ describe("Internationalization (i18n)", () => {
 
     it("should return Chinese for invalid locale", () => {
       const translations = i18n.getTranslation("invalid" as any);
-      expect(translations.auth.login).toBe("登录");
+      expect(translations.auth.login).toBe("Login");
     });
   });
 

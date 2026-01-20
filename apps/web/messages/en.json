@@ -371,7 +371,44 @@
       "categoryLabel": "Select Category",
       "cancel": "Cancel",
       "submit": "Submit proposal",
-      "submitting": "Submitting..."
+      "submitting": "Submitting...",
+      "subjectNameLabel": "Subject name",
+      "subjectNamePlaceholder": "e.g. BTC, Trump, Apple",
+      "actionVerbLabel": "Action type",
+      "actionVerbWillHappen": "Will happen",
+      "actionVerbPriceReach": "Price reaches",
+      "actionVerbWillWin": "Will win",
+      "targetValueLabel": "Target",
+      "targetValuePlaceholder": "e.g. 100000, wins, passes",
+      "resolutionTimeLabel": "Expiration / Resolution time",
+      "outcomesLabel": "Outcomes",
+      "addOption": "Add option",
+      "outcomePlaceholderYes": "Yes",
+      "outcomePlaceholderNo": "No",
+      "outcomePlaceholderIndex": "Outcome {index}",
+      "primarySourceLabel": "Primary source URL (required)",
+      "useMarketTemplate": "Use Market Template",
+      "marketTemplateCriteria": "Use objective, verifiable sources; conditions met before the expiration time count as achieved; if ambiguous, follow the primary source’s official announcement.",
+      "criteriaLabel": "Resolution criteria (required)",
+      "criteriaPlaceholder": "Clearly define what counts as Yes/No and which sources are valid…",
+      "descriptionLabel": "Description (optional)",
+      "extraLinksLabel": "Additional links (optional)",
+      "addLink": "Add link",
+      "extraLinksHint": "You can add multiple sources or reference links",
+      "mediaLabel": "Images / Media (optional)",
+      "uploading": "Uploading…",
+      "imageCount": "{count} images",
+      "selectImage": "Select image",
+      "errors": {
+        "subjectNameRequired": "Please enter a subject name",
+        "actionVerbRequired": "Please select an action type",
+        "targetValueRequired": "Please enter a target value",
+        "resolutionTimeRequired": "Please enter an expiration/resolution time",
+        "resolutionTimeInFuture": "Expiration/resolution time must be in the future",
+        "outcomesMin2": "At least 2 outcomes are required",
+        "criteriaMinLength": "Please provide resolution criteria (at least 20 characters)",
+        "primarySourceInvalid": "Please enter a valid primary source URL (http/https)"
+      }
     },
     "actions": {
       "newProposal": "New Proposal"
@@ -591,6 +628,53 @@
     "noEmail": "No email",
     "supabaseNotConfigured": "Supabase is not configured"
   },
+  "loginCallback": {
+    "status": {
+      "loggingIn": "Logging in…",
+      "pleaseWait": "Please wait"
+    },
+    "username": {
+      "title": "Set username",
+      "subtitle": "First-time email login requires setting a username",
+      "label": "Username",
+      "placeholder": "e.g. alice_01",
+      "hint": "3–20 chars, letters/numbers/underscore only",
+      "saving": "Saving…",
+      "saveAndContinue": "Save and continue",
+      "invalid": "Invalid username: 3–20 chars, letters/numbers/underscore only",
+      "taken": "Username is already taken"
+    },
+    "login": {
+      "title": "Login",
+      "subtitle": "Enter the email verification code to finish logging in",
+      "emailLabel": "Email",
+      "codeLabel": "6-digit code"
+    },
+    "code": {
+      "digitAriaLabel": "Verification code digit {index}",
+      "remainingAttempts": "{count} attempts remaining",
+      "devPreview": "Dev verification code: {code}"
+    },
+    "actions": {
+      "verifying": "Verifying…",
+      "verifyAndLogin": "Verify and login",
+      "resend": "Resend email",
+      "sending": "Sending…",
+      "resendCountdown": "Resend ({seconds}s)",
+      "back": "Back"
+    },
+    "errors": {
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "loginFailed": "Login failed",
+      "loginFailedWithStatus": "Login failed: {status}",
+      "sendFailed": "Failed to send email",
+      "sendFailedWithStatus": "Send failed: {status}",
+      "verifyFailed": "Verification failed",
+      "verifyFailedWithStatus": "Verification failed: {status}",
+      "saveFailed": "Save failed",
+      "saveFailedWithStatus": "Save failed: {status}"
+    }
+  },
   "wallet": {
     "connected": "Connected",
     "disconnected": "Disconnected",
@@ -613,6 +697,89 @@
     "refreshAfterInstall": "Refresh the page after installation to continue connecting.",
     "goInstall": "Install",
     "later": "Later"
+  },
+  "depositModal": {
+    "title": "Deposit",
+    "subtitle": "Network: {network} · Asset: {asset}",
+    "smartAccount": {
+      "title": "Foresight Smart Account",
+      "description": "This smart contract account is created for you automatically. Deposit {asset} to start trading. You fully control your funds — safer and more convenient."
+    },
+    "address": {
+      "title": "Foresight account address",
+      "loading": "Fetching…",
+      "warning": "Only send {asset} on {network} to this address. Other assets/networks may not be recoverable."
+    },
+    "actions": {
+      "goLogin": "Log in"
+    },
+    "methods": {
+      "onchain": {
+        "title": "On-chain transfer",
+        "step1": "Select the {network} network in your wallet.",
+        "step2": "Select {asset} as the asset to transfer.",
+        "step3": "Paste the address above as the recipient address.",
+        "step4": "Test with a small amount before sending a larger one.",
+        "tip": "Tip: If your wallet says “unknown token”, verify on the explorer."
+      },
+      "exchange": {
+        "title": "Withdraw from an exchange",
+        "step1": "On the exchange “Withdraw” page, select {asset}.",
+        "step2": "Select network {network} (must match).",
+        "step3": "Use the address above as the withdrawal address.",
+        "step4": "Complete any whitelist/2FA requirements as prompted.",
+        "risk": "Risk: Sending the wrong network or asset may result in permanent loss."
+      }
+    },
+    "onramp": {
+      "title": "Buy crypto (On-ramp)",
+      "description": "Buy {asset} via card/bank transfer and send directly to your deposit address",
+      "cta": "Buy now"
+    },
+    "history": {
+      "title": "Deposit history",
+      "empty": "No deposit history yet (scanning recent blocks window).",
+      "itemMeta": "From {from} · Block {block}",
+      "details": "Details"
+    },
+    "bridge": {
+      "title": "Bridging (optional)",
+      "risk": "Bridging involves slippage, fees and delays. Make sure the destination chain and asset are {asset}."
+    },
+    "toast": {
+      "depositArrivedTitle": "Deposit received",
+      "depositArrivedDescription": "+{amount} {symbol}"
+    },
+    "errors": {
+      "loginRequiredForAddress": "Please log in to fetch your deposit address",
+      "fetchAddressFailed": "Failed to fetch deposit address",
+      "addressUnavailable": "Deposit address is unavailable",
+      "loginRequiredForHistory": "Please log in to view deposit history",
+      "loadHistoryFailed": "Failed to load deposit history",
+      "copyFailedTitle": "Copy failed",
+      "copyFailedDescription": "Please copy the address manually",
+      "usdcNotConfigured": "USDC address is not configured. Unable to read balance and deposit history. Set NEXT_PUBLIC_USDC_ADDRESS_* or COLLATERAL_TOKEN_ADDRESS."
+    }
+  },
+  "withdrawModal": {
+    "title": "Withdraw",
+    "availableBalance": "Available balance",
+    "withdrawing": "Withdrawing...",
+    "tips": {
+      "line1": "• Funds will be withdrawn from your Proxy Wallet to the currently connected wallet.",
+      "line2": "• Withdrawal requires signing a Safe transaction.",
+      "line3": "• A small amount of Matic/ETH is required for network gas."
+    },
+    "toast": {
+      "confirmInWallet": "Please confirm the withdrawal in your wallet...",
+      "sentTitle": "Withdrawal sent",
+      "sentDescription": "Funds will arrive in your wallet shortly"
+    },
+    "errors": {
+      "invalidAmount": "Please enter a valid withdrawal amount",
+      "insufficientBalance": "Insufficient available balance",
+      "withdrawFailedTitle": "Withdrawal failed"
+    }
   },
   "mobileNav": {
     "menuOpen": "Open menu",
@@ -857,7 +1024,8 @@
     },
     "chart": {
       "loading": "Market data loading...",
-      "outcomeFallback": "Outcome {index}"
+      "outcomeFallback": "Outcome {index}",
+      "live": "Live"
     },
     "outcomes": {
       "multiDistribution": "Multi-outcome probability distribution",
@@ -1092,6 +1260,9 @@
     },
     "profile": {
       "title": "Complete user information",
+      "verifySuccessTitle": "Verification successful",
+      "verifySuccessSubtitle": "Set a username to complete signup",
+      "completeSignupAndLogin": "Complete signup and log in",
       "usernameLabel": "Username",
       "usernamePlaceholder": "e.g. alice_01",
       "sendOtpWithValidity": "Send code (valid for 15 minutes)",

@@ -15,6 +15,7 @@ import { ethers } from "ethers";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/toast";
 import { getRuntimeConfig } from "@/lib/runtimeConfig";
+import { formatTranslation, useTranslations } from "@/lib/i18n";
 
 type DepositModalProps = {
   open: boolean;
@@ -99,6 +100,10 @@ function buildTemplateUrl(
 }
 
 export default function DepositModal({ open, onClose, onRequireLogin }: DepositModalProps) {
+  const tDeposit = useTranslations("depositModal");
+  const tWallet = useTranslations("wallet");
+  const tCommon = useTranslations("common");
+
   const runtime = useMemo(() => getRuntimeConfig(), []);
   const chainId = runtime.chainId;
   const usdcAddress = runtime.addresses.usdc || "";
@@ -132,7 +137,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       });
       if (res.status === 401) {
         setProxyInfo(null);
-        setProxyError("请先登录后再获取入金地址");
+        setProxyError(tDeposit("errors.loginRequiredForAddress"));
         onClose();
         onRequireLogin();
         return;
@@ -140,23 +145,23 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       const json = await res.json();
       if (!res.ok || !json?.success) {
         setProxyInfo(null);
-        setProxyError(String(json?.message || "获取入金地址失败"));
+        setProxyError(String(json?.message || tDeposit("errors.fetchAddressFailed")));
         return;
       }
       const info = json?.data as ProxyWalletInfo;
       if (!info?.smart_account_address) {
         setProxyInfo(null);
-        setProxyError("入金地址不可用");
+        setProxyError(tDeposit("errors.addressUnavailable"));
         return;
       }
       setProxyInfo(info);
     } catch (e: any) {
       setProxyInfo(null);
-      setProxyError(String(e?.message || "获取入金地址失败"));
+      setProxyError(String(e?.message || tDeposit("errors.fetchAddressFailed")));
     } finally {
       setProxyLoading(false);
     }
-  }, [onClose, onRequireLogin]);
+  }, [onClose, onRequireLogin, tDeposit]);
 
   const fetchBalance = useCallback(
     async (address: string) => {
@@ -184,7 +189,13 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
         if (nextBal > prev && prev > 0n) {
           const diff = nextBal - prev;
           const diffHuman = ethers.formatUnits(diff, decimals);
-          toast.success("入金到账", `+${diffHuman} ${String(sym || "USDC")}`);
+          toast.success(
+            tDeposit("toast.depositArrivedTitle"),
+            formatTranslation(tDeposit("toast.depositArrivedDescription"), {
+              amount: diffHuman,
+              symbol: String(sym || "USDC"),
+            })
+          );
         }
         lastSeenBalanceRef.current = nextBal;
       } catch (e: any) {
@@ -193,7 +204,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
         setBalanceLoading(false);
       }
     },
-    [runtime.rpcUrl, usdcAddress]
+    [runtime.rpcUrl, usdcAddress, tDeposit]
   );
 
   const fetchHistory = useCallback(async () => {
@@ -207,7 +218,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       });
       if (res.status === 401) {
         setHistory([]);
-        setHistoryError("请先登录后查看入金记录");
+        setHistoryError(tDeposit("errors.loginRequiredForHistory"));
         onClose();
         onRequireLogin();
         return;
@@ -215,7 +226,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       const json = await res.json();
       if (!res.ok || !json?.success) {
         setHistory([]);
-        setHistoryError(String(json?.message || "加载入金记录失败"));
+        setHistoryError(String(json?.message || tDeposit("errors.loadHistoryFailed")));
         return;
       }
       const items = Array.isArray(json?.data?.items)
@@ -228,11 +239,11 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
       setHistory(mapped);
     } catch (e: any) {
       setHistory([]);
-      setHistoryError(String(e?.message || "加载入金记录失败"));
+      setHistoryError(String(e?.message || tDeposit("errors.loadHistoryFailed")));
     } finally {
       setHistoryLoading(false);
     }
-  }, [explorerBase, onClose, onRequireLogin]);
+  }, [explorerBase, onClose, onRequireLogin, tDeposit]);
 
   useEffect(() => {
     if (!open) return;
@@ -282,9 +293,9 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     if (!depositAddress) return;
     try {
       await navigator.clipboard.writeText(depositAddress);
-      toast.success("已复制入金地址");
+      toast.success(tWallet("addressCopied"));
     } catch {
-      toast.error("复制失败", "请手动复制地址");
+      toast.error(tDeposit("errors.copyFailedTitle"), tDeposit("errors.copyFailedDescription"));
     }
   };
 
@@ -317,17 +328,20 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
               id="deposit-modal-title"
               className="text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
             >
-              入金
+              {tDeposit("title")}
             </div>
             <div id="deposit-modal-description" className="text-xs text-gray-500 mt-0.5">
-              网络：{chainLabel(chainId)} · 资产：{tokenSymbol}
+              {formatTranslation(tDeposit("subtitle"), {
+                network: chainLabel(chainId),
+                asset: tokenSymbol,
+              })}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-2 rounded-xl hover:bg-purple-50 text-gray-600 hover:text-gray-900 transition-colors"
-            aria-label="close"
+            aria-label={tCommon("close")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -339,10 +353,9 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
               <ShieldCheck className="w-4 h-4 text-purple-600" />
             </div>
             <div className="text-xs text-purple-900">
-              <span className="font-bold">Foresight 智能账户</span>
+              <span className="font-bold">{tDeposit("smartAccount.title")}</span>
               <br />
-              这是一个为您自动生成的智能合约账户。充值 {tokenSymbol} 后即可开始交易。
-              资金由您完全掌控，更安全、更便捷。
+              {formatTranslation(tDeposit("smartAccount.description"), { asset: tokenSymbol })}
             </div>
           </div>
         </div>
@@ -351,12 +364,14 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
           <div className="rounded-2xl border border-purple-100 bg-white/70 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-gray-700">Foresight 账户地址</div>
+                <div className="text-xs font-semibold text-gray-700">
+                  {tDeposit("address.title")}
+                </div>
                 <div className="mt-1 font-mono text-sm text-gray-900 break-all">
                   {proxyLoading ? (
                     <span className="inline-flex items-center gap-2 text-gray-500">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      正在获取…
+                      {tDeposit("address.loading")}
                     </span>
                   ) : depositAddress ? (
                     depositAddress
@@ -365,14 +380,16 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                   )}
                 </div>
                 <div className="mt-2 text-[11px] text-gray-500">
-                  仅向该地址转入 {tokenSymbol}（{chainLabel(chainId)}
-                  ）。转入其它资产/网络可能无法找回。
+                  {formatTranslation(tDeposit("address.warning"), {
+                    asset: tokenSymbol,
+                    network: chainLabel(chainId),
+                  })}
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <div className="text-right">
-                  <div className="text-[10px] text-gray-500">余额</div>
+                  <div className="text-[10px] text-gray-500">{tWallet("balance")}</div>
                   <div className="text-lg font-bold text-gray-900 tabular-nums">
                     {balanceLoading ? "…" : balanceHuman}
                   </div>
@@ -387,7 +404,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 disabled:opacity-50"
                   >
                     <Copy className="w-4 h-4" />
-                    复制
+                    {tWallet("copyAddress")}
                   </button>
                   <button
                     type="button"
@@ -396,7 +413,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 disabled:opacity-50"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    浏览器
+                    {tWallet("viewOnExplorer")}
                   </button>
                   <button
                     type="button"
@@ -405,7 +422,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${balanceLoading ? "animate-spin" : ""}`} />
-                    刷新
+                    {tCommon("refresh")}
                   </button>
                 </div>
               </div>
@@ -419,15 +436,14 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                   onClick={requireLogin}
                   className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-red-200 hover:border-red-300"
                 >
-                  去登录 <ArrowRight className="w-3.5 h-3.5" />
+                  {tDeposit("actions.goLogin")} <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
 
             {!proxyError && !usdcAddress && (
               <div className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800">
-                未配置 USDC 地址，无法读取余额与入金记录。请设置 NEXT_PUBLIC_USDC_ADDRESS_* 或
-                COLLATERAL_TOKEN_ADDRESS。
+                {tDeposit("errors.usdcNotConfigured")}
               </div>
             )}
           </div>
@@ -436,32 +452,44 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
                 <Coins className="w-4 h-4 text-purple-600" />
-                链上转账入金
+                {tDeposit("methods.onchain.title")}
               </div>
               <ol className="mt-2 text-xs text-gray-600 space-y-1 list-decimal list-inside">
-                <li>在钱包中选择 {chainLabel(chainId)} 网络。</li>
-                <li>选择 {tokenSymbol} 作为转账资产。</li>
-                <li>收款地址粘贴上方 Foresight Balance 地址。</li>
-                <li>建议先小额测试转账成功后再转大额。</li>
+                <li>
+                  {formatTranslation(tDeposit("methods.onchain.step1"), {
+                    network: chainLabel(chainId),
+                  })}
+                </li>
+                <li>
+                  {formatTranslation(tDeposit("methods.onchain.step2"), { asset: tokenSymbol })}
+                </li>
+                <li>{tDeposit("methods.onchain.step3")}</li>
+                <li>{tDeposit("methods.onchain.step4")}</li>
               </ol>
               <div className="mt-3 text-[11px] text-gray-500">
-                提示：如钱包提示“未识别代币”，可在区块浏览器里确认到账。
+                {tDeposit("methods.onchain.tip")}
               </div>
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
                 <Coins className="w-4 h-4 text-purple-600" />
-                交易所提币入金
+                {tDeposit("methods.exchange.title")}
               </div>
               <ol className="mt-2 text-xs text-gray-600 space-y-1 list-decimal list-inside">
-                <li>在交易所“提币/Withdraw”页面选择 {tokenSymbol}。</li>
-                <li>网络选择 {chainLabel(chainId)}（必须一致）。</li>
-                <li>提币地址填写上方 Foresight Balance 地址。</li>
-                <li>交易所可能要求白名单/二次验证，按提示完成。</li>
+                <li>
+                  {formatTranslation(tDeposit("methods.exchange.step1"), { asset: tokenSymbol })}
+                </li>
+                <li>
+                  {formatTranslation(tDeposit("methods.exchange.step2"), {
+                    network: chainLabel(chainId),
+                  })}
+                </li>
+                <li>{tDeposit("methods.exchange.step3")}</li>
+                <li>{tDeposit("methods.exchange.step4")}</li>
               </ol>
               <div className="mt-3 text-[11px] text-gray-500">
-                风险提示：选错网络或资产可能导致资金丢失。
+                {tDeposit("methods.exchange.risk")}
               </div>
             </div>
           </div>
@@ -470,9 +498,9 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold text-gray-900">买币入金（On-ramp）</div>
+                  <div className="text-sm font-bold text-gray-900">{tDeposit("onramp.title")}</div>
                   <div className="text-[11px] text-gray-500 mt-0.5">
-                    可配置第三方卡/转账购买 {tokenSymbol} 并直接发到你的入金地址
+                    {formatTranslation(tDeposit("onramp.description"), { asset: tokenSymbol })}
                   </div>
                 </div>
                 <button
@@ -480,7 +508,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                   onClick={() => openUrl(onrampUrl)}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md hover:shadow-lg transition-all active:scale-95"
                 >
-                  前往购买 <ArrowRight className="w-4 h-4" />
+                  {tDeposit("onramp.cta")} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -489,14 +517,14 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
           <div className="pt-2 border-t border-gray-100">
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-bold text-gray-900">入金记录</div>
+                <div className="text-sm font-bold text-gray-900">{tDeposit("history.title")}</div>
                 <button
                   type="button"
                   onClick={() => void fetchHistory()}
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
                 >
                   <RefreshCw className={`w-4 h-4 ${historyLoading ? "animate-spin" : ""}`} />
-                  刷新
+                  {tCommon("refresh")}
                 </button>
               </div>
 
@@ -508,7 +536,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
 
               {!historyError && history.length === 0 && (
                 <div className="mt-3 text-xs text-gray-500">
-                  {historyLoading ? "正在加载…" : "暂无入金记录（当前扫描最近区块窗口）。"}
+                  {historyLoading ? tCommon("loading") : tDeposit("history.empty")}
                 </div>
               )}
 
@@ -524,7 +552,10 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                           +{it.valueFormatted} {tokenSymbol}
                         </div>
                         <div className="text-[11px] text-gray-500 truncate">
-                          来自 {shortAddress(it.from)} · 区块 {it.blockNumber}
+                          {formatTranslation(tDeposit("history.itemMeta"), {
+                            from: shortAddress(it.from),
+                            block: it.blockNumber,
+                          })}
                         </div>
                       </div>
                       <button
@@ -532,7 +563,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                         onClick={() => it.explorerUrl && openUrl(it.explorerUrl)}
                         className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 text-xs"
                       >
-                        详情 <ExternalLink className="w-3.5 h-3.5" />
+                        {tDeposit("history.details")} <ExternalLink className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -541,7 +572,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
-              <div className="text-sm font-bold text-gray-900">跨链引导（可选）</div>
+              <div className="text-sm font-bold text-gray-900">{tDeposit("bridge.title")}</div>
               <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -566,7 +597,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                 </button>
               </div>
               <div className="mt-2 text-[11px] text-gray-500">
-                跨链风险提示：桥接存在滑点、费用与延迟，务必确认目标链与目标资产为 {tokenSymbol}。
+                {formatTranslation(tDeposit("bridge.risk"), { asset: tokenSymbol })}
               </div>
             </div>
           </div>

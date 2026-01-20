@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
+import { formatTranslation, useTranslations } from "@/lib/i18n";
 
 type TokenState =
   | { status: "idle" }
@@ -37,6 +38,7 @@ export default function LoginCallbackPage() {
   const searchParams = useSearchParams();
   const auth = useAuthOptional();
   const { checkAuth, account, disconnectWallet } = useWallet();
+  const tLogin = useTranslations("loginCallback");
   const token = useMemo(() => String(searchParams.get("token") || "").trim(), [searchParams]);
   const initialCodePreview = useMemo(
     () => String(searchParams.get("codePreview") || "").trim(),
@@ -108,7 +110,9 @@ export default function LoginCallbackPage() {
           const msg =
             json?.error?.message ||
             json?.message ||
-            (res.status === 429 ? "请求过于频繁" : `登录失败: ${res.status}`);
+            (res.status === 429
+              ? tLogin("errors.tooManyRequests")
+              : formatTranslation(tLogin("errors.loginFailedWithStatus"), { status: res.status }));
           throw new Error(String(msg));
         }
 
@@ -138,7 +142,10 @@ export default function LoginCallbackPage() {
         router.replace(fallbackRedirect);
       } catch (e: any) {
         if (cancelled) return;
-        setTokenState({ status: "error", message: String(e?.message || "登录失败") });
+        setTokenState({
+          status: "error",
+          message: String(e?.message || tLogin("errors.loginFailed")),
+        });
       }
     })();
 
@@ -204,7 +211,9 @@ export default function LoginCallbackPage() {
         const msg =
           json?.error?.message ||
           json?.message ||
-          (res.status === 429 ? "请求过于频繁" : `发送失败: ${res.status}`);
+          (res.status === 429
+            ? tLogin("errors.tooManyRequests")
+            : formatTranslation(tLogin("errors.sendFailedWithStatus"), { status: res.status }));
         const details = json?.error?.details;
         if (details && typeof details === "object") {
           const waitSecondsRaw =
@@ -239,11 +248,11 @@ export default function LoginCallbackPage() {
         setDevCodePreview(String(json.data.codePreview).trim());
       }
     } catch (e: any) {
-      setActionError(String(e?.message || "发送失败"));
+      setActionError(String(e?.message || tLogin("errors.sendFailed")));
     } finally {
       setSending(false);
     }
-  }, [canResend, email, redirect]);
+  }, [canResend, email, redirect, tLogin]);
 
   const verifyCode = useCallback(
     async (inputCode: string) => {
@@ -264,7 +273,9 @@ export default function LoginCallbackPage() {
           const msg =
             json?.error?.message ||
             json?.message ||
-            (res.status === 429 ? "请求过于频繁" : `验证失败: ${res.status}`);
+            (res.status === 429
+              ? tLogin("errors.tooManyRequests")
+              : formatTranslation(tLogin("errors.verifyFailedWithStatus"), { status: res.status }));
           const details = json?.error?.details;
           if (details && typeof details === "object") {
             const remainingRaw =
@@ -315,7 +326,7 @@ export default function LoginCallbackPage() {
         }
         router.replace(fallbackRedirect);
       } catch (e: any) {
-        setActionError(String(e?.message || "验证失败"));
+        setActionError(String(e?.message || tLogin("errors.verifyFailed")));
       } finally {
         setVerifyingCode(false);
       }
@@ -328,6 +339,7 @@ export default function LoginCallbackPage() {
       fallbackRedirect,
       refreshAfterLogin,
       router,
+      tLogin,
       verifyingCode,
     ]
   );
@@ -363,7 +375,7 @@ export default function LoginCallbackPage() {
     const name = String(username || "").trim();
     if (!addr || !userEmail) return;
     if (!isValidUsername(name)) {
-      setUsernameError("用户名不合规：3–20 位，仅允许字母、数字与下划线");
+      setUsernameError(tLogin("username.invalid"));
       return;
     }
 
@@ -396,7 +408,9 @@ export default function LoginCallbackPage() {
         const msg =
           json?.error?.message ||
           json?.message ||
-          (res.status === 409 ? "用户名已被占用" : `保存失败: ${res.status}`);
+          (res.status === 409
+            ? tLogin("username.taken")
+            : formatTranslation(tLogin("errors.saveFailedWithStatus"), { status: res.status }));
         throw new Error(String(msg));
       }
       await refreshAfterLogin();
@@ -408,28 +422,28 @@ export default function LoginCallbackPage() {
         email: userEmail,
         signupToken: signupToken || undefined,
       });
-      setUsernameError(String(e?.message || "保存失败"));
+      setUsernameError(String(e?.message || tLogin("errors.saveFailed")));
     }
-  }, [fallbackRedirect, refreshAfterLogin, router, username, usernameState]);
+  }, [fallbackRedirect, refreshAfterLogin, router, tLogin, username, usernameState]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-6">
       <div className="max-w-md w-full rounded-2xl border bg-white p-6">
         {tokenState.status === "verifying" ? (
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">正在登录…</div>
-            <div className="mt-2 text-sm text-gray-600">请稍候</div>
+            <div className="text-lg font-semibold text-gray-900">{tLogin("status.loggingIn")}</div>
+            <div className="mt-2 text-sm text-gray-600">{tLogin("status.pleaseWait")}</div>
           </div>
         ) : usernameState.status !== "idle" ? (
           <div className="space-y-4">
             <div className="text-center">
-              <div className="text-lg font-semibold text-gray-900">设置用户名</div>
-              <div className="mt-2 text-sm text-gray-600">首次邮箱登录需要先设置用户名</div>
+              <div className="text-lg font-semibold text-gray-900">{tLogin("username.title")}</div>
+              <div className="mt-2 text-sm text-gray-600">{tLogin("username.subtitle")}</div>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="setup-username" className="block text-sm font-medium text-gray-900">
-                用户名
+                {tLogin("username.label")}
               </label>
               <input
                 id="setup-username"
@@ -440,10 +454,10 @@ export default function LoginCallbackPage() {
                   setUsernameError(null);
                 }}
                 className="w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
-                placeholder="例如: alice_01"
+                placeholder={tLogin("username.placeholder")}
                 spellCheck={false}
               />
-              <div className="text-xs text-gray-600">3–20 位，仅允许字母、数字与下划线</div>
+              <div className="text-xs text-gray-600">{tLogin("username.hint")}</div>
             </div>
 
             {usernameError ? (
@@ -455,21 +469,23 @@ export default function LoginCallbackPage() {
               disabled={!canSaveUsername}
               onClick={() => void handleSaveUsername()}
             >
-              {usernameState.status === "saving" ? "保存中…" : "保存并继续"}
+              {usernameState.status === "saving"
+                ? tLogin("username.saving")
+                : tLogin("username.saveAndContinue")}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="text-center">
-              <div className="text-lg font-semibold text-gray-900">登录</div>
+              <div className="text-lg font-semibold text-gray-900">{tLogin("login.title")}</div>
               <div className="mt-2 text-sm text-gray-600">
-                {tokenState.status === "error" ? tokenState.message : "请输入邮箱验证码完成登录"}
+                {tokenState.status === "error" ? tokenState.message : tLogin("login.subtitle")}
               </div>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="login-email" className="block text-sm font-medium text-gray-900">
-                邮箱
+                {tLogin("login.emailLabel")}
               </label>
               <input
                 id="login-email"
@@ -488,7 +504,7 @@ export default function LoginCallbackPage() {
 
             <div className="space-y-2">
               <label htmlFor="login-code" className="block text-sm font-medium text-gray-900">
-                6 位验证码
+                {tLogin("login.codeLabel")}
               </label>
               <div
                 className="flex items-center justify-between gap-2"
@@ -505,7 +521,9 @@ export default function LoginCallbackPage() {
                     ref={(el) => {
                       inputRefs.current[idx] = el;
                     }}
-                    aria-label={`验证码第 ${idx + 1} 位`}
+                    aria-label={formatTranslation(tLogin("code.digitAriaLabel"), {
+                      index: idx + 1,
+                    })}
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -576,11 +594,13 @@ export default function LoginCallbackPage() {
               <div className="text-sm text-red-600 text-center">{actionError}</div>
             ) : null}
             {remainingAttempts != null ? (
-              <div className="text-xs text-gray-600 text-center">{`剩余 ${remainingAttempts} 次尝试`}</div>
+              <div className="text-xs text-gray-600 text-center">
+                {formatTranslation(tLogin("code.remainingAttempts"), { count: remainingAttempts })}
+              </div>
             ) : null}
             {devCodePreview ? (
               <div className="text-xs text-green-700 text-center">
-                <div>{`开发环境验证码：${devCodePreview}`}</div>
+                <div>{formatTranslation(tLogin("code.devPreview"), { code: devCodePreview })}</div>
               </div>
             ) : null}
 
@@ -590,14 +610,18 @@ export default function LoginCallbackPage() {
                 disabled={!canVerifyCode}
                 onClick={handleVerifyCode}
               >
-                {verifyingCode ? "验证中…" : "验证并登录"}
+                {verifyingCode ? tLogin("actions.verifying") : tLogin("actions.verifyAndLogin")}
               </button>
               <button
                 className="inline-flex items-center justify-center rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-900 disabled:opacity-60"
                 disabled={!canResend}
                 onClick={handleResend}
               >
-                {resendLeft > 0 ? `重发（${resendLeft}s）` : sending ? "发送中…" : "重发邮件"}
+                {resendLeft > 0
+                  ? formatTranslation(tLogin("actions.resendCountdown"), { seconds: resendLeft })
+                  : sending
+                    ? tLogin("actions.sending")
+                    : tLogin("actions.resend")}
               </button>
             </div>
 
@@ -605,7 +629,7 @@ export default function LoginCallbackPage() {
               className="w-full inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 border"
               onClick={() => router.replace(fallbackRedirect)}
             >
-              返回
+              {tLogin("actions.back")}
             </button>
           </div>
         )}
