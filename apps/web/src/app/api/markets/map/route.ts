@@ -63,8 +63,11 @@ export async function POST(req: NextRequest) {
     const payload: any = {
       event_id: Number(body.event_id),
       chain_id: Number(body.chain_id),
-      market: String(body.market || "").trim(),
-      collateral_token: body.collateral_token == null ? null : String(body.collateral_token).trim(),
+      market: String(body.market || "")
+        .trim()
+        .toLowerCase(),
+      collateral_token:
+        body.collateral_token == null ? null : String(body.collateral_token).trim().toLowerCase(),
       tick_size: body.tick_size == null ? null : Number(body.tick_size),
       resolution_time: body.resolution_time || null,
       status: String(body.status || "open"),

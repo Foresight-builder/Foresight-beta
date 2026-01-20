@@ -4,8 +4,9 @@ import { supabaseAdmin, supabaseAnon } from "@/lib/supabase.server";
 import { getPredictionsList } from "./_lib/getPredictionsList";
 import { buildPaginationMeta, buildCursorPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, errorResponse } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
+import { ApiErrorCode } from "@/types/api";
 
 // 预测列表可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
       return ApiResponses.forbidden(message);
     }
     if (status === 409) {
-      return ApiResponses.conflict(message);
+      return errorResponse(message, ApiErrorCode.ALREADY_EXISTS, 409, details);
     }
     return ApiResponses.internalError(message, details);
   }

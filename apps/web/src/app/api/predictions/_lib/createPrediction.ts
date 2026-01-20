@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { PredictionRow } from "./types";
 import { buildDiceBearUrl } from "@/lib/dicebear";
-import { normalizeCategory } from "@/features/trending/trendingModel";
+import { normalizeCategory } from "@/lib/categories";
 import { ethers } from "ethers";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -125,7 +125,6 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
   collateralToken: string;
   templateId: string;
   outcome1155: string;
-  outcomeCount: number;
   oracle: string;
 }> {
   const chainId = resolveChainId();
@@ -216,8 +215,6 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
   }
   assertBytes32(templateId, "templateId");
 
-  const outcomeCount =
-    type === "multi" ? Math.max(3, Math.min(8, dep?.markets?.multiOutcomeCount || 0)) : 2;
   return {
     chainId,
     rpcUrl,
@@ -226,7 +223,6 @@ async function resolveMarketCreationConfig(type: "binary" | "multi"): Promise<{
     collateralToken,
     templateId,
     outcome1155,
-    outcomeCount,
     oracle,
   };
 }
@@ -327,7 +323,14 @@ export type CreatePredictionParams = {
   image_url?: string;
   reference_url?: string;
   type?: "binary" | "multi";
-  outcomes?: any[];
+  outcomes?: OutcomeInput[];
+};
+
+export type OutcomeInput = {
+  label: string;
+  description?: string | null;
+  color?: string | null;
+  image_url?: string | null;
 };
 
 export async function createPrediction(
@@ -374,14 +377,12 @@ export async function createPrediction(
     throw err;
   }
 
-  const nextId = await getNextPredictionId(client);
   const outcomeCount = type === "multi" ? outcomes.length : 2;
   const resolutionTimeSec = parseResolutionTimeSeconds(deadline);
 
   const { data: newPrediction, error } = await (client as any)
     .from("predictions")
     .insert({
-      id: nextId,
       title,
       description,
       category,
@@ -407,14 +408,22 @@ export async function createPrediction(
       outcomeCount,
       resolutionTimeSec,
     });
+    const marketAddr = String(binding.market || "")
+      .trim()
+      .toLowerCase();
+    const collateralAddr = String(binding.collateralToken || "")
+      .trim()
+      .toLowerCase();
     const payload: any = {
       event_id: newPrediction.id,
       chain_id: binding.chainId,
-      market: binding.market,
-      collateral_token: binding.collateralToken || null,
+      market: marketAddr,
+      collateral_token: collateralAddr || null,
       tick_size: binding.tickSize,
       resolution_time: deadline || null,
       status: "open",
+      outcome_count: outcomeCount,
+      outcomes: buildMarketsMapOutcomes(type, outcomes),
     };
 
     const { error: mapErr } = await (client as any)
@@ -532,26 +541,15 @@ export async function createPredictionFromRequest(
   });
 }
 
-async function getNextPredictionId(client: SupabaseClient): Promise<number> {
-  const { data: maxIdData, error } = await (client as any)
-    .from("predictions")
-    .select("id")
-    .order("id", { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-  return maxIdData && maxIdData.length > 0 ? maxIdData[0].id + 1 : 1;
-}
-
 async function insertOutcomes(
   client: SupabaseClient,
   predictionId: number,
   type: "binary" | "multi",
-  outcomes: any[]
+  outcomes: OutcomeInput[]
 ) {
   const items =
     type === "multi"
-      ? outcomes.map((o: any, i: number) => ({
+      ? outcomes.map((o: OutcomeInput, i: number) => ({
           prediction_id: predictionId,
           outcome_index: i,
           label: String(o?.label || "").trim(),
@@ -566,4 +564,20 @@ async function insertOutcomes(
 
   const { error } = await (client as any).from("prediction_outcomes").insert(items);
   if (error) throw error;
+}
+
+function buildMarketsMapOutcomes(type: "binary" | "multi", outcomes: OutcomeInput[]): unknown {
+  if (type !== "multi") {
+    return [
+      { outcome_index: 0, label: "Yes" },
+      { outcome_index: 1, label: "No" },
+    ];
+  }
+  return (outcomes || []).map((o, i) => ({
+    outcome_index: i,
+    label: String(o?.label || "").trim(),
+    description: o?.description == null ? null : String(o.description),
+    color: o?.color == null ? null : String(o.color),
+    image_url: o?.image_url == null ? null : String(o.image_url),
+  }));
 }

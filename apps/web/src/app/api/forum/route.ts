@@ -8,7 +8,7 @@ import {
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
-import { normalizeCategory } from "@/features/trending/trendingModel";
+import { normalizeCategory } from "@/lib/categories";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存

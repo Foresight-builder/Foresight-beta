@@ -4,6 +4,7 @@ import { Database } from "@/lib/database.types";
 import { getSessionAddress, logApiError, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
+import { normalizeCategory } from "@/lib/categories";
 import { createPrediction } from "../../../predictions/_lib/createPrediction";
 
 type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
@@ -149,7 +150,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           const result = await createPrediction(client, {
             title: title || "Untitled",
             description: existingRow.title_preview || title || "No description",
-            category: existingRow.category || "其他",
+            category: normalizeCategory(existingRow.category || "更多"),
             deadline,
             minStake: 0.1,
             criteria:
