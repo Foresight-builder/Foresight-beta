@@ -18,7 +18,6 @@ function normalizeActionVerb(v: string): string {
   if (s === "将会赢得") return "willWin";
   return s;
 }
-
 function actionLabel(v: string): string {
   const normalized = normalizeActionVerb(v);
   if (normalized === "priceReach") return "价格是否会达到";
